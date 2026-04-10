@@ -85,8 +85,8 @@ function createUniaxialDomainModel() {
       maxIterations: 100,
     },
     units,
-    actions: {
-      nValues: [-1200000, -800000, -400000, -100000],
+    analysisSettings: {
+      pointCount: 21,
     },
   });
 }
@@ -97,6 +97,12 @@ test("reinforced concrete section application returns a uniaxial M-N domain work
 
   assert.equal(result.applicationId, "reinforced-concrete-sections");
   assert.equal(result.outputs.analysisType, "uls-uniaxial-domain");
-  assert.equal(result.outputs.points.length, 4);
+  assert.equal(result.outputs.nValues.length, 21);
+  assert.equal(result.outputs.points.length, 42);
+  assert.ok(result.outputs.axialCapacity.maximumTension > 0);
+  assert.ok(result.outputs.axialCapacity.maximumCompression < 0);
+  assert.deepEqual(result.outputs.compressedEdges, ["top", "bottom"]);
+  assert.ok(result.outputs.points.some((point) => point.MxRd > 0));
+  assert.ok(result.outputs.points.some((point) => point.MxRd < 0));
   assert.ok(result.outputs.points.every((point) => point.converged));
 });

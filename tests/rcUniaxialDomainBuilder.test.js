@@ -99,7 +99,33 @@ test("uniaxial domain builder returns M-N points for assigned axial-force levels
     nValues: [-1200000, -800000, -400000, -100000],
   });
 
-  assert.equal(domain.points.length, 4);
+  assert.equal(domain.points.length, 8);
+  assert.deepEqual(domain.compressedEdges, ["top", "bottom"]);
   assert.ok(domain.points.every((point) => point.converged));
   assert.ok(domain.points.every((point) => Math.abs(point.axialResidual) < 10));
+  assert.ok(domain.points.some((point) => point.MxRd > 0));
+  assert.ok(domain.points.some((point) => point.MxRd < 0));
+});
+
+test("uniaxial domain builder estimates axial interval and samples it automatically", () => {
+  const fixture = createUniaxialFixture();
+  const domain = new RCUniaxialDomainBuilder().build({
+    section: fixture.section,
+    concreteFibers: fixture.fibers,
+    concreteLaw: fixture.concreteLaw,
+    steelLaw: fixture.steelLaw,
+    pointCount: 21,
+  });
+
+  const expectedTension =
+    fixture.section.totalReinforcementArea() * fixture.steelLaw.fyd;
+  const expectedCompression =
+    -(0.8 * fixture.section.concreteSection.area * fixture.concreteLaw.fcd +
+      expectedTension);
+
+  assert.equal(domain.nValues.length, 21);
+  assert.equal(domain.points.length, 42);
+  assert.equal(domain.axialCapacity.maximumTension, expectedTension);
+  assert.equal(domain.axialCapacity.maximumCompression, expectedCompression);
+  assert.ok(domain.points.every((point) => point.converged));
 });

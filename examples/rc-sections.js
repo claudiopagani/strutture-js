@@ -100,6 +100,148 @@ const section = new ReinforcedConcreteSection({
 
 const application = new ReinforcedConcreteSectionApplication();
 
+const round = (value, decimals = 3) =>
+  Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
+
+const kN = (value) => round(value / 1e3, 3);
+const kNm = (value) => round(value / 1e6, 3);
+const mpA = (value) => round(value, 3);
+const mm = (value) => round(value, 2);
+
+function printTitle(title) {
+  console.log(`\n${title}`);
+  console.log("-".repeat(title.length));
+}
+
+function printUniaxialResistance(result) {
+  const { outputs } = result;
+
+  printTitle("ULS uniaxial resistance");
+  console.table([
+    {
+      status: result.status,
+      "Ned [kN]": kN(outputs.nEd),
+      "Med [kNm]": kNm(outputs.mEd),
+      "MxRd [kNm]": kNm(outputs.MxRd),
+      "utilization [-]": round(result.utilizationRatio, 3),
+      "x [mm]": mm(outputs.neutralAxisDepth),
+      "residual N [kN]": kN(outputs.axialResidual),
+      "compressed edge": outputs.compressedEdge,
+    },
+  ]);
+  console.table([
+    {
+      "eps0 [-]": round(outputs.strainField.eps0, 8),
+      "kappaY [1/mm]": round(outputs.strainField.kappaY, 10),
+      "kappaZ [1/mm]": round(outputs.strainField.kappaZ, 10),
+      "min eps [-]": round(outputs.extremes.minStrain, 8),
+      "max eps [-]": round(outputs.extremes.maxStrain, 8),
+    },
+  ]);
+}
+
+function printBiaxialDomain(result) {
+  const { outputs } = result;
+
+  printTitle("ULS Mx-My domain");
+  console.log(
+    `Ned = ${kN(outputs.nEd)} kN, angles = ${outputs.angleCount}, fibers = ${outputs.fiberCount}`,
+  );
+  console.table(
+    outputs.points.map((point) => ({
+      "theta [deg]": round((point.theta * 180) / Math.PI, 1),
+      "MxRd [kNm]": kNm(point.MxRd),
+      "MyRd [kNm]": kNm(point.MyRd),
+      "x [mm]": mm(point.neutralAxisDepth),
+      "residual N [kN]": kN(point.axialResidual),
+      converged: point.converged,
+    })),
+  );
+}
+
+function formatExtreme(extreme) {
+  if (extreme == null) {
+    return {
+      "stress [MPa]": null,
+      "y [mm]": null,
+      "z [mm]": null,
+    };
+  }
+
+  return {
+    "stress [MPa]": mpA(extreme.value),
+    "y [mm]": mm(extreme.y),
+    "z [mm]": mm(extreme.z),
+  };
+}
+
+function printServiceStress(result) {
+  const { outputs } = result;
+
+  printTitle("Service stress");
+  console.table([
+    {
+      status: result.status,
+      iterations: outputs.iterations,
+      "Ned [kN]": kN(outputs.nEd),
+      "MxEd [kNm]": kNm(outputs.mxEd),
+      "MyEd [kNm]": kNm(outputs.myEd),
+      "residual N [kN]": kN(outputs.residual.n),
+      "residual Mx [kNm]": kNm(outputs.residual.mx),
+      "residual My [kNm]": kNm(outputs.residual.my),
+    },
+  ]);
+  console.table([
+    {
+      material: "concrete",
+      resultant: kN(outputs.concrete.axialForce),
+      extreme: "max compression",
+      ...formatExtreme(outputs.concrete.maxCompression),
+    },
+    {
+      material: "steel",
+      resultant: kN(outputs.steel.axialForce),
+      extreme: "max compression",
+      ...formatExtreme(outputs.steel.maxCompression),
+    },
+    {
+      material: "steel",
+      resultant: kN(outputs.steel.axialForce),
+      extreme: "max tension",
+      ...formatExtreme(outputs.steel.maxTension),
+    },
+  ]);
+}
+
+function printUniaxialDomain(result) {
+  const { outputs } = result;
+
+  printTitle("ULS M-N domain");
+  console.table([
+    {
+      "Nc,Rd cap [kN]": kN(outputs.axialCapacity.maximumCompression),
+      "Nt,Rd [kN]": kN(outputs.axialCapacity.maximumTension),
+      "Ac [mm2]": round(outputs.axialCapacity.concreteArea, 1),
+      "As [mm2]": round(outputs.axialCapacity.reinforcementArea, 1),
+      "fcd [MPa]": mpA(outputs.axialCapacity.fcd),
+      "fyd [MPa]": mpA(outputs.axialCapacity.fyd),
+      "N levels": outputs.nValues.length,
+      points: outputs.points.length,
+    },
+  ]);
+  console.log("N values [kN]:", outputs.nValues.map((value) => kN(value)));
+  console.table(
+    outputs.points.map((point) => ({
+      "Ned [kN]": kN(point.nEd),
+      "compressed edge": point.compressedEdge,
+      "MxRd [kNm]": kNm(point.MxRd),
+      "x [mm]": mm(point.neutralAxisDepth),
+      "residual N [kN]": kN(point.axialResidual),
+      converged: point.converged,
+    })),
+  );
+}
+
 const resistanceModel = new ReinforcedConcreteSectionModel({
   id: "rc-uls-01",
   section,
@@ -153,16 +295,19 @@ const mnDomainModel = new ReinforcedConcreteSectionModel({
   materials: { concreteMaterial, reinforcementMaterial },
   mesh: { targetFiberCount: 120 },
   units,
-  actions: {
-    nValues: [-1200000, -800000, -400000, -100000],
+  analysisSettings: {
+    pointCount: 15,
   },
 });
 
-console.log("ULS resistance:");
-console.log(application.run({ model: resistanceModel }).toJSON());
-console.log("Biaxial domain:");
-console.log(application.run({ model: biaxialModel }).toJSON());
-console.log("Service stress:");
-console.log(application.run({ model: serviceModel }).toJSON());
-console.log("M-N domain:");
-console.log(application.run({ model: mnDomainModel }).toJSON());
+const resistanceResult = application.run({ model: resistanceModel });
+printUniaxialResistance(resistanceResult);
+
+const biaxialResult = application.run({ model: biaxialModel });
+printBiaxialDomain(biaxialResult);
+
+const serviceResult = application.run({ model: serviceModel });
+printServiceStress(serviceResult);
+
+const mnDomainResult = application.run({ model: mnDomainModel });
+printUniaxialDomain(mnDomainResult);
