@@ -1,5 +1,11 @@
 import { CrossSection } from "./CrossSection.js";
-import { createUnitResolver, convertPointCoordinates } from "../units/UnitSystem.js";
+import {
+  assertExplicitUnitSystem,
+  createUnitResolver,
+  convertPointCoordinates,
+} from "../units/UnitSystem.js";
+
+const INTERNAL_UNITS = Object.freeze({ force: "N", length: "mm" });
 
 function assertPoint(point, index) {
   if (
@@ -23,7 +29,8 @@ export class PolygonSection extends CrossSection {
       throw new Error("A polygon section requires at least three points.");
     }
 
-    const unitResolver = createUnitResolver(units, { force: "N", length: "mm" });
+    assertExplicitUnitSystem(units, "PolygonSection");
+    const unitResolver = createUnitResolver(units, INTERNAL_UNITS);
     const resolvedPoints = points.map((point) =>
       convertPointCoordinates(point, unitResolver, ["y", "z"]));
 
@@ -83,11 +90,12 @@ export class PolygonSection extends CrossSection {
         inertiaZ / Math.max(maxZ - centroidZ, centroidZ - minZ),
       height: maxY - minY,
       width: maxZ - minZ,
+      units: INTERNAL_UNITS,
       outlinePoints: resolvedPoints,
       metadata: {
         ...metadata,
         shape: "polygon",
-        unitSystem: units ? unitResolver.unitSystem : metadata.unitSystem,
+        unitSystem: INTERNAL_UNITS,
       },
     });
   }

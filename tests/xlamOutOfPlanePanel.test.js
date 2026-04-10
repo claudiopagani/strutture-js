@@ -11,6 +11,8 @@ import {
   registerXlamPanelProduct,
 } from "../src/index.js";
 
+const units = { force: "N", length: "mm" };
+
 test("xlam panel catalog can register and retrieve producer products", () => {
   registerXlamPanelProduct({
     id: "demo-producer-120",
@@ -31,6 +33,7 @@ test("standalone xlam out-of-plane verification returns bending and shear checks
     layerThicknesses: [40, 30, 40, 30, 40],
     activeLayerIndexes: [0, 2, 4],
     effectiveWidth: 1000,
+    units,
   });
   const material = new XlamMaterial({
     name: "Generic CLT C24",
@@ -43,6 +46,7 @@ test("standalone xlam out-of-plane verification returns bending and shear checks
     g0Mean: 690,
     g90Mean: 69,
     rollingShearStrength: 1.2,
+    units,
   });
 
   const result = new XlamOutOfPlanePanelApplication().run({
@@ -61,6 +65,7 @@ test("standalone xlam out-of-plane verification returns bending and shear checks
         slePermanentLineLoad: 2.5,
         sleVariableLineLoad: 2.5,
       },
+      units,
     }),
   });
 

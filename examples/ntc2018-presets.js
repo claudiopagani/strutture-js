@@ -8,6 +8,8 @@ import {
   createNTC2018ULSFundamentalCombination,
 } from "../src/index.js";
 
+const units = { force: "N", length: "mm" };
+
 const g1 = new LoadCase({
   id: "G1",
   name: "Permanenti strutturali",
@@ -34,18 +36,22 @@ const wind = new LoadCase({
 
 const concrete = createNTC2018ConcreteMaterial({
   strengthClass: "C30/37",
+  units,
 });
 
 const steel = createNTC2018ReinforcementSteelMaterial({
   grade: "B450C",
+  units,
 });
 
 const solidTimber = createNTC2018TimberMaterial({
   strengthClass: "C24",
+  units,
 });
 
 const glulamTimber = createNTC2018TimberMaterial({
   strengthClass: "GL24c",
+  units,
 });
 
 const masonry = createNTC2018ExistingMasonryMaterial({
@@ -57,6 +63,7 @@ const masonry = createNTC2018ExistingMasonryMaterial({
     connessioneTrasversale: { selected: true },
     intonacoArmato: { selected: true },
   },
+  units,
 });
 
 const uls = createNTC2018ULSFundamentalCombination({

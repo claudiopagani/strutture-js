@@ -80,6 +80,7 @@ export { IllinoisRootSolver } from "./domain/solvers/index.js";
 export {
   FORCE_UNIT_FACTORS,
   LENGTH_UNIT_FACTORS,
+  assertExplicitUnitSystem,
   createUnitResolver,
   normalizeUnitSystem,
 } from "./domain/units/UnitSystem.js";

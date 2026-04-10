@@ -1,4 +1,8 @@
-import { createUnitResolver, convertPointCoordinates } from "../../../domain/units/UnitSystem.js";
+import {
+  assertExplicitUnitSystem,
+  createUnitResolver,
+  convertPointCoordinates,
+} from "../../../domain/units/UnitSystem.js";
 
 export class ReinforcedConcreteSectionModel {
   constructor({
@@ -24,6 +28,7 @@ export class ReinforcedConcreteSectionModel {
       throw new Error("A reinforced concrete section model id is required.");
     }
 
+    assertExplicitUnitSystem(units, "ReinforcedConcreteSectionModel");
     const unitResolver = createUnitResolver(units, { force: "N", length: "mm" });
 
     this.id = id;

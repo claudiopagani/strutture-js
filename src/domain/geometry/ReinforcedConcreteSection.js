@@ -1,7 +1,7 @@
 import { CrossSection } from "./CrossSection.js";
 import { CompositeSection } from "../composite/CompositeSection.js";
 import { CompositeSectionComponent } from "../composite/CompositeSectionComponent.js";
-import { createUnitResolver } from "../units/UnitSystem.js";
+import { assertExplicitUnitSystem, createUnitResolver } from "../units/UnitSystem.js";
 
 export class ReinforcedConcreteSection extends CrossSection {
   constructor({
@@ -12,11 +12,23 @@ export class ReinforcedConcreteSection extends CrossSection {
     concreteMaterial = null,
     reinforcementMaterial = null,
     referenceModularRatio = 1,
+    units = null,
     metadata = {},
   }) {
     if (!concreteSection) {
       throw new Error("ReinforcedConcreteSection requires a concreteSection.");
     }
+
+    assertExplicitUnitSystem(
+      units ?? concreteSection.metadata?.unitSystem ?? reinforcementBars[0]?.metadata?.unitSystem,
+      "ReinforcedConcreteSection",
+    );
+
+    const resolvedUnits =
+      units ??
+      concreteSection.metadata?.unitSystem ??
+      reinforcementBars[0]?.metadata?.unitSystem ??
+      null;
 
     const concreteComponent = new CompositeSectionComponent({
       name: "Concrete core",
@@ -26,6 +38,7 @@ export class ReinforcedConcreteSection extends CrossSection {
       centroidZ: concreteSection.centroidZ ?? concreteSection.width / 2,
       modularRatio: 1,
       role: "concrete",
+      units: resolvedUnits,
     });
 
     const reinforcementComponents = reinforcementBars.map((bar, index) =>
@@ -41,12 +54,14 @@ export class ReinforcedConcreteSection extends CrossSection {
           inertiaZ: 0,
           height: 0,
           width: 0,
+          units: resolvedUnits,
         }),
         material: bar.material ?? reinforcementMaterial,
         centroidY: bar.y,
         centroidZ: bar.z ?? concreteSection.centroidZ ?? concreteSection.width / 2,
         modularRatio: referenceModularRatio,
         role: "reinforcement",
+        units: resolvedUnits,
         metadata: {
           reinforcementArea: bar.area,
           reinforcementDiameter: bar.diameter,
@@ -57,6 +72,7 @@ export class ReinforcedConcreteSection extends CrossSection {
     const transformed = new CompositeSection({
       name,
       components: [concreteComponent, ...reinforcementComponents],
+      units: resolvedUnits,
       metadata,
     });
 
@@ -73,6 +89,7 @@ export class ReinforcedConcreteSection extends CrossSection {
       height: concreteSection.height,
       width: concreteSection.width,
       outlinePoints: concreteSection.outlinePoints,
+      units: resolvedUnits,
       metadata: {
         ...metadata,
         shape: "reinforced-concrete",

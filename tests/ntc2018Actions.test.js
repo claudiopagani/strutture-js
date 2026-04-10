@@ -21,6 +21,8 @@ import {
   resolveNTC2018GoverningLoadDuration,
 } from "../src/index.js";
 
+const units = { force: "kN", length: "m" };
+
 test("ntc2018 actions expose combination factors, partial factors and duration classes", () => {
   const permanent = createNTC2018PermanentAction({
     id: "ACT-G1",
@@ -70,6 +72,7 @@ test("load cases propagate actions to loads", () => {
     id: "P1",
     node: { id: "N1" },
     components: { fy: -10 },
+    units,
   });
 
   loadCase.addLoad(load);

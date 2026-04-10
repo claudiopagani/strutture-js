@@ -13,17 +13,21 @@ import {
   Support,
 } from "../src/index.js";
 
-const n1 = new Node({ id: "N1", x: 0, y: 0, z: 0 });
-const n2 = new Node({ id: "N2", x: 5, y: 0, z: 0 });
+const geometryUnits = { force: "kN", length: "m" };
+const materialUnits = { force: "N", length: "m" };
+
+const n1 = new Node({ id: "N1", x: 0, y: 0, z: 0, units: geometryUnits });
+const n2 = new Node({ id: "N2", x: 5, y: 0, z: 0, units: geometryUnits });
 
 const concrete = new ConcreteMaterial({
   id: "C25_30",
   name: "Calcestruzzo C25/30",
   strengthClass: "C25/30",
-  density: 2500,
-  elasticModulus: 31400,
-  fck: 25,
-  fcd: 14.17,
+  density: 25000,
+  elasticModulus: 31.4e9,
+  fck: 25e6,
+  fcd: 14.17e6,
+  units: materialUnits,
 });
 
 const existingMasonry = new ExistingMasonryMaterial({
@@ -31,9 +35,9 @@ const existingMasonry = new ExistingMasonryMaterial({
   name: "Muratura portante esistente",
   masonryType: "Pietrame disordinato",
   baseProperties: {
-    fm: 2.2,
-    tau0: 0.04,
-    E: 1200,
+    fm: 2.2e6,
+    tau0: 0.04e6,
+    E: 1.2e9,
   },
   surveyFactors: {
     geometry: 0.95,
@@ -49,6 +53,7 @@ const existingMasonry = new ExistingMasonryMaterial({
   },
   confidenceFactor: 1.2,
   knowledgeLevel: "LC2",
+  units: materialUnits,
 });
 
 const section = new CrossSection({
@@ -57,6 +62,7 @@ const section = new CrossSection({
   area: 0.15,
   inertiaY: 0.003125,
   inertiaZ: 0.001125,
+  units: geometryUnits,
 });
 
 const beam = new BeamElement({
@@ -85,6 +91,7 @@ deadLoad.addLoad(
     direction: "globalY",
     startValue: -18,
     element: beam,
+    units: geometryUnits,
   }),
 );
 
@@ -95,6 +102,7 @@ liveLoad.addLoad(
     magnitude: -12,
     node: n2,
     components: { fy: -12 },
+    units: geometryUnits,
   }),
 );
 
@@ -129,6 +137,7 @@ console.log("Adjusted existing masonry properties:", existingMasonry.adjustedPro
 
 const steelProfileSection = createSteelProfileSection({
   profileName: "IPE300",
+  units: geometryUnits,
 });
 
 console.log("Steel profile section:", steelProfileSection.toJSON());

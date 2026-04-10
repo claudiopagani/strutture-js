@@ -11,16 +11,20 @@ import {
   createNTC2018ReinforcementSteelMaterial,
 } from "../src/index.js";
 
+const units = { force: "N", length: "mm" };
+
 function createServiceModel() {
   const concreteMaterial = createNTC2018ConcreteMaterial({
     strengthClass: "C25/30",
+    units,
   });
   const reinforcementMaterial = createNTC2018ReinforcementSteelMaterial({
     grade: "B450C",
+    units,
   });
   const section = new ReinforcedConcreteSection({
     name: "RC service application fixture",
-    concreteSection: new RectangularSection({ width: 300, height: 500 }),
+    concreteSection: new RectangularSection({ width: 300, height: 500, units }),
     reinforcementBars: [
       new ReinforcementBar({
         id: "bottom-left",
@@ -29,6 +33,7 @@ function createServiceModel() {
         material: reinforcementMaterial,
         y: 50,
         z: 60,
+        units,
       }),
       new ReinforcementBar({
         id: "bottom-right",
@@ -37,6 +42,7 @@ function createServiceModel() {
         material: reinforcementMaterial,
         y: 50,
         z: 240,
+        units,
       }),
       new ReinforcementBar({
         id: "top-left",
@@ -45,6 +51,7 @@ function createServiceModel() {
         material: reinforcementMaterial,
         y: 450,
         z: 60,
+        units,
       }),
       new ReinforcementBar({
         id: "top-right",
@@ -53,11 +60,13 @@ function createServiceModel() {
         material: reinforcementMaterial,
         y: 450,
         z: 240,
+        units,
       }),
     ],
     concreteMaterial,
     reinforcementMaterial,
     referenceModularRatio: 15,
+    units,
   });
 
   return new ReinforcedConcreteSectionModel({
@@ -75,6 +84,7 @@ function createServiceModel() {
       tolerance: 1e-2,
       maxIterations: 50,
     },
+    units,
     actions: {
       nEd: -400000,
       mxEd: 6e7,

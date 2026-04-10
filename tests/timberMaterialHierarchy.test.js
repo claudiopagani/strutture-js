@@ -10,9 +10,12 @@ import {
   createNTC2018TimberMaterial,
 } from "../src/index.js";
 
+const units = { force: "N", length: "mm" };
+
 test("creates solid timber subclasses for C classes", () => {
   const material = createNTC2018TimberMaterial({
     strengthClass: "C24",
+    units,
   });
 
   assert.ok(material instanceof TimberMaterial);
@@ -26,9 +29,11 @@ test("creates solid timber subclasses for C classes", () => {
 test("creates glulam subclasses for GL homogeneous and combined classes", () => {
   const homogeneous = createNTC2018TimberMaterial({
     strengthClass: "GL24h",
+    units,
   });
   const combined = createNTC2018TimberMaterial({
     strengthClass: "GL24c",
+    units,
   });
 
   assert.ok(homogeneous instanceof GlulamTimberMaterial);

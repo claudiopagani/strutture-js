@@ -6,6 +6,7 @@ export function createXlamPanelSection({
   effectiveWidth = null,
   layerThicknesses = null,
   activeLayerIndexes = null,
+  units = null,
   ...options
 } = {}) {
   const product = productId ? getXlamPanelProduct(productId) : null;
@@ -14,6 +15,7 @@ export function createXlamPanelSection({
     effectiveWidth: effectiveWidth ?? product?.effectiveWidth ?? 1000,
     layerThicknesses: layerThicknesses ?? product?.layerThicknesses,
     activeLayerIndexes: activeLayerIndexes ?? product?.activeLayerIndexes ?? [0, 2, 4],
+    units,
     metadata: {
       ...(product?.metadata ?? {}),
       ...(options.metadata ?? {}),

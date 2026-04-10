@@ -10,6 +10,8 @@ import {
   XlamPanelSection,
 } from "../src/index.js";
 
+const units = { force: "N", length: "mm" };
+
 const approx = (actual, expected, tolerance = 1e-4) => {
   assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} != ${expected}`);
 };
@@ -21,6 +23,7 @@ test("timber-xlam composite beam verification reproduces the workbook reference 
     elasticModulus: 11600,
     fmK: 24,
     fvK: 2.7,
+    units,
   });
   const beamMaterial = new TimberMaterial({
     name: "Glulam beam",
@@ -28,6 +31,7 @@ test("timber-xlam composite beam verification reproduces the workbook reference 
     elasticModulus: 12600,
     fmK: 28,
     fvK: 3.2,
+    units,
   });
   const connector = new TimberDowelConnector({
     diameter: 16,
@@ -39,6 +43,7 @@ test("timber-xlam composite beam verification reproduces the workbook reference 
     spacing: 50,
     gammaConnection: 1.5,
     kmod: 0.9,
+    units,
   });
 
   const model = new TimberXlamCompositeBeamModel({
@@ -48,10 +53,12 @@ test("timber-xlam composite beam verification reproduces the workbook reference 
       effectiveWidth: 600,
       layerThicknesses: [0, 0, 30, 30, 30],
       activeLayerIndexes: [1, 3],
+      units,
     }),
     timberSection: new RectangularSection({
       width: 240,
       height: 440,
+      units,
     }),
     xlamMaterial,
     timberMaterial: beamMaterial,
@@ -67,6 +74,7 @@ test("timber-xlam composite beam verification reproduces the workbook reference 
       slePermanentLineLoad: 5.044,
       sleVariableLineLoad: 6.24,
     },
+    units,
   });
 
   const result = new TimberXlamCompositeBeamApplication().run({ model });

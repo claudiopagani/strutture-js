@@ -1,5 +1,5 @@
 import { Load } from "./Load.js";
-import { createUnitResolver } from "../units/UnitSystem.js";
+import { assertExplicitUnitSystem, createUnitResolver } from "../units/UnitSystem.js";
 
 export class LineLoad extends Load {
   constructor({
@@ -19,6 +19,7 @@ export class LineLoad extends Load {
       dimension: "line",
     });
 
+    assertExplicitUnitSystem(units, "LineLoad");
     const unitResolver = createUnitResolver(units, { force: "kN", length: "m" });
     const resolvedStartValue = unitResolver.lineLoad(startValue);
     const resolvedEndValue = endValue === null ? null : unitResolver.lineLoad(endValue);

@@ -1,5 +1,5 @@
 import { TimberMaterial } from "./TimberMaterial.js";
-import { createUnitResolver } from "../units/UnitSystem.js";
+import { assertExplicitUnitSystem, createUnitResolver } from "../units/UnitSystem.js";
 
 export class XlamMaterial extends TimberMaterial {
   constructor({
@@ -11,6 +11,7 @@ export class XlamMaterial extends TimberMaterial {
     units = null,
     ...timberProps
   }) {
+    assertExplicitUnitSystem(units, "XlamMaterial");
     const unitResolver = createUnitResolver(units, { force: "N", length: "mm" });
 
     super({ units, ...timberProps });

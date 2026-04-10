@@ -16,6 +16,14 @@ const DEFAULT_TARGET_UNIT_SYSTEM = Object.freeze({
   length: "m",
 });
 
+export function assertExplicitUnitSystem(units, context = "This constructor") {
+  if (units == null) {
+    throw new Error(`${context} requires explicit units: { force, length }.`);
+  }
+
+  return normalizeUnitSystem(units);
+}
+
 function assertSupportedUnit(label, value, supported) {
   if (value == null) {
     return;

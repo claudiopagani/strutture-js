@@ -1,4 +1,4 @@
-import { createUnitResolver } from "../units/UnitSystem.js";
+import { assertExplicitUnitSystem, createUnitResolver } from "../units/UnitSystem.js";
 
 export class BaseMaterial {
   constructor({
@@ -21,6 +21,7 @@ export class BaseMaterial {
       throw new Error("A material category is required.");
     }
 
+    assertExplicitUnitSystem(units, "BaseMaterial");
     const unitResolver = createUnitResolver(units, { force: "N", length: "mm" });
 
     this.id = id;

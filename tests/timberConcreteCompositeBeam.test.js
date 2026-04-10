@@ -12,6 +12,8 @@ import {
   createTecnariaConnector,
 } from "../src/index.js";
 
+const units = { force: "N", length: "mm" };
+
 const approx = (actual, expected, tolerance = 1e-4) => {
   assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} != ${expected}`);
 };
@@ -20,28 +22,33 @@ test("timber-concrete composite beam verification reproduces the workbook refere
   const timber = createNTC2018TimberMaterial({
     strengthClass: "C24",
     kmod: 0.8,
+    units,
   });
   const concrete = createNTC2018ConcreteMaterial({
     strengthClass: "LC25/28",
+    units,
   });
   const reinforcementMaterial = createNTC2018ReinforcementSteelMaterial({
     grade: "B450C",
+    units,
   });
   const reinforcement = new ReinforcementBar({
     diameter: 6,
     grade: "B450C",
     material: reinforcementMaterial,
+    units,
   });
   const connector = createTecnariaConnector({
     type: "MAXI",
     boardThickness: 0,
+    units,
   });
 
   const model = new TimberConcreteCompositeBeamModel({
     id: "gelfi-reference",
     span: 4250,
-    slabSection: new RectangularSection({ width: 1800, height: 60 }),
-    timberSection: new RectangularSection({ width: 220, height: 250 }),
+    slabSection: new RectangularSection({ width: 1800, height: 60, units }),
+    timberSection: new RectangularSection({ width: 220, height: 250, units }),
     timberConcreteGap: 100,
     reinforcement,
     reinforcementSpacing: 100,
@@ -63,6 +70,7 @@ test("timber-concrete composite beam verification reproduces the workbook refere
       sleRareLineLoad: 10.998,
     },
     deflectionLimitDenominator: 250,
+    units,
   });
 
   const result = new TimberConcreteCompositeBeamApplication().run({ model });

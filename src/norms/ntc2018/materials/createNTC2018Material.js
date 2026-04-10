@@ -5,7 +5,7 @@ import { GlulamTimberMaterial } from "../../../domain/materials/GlulamTimberMate
 import { SolidTimberMaterial } from "../../../domain/materials/SolidTimberMaterial.js";
 import { SteelMaterial } from "../../../domain/materials/SteelMaterial.js";
 import { TimberMaterial } from "../../../domain/materials/TimberMaterial.js";
-import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
+import { assertExplicitUnitSystem, createUnitResolver } from "../../../domain/units/UnitSystem.js";
 import {
   NTC2018_CONCRETE_CLASSES,
   NTC2018_EXISTING_MASONRY_KNOWLEDGE_LEVELS,
@@ -15,6 +15,7 @@ import {
 } from "./ntc2018MaterialCatalogs.js";
 
 const NTC2018_REFERENCE = "DM 17/01/2018 - NTC 2018";
+const INTERNAL_UNITS = Object.freeze({ force: "N", length: "mm" });
 
 const round = (value, decimals = 2) =>
   Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
@@ -39,7 +40,8 @@ export function createNTC2018ConcreteMaterial({
   units = null,
   metadata = {},
 }) {
-  const unitResolver = createUnitResolver(units, { force: "N", length: "mm" });
+  assertExplicitUnitSystem(units, "createNTC2018ConcreteMaterial");
+  const unitResolver = createUnitResolver(units, INTERNAL_UNITS);
   const preset = assertCatalogEntry(
     NTC2018_CONCRETE_CLASSES,
     strengthClass,
@@ -56,11 +58,15 @@ export function createNTC2018ConcreteMaterial({
     id,
     name,
     strengthClass,
-    density: density ?? (preset.concreteType === "lightweight" ? 2000 : 2500),
+    density:
+      density == null
+        ? (preset.concreteType === "lightweight" ? 2000 : 2500)
+        : unitResolver.volumeLoad(density),
     elasticModulus: round(ecm, 0),
     fck: preset.fck,
     fcd: round((alphaCc * preset.fck) / gammaC, 2),
     fctm: round(fctm, 2),
+    units: INTERNAL_UNITS,
     metadata: {
       ...metadata,
       normativePreset: "NTC2018",
@@ -80,11 +86,12 @@ export function createNTC2018ReinforcementSteelMaterial({
   name = `Acciaio per c.a. ${grade}`,
   gammaS = 1.15,
   density = 7850,
-  elasticModulus = 210000,
+  elasticModulus = null,
   units = null,
   metadata = {},
 }) {
-  const unitResolver = createUnitResolver(units, { force: "N", length: "mm" });
+  assertExplicitUnitSystem(units, "createNTC2018ReinforcementSteelMaterial");
+  const unitResolver = createUnitResolver(units, INTERNAL_UNITS);
   const preset = assertCatalogEntry(
     NTC2018_REINFORCEMENT_STEEL_GRADES,
     grade,
@@ -95,12 +102,13 @@ export function createNTC2018ReinforcementSteelMaterial({
     id,
     name,
     grade,
-    density,
-    elasticModulus: unitResolver.stress(elasticModulus),
+    density: unitResolver.volumeLoad(density),
+    elasticModulus: elasticModulus == null ? 210000 : unitResolver.stress(elasticModulus),
     fyk: preset.fyk,
     fyd: round(preset.fyk / gammaS, 2),
     ftk: preset.ftk,
     ductilityClass: preset.ductilityClass,
+    units: INTERNAL_UNITS,
     metadata: {
       ...metadata,
       normativePreset: "NTC2018",
@@ -117,11 +125,12 @@ export function createNTC2018StructuralSteelMaterial({
   name = `Acciaio carpenteria ${grade}`,
   gammaM0 = 1.05,
   density = 7850,
-  elasticModulus = 210000,
+  elasticModulus = null,
   units = null,
   metadata = {},
 }) {
-  const unitResolver = createUnitResolver(units, { force: "N", length: "mm" });
+  assertExplicitUnitSystem(units, "createNTC2018StructuralSteelMaterial");
+  const unitResolver = createUnitResolver(units, INTERNAL_UNITS);
   const preset = assertCatalogEntry(
     NTC2018_STRUCTURAL_STEEL_GRADES,
     grade,
@@ -132,11 +141,12 @@ export function createNTC2018StructuralSteelMaterial({
     id,
     name,
     grade,
-    density,
-    elasticModulus: unitResolver.stress(elasticModulus),
+    density: unitResolver.volumeLoad(density),
+    elasticModulus: elasticModulus == null ? 210000 : unitResolver.stress(elasticModulus),
     fyk: preset.fyk,
     fyd: round(preset.fyk / gammaM0, 2),
     ftk: preset.ftk,
+    units: INTERNAL_UNITS,
     metadata: {
       ...metadata,
       normativePreset: "NTC2018",
@@ -158,7 +168,8 @@ export function createNTC2018TimberMaterial({
   units = null,
   metadata = {},
 }) {
-  const unitResolver = createUnitResolver(units, { force: "N", length: "mm" });
+  assertExplicitUnitSystem(units, "createNTC2018TimberMaterial");
+  const unitResolver = createUnitResolver(units, INTERNAL_UNITS);
   const preset = assertCatalogEntry(
     NTC2018_TIMBER_STRENGTH_CLASSES,
     strengthClass,
@@ -169,13 +180,14 @@ export function createNTC2018TimberMaterial({
     id,
     name,
     strengthClass,
-    density: preset.density,
+    density: unitResolver.volumeLoad(preset.density),
     elasticModulus: preset.meanElasticModulus,
     timberType: preset.timberType,
     productStandard: preset.productStandard,
     strengthStandard: preset.strengthStandard,
     serviceClass,
     kmod,
+    units: INTERNAL_UNITS,
     fmK: preset.fmK,
     fc0K: preset.fc0K,
     ft0K: preset.ft0K,
@@ -227,6 +239,7 @@ export function createNTC2018ExistingMasonryMaterial({
   metadata = {},
   ...rest
 }) {
+  assertExplicitUnitSystem(units, "createNTC2018ExistingMasonryMaterial");
   const preset = assertCatalogEntry(
     NTC2018_EXISTING_MASONRY_KNOWLEDGE_LEVELS,
     knowledgeLevel,

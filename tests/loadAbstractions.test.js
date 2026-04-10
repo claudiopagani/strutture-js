@@ -13,6 +13,8 @@ import {
   VolumeLoad,
 } from "../src/index.js";
 
+const units = { force: "kN", length: "m" };
+
 test("base load and combination classes are abstract", () => {
   assert.throws(
     () => new Load({ type: "generic", dimension: "point" }),
@@ -32,6 +34,7 @@ test("point and nodal loads compute force resultants", () => {
     position: 2.5,
     direction: "globalY",
     components: { fy: -10, fz: 6, mz: 2 },
+    units,
   });
 
   const nodalLoad = new NodalLoad({
@@ -39,6 +42,7 @@ test("point and nodal loads compute force resultants", () => {
     node: { id: "N2" },
     direction: "globalY",
     components: { fy: -12 },
+    units,
   });
 
   assert.equal(Number(pointLoad.forceResultant().toFixed(6)), Number(Math.sqrt(136).toFixed(6)));
@@ -53,6 +57,7 @@ test("line, area and volume loads expose intensities and resultants", () => {
     startValue: -18,
     endValue: -12,
     direction: "globalY",
+    units,
   });
 
   const areaLoad = new AreaLoad({
@@ -60,6 +65,7 @@ test("line, area and volume loads expose intensities and resultants", () => {
     type: "surface_generic",
     intensity: 3.5,
     area: 12,
+    units,
   });
 
   const volumeLoad = new VolumeLoad({
@@ -67,6 +73,7 @@ test("line, area and volume loads expose intensities and resultants", () => {
     type: "body_force",
     intensity: 24,
     volume: 0.8,
+    units,
   });
 
   assert.equal(lineLoad.averageIntensity(), -15);

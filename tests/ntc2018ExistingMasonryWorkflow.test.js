@@ -8,6 +8,8 @@ import {
   evaluateNTC2018ExistingMasonryWorkflow,
 } from "../src/index.js";
 
+const units = { force: "N", length: "mm" };
+
 test("toggle disables mutually exclusive interventions", () => {
   const initialState = createNTC2018ExistingMasonryWorkflowState();
 
@@ -49,6 +51,7 @@ test("workflow evaluation delegates to the NTC material engine", async () => {
   const response = await evaluateNTC2018ExistingMasonryWorkflow({
     tipologiaIndex: 1,
     livelloDiConfidenza: 2,
+    units,
     coefficienti: [
       {
         id: 1,

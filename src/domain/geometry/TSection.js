@@ -1,5 +1,7 @@
 import { CrossSection } from "./CrossSection.js";
-import { createUnitResolver } from "../units/UnitSystem.js";
+import { assertExplicitUnitSystem, createUnitResolver } from "../units/UnitSystem.js";
+
+const INTERNAL_UNITS = Object.freeze({ force: "N", length: "mm" });
 
 export class TSection extends CrossSection {
   constructor({
@@ -12,7 +14,8 @@ export class TSection extends CrossSection {
     units = null,
     metadata = {},
   }) {
-    const unitResolver = createUnitResolver(units, { force: "N", length: "mm" });
+    assertExplicitUnitSystem(units, "TSection");
+    const unitResolver = createUnitResolver(units, INTERNAL_UNITS);
     const resolvedFlangeWidth = unitResolver.length(flangeWidth);
     const resolvedFlangeThickness = unitResolver.length(flangeThickness);
     const resolvedWebWidth = unitResolver.length(webWidth);
@@ -73,6 +76,7 @@ export class TSection extends CrossSection {
       elasticSectionModulusZ: inertiaZ / (resolvedFlangeWidth / 2),
       height: totalHeight,
       width: resolvedFlangeWidth,
+      units: INTERNAL_UNITS,
       outlinePoints: [
         { y: 0, z: (resolvedFlangeWidth - resolvedWebWidth) / 2 },
         { y: 0, z: (resolvedFlangeWidth + resolvedWebWidth) / 2 },
@@ -86,7 +90,7 @@ export class TSection extends CrossSection {
       metadata: {
         ...metadata,
         shape: "t-section",
-        unitSystem: units ? unitResolver.unitSystem : metadata.unitSystem,
+        unitSystem: INTERNAL_UNITS,
       },
     });
 

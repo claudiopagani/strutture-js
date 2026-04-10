@@ -11,16 +11,19 @@ import {
   createNTC2018ReinforcementSteelMaterial,
 } from "../src/index.js";
 
+const units = { force: "N", length: "mm" };
+
 const approx = (actual, expected, tolerance = 1e-6) => {
   assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} != ${expected}`);
 };
 
 test("composite section computes transformed area and inertia from components", () => {
-  const timber = new RectangularSection({ width: 200, height: 300 });
-  const slab = new RectangularSection({ width: 1000, height: 60 });
+  const timber = new RectangularSection({ width: 200, height: 300, units });
+  const slab = new RectangularSection({ width: 1000, height: 60, units });
 
   const composite = new CompositeSection({
     name: "timber-concrete-demo",
+    units,
     components: [
       new CompositeSectionComponent({
         name: "Timber",
@@ -28,6 +31,7 @@ test("composite section computes transformed area and inertia from components", 
         centroidY: 150,
         modularRatio: 1,
         role: "timber",
+        units,
       }),
       new CompositeSectionComponent({
         name: "Slab",
@@ -35,6 +39,7 @@ test("composite section computes transformed area and inertia from components", 
         centroidY: 430,
         modularRatio: 3,
         role: "slab",
+        units,
       }),
     ],
   });
@@ -47,13 +52,15 @@ test("composite section computes transformed area and inertia from components", 
 test("reinforced concrete section aggregates concrete and positioned bars", () => {
   const concreteMaterial = createNTC2018ConcreteMaterial({
     strengthClass: "C25/30",
+    units,
   });
   const reinforcementMaterial = createNTC2018ReinforcementSteelMaterial({
     grade: "B450C",
+    units,
   });
   const section = new ReinforcedConcreteSection({
     name: "RC beam section",
-    concreteSection: new RectangularSection({ width: 300, height: 500 }),
+    concreteSection: new RectangularSection({ width: 300, height: 500, units }),
     reinforcementBars: [
       new ReinforcementBar({
         diameter: 16,
@@ -61,6 +68,7 @@ test("reinforced concrete section aggregates concrete and positioned bars", () =
         material: reinforcementMaterial,
         y: 50,
         z: 60,
+        units,
       }),
       new ReinforcementBar({
         diameter: 16,
@@ -68,11 +76,13 @@ test("reinforced concrete section aggregates concrete and positioned bars", () =
         material: reinforcementMaterial,
         y: 450,
         z: 240,
+        units,
       }),
     ],
     concreteMaterial,
     reinforcementMaterial,
     referenceModularRatio: 15,
+    units,
   });
 
   approx(section.area, 150000);

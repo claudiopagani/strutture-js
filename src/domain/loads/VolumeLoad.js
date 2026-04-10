@@ -1,5 +1,5 @@
 import { Load } from "./Load.js";
-import { createUnitResolver } from "../units/UnitSystem.js";
+import { assertExplicitUnitSystem, createUnitResolver } from "../units/UnitSystem.js";
 
 export class VolumeLoad extends Load {
   constructor({
@@ -17,6 +17,7 @@ export class VolumeLoad extends Load {
       dimension: "volume",
     });
 
+    assertExplicitUnitSystem(units, "VolumeLoad");
     const unitResolver = createUnitResolver(units, { force: "kN", length: "m" });
     const resolvedIntensity = unitResolver.volumeLoad(intensity);
 

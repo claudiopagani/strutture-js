@@ -20,16 +20,20 @@ const approx = (actual, expected, tolerance = 1e-6) => {
   assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} != ${expected}`);
 };
 
+const legacyUnits = { force: "N", length: "mm" };
+
 function createLegacyRcModel() {
   const concreteMaterial = createNTC2018ConcreteMaterial({
     strengthClass: "C25/30",
+    units: legacyUnits,
   });
   const reinforcementMaterial = createNTC2018ReinforcementSteelMaterial({
     grade: "B450C",
+    units: legacyUnits,
   });
   const section = new ReinforcedConcreteSection({
     name: "RC legacy",
-    concreteSection: new RectangularSection({ width: 300, height: 500 }),
+    concreteSection: new RectangularSection({ width: 300, height: 500, units: legacyUnits }),
     reinforcementBars: [
       new ReinforcementBar({
         id: "b1",
@@ -38,6 +42,7 @@ function createLegacyRcModel() {
         material: reinforcementMaterial,
         y: 40,
         z: 60,
+        units: legacyUnits,
       }),
       new ReinforcementBar({
         id: "b2",
@@ -46,6 +51,7 @@ function createLegacyRcModel() {
         material: reinforcementMaterial,
         y: 40,
         z: 240,
+        units: legacyUnits,
       }),
       new ReinforcementBar({
         id: "t1",
@@ -54,6 +60,7 @@ function createLegacyRcModel() {
         material: reinforcementMaterial,
         y: 460,
         z: 60,
+        units: legacyUnits,
       }),
       new ReinforcementBar({
         id: "t2",
@@ -62,11 +69,13 @@ function createLegacyRcModel() {
         material: reinforcementMaterial,
         y: 460,
         z: 240,
+        units: legacyUnits,
       }),
     ],
     concreteMaterial,
     reinforcementMaterial,
     referenceModularRatio: 15,
+    units: legacyUnits,
   });
 
   return new ReinforcedConcreteSectionModel({
@@ -77,6 +86,7 @@ function createLegacyRcModel() {
     solver: { tolerance: 1e-6, maxIterations: 100 },
     actions: { nEd: -800000, mEd: 1.5e8 },
     analysisSettings: { compressedEdge: "top" },
+    units: legacyUnits,
   });
 }
 
@@ -84,9 +94,11 @@ function createExplicitUnitsRcModel() {
   const units = { force: "N", length: "m" };
   const concreteMaterial = createNTC2018ConcreteMaterial({
     strengthClass: "C25/30",
+    units,
   });
   const reinforcementMaterial = createNTC2018ReinforcementSteelMaterial({
     grade: "B450C",
+    units,
   });
   const section = new ReinforcedConcreteSection({
     name: "RC SI",
@@ -136,6 +148,7 @@ function createExplicitUnitsRcModel() {
     concreteMaterial,
     reinforcementMaterial,
     referenceModularRatio: 15,
+    units,
   });
 
   return new ReinforcedConcreteSectionModel({
@@ -175,12 +188,15 @@ test("timber-concrete beam preserves workbook results with explicit kN/m inputs"
   const timber = createNTC2018TimberMaterial({
     strengthClass: "C24",
     kmod: 0.8,
+    units: { force: "kN", length: "m" },
   });
   const concrete = createNTC2018ConcreteMaterial({
     strengthClass: "LC25/28",
+    units: { force: "kN", length: "m" },
   });
   const reinforcementMaterial = createNTC2018ReinforcementSteelMaterial({
     grade: "B450C",
+    units: { force: "kN", length: "m" },
   });
   const reinforcement = new ReinforcementBar({
     diameter: 0.006,
@@ -191,6 +207,7 @@ test("timber-concrete beam preserves workbook results with explicit kN/m inputs"
   const connector = createTecnariaConnector({
     type: "MAXI",
     boardThickness: 0,
+    units: { force: "kN", length: "m" },
   });
 
   const model = new TimberConcreteCompositeBeamModel({

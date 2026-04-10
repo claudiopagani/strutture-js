@@ -7,6 +7,7 @@ export class SlabLoad extends AreaLoad {
     description,
     loadGroup,
     effect = "unfavourable",
+    units = null,
   }) {
     if (typeof description !== "string" || description.trim().length === 0) {
       throw new Error("A slab load description is required.");
@@ -27,6 +28,7 @@ export class SlabLoad extends AreaLoad {
       name: description,
       type: "slab",
       intensity: 0,
+      units,
       metadata: {
         loadGroup,
         effect: normalizedEffect,

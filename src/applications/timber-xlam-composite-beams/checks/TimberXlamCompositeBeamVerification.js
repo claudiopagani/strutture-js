@@ -252,7 +252,7 @@ export class TimberXlamCompositeBeamVerification {
         "The long-term deflection follows the workbook formula as written.",
       ],
       assumptions: [
-        "Units are expected in mm, N and MPa-consistent form.",
+        "Dimensional inputs are normalized through the unit layer when units are declared on the model and related domain objects.",
         "The XLAM section follows the 5-layer workbook convention with active parallel layers passed in the section definition.",
       ],
       metadata: {

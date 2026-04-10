@@ -1,4 +1,8 @@
-import { createUnitResolver, convertPointCoordinates } from "../units/UnitSystem.js";
+import {
+  assertExplicitUnitSystem,
+  createUnitResolver,
+  convertPointCoordinates,
+} from "../units/UnitSystem.js";
 
 export class CrossSection {
   constructor({
@@ -26,7 +30,8 @@ export class CrossSection {
       throw new Error("A cross-section name is required.");
     }
 
-    const unitResolver = createUnitResolver(units, { force: "kN", length: "m" });
+    assertExplicitUnitSystem(units, "CrossSection");
+    const unitResolver = createUnitResolver(units, { force: "N", length: "mm" });
 
     const resolvedArea = unitResolver.area(area);
 

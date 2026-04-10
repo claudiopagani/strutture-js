@@ -6,12 +6,15 @@ import {
   createNTC2018ExistingMasonryMaterial,
 } from "../src/index.js";
 
+const units = { force: "N", length: "mm" };
+
 test("creates tabulated masonry properties from typology and parameter level", () => {
   const material = createNTC2018ExistingMasonryMaterial({
     id: "MUR-01",
     masonryTypologyId: 1,
     knowledgeLevel: "LC2",
     parameterLevel: 2,
+    units,
     modifierSelections: {
       maltaBuona: { selected: true },
       connessioneTrasversale: { selected: true },
@@ -34,6 +37,7 @@ test("rejects incompatible improvement coefficients", () => {
       createNTC2018ExistingMasonryMaterial({
         masonryTypologyId: 1,
         knowledgeLevel: "LC2",
+        units,
         modifierSelections: {
           intonacoArmato: { selected: true },
           ristilaturaArmata: { selected: true },
@@ -49,6 +53,7 @@ test("rejects coefficients unavailable for selected typology", () => {
       createNTC2018ExistingMasonryMaterial({
         masonryTypologyId: 8,
         knowledgeLevel: "LC2",
+        units,
         modifierSelections: {
           iniezioniMisceleLeganti: { selected: true },
         },

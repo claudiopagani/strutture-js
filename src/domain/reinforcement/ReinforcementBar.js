@@ -1,4 +1,4 @@
-import { createUnitResolver } from "../units/UnitSystem.js";
+import { assertExplicitUnitSystem, createUnitResolver } from "../units/UnitSystem.js";
 
 const REINFORCEMENT_GRADES = new Set(["B450A", "B450C"]);
 
@@ -19,6 +19,7 @@ export class ReinforcementBar {
       throw new Error(`Unsupported reinforcement grade: ${grade}.`);
     }
 
+    assertExplicitUnitSystem(units, "ReinforcementBar");
     const unitResolver = createUnitResolver(units, { force: "N", length: "mm" });
     if (diameter == null && area == null) {
       throw new Error("ReinforcementBar requires either a diameter or an area.");

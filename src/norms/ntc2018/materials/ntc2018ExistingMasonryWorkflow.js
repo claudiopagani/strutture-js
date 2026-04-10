@@ -163,6 +163,7 @@ export const evaluateNTC2018ExistingMasonryWorkflow = async (requestBody) => {
     masonryTypologyId: requestBody.tipologiaIndex,
     parameterLevel: requestBody.livelloDiConfidenza,
     modifierSelections: modifierSelectionsFromState(requestBody.coefficienti ?? []),
+    units: requestBody.units,
   });
 
   await new Promise((resolve) => setTimeout(resolve, 200));

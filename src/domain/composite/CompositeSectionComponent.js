@@ -1,4 +1,4 @@
-import { createUnitResolver } from "../units/UnitSystem.js";
+import { assertExplicitUnitSystem, createUnitResolver } from "../units/UnitSystem.js";
 
 export class CompositeSectionComponent {
   constructor({
@@ -21,6 +21,7 @@ export class CompositeSectionComponent {
       throw new Error("A composite component section is required.");
     }
 
+    assertExplicitUnitSystem(units, "CompositeSectionComponent");
     const unitResolver = createUnitResolver(units, { force: "N", length: "mm" });
     const resolvedCentroidY = unitResolver.length(centroidY);
     const resolvedCentroidZ = unitResolver.length(centroidZ);

@@ -1,5 +1,5 @@
 import { BaseMaterial } from "./BaseMaterial.js";
-import { createUnitResolver } from "../units/UnitSystem.js";
+import { assertExplicitUnitSystem, createUnitResolver } from "../units/UnitSystem.js";
 
 export class ConcreteMaterial extends BaseMaterial {
   constructor({
@@ -10,6 +10,7 @@ export class ConcreteMaterial extends BaseMaterial {
     units = null,
     ...baseProps
   }) {
+    assertExplicitUnitSystem(units, "ConcreteMaterial");
     const unitResolver = createUnitResolver(units, { force: "N", length: "mm" });
 
     super({

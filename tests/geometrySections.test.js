@@ -8,6 +8,8 @@ import {
   TSection,
 } from "../src/index.js";
 
+const units = { force: "N", length: "mm" };
+
 const approx = (actual, expected, tolerance = 1e-6) => {
   assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} != ${expected}`);
 };
@@ -16,6 +18,7 @@ test("rectangular section computes geometric properties", () => {
   const section = new RectangularSection({
     width: 220,
     height: 250,
+    units,
   });
 
   approx(section.area, 55000);
@@ -26,6 +29,7 @@ test("rectangular section computes geometric properties", () => {
 test("circular section computes area and inertia", () => {
   const section = new CircularSection({
     diameter: 200,
+    units,
   });
 
   approx(section.area, Math.PI * 100 ** 2);
@@ -38,6 +42,7 @@ test("t section computes centroid and inertia", () => {
     flangeThickness: 80,
     webWidth: 120,
     webHeight: 220,
+    units,
   });
 
   assert.ok(section.centroidY > 0);
@@ -53,6 +58,7 @@ test("polygon section computes the same properties as an equivalent rectangle", 
       { y: 250, z: 220 },
       { y: 250, z: 0 },
     ],
+    units,
   });
 
   approx(section.area, 55000);

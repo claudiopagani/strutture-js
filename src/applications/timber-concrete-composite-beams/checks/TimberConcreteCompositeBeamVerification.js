@@ -62,9 +62,9 @@ export class TimberConcreteCompositeBeamVerification {
     const fmK = timberMaterial.fmK;
     const fck = concreteMaterial.fck;
     const fyk = reinforcementMaterial?.fyk ?? reinforcement?.material?.fyk;
-    const connectorKser = connector.kser * 1000;
-    const connectorKu = connector.ku * 1000;
-    const connectorFvrk = connector.fvrk * 1000;
+    const connectorKser = connector.kser;
+    const connectorKu = connector.ku;
+    const connectorFvrk = connector.fvrk;
 
     assertPositive(slabWidth, "Slab width");
     assertPositive(slabHeight, "Slab height");
@@ -272,7 +272,7 @@ export class TimberConcreteCompositeBeamVerification {
       },
       warnings: [],
       assumptions: [
-        "Units are expected in mm, N and MPa-consistent form within the model.",
+        "Dimensional inputs are normalized through the unit layer when units are declared on the model and related domain objects.",
         "The implementation follows the spreadsheet procedure supplied by the user.",
       ],
       metadata: {

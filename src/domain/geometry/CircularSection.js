@@ -1,5 +1,7 @@
 import { CrossSection } from "./CrossSection.js";
-import { createUnitResolver } from "../units/UnitSystem.js";
+import { assertExplicitUnitSystem, createUnitResolver } from "../units/UnitSystem.js";
+
+const INTERNAL_UNITS = Object.freeze({ force: "N", length: "mm" });
 
 export class CircularSection extends CrossSection {
   constructor({
@@ -9,7 +11,8 @@ export class CircularSection extends CrossSection {
     units = null,
     metadata = {},
   }) {
-    const unitResolver = createUnitResolver(units, { force: "N", length: "mm" });
+    assertExplicitUnitSystem(units, "CircularSection");
+    const unitResolver = createUnitResolver(units, INTERNAL_UNITS);
     const resolvedDiameter = unitResolver.length(diameter);
 
     if (!Number.isFinite(resolvedDiameter) || resolvedDiameter <= 0) {
@@ -32,10 +35,11 @@ export class CircularSection extends CrossSection {
       elasticSectionModulusZ: inertia / radius,
       height: resolvedDiameter,
       width: resolvedDiameter,
+      units: INTERNAL_UNITS,
       metadata: {
         ...metadata,
         shape: "circular",
-        unitSystem: units ? unitResolver.unitSystem : metadata.unitSystem,
+        unitSystem: INTERNAL_UNITS,
       },
     });
 

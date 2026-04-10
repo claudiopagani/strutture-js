@@ -119,12 +119,13 @@ Struttura minima del modello applicativo:
 ```js
 const model = new ReinforcedConcreteSectionModel({
   id: "rc-demo",
+  units: { force: "N", length: "m" },
   section,
   analysisType: "uls-uniaxial-resistance",
   materials: { concreteMaterial, reinforcementMaterial },
   mesh: { targetFiberCount: 120 },
   solver: { tolerance: 1e-6, maxIterations: 100 },
-  actions: { nEd: -800000, mEd: 1.5e8 },
+  actions: { nEd: -800000, mEd: 1.5e5 },
 });
 ```
 
@@ -161,7 +162,7 @@ const model = new TimberConcreteCompositeBeamModel({
 });
 ```
 
-Convenzioni legacy del modulo RC, ancora supportate se non si dichiara `units`:
+Se `units` non viene dichiarato, resta comunque disponibile la compatibilita legacy per il codice storico del modulo RC:
 
 - unita interne consigliate: `mm`, `N`, `Nmm`, `MPa`;
 - tensioni positive a trazione;
@@ -184,7 +185,7 @@ Il modulo RC e ora coerente e usabile per i workflow implementati, ma ci sono al
 - il solver `service-stress` usa Newton smorzato con Jacobiano numerico a differenze finite; e robusto sui casi coperti dai test, ma non e ancora stato raffinato con strategie avanzate di fallback o con una gestione dedicata di casi particolarmente degeneri;
 - nel caso di esercizio il cls teso e escluso, come richiesto, ma non sono ancora presenti opzioni piu evolute per tension stiffening, fessurazione progressiva o leggi costitutive SLE piu sofisticate;
 - la discretizzazione del cls e basata su griglia regolare nel bounding box con accettazione dei baricentri interni al contorno; per le sezioni ordinarie funziona bene, ma non e ancora ottimizzata con mesh adattive o discretizzazioni mirate nelle zone a maggiore gradiente di deformazione;
-- le unita legacy consigliate restano `mm`, `N`, `Nmm`, `MPa` quando non si passa `units`, ma il package introduce ora un layer dedicato di conversione automatica delle unita in input;
+- il codice storico puo ancora usare `mm`, `N`, `Nmm`, `MPa` senza dichiarare `units`, ma il package usa ora un layer dedicato di conversione automatica delle unita in input;
 - non sono ancora implementati momento-curvatura, colonna modello e post-processing di duttilita, che restano le estensioni naturali del nucleo gia realizzato.
 
 In sintesi, il modulo e adatto come motore frontend per analisi di sezione RC a fibre sui workflow oggi coperti, ma va ancora considerato come prima versione strutturata e non come motore normativo completo in tutti i casi limite.

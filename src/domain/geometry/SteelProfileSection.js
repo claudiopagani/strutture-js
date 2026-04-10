@@ -7,6 +7,7 @@ export class SteelProfileSection extends CrossSection {
     id = profileName,
     name = profileName,
     profileData = null,
+    units = null,
     metadata = {},
     ...overrides
   }) {
@@ -25,6 +26,7 @@ export class SteelProfileSection extends CrossSection {
       torsionalConstant: overrides.torsionalConstant ?? data.IT ?? null,
       shearAreaY: overrides.shearAreaY ?? data.Av_y ?? null,
       shearAreaZ: overrides.shearAreaZ ?? data.Av_z ?? null,
+      units,
       metadata: {
         ...metadata,
         profileName,

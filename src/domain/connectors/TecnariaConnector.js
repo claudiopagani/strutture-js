@@ -1,5 +1,6 @@
 import { ShearConnector } from "./ShearConnector.js";
 import { getTecnariaConnectorData, TECNARIA_CONNECTOR_CATALOG } from "./tecnariaConnectorCatalog.js";
+import { assertExplicitUnitSystem } from "../units/UnitSystem.js";
 
 export class TecnariaConnector extends ShearConnector {
   constructor({
@@ -7,10 +8,13 @@ export class TecnariaConnector extends ShearConnector {
     boardThickness,
     id = null,
     name = null,
+    units = null,
     metadata = {},
   }) {
+    assertExplicitUnitSystem(units, "TecnariaConnector");
     const family = TECNARIA_CONNECTOR_CATALOG[type];
     const data = getTecnariaConnectorData(type, boardThickness);
+    const catalogUnits = { force: "kN", length: "mm" };
 
     if (!family || !data) {
       throw new Error(
@@ -26,6 +30,7 @@ export class TecnariaConnector extends ShearConnector {
       kser: data.kser,
       ku: data.ku,
       fvrk: data.fvrk,
+      units: catalogUnits,
       metadata: {
         ...metadata,
         boardThickness,

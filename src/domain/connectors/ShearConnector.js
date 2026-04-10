@@ -1,4 +1,4 @@
-import { createUnitResolver } from "../units/UnitSystem.js";
+import { assertExplicitUnitSystem, createUnitResolver } from "../units/UnitSystem.js";
 
 export class ShearConnector {
   constructor({
@@ -12,6 +12,7 @@ export class ShearConnector {
     units = null,
     metadata = {},
   }) {
+    assertExplicitUnitSystem(units, "ShearConnector");
     const unitResolver = createUnitResolver(units, { force: "N", length: "mm" });
     const resolvedKser = unitResolver.translationalStiffness(kser);
     const resolvedKu = unitResolver.translationalStiffness(ku);

@@ -1,5 +1,5 @@
 import { Load } from "./Load.js";
-import { createUnitResolver } from "../units/UnitSystem.js";
+import { assertExplicitUnitSystem, createUnitResolver } from "../units/UnitSystem.js";
 
 export class PointLoad extends Load {
   constructor({
@@ -15,6 +15,7 @@ export class PointLoad extends Load {
       dimension: "point",
     });
 
+    assertExplicitUnitSystem(units, "PointLoad");
     const unitResolver = createUnitResolver(units, { force: "kN", length: "m" });
 
     this.direction = direction;

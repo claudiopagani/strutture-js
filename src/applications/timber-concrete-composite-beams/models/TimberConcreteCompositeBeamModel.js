@@ -1,6 +1,8 @@
 import { CompositeSection } from "../../../domain/composite/CompositeSection.js";
 import { CompositeSectionComponent } from "../../../domain/composite/CompositeSectionComponent.js";
-import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
+import { assertExplicitUnitSystem, createUnitResolver } from "../../../domain/units/UnitSystem.js";
+
+const INTERNAL_UNITS = Object.freeze({ force: "N", length: "mm" });
 
 export class TimberConcreteCompositeBeamModel {
   constructor({
@@ -34,6 +36,7 @@ export class TimberConcreteCompositeBeamModel {
       throw new Error("A timber-concrete composite beam model id is required.");
     }
 
+    assertExplicitUnitSystem(units, "TimberConcreteCompositeBeamModel");
     const unitResolver = createUnitResolver(units, { force: "N", length: "mm" });
 
     this.id = id;
@@ -93,6 +96,7 @@ export class TimberConcreteCompositeBeamModel {
           centroidY: this.timberCentroidY(),
           modularRatio: 1,
           role: "timber",
+          units: INTERNAL_UNITS,
         }),
         new CompositeSectionComponent({
           name: "Concrete slab",
@@ -101,8 +105,10 @@ export class TimberConcreteCompositeBeamModel {
           centroidY: this.slabCentroidY(),
           modularRatio,
           role: "slab",
+          units: INTERNAL_UNITS,
         }),
       ],
+      units: INTERNAL_UNITS,
       metadata: {
         ...this.metadata,
         modularRatio,

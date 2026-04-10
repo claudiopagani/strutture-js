@@ -1,5 +1,5 @@
 import { ShearConnector } from "./ShearConnector.js";
-import { createUnitResolver } from "../units/UnitSystem.js";
+import { assertExplicitUnitSystem, createUnitResolver } from "../units/UnitSystem.js";
 
 export class TimberDowelConnector extends ShearConnector {
   constructor({
@@ -17,6 +17,7 @@ export class TimberDowelConnector extends ShearConnector {
     units = null,
     metadata = {},
   }) {
+    assertExplicitUnitSystem(units, "TimberDowelConnector");
     const unitResolver = createUnitResolver(units, { force: "N", length: "mm" });
     const resolvedDiameter = unitResolver.length(diameter);
     const resolvedUltimateTensileStrength = unitResolver.stress(ultimateTensileStrength);

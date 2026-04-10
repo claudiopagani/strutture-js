@@ -1,5 +1,5 @@
 import { SlabLoad } from "./SlabLoad.js";
-import { createUnitResolver } from "../units/UnitSystem.js";
+import { assertExplicitUnitSystem, createUnitResolver } from "../units/UnitSystem.js";
 
 export class LinearLoadFromVolumeWeight extends SlabLoad {
   constructor({
@@ -11,8 +11,9 @@ export class LinearLoadFromVolumeWeight extends SlabLoad {
     spacing,
     units = null,
   }) {
-    super({ description, loadGroup, effect });
+    super({ description, loadGroup, effect, units });
 
+    assertExplicitUnitSystem(units, "LinearLoadFromVolumeWeight");
     const unitResolver = createUnitResolver(units, { force: "kN", length: "m" });
     const resolvedDensity = unitResolver.volumeLoad(density);
     const resolvedArea = unitResolver.area(area);

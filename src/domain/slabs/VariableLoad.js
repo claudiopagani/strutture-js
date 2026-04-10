@@ -1,5 +1,5 @@
 import { SlabLoad } from "./SlabLoad.js";
-import { createUnitResolver } from "../units/UnitSystem.js";
+import { assertExplicitUnitSystem, createUnitResolver } from "../units/UnitSystem.js";
 
 export class VariableLoad extends SlabLoad {
   static nextVariableId = 1;
@@ -17,8 +17,10 @@ export class VariableLoad extends SlabLoad {
       description,
       loadGroup: "Qk",
       effect: "unfavourable",
+      units,
     });
 
+    assertExplicitUnitSystem(units, "VariableLoad");
     const unitResolver = createUnitResolver(units, { force: "kN", length: "m" });
     const resolvedValue = unitResolver.areaLoad(value);
 

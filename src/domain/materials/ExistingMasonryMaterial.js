@@ -1,5 +1,5 @@
 import { ExistingMaterial } from "./ExistingMaterial.js";
-import { createUnitResolver } from "../units/UnitSystem.js";
+import { assertExplicitUnitSystem, createUnitResolver } from "../units/UnitSystem.js";
 
 const multiplyFactors = (factors) =>
   Object.values(factors).reduce((acc, value) => acc * value, 1);
@@ -16,6 +16,7 @@ export class ExistingMasonryMaterial extends ExistingMaterial {
     units = null,
     ...baseProps
   }) {
+    assertExplicitUnitSystem(units, "ExistingMasonryMaterial");
     const unitResolver = createUnitResolver(units, { force: "N", length: "mm" });
 
     super({

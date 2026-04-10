@@ -1,4 +1,5 @@
 import { CrossSection } from "../geometry/CrossSection.js";
+import { assertExplicitUnitSystem } from "../units/UnitSystem.js";
 
 function maxDistance(values, centroid) {
   return Math.max(...values.map((value) => Math.abs(value - centroid)));
@@ -9,11 +10,14 @@ export class CompositeSection extends CrossSection {
     id = null,
     name = "Composite section",
     components,
+    units = null,
     metadata = {},
   }) {
     if (!Array.isArray(components) || components.length === 0) {
       throw new Error("CompositeSection requires at least one component.");
     }
+
+    assertExplicitUnitSystem(units, "CompositeSection");
 
     const transformedArea = components.reduce(
       (sum, component) => sum + component.transformedArea(),
@@ -92,6 +96,7 @@ export class CompositeSection extends CrossSection {
         inertiaZ / maxDistance([rightFiberZ, leftFiberZ], centroidZ),
       height: topFiberY - bottomFiberY,
       width: rightFiberZ - leftFiberZ,
+      units,
       metadata: {
         ...metadata,
         shape: "composite",

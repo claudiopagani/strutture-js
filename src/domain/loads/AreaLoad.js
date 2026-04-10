@@ -1,5 +1,5 @@
 import { Load } from "./Load.js";
-import { createUnitResolver } from "../units/UnitSystem.js";
+import { assertExplicitUnitSystem, createUnitResolver } from "../units/UnitSystem.js";
 
 export class AreaLoad extends Load {
   constructor({
@@ -17,6 +17,7 @@ export class AreaLoad extends Load {
       dimension: "area",
     });
 
+    assertExplicitUnitSystem(units, "AreaLoad");
     const unitResolver = createUnitResolver(units, { force: "kN", length: "m" });
     const resolvedIntensity = unitResolver.areaLoad(intensity);
 

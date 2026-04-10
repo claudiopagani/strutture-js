@@ -1,4 +1,4 @@
-import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
+import { assertExplicitUnitSystem, createUnitResolver } from "../../../domain/units/UnitSystem.js";
 
 export class TimberXlamCompositeBeamModel {
   constructor({
@@ -25,6 +25,7 @@ export class TimberXlamCompositeBeamModel {
       throw new Error("A timber-xlam composite beam model id is required.");
     }
 
+    assertExplicitUnitSystem(units, "TimberXlamCompositeBeamModel");
     const unitResolver = createUnitResolver(units, { force: "N", length: "mm" });
 
     this.id = id;

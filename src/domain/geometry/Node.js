@@ -1,4 +1,4 @@
-import { createUnitResolver } from "../units/UnitSystem.js";
+import { assertExplicitUnitSystem, createUnitResolver } from "../units/UnitSystem.js";
 
 export class Node {
   constructor({
@@ -15,6 +15,7 @@ export class Node {
       throw new Error("A node id is required.");
     }
 
+    assertExplicitUnitSystem(units, "Node");
     const unitResolver = createUnitResolver(units, { force: "kN", length: "m" });
 
     this.id = id;

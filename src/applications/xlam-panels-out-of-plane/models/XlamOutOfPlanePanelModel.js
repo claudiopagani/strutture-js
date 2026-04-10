@@ -1,4 +1,4 @@
-import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
+import { assertExplicitUnitSystem, createUnitResolver } from "../../../domain/units/UnitSystem.js";
 
 export class XlamOutOfPlanePanelModel {
   constructor({
@@ -20,6 +20,7 @@ export class XlamOutOfPlanePanelModel {
       throw new Error("An XLAM out-of-plane panel model id is required.");
     }
 
+    assertExplicitUnitSystem(units, "XlamOutOfPlanePanelModel");
     const unitResolver = createUnitResolver(units, { force: "N", length: "mm" });
 
     this.id = id;

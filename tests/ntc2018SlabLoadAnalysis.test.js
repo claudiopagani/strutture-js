@@ -15,6 +15,8 @@ import {
   listNTC2018SlabWeightCategories,
 } from "../src/index.js";
 
+const units = { force: "kN", length: "m" };
+
 test("floor slab remains immutable when adding loads", () => {
   const slab = new FloorSlab({
     description: "Solaio campione",
@@ -24,6 +26,7 @@ test("floor slab remains immutable when adding loads", () => {
     description: "Massetto",
     loadGroup: "G2",
     surfaceWeight: 1.5,
+    units,
   }));
 
   assert.equal(slab.loads.length, 0);
@@ -41,11 +44,13 @@ test("slab load analysis picks the most severe leading variable load", () => {
       description: "Stratigrafia",
       loadGroup: "G1",
       surfaceWeight: 2,
+      units,
     }))
     .addLoad(new SurfaceLoad({
       description: "Impianti",
       loadGroup: "G2",
       surfaceWeight: 1,
+      units,
     }))
     .addLoad(new VariableLoad({
       description: "Ufficio",
@@ -53,6 +58,7 @@ test("slab load analysis picks the most severe leading variable load", () => {
       psi0: 0.7,
       psi1: 0.5,
       psi2: 0.3,
+      units,
     }))
     .addLoad(new VariableLoad({
       description: "Archivio",
@@ -60,6 +66,7 @@ test("slab load analysis picks the most severe leading variable load", () => {
       psi0: 0.8,
       psi1: 0.7,
       psi2: 0.6,
+      units,
     }));
 
   const analysis = new NTC2018SlabLoadAnalysis(slab);
@@ -81,12 +88,14 @@ test("service combinations fall back to permanent loads only when variable loads
       description: "Finiture",
       loadGroup: "G1",
       surfaceWeight: 2,
+      units,
     }))
     .addLoad(new SurfaceLoad({
       description: "Controsoffitto",
       loadGroup: "G2",
       effect: "favourable",
       surfaceWeight: 0.5,
+      units,
     }));
 
   const analysis = new NTC2018SlabLoadAnalysis(slab);
@@ -104,6 +113,7 @@ test("derived slab loads compute equivalent surface values", () => {
     loadGroup: "G2",
     density: 16,
     thickness: 0.08,
+    units,
   });
   const wallLoad = new WallLoad({
     description: "Tramezza",
@@ -112,12 +122,14 @@ test("derived slab loads compute equivalent surface values", () => {
     height: 3,
     thickness: 0.1,
     spacing: 4,
+    units,
   });
   const joistLoad = new LinearLoadFromLineWeight({
     description: "Travetto prefabbricato",
     loadGroup: "G1",
     lineWeight: 0.25,
     spacing: 0.5,
+    units,
   });
 
   assert.equal(layerLoad.value, 1.28);
@@ -140,7 +152,7 @@ test("ntc slab catalogs expose weight lookup and variable action presets", () =>
   assert.equal(action.category, "B");
   assert.equal(action.qk, 3.0);
 
-  const load = createNTC2018SlabVariableLoad({ actionId: 4 });
+  const load = createNTC2018SlabVariableLoad({ actionId: 4, units });
   assert.equal(load.description, "Uffici aperti al pubblico");
   assert.equal(load.psi0, 0.7);
   assert.equal(load.value, 3.0);

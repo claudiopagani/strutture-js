@@ -366,6 +366,10 @@ export function createNTC2018SlabVariableLoad({
   qk,
   units = null,
 }) {
+  if (units == null) {
+    throw new Error("createNTC2018SlabVariableLoad requires explicit units: { force, length }.");
+  }
+
   const action = getNTC2018SlabVariableAction(actionId);
   const factors = NTC2018_VARIABLE_ACTION_CATEGORIES[action.category];
 

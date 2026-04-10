@@ -9,15 +9,21 @@ import {
   listSteelProfileSectionsByFamily,
 } from "../src/index.js";
 
+const units = { force: "kN", length: "m" };
+const approx = (actual, expected, tolerance = 1e-9) => {
+  assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} != ${expected}`);
+};
+
 test("creates a steel profile section from the integrated database", () => {
   const section = createSteelProfileSection({
     profileName: "IPE300",
+    units,
   });
 
   assert.ok(section instanceof SteelProfileSection);
-  assert.equal(section.area, 0.0053809999999999995);
-  assert.equal(section.inertiaY, 8.355999999999999e-05);
-  assert.equal(section.inertiaZ, 6.038e-06);
+  approx(section.area, 5380.999999999999);
+  approx(section.inertiaY, 83559999.99999999);
+  approx(section.inertiaZ, 6038000);
   assert.equal(section.family, "IPE");
   assert.equal(section.massPerLength, 42.2);
 });
@@ -34,7 +40,7 @@ test("catalog helpers expose integrated families and profile lookup", () => {
 
 test("throws on unknown steel profile", () => {
   assert.throws(
-    () => createSteelProfileSection({ profileName: "XYZ999" }),
+    () => createSteelProfileSection({ profileName: "XYZ999", units }),
     /Unsupported steel profile section/,
   );
 });
