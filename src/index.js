@@ -76,6 +76,14 @@ export {
   SteelElasticLaw,
   SteelElasticPerfectlyPlasticLaw,
 } from "./domain/constitutive-laws/index.js";
+export {
+  BeamLinePreprocessor2D,
+  DofRegistry,
+  FemAssembler2D,
+  FrameElement2DEulerBernoulli,
+  LinearStaticSolver2D,
+} from "./domain/fem/index.js";
+export { DenseLinearSolver } from "./domain/math/index.js";
 export { IllinoisRootSolver } from "./domain/solvers/index.js";
 export {
   FORCE_UNIT_FACTORS,

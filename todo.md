@@ -36,11 +36,12 @@ Gradi di liberta di base:
 Elementi finiti previsti:
 
 * primo elemento operativo: frame 2D Euler-Bernoulli con DOF locali `[u1, v1, theta1, u2, v2, theta2]`;
-* carichi equivalenti iniziali: carico distribuito uniforme trasversale, carico concentrato in posizione generica, momento concentrato;
+* carichi equivalenti iniziali: carico distribuito uniforme trasversale applicato all'intero elemento; carichi concentrati e momenti concentrati devono essere gestiti preferibilmente come carichi nodali dopo aver suddiviso la trave nei punti notevoli;
 * post-processing iniziale: reazioni, spostamenti nodali, forze di estremita, campionamento di taglio e momento lungo l'elemento;
 * secondo elemento: frame 2D Timoshenko, mantenendo la stessa interfaccia dell'elemento Euler-Bernoulli;
 * estremi rigidi: preferire una trasformazione cinematica degli offset rispetto a un elemento separato duplicato;
 * rilasci di estremita: predisporre una gestione tramite condensazione statica dei DOF rilasciati;
+* evitare nel core elementare carichi trapezoidali o distribuzioni parziali come casi speciali: se servono, discretizzare la trave in sottoelementi con carichi uniformi equivalenti a tratti;
 * in futuro: elementi biella/truss 2D, aste con molle concentrate, cerniere plastiche o leggi momento-rotazione.
 
 Strategia per evoluzioni non lineari:
@@ -53,11 +54,12 @@ Strategia per evoluzioni non lineari:
 
 Fasi di sviluppo suggerite:
 
-1. creare il layer matematico minimo con solver denso LU/Gauss con pivot parziale e test su sistemi piccoli, singolari e quasi singolari;
-2. creare il registro DOF, l'assemblatore globale e il solver statico lineare 2D;
-3. implementare l'elemento frame 2D Euler-Bernoulli, vincoli nodali semplici e reazioni;
-4. implementare carichi equivalenti per carichi distribuiti e concentrati, con recupero dei diagrammi `N`, `V`, `M`;
-5. validare il FEM su casi classici di trave: appoggio-appoggio, mensola, incastro-incastro, carico uniforme e carico concentrato;
+1. creare il layer matematico minimo con solver denso LU/Gauss con pivot parziale e test su sistemi piccoli, singolari e quasi singolari: prima implementazione completata con `DenseLinearSolver`;
+2. creare il registro DOF, l'assemblatore globale e il solver statico lineare 2D: prima implementazione completata con `DofRegistry`, `FemAssembler2D` e `LinearStaticSolver2D`;
+3. implementare l'elemento frame 2D Euler-Bernoulli, vincoli nodali semplici e reazioni: prima implementazione completata con rigidezza locale/globale, trasformazione e recupero forze di estremita locali;
+4. implementare carichi equivalenti per carichi distribuiti uniformi sull'intero elemento, mantenendo carichi concentrati e momenti concentrati come nodali tramite suddivisione preventiva della trave, con recupero dei diagrammi `N`, `V`, `M`: prima implementazione completata per carichi uniformi full-span e campionamento locale degli sforzi interni;
+5. validare il FEM su casi classici di trave: appoggio-appoggio, mensola, incastro-incastro, carico uniforme e carico concentrato: prima suite completata con confronti su frecce, rotazioni, reazioni e momenti notevoli;
+5b. creare un preprocessore di trave che inserisce nodi nei punti notevoli, spezza i carichi distribuiti parziali in sottoelementi uniformi e trasforma carichi concentrati/momenti concentrati in carichi nodali: prima implementazione completata con `BeamLinePreprocessor2D`;
 6. integrare il core nel modulo `rc-cracked-deflection`;
 7. aggiungere Timoshenko, offset rigidi, release, molle e spostamenti imposti;
 8. introdurre multipoint constraints tramite trasformazione cinematica;
@@ -85,7 +87,7 @@ MVP consigliato:
 
 * trave prismatica monodimensionale con sezione costante;
 * vincoli iniziali: appoggio-appoggio e mensola;
-* carichi iniziali: distribuito uniforme e forza concentrata;
+* carichi iniziali: distribuito uniforme sull'intero sottoelemento e forza concentrata trasformata in carico nodale tramite inserimento di un nodo nel punto di applicazione;
 * elemento FEM iniziale: Euler-Bernoulli 2D;
 * analisi globale elastica con rigidezza non fessurata;
 * calcolo locale della curvatura fessurata tramite `RCServiceStressSolver`;
