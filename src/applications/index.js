@@ -1,0 +1,64 @@
+import { ApplicationRegistry } from "../core/applications/ApplicationRegistry.js";
+import { MasonryOutOfPlaneApplication } from "./masonry-out-of-plane/index.js";
+import { MasonryRingBeamApplication } from "./masonry-ring-beams/index.js";
+import { MicropileBromsApplication } from "./micropiles-broms/index.js";
+import { RCrackedDeflectionApplication } from "./rc-cracked-deflection/index.js";
+import { ReinforcedConcreteSectionApplication } from "./reinforced-concrete-sections/index.js";
+import { SteelFrameApplication } from "./steel-frames/index.js";
+import { TimberConcreteCompositeBeamApplication } from "./timber-concrete-composite-beams/index.js";
+import { TimberXlamCompositeBeamApplication } from "./timber-xlam-composite-beams/index.js";
+import { TimberBeamApplication } from "./timber-beams/index.js";
+import { XlamOutOfPlanePanelApplication } from "./xlam-panels-out-of-plane/index.js";
+
+export { MasonryOutOfPlaneApplication } from "./masonry-out-of-plane/index.js";
+export { MasonryOutOfPlaneKinematicAnalysis } from "./masonry-out-of-plane/index.js";
+export { MasonryOutOfPlaneModel } from "./masonry-out-of-plane/index.js";
+export { MasonryRingBeamApplication } from "./masonry-ring-beams/index.js";
+export { MasonryRingBeamModel } from "./masonry-ring-beams/index.js";
+export { MasonryRingBeamVerification } from "./masonry-ring-beams/index.js";
+export { MicropileBromsApplication } from "./micropiles-broms/index.js";
+export { MicropileBromsAnalysis } from "./micropiles-broms/index.js";
+export { MicropileBromsModel } from "./micropiles-broms/index.js";
+export { RCrackedDeflectionApplication } from "./rc-cracked-deflection/index.js";
+export { CrackedSectionBeamModel } from "./rc-cracked-deflection/index.js";
+export { CrackedSectionDeflectionAnalysis } from "./rc-cracked-deflection/index.js";
+export { ReinforcedConcreteSectionApplication } from "./reinforced-concrete-sections/index.js";
+export { RCBiaxialDomainBuilder } from "./reinforced-concrete-sections/index.js";
+export { ReinforcedConcreteSectionModel } from "./reinforced-concrete-sections/index.js";
+export { RCServiceStressSolver } from "./reinforced-concrete-sections/index.js";
+export { RCUltimateSectionSolver } from "./reinforced-concrete-sections/index.js";
+export { RCUniaxialDomainBuilder } from "./reinforced-concrete-sections/index.js";
+export { ReinforcedConcreteSectionVerification } from "./reinforced-concrete-sections/index.js";
+export { RCSectionStateIntegrator } from "./reinforced-concrete-sections/index.js";
+export { SectionFiberDiscretizer } from "./reinforced-concrete-sections/index.js";
+export { StrainField } from "./reinforced-concrete-sections/index.js";
+export { SteelFrameApplication } from "./steel-frames/index.js";
+export { TimberConcreteCompositeBeamApplication } from "./timber-concrete-composite-beams/index.js";
+export { TimberConcreteCompositeBeamModel } from "./timber-concrete-composite-beams/index.js";
+export { TimberConcreteCompositeBeamVerification } from "./timber-concrete-composite-beams/index.js";
+export { TimberXlamCompositeBeamApplication } from "./timber-xlam-composite-beams/index.js";
+export { TimberXlamCompositeBeamModel } from "./timber-xlam-composite-beams/index.js";
+export { TimberXlamCompositeBeamVerification } from "./timber-xlam-composite-beams/index.js";
+export { SteelFrameModel } from "./steel-frames/index.js";
+export { SteelMemberVerification } from "./steel-frames/index.js";
+export { TimberBeamApplication } from "./timber-beams/index.js";
+export { TimberBeamModel } from "./timber-beams/index.js";
+export { TimberBeamVerification } from "./timber-beams/index.js";
+export { XlamOutOfPlanePanelApplication } from "./xlam-panels-out-of-plane/index.js";
+export { XlamOutOfPlanePanelModel } from "./xlam-panels-out-of-plane/index.js";
+export { XlamOutOfPlanePanelVerification } from "./xlam-panels-out-of-plane/index.js";
+
+export function createDefaultApplicationRegistry() {
+  return new ApplicationRegistry([
+    new SteelFrameApplication(),
+    new MasonryRingBeamApplication(),
+    new ReinforcedConcreteSectionApplication(),
+    new TimberBeamApplication(),
+    new TimberConcreteCompositeBeamApplication(),
+    new TimberXlamCompositeBeamApplication(),
+    new XlamOutOfPlanePanelApplication(),
+    new RCrackedDeflectionApplication(),
+    new MasonryOutOfPlaneApplication(),
+    new MicropileBromsApplication(),
+  ]);
+}
