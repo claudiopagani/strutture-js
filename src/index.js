@@ -33,6 +33,15 @@ export { StructuralElement } from "./domain/elements/StructuralElement.js";
 export { BeamElement } from "./domain/elements/BeamElement.js";
 export { BeamSystem } from "./domain/elements/BeamSystem.js";
 export {
+  BEAM_SUPPORT_PRESETS,
+  ElasticBeamSectionProvider,
+  SingleBeamAnalysis,
+  SingleBeamFemBuilder,
+  SingleBeamModel,
+  createElasticBeamSectionProvider,
+  resolveBeamSupportPreset,
+} from "./domain/beams/index.js";
+export {
   AccidentalAction,
   Action,
   ClimaticAction,

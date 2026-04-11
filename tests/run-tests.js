@@ -9,6 +9,7 @@ import "./architecture/applicationRegistry.test.js";
 import "./geometrySections.test.js";
 import "./compositeSections.test.js";
 import "./beamLinePreprocessor2D.test.js";
+import "./singleBeamAnalysis.test.js";
 import "./denseLinearSolver.test.js";
 import "./femCore2D.test.js";
 import "./femBeamValidation.test.js";
