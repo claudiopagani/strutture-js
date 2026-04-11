@@ -178,3 +178,30 @@ test("timber-concrete section provider can drive single beam combinations", () =
   assert.equal(sleResult.sectionProperties.metadata.limitState, "SLE");
   assert.ok(Math.abs(sleResult.displacements.maxAbsVerticalDisplacement.uy) > 0);
 });
+
+test("timber-concrete verification can use FEM diagrams instead of closed-form actions", () => {
+  const model = createReferenceModel();
+  model.analysisResult = new SingleBeamAnalysis().analyze({
+    id: "tc-fem-check",
+    units,
+    geometry: { start: { x: 0, y: 0 }, end: { x: model.span, y: 0 } },
+    sectionProvider: new TimberConcreteCompositeBeamSectionProvider({ model }),
+    supports: { start: "hinge", end: "roller" },
+    loads: [
+      { id: "uls-load", actionType: "ULSLOAD", type: "uniform", value: -model.loads.ulsLineLoad },
+      { id: "sle-load", actionType: "SLELOAD", type: "uniform", value: -model.loads.sleRareLineLoad },
+    ],
+    combinations: [
+      { id: "uls", limitState: "ULS", factors: { "uls-load": 1 } },
+      { id: "sle", limitState: "SLE", factors: { "sle-load": 1 } },
+    ],
+    discretization: { elementCount: 8 },
+  });
+
+  const result = new TimberConcreteCompositeBeamApplication().run({ model });
+
+  assert.equal(result.metadata.actionSource, "fem-diagrams");
+  assert.ok(result.outputs.bendingEd > 0);
+  assert.ok(result.outputs.shearEd > 0);
+  assert.ok(result.outputs.deflectionSle > 0);
+});

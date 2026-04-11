@@ -1,4 +1,5 @@
 import { VerificationResult } from "../../../core/results/VerificationResult.js";
+import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
 
 const round = (value, decimals = 6) =>
   Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
@@ -17,6 +18,51 @@ function evaluateCheck(demand, capacity) {
     capacity,
     utilizationRatio,
     ok: utilizationRatio <= 1,
+  };
+}
+
+function maxAbsSample(entries, samplesGetter, valueKey) {
+  let selected = null;
+
+  for (const entry of entries) {
+    for (const sample of samplesGetter(entry) ?? []) {
+      const value = sample?.[valueKey];
+
+      if (!Number.isFinite(value)) {
+        continue;
+      }
+
+      if (!selected || Math.abs(value) > Math.abs(selected.value)) {
+        selected = { value, sample, resultId: entry.id };
+      }
+    }
+  }
+
+  return selected;
+}
+
+function femDemands(analysisResult) {
+  if (!analysisResult?.units) {
+    return null;
+  }
+
+  const resolver = createUnitResolver(analysisResult.units, { force: "N", length: "mm" });
+  const combinations = Object.values(analysisResult.combinations ?? {});
+  const loadCases = Object.values(analysisResult.loadCases ?? {});
+  const entries = combinations.length > 0 ? combinations : loadCases;
+  const ulsEntries = entries.filter((entry) => entry.context?.limitState === "ULS");
+  const sleEntries = entries.filter((entry) => entry.context?.limitState === "SLE");
+  const uls = ulsEntries.length > 0 ? ulsEntries : entries;
+  const sle = sleEntries.length > 0 ? sleEntries : entries;
+  const moment = maxAbsSample(uls, (entry) => entry.internalForces?.samples, "m");
+  const shear = maxAbsSample(uls, (entry) => entry.internalForces?.samples, "v");
+  const deflection = maxAbsSample(sle, (entry) => entry.displacements?.samples, "uy");
+
+  return {
+    bendingEd: moment ? Math.abs(resolver.moment(moment.value)) : null,
+    shearEd: shear ? Math.abs(resolver.force(shear.value)) : null,
+    deflectionSle: deflection ? Math.abs(resolver.length(deflection.value)) : null,
+    source: "fem-diagrams",
   };
 }
 
@@ -103,8 +149,9 @@ export class TimberConcreteCompositeBeamVerification {
     const dStar = idealInertia / slabStaticMoment;
     const timberSectionModulus = timberSection.elasticSectionModulusY;
 
-    const shearEd = (qUls * span) / 2;
-    const bendingEd = (qUls * span ** 2) / 8;
+    const demands = femDemands(model.analysisResult);
+    const shearEd = demands?.shearEd ?? (qUls * span) / 2;
+    const bendingEd = demands?.bendingEd ?? (qUls * span ** 2) / 8;
 
     // Gelfi gamma-method implementation aligned to the workbook formulas.
     const gammaUls =
@@ -162,6 +209,7 @@ export class TimberConcreteCompositeBeamVerification {
     const connectorForceGelfi = connectorKu * lateralSlip;
 
     const deflectionSle =
+      demands?.deflectionSle ??
       (5 * qSleRare * span ** 4) / (384 * ewInf * inertiaEffSle);
 
     const timberBottomCheck = evaluateCheck(
@@ -277,6 +325,7 @@ export class TimberConcreteCompositeBeamVerification {
       ],
       metadata: {
         method: "gelfi-gamma-method",
+        actionSource: demands?.source ?? "workbook-closed-form",
       },
     });
   }

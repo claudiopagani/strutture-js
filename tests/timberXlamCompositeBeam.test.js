@@ -175,3 +175,37 @@ test("timber-xlam section provider can drive single beam combinations", () => {
   assert.equal(sleResult.sectionProperties.metadata.finalStiffness, true);
   assert.ok(Math.abs(sleResult.displacements.maxAbsVerticalDisplacement.uy) > 0);
 });
+
+test("timber-xlam verification can use FEM diagrams instead of closed-form actions", () => {
+  const model = createReferenceModel();
+  const qSle = model.loads.slePermanentLineLoad + model.loads.sleVariableLineLoad;
+  model.analysisResult = new SingleBeamAnalysis().analyze({
+    id: "xlam-fem-check",
+    units,
+    geometry: { start: { x: 0, y: 0 }, end: { x: model.span, y: 0 } },
+    sectionProvider: new TimberXlamCompositeBeamSectionProvider({ model }),
+    supports: { start: "hinge", end: "roller" },
+    loads: [
+      { id: "uls-load", actionType: "ULSLOAD", type: "uniform", value: -model.loads.ulsLineLoad },
+      { id: "sle-load", actionType: "SLELOAD", type: "uniform", value: -qSle },
+    ],
+    combinations: [
+      { id: "uls", limitState: "ULS", factors: { "uls-load": 1 } },
+      { id: "sle", limitState: "SLE", factors: { "sle-load": 1 } },
+      {
+        id: "sle-final",
+        limitState: "SLE",
+        serviceCombination: "final",
+        factors: { "sle-load": 1 },
+      },
+    ],
+    discretization: { elementCount: 8 },
+  });
+
+  const result = new TimberXlamCompositeBeamApplication().run({ model });
+
+  assert.equal(result.metadata.actionSource, "fem-diagrams");
+  assert.ok(result.outputs.bendingEd > 0);
+  assert.ok(result.outputs.shearEd > 0);
+  assert.ok(result.outputs.deflectionShort > 0);
+});

@@ -1,4 +1,5 @@
 import { VerificationResult } from "../../../core/results/VerificationResult.js";
+import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
 
 const round = (value, decimals = 6) =>
   Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
@@ -22,6 +23,66 @@ function evaluateCheck(demand, capacity) {
 
 function timberShearStrength(material) {
   return material.fvK ?? material.metadata?.fvK ?? material.metadata?.fvk ?? null;
+}
+
+function maxAbsSample(entries, samplesGetter, valueKey) {
+  let selected = null;
+
+  for (const entry of entries) {
+    for (const sample of samplesGetter(entry) ?? []) {
+      const value = sample?.[valueKey];
+
+      if (!Number.isFinite(value)) {
+        continue;
+      }
+
+      if (!selected || Math.abs(value) > Math.abs(selected.value)) {
+        selected = { value, sample, resultId: entry.id };
+      }
+    }
+  }
+
+  return selected;
+}
+
+function femDemands(analysisResult) {
+  if (!analysisResult?.units) {
+    return null;
+  }
+
+  const resolver = createUnitResolver(analysisResult.units, { force: "N", length: "mm" });
+  const combinations = Object.values(analysisResult.combinations ?? {});
+  const loadCases = Object.values(analysisResult.loadCases ?? {});
+  const entries = combinations.length > 0 ? combinations : loadCases;
+  const ulsEntries = entries.filter((entry) => entry.context?.limitState === "ULS");
+  const sleEntries = entries.filter((entry) => entry.context?.limitState === "SLE");
+  const finalEntries = sleEntries.filter(
+    (entry) =>
+      entry.context?.serviceCombination === "final" ||
+      entry.context?.deformationState === "final",
+  );
+  const uls = ulsEntries.length > 0 ? ulsEntries : entries;
+  const sle = sleEntries.length > 0 ? sleEntries : entries;
+  const moment = maxAbsSample(uls, (entry) => entry.internalForces?.samples, "m");
+  const shear = maxAbsSample(uls, (entry) => entry.internalForces?.samples, "v");
+  const shortDeflection = maxAbsSample(sle, (entry) => entry.displacements?.samples, "uy");
+  const longDeflection = maxAbsSample(
+    finalEntries.length > 0 ? finalEntries : sle,
+    (entry) => entry.displacements?.samples,
+    "uy",
+  );
+
+  return {
+    bendingEd: moment ? Math.abs(resolver.moment(moment.value)) : null,
+    shearEd: shear ? Math.abs(resolver.force(shear.value)) : null,
+    deflectionShort: shortDeflection
+      ? Math.abs(resolver.length(shortDeflection.value))
+      : null,
+    deflectionLong: longDeflection
+      ? Math.abs(resolver.length(longDeflection.value))
+      : null,
+    source: "fem-diagrams",
+  };
 }
 
 export class TimberXlamCompositeBeamVerification {
@@ -83,8 +144,9 @@ export class TimberXlamCompositeBeamVerification {
     const ejEffUls =
       e1j1 + e2j2 + gamma1Uls * e1 * a1 * a1Uls ** 2 + gamma2Uls * e2 * a2 * a2Uls ** 2;
 
-    const bendingEd = (qUls * l ** 2) / 8;
-    const shearEd = (qUls * l) / 2;
+    const demands = femDemands(model.analysisResult);
+    const bendingEd = demands?.bendingEd ?? (qUls * l ** 2) / 8;
+    const shearEd = demands?.shearEd ?? (qUls * l) / 2;
     const m1 = (e1j1 / ejEffUls) * bendingEd;
     const m2 = (e2j2 / ejEffUls) * bendingEd;
     const n1 = -(gamma1Uls * e1 * a1 * a1Uls / ejEffUls) * bendingEd;
@@ -104,8 +166,10 @@ export class TimberXlamCompositeBeamVerification {
     const deflectionPermanent = (5 / 384) * qPermanent * l ** 4 / ejEffSle;
     const deflectionVariable = (5 / 384) * qVariable * l ** 4 / ejEffSle;
     const kdef = model.kdef();
-    const deflectionShort = deflectionPermanent + deflectionVariable;
+    const deflectionShort =
+      demands?.deflectionShort ?? deflectionPermanent + deflectionVariable;
     const deflectionLong =
+      demands?.deflectionLong ??
       deflectionPermanent * (1 + kdef) + deflectionVariable + (1 + psi2 * kdef);
 
     const xlamThicknessActive = xlamSection.activeThickness();
@@ -258,6 +322,7 @@ export class TimberXlamCompositeBeamVerification {
       metadata: {
         method: "timber-xlam-gamma-method",
         serviceClass,
+        actionSource: demands?.source ?? "workbook-closed-form",
       },
     });
   }

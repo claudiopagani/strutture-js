@@ -534,10 +534,10 @@ Completato:
 * esporre provider context-aware;
 * usare `SingleBeamAnalysis` per ottenere diagrammi e spostamenti in un test di integrazione;
 * mantenere un test di regressione sul workbook esistente.
+* usare opzionalmente i diagrammi FEM per `M`, `V` e frecce quando `model.analysisResult` e disponibile.
 
 Da fare:
 
-* rifare le verifiche usando le azioni FEM, non solo formule chiuse da trave appoggiata se si vuole maggiore generalita;
 * aggiungere test su geometrie inclinate e combinazioni generate da adapter NTC.
 
 ### 3. Travi composte legno-XLAM
@@ -549,10 +549,10 @@ Completato:
 * provider rigidezza efficace;
 * gestione base di stato limite e rigidezza istantanea/finale;
 * test di collegamento al modulo trave.
+* uso opzionale dei diagrammi FEM per `M`, `V` e frecce quando `model.analysisResult` e disponibile.
 
 Da fare:
 
-* verifica lungo trave da diagrammi FEM;
 * gestione di taglio Timoshenko e deformazioni.
 
 ### 4. Travi / sezioni in acciaio
