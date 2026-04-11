@@ -34,12 +34,20 @@ export { BeamElement } from "./domain/elements/BeamElement.js";
 export { BeamSystem } from "./domain/elements/BeamSystem.js";
 export {
   BEAM_SUPPORT_PRESETS,
+  BeamSectionActionVerifier,
   ElasticBeamSectionProvider,
+  ReinforcedConcreteBeamSectionProvider,
   SingleBeamAnalysis,
   SingleBeamFemBuilder,
   SingleBeamModel,
+  SteelBeamSectionProvider,
+  TimberBeamSectionProvider,
   createElasticBeamSectionProvider,
+  createReinforcedConcreteBeamSectionProvider,
+  createSteelBeamSectionProvider,
+  createTimberBeamSectionProvider,
   resolveBeamSupportPreset,
+  verifyBeamSectionActions,
 } from "./domain/beams/index.js";
 export {
   AccidentalAction,
@@ -155,9 +163,11 @@ export {
   SteelMemberVerification,
   TimberConcreteCompositeBeamApplication,
   TimberConcreteCompositeBeamModel,
+  TimberConcreteCompositeBeamSectionProvider,
   TimberConcreteCompositeBeamVerification,
   TimberXlamCompositeBeamApplication,
   TimberXlamCompositeBeamModel,
+  TimberXlamCompositeBeamSectionProvider,
   TimberXlamCompositeBeamVerification,
   TimberBeamApplication,
   TimberBeamModel,
@@ -166,6 +176,8 @@ export {
   XlamOutOfPlanePanelApplication,
   XlamOutOfPlanePanelModel,
   XlamOutOfPlanePanelVerification,
+  createTimberConcreteCompositeBeamSectionProvider,
+  createTimberXlamCompositeBeamSectionProvider,
   createDefaultApplicationRegistry,
 } from "./applications/index.js";
 
@@ -225,6 +237,7 @@ export {
   selectNTC2018ExistingMasonryTypology,
   toggleNTC2018ExistingMasonryModifier,
   updateNTC2018ExistingMasonryMaltaBuona,
+  createNTC2018BeamCombinations,
   createNTC2018SLECombination,
   createNTC2018ULSFundamentalCombination,
 } from "./norms/ntc2018/index.js";

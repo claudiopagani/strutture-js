@@ -3,10 +3,12 @@ import assert from "node:assert/strict";
 
 import {
   RectangularSection,
+  SingleBeamAnalysis,
   TimberDowelConnector,
   TimberMaterial,
   TimberXlamCompositeBeamApplication,
   TimberXlamCompositeBeamModel,
+  TimberXlamCompositeBeamSectionProvider,
   XlamPanelSection,
 } from "../src/index.js";
 
@@ -16,7 +18,7 @@ const approx = (actual, expected, tolerance = 1e-4) => {
   assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} != ${expected}`);
 };
 
-test("timber-xlam composite beam verification reproduces the workbook reference case", () => {
+function createReferenceModel() {
   const xlamMaterial = new TimberMaterial({
     name: "XLAM top panel",
     strengthClass: "custom-xlam",
@@ -46,7 +48,7 @@ test("timber-xlam composite beam verification reproduces the workbook reference 
     units,
   });
 
-  const model = new TimberXlamCompositeBeamModel({
+  return new TimberXlamCompositeBeamModel({
     id: "xlam-reference",
     span: 9200,
     xlamSection: new XlamPanelSection({
@@ -76,7 +78,10 @@ test("timber-xlam composite beam verification reproduces the workbook reference 
     },
     units,
   });
+}
 
+test("timber-xlam composite beam verification reproduces the workbook reference case", () => {
+  const model = createReferenceModel();
   const result = new TimberXlamCompositeBeamApplication().run({ model });
 
   assert.equal(result.status, "ok");
@@ -90,4 +95,83 @@ test("timber-xlam composite beam verification reproduces the workbook reference 
   approx(result.outputs.connectorForce, 5.06427, 1e-4);
   approx(result.outputs.deflectionShort, 30.622415, 1e-4);
   approx(result.checks[0].utilizationRatio, 0.995302, 1e-4);
+});
+
+test("timber-xlam section provider exposes gamma EJ for beam FEM contexts", () => {
+  const model = createReferenceModel();
+  const provider = new TimberXlamCompositeBeamSectionProvider({ model });
+
+  const uls = provider.getElasticBeamProperties({ limitState: "ULS" });
+  const sle = provider.getElasticBeamProperties({ limitState: "SLE" });
+  const sleFinal = provider.getElasticBeamProperties({
+    limitState: "SLE",
+    deformationState: "final",
+  });
+
+  approx(uls.metadata.gamma1, 0.784346, 1e-4);
+  approx(uls.metadata.gamma2, 0.363361, 1e-4);
+  approx(uls.flexuralRigidity / 1e12, 33.474755, 1e-3);
+  approx(sle.metadata.gamma1, 0.845095, 1e-4);
+  approx(sle.metadata.gamma2, 0.461243, 1e-4);
+  assert.equal(sle.metadata.finalStiffness, false);
+  assert.equal(sleFinal.metadata.finalStiffness, true);
+  assert.ok(sleFinal.flexuralRigidity < sle.flexuralRigidity);
+});
+
+test("timber-xlam section provider can drive single beam combinations", () => {
+  const model = createReferenceModel();
+  const provider = new TimberXlamCompositeBeamSectionProvider({ model });
+  const result = new SingleBeamAnalysis().analyze({
+    geometry: {
+      start: { x: 0, y: 0 },
+      end: { x: model.span, y: 0 },
+    },
+    sectionProvider: provider,
+    supports: {
+      start: "hinge",
+      end: "roller",
+    },
+    loads: [
+      {
+        id: "g1",
+        type: "uniform",
+        actionType: "G1",
+        value: -5,
+        direction: "global-y",
+        projection: "horizontal",
+      },
+      {
+        id: "qk",
+        type: "uniform",
+        actionType: "Qk",
+        value: -4,
+        direction: "global-y",
+        projection: "horizontal",
+      },
+    ],
+    combinations: [
+      {
+        id: "uls",
+        limitState: "ULS",
+        factors: { G1: 1.3, Qk: 1.5 },
+      },
+      {
+        id: "sle-final",
+        limitState: "SLE",
+        serviceCombination: "final",
+        factors: { G1: 1, Qk: 1 },
+      },
+    ],
+    discretization: { elementCount: 2 },
+    units,
+  });
+
+  const ulsResult = result.combinations.uls;
+  const sleResult = result.combinations["sle-final"];
+
+  assert.equal(Object.keys(result.combinations).length, 2);
+  assert.equal(ulsResult.sectionProperties.metadata.limitState, "ULS");
+  assert.equal(sleResult.sectionProperties.metadata.limitState, "SLE");
+  assert.equal(sleResult.sectionProperties.metadata.finalStiffness, true);
+  assert.ok(Math.abs(sleResult.displacements.maxAbsVerticalDisplacement.uy) > 0);
 });

@@ -1,10 +1,14 @@
 import "./ntc2018ExistingMasonryMaterial.test.js";
 import "./ntc2018ExistingMasonryWorkflow.test.js";
 import "./ntc2018Actions.test.js";
+import "./ntc2018BeamCombinations.test.js";
 import "./loadAbstractions.test.js";
 import "./ntc2018SlabLoadAnalysis.test.js";
 import "./steelProfileSection.test.js";
+import "./steelBeamSectionProvider.test.js";
 import "./timberMaterialHierarchy.test.js";
+import "./timberBeamSectionProvider.test.js";
+import "./reinforcedConcreteBeamSectionProvider.test.js";
 import "./architecture/applicationRegistry.test.js";
 import "./geometrySections.test.js";
 import "./compositeSections.test.js";

@@ -91,7 +91,7 @@ Da fare in futuro:
 
 ### 3. Modulo trave singola
 
-Stato: primo nucleo implementato.
+Stato: primo nucleo implementato, con ponte NTC per combinazioni automatiche.
 
 Componenti principali:
 
@@ -99,6 +99,7 @@ Componenti principali:
 * `SingleBeamFemBuilder`;
 * `SingleBeamAnalysis`;
 * `ElasticBeamSectionProvider`;
+* `TimberBeamSectionProvider`;
 * preset vincoli globali;
 * supporto a provider statici e context-aware.
 
@@ -125,6 +126,8 @@ geometry: {
 * raggruppamento dei casi `G1`, `G2`, `Qk`;
 * gestione di piu `Qk` come casi separati;
 * combinazioni esplicite lineari;
+* adapter NTC 2018 per generare combinazioni SLU/SLE annotate;
+* provider legno semplice con `kmod`, `kdef`, rigidezza istantanea/finale e metadata di resistenza;
 * passaggio al provider del contesto di analisi:
   * `resultType`;
   * `limitState`;
@@ -148,8 +151,7 @@ Scelta importante gia fatta:
 
 Da fare:
 
-* generatore automatico di combinazioni normative;
-* inviluppi completi su casi e combinazioni;
+* inviluppi completi su casi e combinazioni: completati in prima versione per estremi principali;
 * output piu ricco per diagrammi in punti notevoli e stazioni utente;
 * adapter ufficiali verso i moduli specialistici di sezione.
 
@@ -172,17 +174,17 @@ Componenti e capacita presenti:
 
 Da fare:
 
-* trasformare il motore di sezione in provider per il modulo trave;
+* trasformare il motore di sezione in provider per il modulo trave: completato in prima versione elastica;
 * esporre rigidezze elastiche iniziali:
-  * sezione lorda;
-  * sezione trasformata;
+  * sezione lorda: completato;
+  * sezione trasformata: completato;
   * eventuale sezione fessurata equivalente;
 * esporre verifiche puntuali per azioni `N`, `V`, `M`;
 * completare il modulo deflessioni fessurate.
 
 ### 5. Sezioni composte legno-calcestruzzo
 
-Stato: workflow di verifica implementato, da rifattorizzare in provider riusabile.
+Stato: workflow di verifica implementato; provider di rigidezza FEM estratto in prima versione.
 
 Capacita presenti:
 
@@ -195,43 +197,32 @@ Capacita presenti:
 * gestione rigidezza connettori `Kser` / `Ku`;
 * uso di materiali e sezioni gia modellati.
 
-Da fare:
+Completato:
 
-* estrarre una funzione/metodo dedicato per calcolare le proprieta efficaci:
+* estrazione del provider context-aware `TimberConcreteCompositeBeamSectionProvider`;
+* calcolo `gammaUls`, `gammaSle`, `inertiaEffUls`, `inertiaEffSle` riusando le formule del workflow esistente;
+* restituzione di `EA`, `EI`, `GA`, unita e metadata;
+* scelta automatica SLU/SLE dal context di `SingleBeamAnalysis`;
+* uso di rigidezza finale per SLE come default, con possibilita di forzare comportamento istantaneo dal context;
+* test di regressione sul caso workbook;
+* test di integrazione con `SingleBeamAnalysis`.
+
+Contratto implementato:
 
 ```js
 getElasticBeamProperties(context)
 ```
 
-* restituire almeno:
+Da fare:
 
-```js
-{
-  axialRigidity,
-  flexuralRigidity,
-  shearRigidity,
-  units,
-  metadata: {
-    source: "timber-concrete-gamma-method",
-    gamma,
-    inertiaEffective,
-    kmod,
-    loadDurationClass,
-    limitState
-  }
-}
-```
-
-* distinguere correttamente:
-  * SLU con rigidezza/connessione coerente;
-  * SLE rara/frequente/quasi permanente;
-  * effetti di lungo termine;
-  * `kmod` e `kdef` quando rilevanti;
-* collegare il provider al modulo trave singola.
+* rifare le verifiche usando le azioni FEM lungo la trave, non solo le formule chiuse del caso appoggio-appoggio;
+* affinare la distinzione tra SLE rara/frequente/quasi permanente quando servono rigidezze istantanee/finali diverse;
+* portare nei metadata anche la classe di durata governante quando il provider verra usato insieme all'adapter NTC;
+* aggiungere casi test con trave inclinata, carichi puntuali e vincoli diversi.
 
 ### 6. Sezioni composte legno-XLAM
 
-Stato: workflow di verifica implementato, da rifattorizzare in provider riusabile.
+Stato: workflow di verifica implementato; provider di rigidezza FEM estratto in prima versione.
 
 Capacita presenti:
 
@@ -239,11 +230,18 @@ Capacita presenti:
 * calcolo e verifiche specifiche del sistema;
 * uso di materiali lignei, sezione trave e sezione/pannello XLAM.
 
+Completato:
+
+* provider context-aware `TimberXlamCompositeBeamSectionProvider`;
+* esposizione di `EA`, `EJ` come `flexuralRigidity`, `GA`, unita e metadata;
+* scelta SLU/SLE dal context di `SingleBeamAnalysis`;
+* selezione opzionale della rigidezza finale tramite `deformationState: "final"` o `serviceCombination: "final"`;
+* metadata con `gamma1`, `gamma2`, bracci efficaci, rigidezza connettore, `kmod`, `kdef`, classe di servizio e coefficienti parziali;
+* test di regressione sui risultati workbook;
+* test di integrazione con `SingleBeamAnalysis`.
+
 Da fare:
 
-* esporre rigidezze efficaci `EA`, `EI`, `GA` al modulo trave;
-* gestire `kmod`, durata carico, classe di servizio e stato limite;
-* restituire metadata analoghi al modulo legno-calcestruzzo;
 * predisporre verifiche puntuali su azioni FEM `N`, `V`, `M`.
 
 ### 7. Sezioni e pannelli XLAM
@@ -292,7 +290,9 @@ Da fare:
 
 ### A. Adapter combinazioni normative per trave singola
 
-Priorita: molto alta.
+Stato: implementato per NTC 2018.
+
+Priorita: completata per il primo adapter NTC.
 
 Scopo:
 
@@ -342,13 +342,22 @@ Output atteso:
 
 Note:
 
-* il progetto contiene gia funzioni NTC per combinazioni; il lavoro consiste nel creare un adapter ergonomico per il modulo trave;
+* il progetto contiene ora un adapter ergonomico per il modulo trave;
 * ogni combinazione deve portare metadata sufficienti per provider context-aware:
   * `limitState`;
   * tipo combinazione;
   * variabile principale;
   * azioni accompagnatrici;
   * classi di durata.
+
+Completato:
+
+* `createNTC2018BeamCombinations`;
+* generazione SLU fondamentale con variabile principale;
+* generazione SLE rara, frequente e quasi permanente;
+* coefficienti da `Action` NTC o da categorie tabellate;
+* metadata per `limitState`, tipo combinazione, variabile principale, azioni accompagnatrici e durate;
+* test di integrazione con `SingleBeamAnalysis`.
 
 ### B. Provider di rigidezza ufficiali
 
@@ -357,7 +366,7 @@ Priorita: alta.
 Provider da creare:
 
 * `ReinforcedConcreteBeamSectionProvider`;
-* `TimberBeamSectionProvider`;
+* `TimberBeamSectionProvider`: completato come provider elastico context-aware;
 * `SteelBeamSectionProvider`;
 * `TimberConcreteCompositeBeamProvider`;
 * `TimberXlamCompositeBeamProvider`;
@@ -395,12 +404,14 @@ Il provider deve essere il punto in cui si decidono:
 
 Priorita: alta.
 
+Stato: implementata in prima versione.
+
 Scopo:
 
 * usare i diagrammi FEM per verificare la sezione lungo la trave;
 * non far conoscere al modulo trave le formule dei materiali.
 
-Contratto consigliato:
+Contratto implementato:
 
 ```js
 verifySectionActions({
@@ -426,20 +437,43 @@ Risposta consigliata:
 
 Ogni modulo materiale deve implementare questo contratto a modo suo.
 
+Completato:
+
+* `BeamSectionActionVerifier`;
+* funzione helper `verifyBeamSectionActions`;
+* scansione dei sample FEM `N`, `V`, `M`;
+* filtro per stato limite, per esempio solo `ULS`;
+* aggregazione di checks, warning, assunzioni e risultato governante;
+* primo collegamento reale nel verificatore di trave in legno per flessione e taglio.
+
+Da fare:
+
+* applicare lo stesso contratto ai moduli composti;
+* distinguere stazioni critiche da stazioni solo informative;
+* rendere configurabile la densita di campionamento richiesta dalle verifiche;
+* separare meglio verifiche di sezione e verifiche globali, come freccia e vibrazioni.
+
 ### D. Inviluppi
 
 Priorita: media-alta.
 
-Da aggiungere al modulo trave:
+Stato: implementati in prima versione.
+
+Completato nel modulo trave:
 
 * massimo/minimo momento;
 * massimo/minimo taglio;
 * massimo/minimo sforzo normale;
 * massima freccia verticale;
-* massime reazioni;
 * combinazione governante;
-* posizione governante;
 * inviluppi separati per SLU e SLE.
+
+Da aggiungere:
+
+* massime reazioni;
+* inviluppi completi campionati per diagrammi continui;
+* stazioni utente e punti notevoli;
+* posizione governante gia disponibile nel sample, ma da rendere piu ergonomica nei report.
 
 ### E. Report strutturato
 
@@ -460,6 +494,8 @@ Ogni workflow completo dovrebbe restituire:
 
 ### 1. Travi in legno semplice
 
+Stato: provider elastico implementato; primo verificatore flessione/taglio/freccia implementato.
+
 Priorita: alta.
 
 Motivo:
@@ -468,14 +504,14 @@ Motivo:
 
 Da implementare:
 
-* provider elastico per legno semplice;
+* provider elastico per legno semplice: completato;
 * verifiche:
-  * flessione;
-  * taglio;
+  * flessione: completata in prima versione da risultati FEM;
+  * taglio: completato in prima versione da risultati FEM;
   * compressione/tensione parallela se rilevante;
   * instabilita laterale se necessaria;
-  * deformazione istantanea;
-  * deformazione finale con `kdef`;
+  * deformazione istantanea: completata in prima versione da risultati FEM;
+  * deformazione finale con `kdef`: predisposta nel provider, da collegare a workflow dedicato;
 * gestione:
   * classe di servizio;
   * durata carico governante;
@@ -492,22 +528,30 @@ Possibile riuso:
 
 Priorita: alta.
 
-Da fare:
+Completato:
 
 * separare calcolo rigidezze efficaci da verifiche;
 * esporre provider context-aware;
-* usare `SingleBeamAnalysis` per ottenere diagrammi e spostamenti;
-* rifare le verifiche usando le azioni FEM, non solo formule chiuse da trave appoggiata se si vuole maggiore generalita;
+* usare `SingleBeamAnalysis` per ottenere diagrammi e spostamenti in un test di integrazione;
 * mantenere un test di regressione sul workbook esistente.
+
+Da fare:
+
+* rifare le verifiche usando le azioni FEM, non solo formule chiuse da trave appoggiata se si vuole maggiore generalita;
+* aggiungere test su geometrie inclinate e combinazioni generate da adapter NTC.
 
 ### 3. Travi composte legno-XLAM
 
 Priorita: alta.
 
+Completato:
+
+* provider rigidezza efficace;
+* gestione base di stato limite e rigidezza istantanea/finale;
+* test di collegamento al modulo trave.
+
 Da fare:
 
-* stesso lavoro del modulo legno-calcestruzzo;
-* provider rigidezza efficace;
 * verifica lungo trave da diagrammi FEM;
 * gestione di taglio Timoshenko e deformazioni.
 
@@ -515,15 +559,26 @@ Da fare:
 
 Priorita: media-alta.
 
-Da implementare:
+Stato: provider elastico implementato in prima versione.
+
+Completato:
 
 * provider elastico da profili acciaio;
-* verifiche base:
-  * flessione;
+* collegamento a `SingleBeamAnalysis` anche con modello Timoshenko;
+* metadata con profilo, famiglia, grado acciaio, `fyk`, `fyd`, `gammaM0`, resistenza elastica/plastica a flessione e resistenza a taglio base.
+* verifiche base lungo trave tramite `verifySectionActions`:
+  * flessione elastica;
   * taglio;
-  * presso/tenso-flessione;
+  * sforzo normale;
+  * interazione lineare assiale-flessione.
+
+Da implementare:
+
+* verifiche avanzate:
   * instabilita flesso-torsionale;
-  * deformazioni SLE;
+  * instabilita di asta compressa;
+  * interazioni normative piu raffinate;
+* deformazioni SLE;
 * classificazione sezione, se si vuole impostazione normativa completa;
 * collegamento al database profili gia presente.
 
@@ -585,15 +640,17 @@ Idee da mantenere:
 
 ### Fase 1 - Chiudere il ponte normativo
 
-1. creare adapter NTC per combinazioni di trave singola;
-2. collegare le `Action` esistenti ai carichi del modulo trave;
-3. generare SLU, SLE rara, frequente e quasi permanente;
+Stato: completata per NTC 2018.
+
+1. creare adapter NTC per combinazioni di trave singola: completato;
+2. collegare le `Action` esistenti ai carichi del modulo trave: completato;
+3. generare SLU, SLE rara, frequente e quasi permanente: completato;
 4. portare nel context:
    * `limitState`;
    * tipo combinazione;
    * variabile principale;
    * classi di durata;
-   * fattori psi e gamma usati.
+   * fattori psi e gamma usati: completato per metadata e fattori di combinazione.
 
 Risultato atteso:
 
@@ -601,11 +658,13 @@ Risultato atteso:
 
 ### Fase 2 - Provider legno semplice
 
-1. creare `TimberBeamSectionProvider`;
-2. usare `context.governingLoadDurationClass` per scegliere `kmod`;
-3. distinguere rigidezza/verifiche istantanee e finali;
-4. aggiungere verifiche flessione, taglio e freccia;
-5. testare travi appoggiate e mensole.
+Stato: completata per il provider elastico; verifiche da completare.
+
+1. creare `TimberBeamSectionProvider`: completato;
+2. usare `context.governingLoadDurationClass` per scegliere `kmod`: completato;
+3. distinguere rigidezza istantanea e finale: completato tramite `deformationState: "final"` / `kdef`;
+4. aggiungere verifiche flessione, taglio e freccia: completato in prima versione;
+5. testare travi appoggiate e mensole: avviato per integrazione FEM/provider e verifiche base.
 
 Risultato atteso:
 
@@ -613,11 +672,13 @@ Risultato atteso:
 
 ### Fase 3 - Provider composti
 
-1. rifattorizzare legno-calcestruzzo;
-2. rifattorizzare legno-XLAM;
-3. esporre `EIeff`, `gamma`, `kmod`, `kdef` nei metadata;
-4. mantenere test di regressione sui risultati esistenti;
-5. far risolvere al FEM anche geometrie inclinate e vincoli diversi.
+Stato: completata in prima versione per legno-calcestruzzo e legno-XLAM.
+
+1. rifattorizzare legno-calcestruzzo: completato in prima versione;
+2. rifattorizzare legno-XLAM: completato in prima versione;
+3. esporre `EIeff`, `gamma`, `kmod`, `kdef` nei metadata: completato per legno-calcestruzzo e legno-XLAM;
+4. mantenere test di regressione sui risultati esistenti: completato per legno-calcestruzzo e legno-XLAM;
+5. far risolvere al FEM anche geometrie inclinate e vincoli diversi: da estendere nei test.
 
 Risultato atteso:
 
@@ -625,9 +686,11 @@ Risultato atteso:
 
 ### Fase 4 - Inviluppi e verifiche lungo trave
 
-1. aggiungere inviluppi a `SingleBeamAnalysis`;
-2. definire `verifySectionActions`;
-3. applicare verifiche a tutte le stazioni FEM o a stazioni critiche;
+Stato: avviata; inviluppi principali e interfaccia comune di verifica implementati.
+
+1. aggiungere inviluppi a `SingleBeamAnalysis`: completato in prima versione;
+2. definire `verifySectionActions`: completato in prima versione;
+3. applicare verifiche a tutte le stazioni FEM o a stazioni critiche: avviato per legno semplice;
 4. restituire verifiche governanti.
 
 Risultato atteso:
@@ -636,7 +699,9 @@ Risultato atteso:
 
 ### Fase 5 - C.A. fessurato
 
-1. creare provider RC per rigidezza iniziale;
+Stato: avviata.
+
+1. creare provider RC per rigidezza iniziale: completato in prima versione per sezione lorda e trasformata non fessurata;
 2. usare il motore RC SLE per curvatura fessurata;
 3. integrare curvature;
 4. validare contro casi semplici;
@@ -648,8 +713,10 @@ Risultato atteso:
 
 ### Fase 6 - Acciaio
 
-1. provider elastico profili acciaio;
-2. verifiche base;
+Stato: avviata.
+
+1. provider elastico profili acciaio: completato in prima versione;
+2. verifiche base: completate in prima versione;
 3. instabilita;
 4. classificazione sezione;
 5. report.
@@ -689,12 +756,9 @@ Completato:
 
 Da fare a breve:
 
-* adapter combinazioni NTC per trave singola;
-* provider legno semplice;
-* provider legno-calcestruzzo;
-* provider legno-XLAM;
-* inviluppi;
-* interfaccia verifiche `verifySectionActions`.
+* applicare `verifySectionActions` ai moduli composti;
+* provider elastico per acciaio;
+* provider RC iniziale per rigidezza lorda/trasformata.
 
 Da fare dopo:
 

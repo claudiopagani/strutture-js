@@ -520,6 +520,169 @@ function summarizeInternalForces(samples) {
   };
 }
 
+function selectExtreme(current, candidate, valueSelector, compare) {
+  if (!candidate) {
+    return current;
+  }
+
+  if (!current || compare(valueSelector(candidate), valueSelector(current))) {
+    return candidate;
+  }
+
+  return current;
+}
+
+function annotateEnvelopeSample(result, sample, quantity, value) {
+  if (!sample) {
+    return null;
+  }
+
+  return {
+    resultId: result.id,
+    resultType: result.resultType,
+    limitState: result.context?.limitState ?? null,
+    combinationType: result.context?.combinationType ?? null,
+    quantity,
+    value,
+    sample: { ...sample },
+  };
+}
+
+function createEnvelope(resultsById) {
+  const results = Object.values(resultsById ?? {});
+  const state = {
+    maxAxialForce: null,
+    minAxialForce: null,
+    maxShearForce: null,
+    minShearForce: null,
+    maxBendingMoment: null,
+    minBendingMoment: null,
+    maxAbsBendingMoment: null,
+    maxAbsVerticalDisplacement: null,
+  };
+
+  for (const result of results) {
+    const forces = result.internalForces ?? {};
+    const displacements = result.displacements ?? {};
+
+    state.maxAxialForce = selectExtreme(
+      state.maxAxialForce,
+      annotateEnvelopeSample(
+        result,
+        forces.maxAxialForce,
+        "n",
+        forces.maxAxialForce?.n,
+      ),
+      (item) => item.value,
+      (a, b) => a > b,
+    );
+    state.minAxialForce = selectExtreme(
+      state.minAxialForce,
+      annotateEnvelopeSample(
+        result,
+        forces.minAxialForce,
+        "n",
+        forces.minAxialForce?.n,
+      ),
+      (item) => item.value,
+      (a, b) => a < b,
+    );
+    state.maxShearForce = selectExtreme(
+      state.maxShearForce,
+      annotateEnvelopeSample(
+        result,
+        forces.maxShearForce,
+        "v",
+        forces.maxShearForce?.v,
+      ),
+      (item) => item.value,
+      (a, b) => a > b,
+    );
+    state.minShearForce = selectExtreme(
+      state.minShearForce,
+      annotateEnvelopeSample(
+        result,
+        forces.minShearForce,
+        "v",
+        forces.minShearForce?.v,
+      ),
+      (item) => item.value,
+      (a, b) => a < b,
+    );
+    state.maxBendingMoment = selectExtreme(
+      state.maxBendingMoment,
+      annotateEnvelopeSample(
+        result,
+        forces.maxBendingMoment,
+        "m",
+        forces.maxBendingMoment?.m,
+      ),
+      (item) => item.value,
+      (a, b) => a > b,
+    );
+    state.minBendingMoment = selectExtreme(
+      state.minBendingMoment,
+      annotateEnvelopeSample(
+        result,
+        forces.minBendingMoment,
+        "m",
+        forces.minBendingMoment?.m,
+      ),
+      (item) => item.value,
+      (a, b) => a < b,
+    );
+    state.maxAbsBendingMoment = selectExtreme(
+      state.maxAbsBendingMoment,
+      annotateEnvelopeSample(
+        result,
+        forces.maxAbsBendingMoment,
+        "absM",
+        Math.abs(forces.maxAbsBendingMoment?.m ?? 0),
+      ),
+      (item) => item.value,
+      (a, b) => a > b,
+    );
+    state.maxAbsVerticalDisplacement = selectExtreme(
+      state.maxAbsVerticalDisplacement,
+      annotateEnvelopeSample(
+        result,
+        displacements.maxAbsVerticalDisplacement,
+        "absUy",
+        Math.abs(displacements.maxAbsVerticalDisplacement?.uy ?? 0),
+      ),
+      (item) => item.value,
+      (a, b) => a > b,
+    );
+  }
+
+  return state;
+}
+
+function createEnvelopes(loadCases, combinations) {
+  const allResults = {
+    ...loadCases,
+    ...combinations,
+  };
+  const ulsCombinations = Object.fromEntries(
+    Object.entries(combinations).filter(
+      ([, result]) => result.context?.limitState === "ULS",
+    ),
+  );
+  const sleCombinations = Object.fromEntries(
+    Object.entries(combinations).filter(
+      ([, result]) => result.context?.limitState === "SLE",
+    ),
+  );
+
+  return {
+    loadCases: createEnvelope(loadCases),
+    combinations: createEnvelope(combinations),
+    uls: createEnvelope(ulsCombinations),
+    sle: createEnvelope(sleCombinations),
+    all: createEnvelope(allResults),
+  };
+}
+
 function sampleBeamResult({ model, femModel, solution, sectionProperties }) {
   const resolver = createUnitResolver(FEM_UNITS, model.units);
   const displacementByNode = convertDisplacementMap(
@@ -1064,6 +1227,22 @@ function normalizeCombinations(combinations, loadCaseIds) {
           combination.limitState ??
           combination.metadata?.limitState ??
           inferLimitState(combination),
+        serviceCombination:
+          combination.serviceCombination ??
+          combination.metadata?.serviceCombination ??
+          null,
+        deformationState:
+          combination.deformationState ??
+          combination.metadata?.deformationState ??
+          null,
+        stiffnessState:
+          combination.stiffnessState ??
+          combination.metadata?.stiffnessState ??
+          null,
+        rcStiffnessState:
+          combination.rcStiffnessState ??
+          combination.metadata?.rcStiffnessState ??
+          null,
       },
     }));
   }
@@ -1238,6 +1417,7 @@ export class SingleBeamAnalysis {
       analysisModel: model.analysisModel,
       loadCases,
       combinations,
+      envelopes: createEnvelopes(loadCases, combinations),
       metadata: {
         ...model.metadata,
         generatedBy: "SingleBeamAnalysis",
@@ -1270,6 +1450,13 @@ export class SingleBeamAnalysis {
         resultType: analysisContext.resultType,
         limitState: analysisContext.limitState ?? null,
         combinationType: analysisContext.combinationType ?? null,
+        serviceCombination: analysisContext.serviceCombination ?? null,
+        leadingLoadCaseId: analysisContext.leadingLoadCaseId ?? null,
+        leadingActionId: analysisContext.leadingActionId ?? null,
+        leadingVariableCategory: analysisContext.leadingVariableCategory ?? null,
+        accompanyingLoadCaseIds: [
+          ...(analysisContext.accompanyingLoadCaseIds ?? []),
+        ],
         loadCaseFactors: { ...analysisContext.loadCaseFactors },
         activeLoads: analysisContext.activeLoads.map((load) => ({ ...load })),
         governingLoadDurationClass:

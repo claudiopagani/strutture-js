@@ -78,3 +78,7 @@ export {
   createNTC2018SLECombination,
   createNTC2018ULSFundamentalCombination,
 } from "./loads/createNTC2018LoadCombination.js";
+
+export {
+  createNTC2018BeamCombinations,
+} from "./beams/createNTC2018BeamCombinations.js";

@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   CompositeSection,
   CompositeSectionComponent,
+  BeamSectionActionVerifier,
   ElasticBeamSectionProvider,
   RectangularSection,
   SingleBeamAnalysis,
@@ -142,6 +143,85 @@ test("single beam analysis combines G1, G2 and multiple Qk load cases", () => {
   assert.ok(result.loadCases.snow);
   approx(combination.reactionByNode["beam-beam-node-1"].uy, 17.2);
   approx(combination.reactionByNode["beam-beam-node-5"].uy, 17.2);
+});
+
+test("single beam analysis returns governing envelopes across combinations", () => {
+  const result = new SingleBeamAnalysis().analyze(
+    createSimpleBeamInput({
+      loads: [
+        { id: "g1", actionType: "G1", type: "uniform", value: -2 },
+        { id: "live", actionType: "Qk", type: "uniform", value: -3 },
+        { id: "wind", actionType: "Qk", type: "uniform", value: 1 },
+      ],
+      combinations: [
+        {
+          id: "uls-live",
+          limitState: "ULS",
+          factors: { G1: 1.3, live: 1.5, wind: 0 },
+        },
+        {
+          id: "sle-wind",
+          limitState: "SLE",
+          factors: { G1: 1, live: 0, wind: 1 },
+        },
+      ],
+    }),
+  );
+
+  assert.equal(result.envelopes.combinations.maxAbsBendingMoment.resultId, "uls-live");
+  approx(result.envelopes.combinations.maxAbsBendingMoment.value, 14.2);
+  assert.equal(result.envelopes.uls.maxAbsBendingMoment.resultId, "uls-live");
+  assert.equal(result.envelopes.sle.maxAbsBendingMoment.resultId, "sle-wind");
+  assert.equal(result.envelopes.all.maxAbsVerticalDisplacement.resultId, "uls-live");
+});
+
+test("beam section action verifier checks FEM samples through a common contract", () => {
+  const analysisResult = new SingleBeamAnalysis().analyze(
+    createSimpleBeamInput({
+      loads: [{ id: "g1", actionType: "G1", type: "uniform", value: -2 }],
+      combinations: [
+        {
+          id: "uls",
+          limitState: "ULS",
+          factors: { G1: 1.5 },
+        },
+      ],
+    }),
+  );
+  const verification = new BeamSectionActionVerifier({
+    sectionVerifier: {
+      verifySectionActions: ({ vEd, mEd }) => ({
+        utilizationRatio: Math.max(Math.abs(mEd) / 5, Math.abs(vEd) / 20),
+        checks: [
+          {
+            id: "bending",
+            demand: Math.abs(mEd),
+            capacity: 5,
+            utilizationRatio: Math.abs(mEd) / 5,
+            ok: Math.abs(mEd) <= 5,
+          },
+          {
+            id: "shear",
+            demand: Math.abs(vEd),
+            capacity: 20,
+            utilizationRatio: Math.abs(vEd) / 20,
+            ok: Math.abs(vEd) <= 20,
+          },
+        ],
+      }),
+    },
+    limitStates: "ULS",
+  }).verify({ analysisResult });
+
+  assert.equal(verification.status, "not-verified");
+  assert.equal(verification.metadata.resultCount, 1);
+  assert.ok(verification.outputs.stationResultCount > 0);
+  assert.ok(
+    verification.checks.some(
+      (check) => check.id === "bending" && check.metadata.resultId === "uls",
+    ),
+  );
+  assert.ok(verification.utilizationRatio > 1);
 });
 
 test("elastic beam provider evaluates rigid composite section stiffness from component materials", () => {
