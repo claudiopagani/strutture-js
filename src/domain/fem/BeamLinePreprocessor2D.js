@@ -134,6 +134,10 @@ function convertElementOptions(elementOptions, unitResolver) {
     });
   }
 
+  if (Number.isFinite(resolved.shearRigidity)) {
+    resolved.shearRigidity = unitResolver.force(resolved.shearRigidity);
+  }
+
   return resolved;
 }
 

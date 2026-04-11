@@ -1,4 +1,4 @@
-# TODO
+# TODO attivi
 * trasformare ReinforcedConcreteSection in base del modulo pressoflessione in c.a.;
 * creare una SteelConcreteCompositeSection per profili metallici collaboranti con soletta, usando le stesse primitive composite.
 * aggiungere vibrazioni e incendio al modulo XLAM standalone;
@@ -52,18 +52,21 @@ Strategia per evoluzioni non lineari:
 * gli elementi non lineari dovranno poter calcolare forze interne, matrice tangente, commit/rollback dello stato e variabili interne;
 * il primo core FEM deve essere progettato in modo sostituibile: se in futuro servono `ml-matrix`, `math.js`, solver sparsi o backend WASM, il cambio deve avvenire nel layer algebrico senza riscrivere elementi e assemblatore.
 
-Fasi di sviluppo suggerite:
+Fasi di sviluppo completate:
 
-1. creare il layer matematico minimo con solver denso LU/Gauss con pivot parziale e test su sistemi piccoli, singolari e quasi singolari: prima implementazione completata con `DenseLinearSolver`;
-2. creare il registro DOF, l'assemblatore globale e il solver statico lineare 2D: prima implementazione completata con `DofRegistry`, `FemAssembler2D` e `LinearStaticSolver2D`;
-3. implementare l'elemento frame 2D Euler-Bernoulli, vincoli nodali semplici e reazioni: prima implementazione completata con rigidezza locale/globale, trasformazione e recupero forze di estremita locali;
-4. implementare carichi equivalenti per carichi distribuiti uniformi sull'intero elemento, mantenendo carichi concentrati e momenti concentrati come nodali tramite suddivisione preventiva della trave, con recupero dei diagrammi `N`, `V`, `M`: prima implementazione completata per carichi uniformi full-span e campionamento locale degli sforzi interni;
-5. validare il FEM su casi classici di trave: appoggio-appoggio, mensola, incastro-incastro, carico uniforme e carico concentrato: prima suite completata con confronti su frecce, rotazioni, reazioni e momenti notevoli;
-5b. creare un preprocessore di trave che inserisce nodi nei punti notevoli, spezza i carichi distribuiti parziali in sottoelementi uniformi e trasforma carichi concentrati/momenti concentrati in carichi nodali: prima implementazione completata con `BeamLinePreprocessor2D`;
-6. integrare il core nel modulo `rc-cracked-deflection`;
-7. aggiungere Timoshenko, offset rigidi, release, molle e spostamenti imposti;
-8. introdurre multipoint constraints tramite trasformazione cinematica;
-9. progettare solo dopo la base lineare le strategie non lineari Newton/displacement-control.
+1. layer matematico minimo con solver denso LU/Gauss con pivot parziale e test su sistemi piccoli, singolari e quasi singolari: completato con `DenseLinearSolver`;
+2. registro DOF, assemblatore globale e solver statico lineare 2D: completato con `DofRegistry`, `FemAssembler2D` e `LinearStaticSolver2D`;
+3. elemento frame 2D Euler-Bernoulli, vincoli nodali semplici e reazioni: completato con rigidezza locale/globale, trasformazione e recupero forze di estremita locali;
+4. carichi equivalenti per carichi distribuiti uniformi sull'intero elemento, con carichi concentrati e momenti concentrati gestiti come nodali tramite suddivisione preventiva della trave, e recupero dei diagrammi `N`, `V`, `M`: completato per carichi uniformi full-span e campionamento locale degli sforzi interni;
+5. validazione FEM su casi classici di trave, appoggio-appoggio, mensola, incastro-incastro, carico uniforme e carico concentrato: completata con confronti su frecce, rotazioni, reazioni e momenti notevoli;
+6. preprocessore di trave che inserisce nodi nei punti notevoli, spezza i carichi distribuiti parziali in sottoelementi uniformi e trasforma carichi concentrati/momenti concentrati in carichi nodali: completato con `BeamLinePreprocessor2D`.
+
+Prossimi passi FEM:
+
+1. integrare il core nel modulo `rc-cracked-deflection`;
+2. aggiungere Timoshenko, offset rigidi, release, molle e spostamenti imposti;
+3. introdurre multipoint constraints tramite trasformazione cinematica;
+4. progettare solo dopo la base lineare le strategie non lineari Newton/displacement-control.
 
 ## Piano per deflessione di travi in c.a. fessurate
 

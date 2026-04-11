@@ -81,6 +81,7 @@ export {
   DofRegistry,
   FemAssembler2D,
   FrameElement2DEulerBernoulli,
+  FrameElement2DTimoshenko,
   LinearStaticSolver2D,
 } from "./domain/fem/index.js";
 export { DenseLinearSolver } from "./domain/math/index.js";
