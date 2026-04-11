@@ -207,3 +207,89 @@ test("custom section provider can expose gamma-based effective stiffness metadat
   approx(result.loadCases.G1.sectionProperties.metadata.gamma, 0.42);
   approx(result.loadCases.G1.sectionProperties.flexuralRigidity, 700);
 });
+
+test("section provider receives limit state and governing load duration for kmod effects", () => {
+  const kmodByDuration = {
+    permanent: 0.6,
+    medium: 0.8,
+    instantaneous: 1.1,
+  };
+  const provider = createElasticBeamSectionProvider({
+    propertyResolver: ({ context }) => {
+      const kmod = kmodByDuration[context.governingLoadDurationClass];
+
+      return {
+        axialRigidity: 1e8,
+        flexuralRigidity: kmod * 1e12,
+        units: sectionUnits,
+        metadata: {
+          limitState: context.limitState,
+          kmod,
+          governingLoadDurationClass: context.governingLoadDurationClass,
+          governingLoadId: context.governingLoad?.id ?? null,
+        },
+      };
+    },
+  });
+  const result = new SingleBeamAnalysis().analyze(
+    createSimpleBeamInput({
+      sectionProvider: provider,
+      section: null,
+      material: null,
+      loads: [
+        {
+          id: "g1",
+          actionType: "G1",
+          type: "uniform",
+          value: -2,
+          loadDurationClass: "permanent",
+        },
+        {
+          id: "live",
+          actionType: "Qk",
+          type: "uniform",
+          value: -3,
+          loadDurationClass: "medium",
+        },
+        {
+          id: "wind",
+          actionType: "Qk",
+          type: "uniform",
+          value: -1,
+          loadDurationClass: "instantaneous",
+        },
+      ],
+      combinations: [
+        {
+          id: "sle-live",
+          limitState: "SLE",
+          factors: {
+            G1: 1,
+            live: 1,
+            wind: 0,
+          },
+        },
+        {
+          id: "uls-wind",
+          limitState: "ULS",
+          factors: {
+            G1: 1.3,
+            live: 0,
+            wind: 1.5,
+          },
+        },
+      ],
+    }),
+  );
+  const sle = result.combinations["sle-live"];
+  const uls = result.combinations["uls-wind"];
+
+  assert.equal(sle.context.limitState, "SLE");
+  assert.equal(sle.context.governingLoadDurationClass, "medium");
+  assert.equal(sle.sectionProperties.metadata.governingLoadId, "live");
+  approx(sle.sectionProperties.metadata.kmod, 0.8);
+  assert.equal(uls.context.limitState, "ULS");
+  assert.equal(uls.context.governingLoadDurationClass, "instantaneous");
+  assert.equal(uls.sectionProperties.metadata.governingLoadId, "wind");
+  approx(uls.sectionProperties.metadata.kmod, 1.1);
+});

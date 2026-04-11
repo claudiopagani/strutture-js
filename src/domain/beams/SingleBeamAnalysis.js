@@ -17,6 +17,13 @@ const FEM_UNITS = Object.freeze({ force: "kN", length: "m" });
 const DEFAULT_SECTION_PROPERTY_UNITS = Object.freeze({ force: "N", length: "mm" });
 const DISTRIBUTED_LOAD_TYPES = new Set(["distributed", "uniform", "line"]);
 const POINT_LOAD_TYPES = new Set(["point", "nodal", "force", "moment"]);
+const LOAD_DURATION_ORDER = Object.freeze({
+  permanent: 5,
+  long: 4,
+  medium: 3,
+  short: 2,
+  instantaneous: 1,
+});
 
 export const BEAM_SUPPORT_PRESETS = Object.freeze({
   free: Object.freeze({ ux: false, uy: false, rz: false }),
@@ -115,6 +122,10 @@ function resolveLoadCaseId(load, index) {
     return load.loadCaseId;
   }
 
+  if (load.loadCase?.id) {
+    return load.loadCase.id;
+  }
+
   const actionType = String(load.actionType ?? "LOAD").toUpperCase();
 
   if (actionType === "QK" || actionType === "Q") {
@@ -128,18 +139,90 @@ function resolveLoadCaseId(load, index) {
   return load.id ?? actionType;
 }
 
+function resolveActionType(load) {
+  if (load.actionType) {
+    return load.actionType;
+  }
+
+  if (load.action?.permanentClass) {
+    return load.action.permanentClass;
+  }
+
+  if (load.loadCase?.action?.permanentClass) {
+    return load.loadCase.action.permanentClass;
+  }
+
+  if (load.action?.category) {
+    return "Qk";
+  }
+
+  if (load.loadCase?.action?.category) {
+    return "Qk";
+  }
+
+  return load.category ?? "LOAD";
+}
+
+function resolveLoadNature(load) {
+  if (load.nature) {
+    return load.nature;
+  }
+
+  if (load.action?.nature) {
+    return load.action.nature;
+  }
+
+  if (load.loadCase?.action?.nature) {
+    return load.loadCase.action.nature;
+  }
+
+  const actionType = String(load.actionType ?? "").toUpperCase();
+
+  if (actionType === "G1" || actionType === "G2") {
+    return "permanent";
+  }
+
+  if (actionType === "QK" || actionType === "Q") {
+    return "variable";
+  }
+
+  return load.variableCategory || load.category ? "variable" : "generic";
+}
+
+function resolveLoadDurationClass(load) {
+  return (
+    load.loadDurationClass ??
+    load.durationClass ??
+    load.action?.loadDurationClass ??
+    load.loadCase?.action?.loadDurationClass ??
+    load.metadata?.loadDurationClass ??
+    (resolveLoadNature(load) === "permanent" ? "permanent" : null)
+  );
+}
+
 function normalizeLoads(loads) {
   return expandLoads(loads).map((load, index) => {
-    const actionType = load.actionType ?? load.category ?? "LOAD";
+    const actionType = resolveActionType(load);
     const id = load.id ?? `${actionType}-${index + 1}`;
-
-    return {
+    const normalized = {
       ...load,
       id,
       actionType,
-      loadCaseId: resolveLoadCaseId({ ...load, id, actionType }, index),
       type: load.type ?? "uniform",
       factor: load.factor ?? 1,
+    };
+
+    return {
+      ...normalized,
+      loadCaseId: resolveLoadCaseId(normalized, index),
+      nature: resolveLoadNature(normalized),
+      variableCategory:
+        normalized.variableCategory ??
+        normalized.action?.category ??
+        normalized.loadCase?.action?.category ??
+        normalized.category ??
+        null,
+      loadDurationClass: resolveLoadDurationClass(normalized),
     };
   });
 }
@@ -944,6 +1027,26 @@ function normalizeCombinationFactors(factors) {
   return { ...(factors ?? {}) };
 }
 
+function inferLimitState(combination) {
+  const rawValue =
+    combination.limitState ??
+    combination.combinationType ??
+    combination.type ??
+    combination.id ??
+    "";
+  const normalized = String(rawValue).trim().toUpperCase();
+
+  if (normalized.includes("ULS") || normalized.includes("SLU")) {
+    return "ULS";
+  }
+
+  if (normalized.includes("SLE") || normalized.includes("SLS")) {
+    return "SLE";
+  }
+
+  return null;
+}
+
 function normalizeCombinations(combinations, loadCaseIds) {
   if (combinations === false) {
     return [];
@@ -954,7 +1057,14 @@ function normalizeCombinations(combinations, loadCaseIds) {
       id: combination.id ?? `combination-${index + 1}`,
       name: combination.name ?? combination.id ?? `Combination ${index + 1}`,
       factors: normalizeCombinationFactors(combination.factors),
-      metadata: { ...combination.metadata },
+      metadata: {
+        ...combination.metadata,
+        combinationType: combination.combinationType ?? combination.type ?? null,
+        limitState:
+          combination.limitState ??
+          combination.metadata?.limitState ??
+          inferLimitState(combination),
+      },
     }));
   }
 
@@ -973,6 +1083,7 @@ function normalizeCombinations(combinations, loadCaseIds) {
       factors: Object.fromEntries(loadCaseIds.map((id) => [id, 1])),
       metadata: {
         generated: true,
+        limitState: null,
       },
     },
   ];
@@ -985,6 +1096,96 @@ function loadsForCombination(loads, factors) {
       factor: (load.factor ?? 1) * (factors[load.loadCaseId] ?? 0),
     }))
     .filter((load) => load.factor !== 0);
+}
+
+function normalizeDurationOrder(loadDurationClass) {
+  const normalized = String(loadDurationClass ?? "").trim().toLowerCase();
+  const aliases = {
+    permanente: "permanent",
+    lunga: "long",
+    "lunga-durata": "long",
+    media: "medium",
+    "media-durata": "medium",
+    breve: "short",
+    "breve-durata": "short",
+    istantanea: "instantaneous",
+  };
+
+  return aliases[normalized] ?? normalized;
+}
+
+function loadParticipation(load) {
+  return {
+    id: load.id,
+    actionType: load.actionType,
+    loadCaseId: load.loadCaseId,
+    factor: load.factor ?? 1,
+    nature: load.nature ?? resolveLoadNature(load),
+    variableCategory: load.variableCategory ?? null,
+    loadDurationClass: load.loadDurationClass ?? resolveLoadDurationClass(load),
+    leadingEligible:
+      load.leadingEligible ??
+      load.action?.leadingEligible ??
+      load.loadCase?.action?.leadingEligible ??
+      true,
+    metadata: { ...load.metadata },
+  };
+}
+
+function resolveGoverningLoadDuration(activeLoads) {
+  const loadsWithDuration = activeLoads
+    .map((load) => ({
+      ...load,
+      normalizedLoadDurationClass: normalizeDurationOrder(load.loadDurationClass),
+    }))
+    .filter((load) => LOAD_DURATION_ORDER[load.normalizedLoadDurationClass]);
+
+  if (loadsWithDuration.length === 0) {
+    return {
+      loadDurationClass: "permanent",
+      load: null,
+    };
+  }
+
+  const load = loadsWithDuration.reduce((current, candidate) =>
+    LOAD_DURATION_ORDER[candidate.normalizedLoadDurationClass] <
+    LOAD_DURATION_ORDER[current.normalizedLoadDurationClass]
+      ? candidate
+      : current,
+  );
+
+  return {
+    loadDurationClass: load.normalizedLoadDurationClass,
+    load,
+  };
+}
+
+function loadCaseFactorsFromLoads(loads) {
+  return loads.reduce((acc, load) => {
+    acc[load.loadCaseId] = load.factor ?? 1;
+    return acc;
+  }, {});
+}
+
+function createBeamAnalysisContext(model, loads, context = {}) {
+  const activeLoads = loads
+    .filter((load) => (load.factor ?? 1) !== 0)
+    .map(loadParticipation);
+  const governingDuration = resolveGoverningLoadDuration(activeLoads);
+
+  return {
+    ...context,
+    beamId: model.id,
+    analysisModel: model.analysisModel,
+    loadCaseFactors: {
+      ...(context.factors ?? loadCaseFactorsFromLoads(loads)),
+    },
+    activeLoads,
+    governingLoadDurationClass:
+      context.governingLoadDurationClass ??
+      governingDuration.loadDurationClass,
+    governingLoad: context.governingLoad ?? governingDuration.load,
+  };
 }
 
 export class SingleBeamAnalysis {
@@ -1045,9 +1246,10 @@ export class SingleBeamAnalysis {
   }
 
   solve(model, loads, context) {
+    const analysisContext = createBeamAnalysisContext(model, loads, context);
     const femModel = this.femBuilder.build(model, {
       loads,
-      context,
+      context: analysisContext,
     });
     const solver = new LinearStaticSolver2D({
       linearSolver: this.linearSolver ?? undefined,
@@ -1061,8 +1263,21 @@ export class SingleBeamAnalysis {
         id: load.id,
         actionType: load.actionType,
         loadCaseId: load.loadCaseId,
+        loadDurationClass: load.loadDurationClass ?? null,
         factor: load.factor ?? 1,
       })),
+      context: {
+        resultType: analysisContext.resultType,
+        limitState: analysisContext.limitState ?? null,
+        combinationType: analysisContext.combinationType ?? null,
+        loadCaseFactors: { ...analysisContext.loadCaseFactors },
+        activeLoads: analysisContext.activeLoads.map((load) => ({ ...load })),
+        governingLoadDurationClass:
+          analysisContext.governingLoadDurationClass,
+        governingLoad: analysisContext.governingLoad
+          ? { ...analysisContext.governingLoad }
+          : null,
+      },
       ...sampleBeamResult({
         model,
         femModel,
