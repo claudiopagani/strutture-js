@@ -1,5 +1,12 @@
 export const APPLICATION_CATALOG = [
   {
+    id: "single-beam-design",
+    name: "Single Beam Design",
+    domain: "beams",
+    maturity: "mvp",
+    primaryFocus: "End-to-end simple beam analysis, verification and reporting.",
+  },
+  {
     id: "steel-frames",
     name: "Steel Frames",
     domain: "steel",

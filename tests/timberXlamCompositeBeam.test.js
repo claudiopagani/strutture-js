@@ -9,6 +9,7 @@ import {
   TimberXlamCompositeBeamApplication,
   TimberXlamCompositeBeamModel,
   TimberXlamCompositeBeamSectionProvider,
+  TimberXlamCompositeBeamVerification,
   XlamPanelSection,
 } from "../src/index.js";
 
@@ -204,8 +205,30 @@ test("timber-xlam verification can use FEM diagrams instead of closed-form actio
 
   const result = new TimberXlamCompositeBeamApplication().run({ model });
 
-  assert.equal(result.metadata.actionSource, "fem-diagrams");
+  assert.equal(result.metadata.actionSource, "fem-section-actions");
   assert.ok(result.outputs.bendingEd > 0);
   assert.ok(result.outputs.shearEd > 0);
   assert.ok(result.outputs.deflectionShort > 0);
+  assert.ok(result.outputs.sectionActionVerification.stationResultCount > 0);
+  assert.ok(
+    result.checks.some(
+      (check) => check.metadata?.method === "timber-xlam-gamma-method-section-actions",
+    ),
+  );
+});
+
+test("timber-xlam verification exposes standalone section-action adapter", () => {
+  const model = createReferenceModel();
+  const result = new TimberXlamCompositeBeamVerification().verifySectionActions({
+    vEd: (model.loads.ulsLineLoad * model.span) / 2,
+    mEd: (model.loads.ulsLineLoad * model.span ** 2) / 8,
+    context: {
+      model,
+      units,
+    },
+  });
+
+  assert.equal(result.status, "ok");
+  assert.ok(result.checks.some((check) => check.id === "connector"));
+  assert.equal(result.metadata.method, "timber-xlam-gamma-method-section-actions");
 });

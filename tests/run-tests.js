@@ -9,6 +9,7 @@ import "./steelBeamSectionProvider.test.js";
 import "./timberMaterialHierarchy.test.js";
 import "./timberBeamSectionProvider.test.js";
 import "./reinforcedConcreteBeamSectionProvider.test.js";
+import "./singleBeamDesignApplication.test.js";
 import "./architecture/applicationRegistry.test.js";
 import "./geometrySections.test.js";
 import "./compositeSections.test.js";

@@ -1,0 +1,5673 @@
+{
+  "applicationId": "single-beam-design",
+  "id": "steel-ipe200-report",
+  "title": "Trave in acciaio IPE200",
+  "description": "Trave appoggio-appoggio con profilo IPE e verifiche base.",
+  "units": {
+    "force": "kN",
+    "length": "m"
+  },
+  "model": {
+    "id": "steel-ipe200-report",
+    "title": "Trave in acciaio IPE200",
+    "description": "Trave appoggio-appoggio con profilo IPE e verifiche base.",
+    "units": {
+      "force": "kN",
+      "length": "m"
+    },
+    "beamInput": {
+      "id": "steel-ipe200-report",
+      "units": {
+        "force": "kN",
+        "length": "m"
+      },
+      "geometry": {
+        "start": {
+          "x": 0,
+          "y": 0
+        },
+        "end": {
+          "x": 5,
+          "y": 0
+        }
+      },
+      "analysisModel": "timoshenko",
+      "supports": {
+        "start": "hinge",
+        "end": "roller"
+      },
+      "loads": [
+        {
+          "id": "g1",
+          "loadCaseId": "G1",
+          "value": -3,
+          "action": {
+            "id": "ACT-G1",
+            "name": "ACT-G1",
+            "nature": "permanent",
+            "family": "permanent",
+            "loadDurationClass": "permanent",
+            "loadCaseId": null,
+            "combinationFactors": {
+              "psi0": 1,
+              "psi1": 1,
+              "psi2": 1
+            },
+            "partialFactors": {
+              "A1": {
+                "favourable": 1,
+                "unfavourable": 1.3
+              },
+              "A2": {
+                "favourable": 1,
+                "unfavourable": 1
+              }
+            },
+            "metadata": {
+              "normativePreset": "NTC2018"
+            },
+            "permanentClass": "G1"
+          }
+        },
+        {
+          "id": "live",
+          "loadCaseId": "LIVE",
+          "value": -2,
+          "action": {
+            "id": "ACT-LIVE",
+            "name": "ACT-LIVE",
+            "nature": "variable",
+            "family": "imposed",
+            "loadDurationClass": "medium",
+            "loadCaseId": null,
+            "combinationFactors": {
+              "psi0": 0.7,
+              "psi1": 0.5,
+              "psi2": 0.3,
+              "description": "uffici"
+            },
+            "partialFactors": {
+              "A1": {
+                "favourable": 0,
+                "unfavourable": 1.5
+              },
+              "A2": {
+                "favourable": 0,
+                "unfavourable": 1.5
+              }
+            },
+            "metadata": {
+              "normativePreset": "NTC2018",
+              "categoryDescription": "uffici"
+            },
+            "category": "B",
+            "leadingEligible": true
+          }
+        }
+      ],
+      "combinations": [
+        {
+          "id": "steel-ipe200-report-ULS-LIVE",
+          "name": "ULS LIVE",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "factors": {
+            "G1": 1.3,
+            "LIVE": 1.5
+          },
+          "metadata": {
+            "normativePreset": "NTC2018",
+            "ntcReference": "DM 17/01/2018 - NTC 2018",
+            "leadingLoadCaseId": "LIVE",
+            "leadingActionId": "ACT-LIVE",
+            "leadingVariableCategory": "B",
+            "accompanyingLoadCaseIds": [],
+            "loadDurations": {
+              "G1": "permanent",
+              "LIVE": "medium"
+            },
+            "generatedBy": "createNTC2018BeamCombinations",
+            "requestedType": "ULS",
+            "partialFactors": {
+              "G1": 1.3,
+              "LIVE": 1.5
+            },
+            "combinationFactors": {
+              "LIVE": 1
+            }
+          }
+        },
+        {
+          "id": "steel-ipe200-report-SLE_RARE-LIVE",
+          "name": "SLE_RARE LIVE",
+          "limitState": "SLE",
+          "combinationType": "SLE_RARE",
+          "factors": {
+            "G1": 1,
+            "LIVE": 1
+          },
+          "metadata": {
+            "normativePreset": "NTC2018",
+            "ntcReference": "DM 17/01/2018 - NTC 2018",
+            "leadingLoadCaseId": "LIVE",
+            "leadingActionId": "ACT-LIVE",
+            "leadingVariableCategory": "B",
+            "accompanyingLoadCaseIds": [],
+            "loadDurations": {
+              "G1": "permanent",
+              "LIVE": "medium"
+            },
+            "generatedBy": "createNTC2018BeamCombinations",
+            "requestedType": "SLE_RARE",
+            "serviceCombination": "rare",
+            "psiFactors": {
+              "G1": 1,
+              "LIVE": 1
+            }
+          }
+        }
+      ],
+      "discretization": {
+        "elementCount": 4,
+        "stations": [
+          2.5
+        ]
+      },
+      "sectionProvider": {
+        "type": "SteelBeamSectionProvider",
+        "metadata": {}
+      },
+      "elementClass": null,
+      "linearSolver": null
+    },
+    "section": {
+      "id": "IPE200",
+      "name": "IPE200",
+      "area": 2848,
+      "centroidY": null,
+      "centroidZ": null,
+      "inertiaY": 19429999.999999996,
+      "inertiaZ": 1423999.9999999998,
+      "torsionalConstant": 68459.99999999999,
+      "shearAreaY": 1700,
+      "shearAreaZ": 1400,
+      "elasticSectionModulusY": 0.0001943,
+      "elasticSectionModulusZ": 0.000028469999999999997,
+      "plasticSectionModulusY": 0.0002206,
+      "plasticSectionModulusZ": 0.000044609999999999995,
+      "height": 0.2,
+      "width": 0.1,
+      "outlinePoints": [],
+      "metadata": {
+        "profileName": "IPE200",
+        "family": "IPE",
+        "source": "steel_profile_section_database",
+        "unitSystem": {
+          "force": "kN",
+          "length": "m"
+        }
+      },
+      "profileName": "IPE200",
+      "family": "IPE",
+      "webThickness": 0.0056,
+      "flangeThickness": 0.0085,
+      "rootRadius": 0.012,
+      "massPerLength": 22.4,
+      "perimeter": 0.768,
+      "warpingConstant": 1.2746e-8,
+      "torsionalSectionModulus": 0.000008054,
+      "warpingSectionModulus": 0.000002683,
+      "radiusOfGyrationY": 0.08259999999999999,
+      "radiusOfGyrationZ": 0.0224,
+      "catalogProperties": {
+        "A": 0.002848,
+        "Av_y": 0.0017,
+        "Av_z": 0.0014,
+        "IT": 6.845999999999999e-8,
+        "I_strong": 0.00001943,
+        "I_weak": 0.0000014239999999999998,
+        "Iw": 1.2746e-8,
+        "Iy": 0.00001943,
+        "Iz": 0.0000014239999999999998,
+        "WT": 0.000008054,
+        "Wel_strong": 0.0001943,
+        "Wel_weak": 0.000028469999999999997,
+        "Wel_y": 0.0001943,
+        "Wel_z": 0.000028469999999999997,
+        "Wpl_strong": 0.0002206,
+        "Wpl_weak": 0.000044609999999999995,
+        "Wpl_y": 0.0002206,
+        "Wpl_z": 0.000044609999999999995,
+        "Ww": 0.000002683,
+        "b": 0.1,
+        "family": "IPE",
+        "h": 0.2,
+        "iy": 0.08259999999999999,
+        "iz": 0.0224,
+        "mass_per_length": 22.4,
+        "perimeter": 0.768,
+        "r": 0.012,
+        "tf": 0.0085,
+        "tw": 0.0056
+      }
+    },
+    "material": {
+      "id": "S275",
+      "name": "Acciaio carpenteria S275",
+      "category": "steel",
+      "density": 0.007850000000000001,
+      "elasticModulus": 210000,
+      "shearModulus": null,
+      "poissonRatio": null,
+      "thermalExpansion": null,
+      "metadata": {
+        "normativePreset": "NTC2018",
+        "ntcReference": "DM 17/01/2018 - NTC 2018",
+        "steelUse": "structural",
+        "gammaM0": 1.05,
+        "thicknessAssumption": "valori caratteristici assunti per spessori ordinari",
+        "unitSystem": {
+          "force": "N",
+          "length": "mm"
+        }
+      },
+      "grade": "S275",
+      "fyk": 275,
+      "fyd": 261.9,
+      "ftk": 430,
+      "ductilityClass": null
+    },
+    "verification": {
+      "type": "SteelMemberVerification",
+      "input": {
+        "memberId": "steel-ipe200-report",
+        "section": {
+          "id": "IPE200",
+          "name": "IPE200",
+          "area": 2848,
+          "centroidY": null,
+          "centroidZ": null,
+          "inertiaY": 19429999.999999996,
+          "inertiaZ": 1423999.9999999998,
+          "torsionalConstant": 68459.99999999999,
+          "shearAreaY": 1700,
+          "shearAreaZ": 1400,
+          "elasticSectionModulusY": 0.0001943,
+          "elasticSectionModulusZ": 0.000028469999999999997,
+          "plasticSectionModulusY": 0.0002206,
+          "plasticSectionModulusZ": 0.000044609999999999995,
+          "height": 0.2,
+          "width": 0.1,
+          "outlinePoints": [],
+          "metadata": {
+            "profileName": "IPE200",
+            "family": "IPE",
+            "source": "steel_profile_section_database",
+            "unitSystem": {
+              "force": "kN",
+              "length": "m"
+            }
+          },
+          "profileName": "IPE200",
+          "family": "IPE",
+          "webThickness": 0.0056,
+          "flangeThickness": 0.0085,
+          "rootRadius": 0.012,
+          "massPerLength": 22.4,
+          "perimeter": 0.768,
+          "warpingConstant": 1.2746e-8,
+          "torsionalSectionModulus": 0.000008054,
+          "warpingSectionModulus": 0.000002683,
+          "radiusOfGyrationY": 0.08259999999999999,
+          "radiusOfGyrationZ": 0.0224,
+          "catalogProperties": {
+            "A": 0.002848,
+            "Av_y": 0.0017,
+            "Av_z": 0.0014,
+            "IT": 6.845999999999999e-8,
+            "I_strong": 0.00001943,
+            "I_weak": 0.0000014239999999999998,
+            "Iw": 1.2746e-8,
+            "Iy": 0.00001943,
+            "Iz": 0.0000014239999999999998,
+            "WT": 0.000008054,
+            "Wel_strong": 0.0001943,
+            "Wel_weak": 0.000028469999999999997,
+            "Wel_y": 0.0001943,
+            "Wel_z": 0.000028469999999999997,
+            "Wpl_strong": 0.0002206,
+            "Wpl_weak": 0.000044609999999999995,
+            "Wpl_y": 0.0002206,
+            "Wpl_z": 0.000044609999999999995,
+            "Ww": 0.000002683,
+            "b": 0.1,
+            "family": "IPE",
+            "h": 0.2,
+            "iy": 0.08259999999999999,
+            "iz": 0.0224,
+            "mass_per_length": 22.4,
+            "perimeter": 0.768,
+            "r": 0.012,
+            "tf": 0.0085,
+            "tw": 0.0056
+          }
+        },
+        "material": {
+          "id": "S275",
+          "name": "Acciaio carpenteria S275",
+          "category": "steel",
+          "density": 0.007850000000000001,
+          "elasticModulus": 210000,
+          "shearModulus": null,
+          "poissonRatio": null,
+          "thermalExpansion": null,
+          "metadata": {
+            "normativePreset": "NTC2018",
+            "ntcReference": "DM 17/01/2018 - NTC 2018",
+            "steelUse": "structural",
+            "gammaM0": 1.05,
+            "thicknessAssumption": "valori caratteristici assunti per spessori ordinari",
+            "unitSystem": {
+              "force": "N",
+              "length": "mm"
+            }
+          },
+          "grade": "S275",
+          "fyk": 275,
+          "fyd": 261.9,
+          "ftk": 430,
+          "ductilityClass": null
+        }
+      },
+      "metadata": null
+    },
+    "report": {},
+    "metadata": {}
+  },
+  "analysis": {
+    "id": "steel-ipe200-report",
+    "units": {
+      "force": "kN",
+      "length": "m"
+    },
+    "analysisModel": "timoshenko",
+    "loadCaseIds": [
+      "G1",
+      "LIVE"
+    ],
+    "combinationIds": [
+      "steel-ipe200-report-ULS-LIVE",
+      "steel-ipe200-report-SLE_RARE-LIVE"
+    ],
+    "loadCases": {
+      "G1": {
+        "id": "G1",
+        "resultType": "load-case",
+        "limitState": null,
+        "combinationType": null,
+        "maxAbsBendingMoment": {
+          "value": 9.375,
+          "station": 2.5
+        },
+        "maxAbsShearForce": {
+          "value": 7.500000000000001,
+          "station": 0
+        },
+        "maxAbsVerticalDisplacement": {
+          "value": -6.828329432326198e-8,
+          "station": 2.5
+        },
+        "sectionProperties": {
+          "axialRigidity": 598080000,
+          "flexuralRigidity": 4080299999999.999,
+          "shearRigidity": 137307692.3076923,
+          "shearCorrectionFactor": 1,
+          "units": {
+            "force": "kN",
+            "length": "m"
+          },
+          "metadata": {
+            "provider": "SteelBeamSectionProvider",
+            "source": "steel-elastic-section",
+            "bendingInertiaAxis": "inertiaY",
+            "shearAreaAxis": "shearAreaY",
+            "elasticSectionModulusAxis": "elasticSectionModulusY",
+            "plasticSectionModulusAxis": "plasticSectionModulusY",
+            "profileName": "IPE200",
+            "family": "IPE",
+            "grade": "S275",
+            "fyk": 275,
+            "fyd": 261.9,
+            "gammaM0": 1.05,
+            "elasticMomentResistance": 50887169.999999985,
+            "plasticMomentResistance": 57775139.999999985,
+            "shearResistance": 257053.66035129706,
+            "limitState": null
+          }
+        }
+      },
+      "LIVE": {
+        "id": "LIVE",
+        "resultType": "load-case",
+        "limitState": null,
+        "combinationType": null,
+        "maxAbsBendingMoment": {
+          "value": 6.249999999999999,
+          "station": 2.5
+        },
+        "maxAbsShearForce": {
+          "value": 5,
+          "station": 0
+        },
+        "maxAbsVerticalDisplacement": {
+          "value": -4.5522196215507984e-8,
+          "station": 2.5
+        },
+        "sectionProperties": {
+          "axialRigidity": 598080000,
+          "flexuralRigidity": 4080299999999.999,
+          "shearRigidity": 137307692.3076923,
+          "shearCorrectionFactor": 1,
+          "units": {
+            "force": "kN",
+            "length": "m"
+          },
+          "metadata": {
+            "provider": "SteelBeamSectionProvider",
+            "source": "steel-elastic-section",
+            "bendingInertiaAxis": "inertiaY",
+            "shearAreaAxis": "shearAreaY",
+            "elasticSectionModulusAxis": "elasticSectionModulusY",
+            "plasticSectionModulusAxis": "plasticSectionModulusY",
+            "profileName": "IPE200",
+            "family": "IPE",
+            "grade": "S275",
+            "fyk": 275,
+            "fyd": 261.9,
+            "gammaM0": 1.05,
+            "elasticMomentResistance": 50887169.999999985,
+            "plasticMomentResistance": 57775139.999999985,
+            "shearResistance": 257053.66035129706,
+            "limitState": null
+          }
+        }
+      }
+    },
+    "combinations": {
+      "steel-ipe200-report-ULS-LIVE": {
+        "id": "steel-ipe200-report-ULS-LIVE",
+        "resultType": "combination",
+        "limitState": "ULS",
+        "combinationType": "ULS_STR_GEO",
+        "maxAbsBendingMoment": {
+          "value": 21.5625,
+          "station": 2.5
+        },
+        "maxAbsShearForce": {
+          "value": 17.25,
+          "station": 0
+        },
+        "maxAbsVerticalDisplacement": {
+          "value": -1.5705157694350255e-7,
+          "station": 2.5
+        },
+        "sectionProperties": {
+          "axialRigidity": 598080000,
+          "flexuralRigidity": 4080299999999.999,
+          "shearRigidity": 137307692.3076923,
+          "shearCorrectionFactor": 1,
+          "units": {
+            "force": "kN",
+            "length": "m"
+          },
+          "metadata": {
+            "provider": "SteelBeamSectionProvider",
+            "source": "steel-elastic-section",
+            "bendingInertiaAxis": "inertiaY",
+            "shearAreaAxis": "shearAreaY",
+            "elasticSectionModulusAxis": "elasticSectionModulusY",
+            "plasticSectionModulusAxis": "plasticSectionModulusY",
+            "profileName": "IPE200",
+            "family": "IPE",
+            "grade": "S275",
+            "fyk": 275,
+            "fyd": 261.9,
+            "gammaM0": 1.05,
+            "elasticMomentResistance": 50887169.999999985,
+            "plasticMomentResistance": 57775139.999999985,
+            "shearResistance": 257053.66035129706,
+            "limitState": "ULS"
+          }
+        }
+      },
+      "steel-ipe200-report-SLE_RARE-LIVE": {
+        "id": "steel-ipe200-report-SLE_RARE-LIVE",
+        "resultType": "combination",
+        "limitState": "SLE",
+        "combinationType": "SLE_RARE",
+        "maxAbsBendingMoment": {
+          "value": 15.625,
+          "station": 2.5
+        },
+        "maxAbsShearForce": {
+          "value": 12.500000000000002,
+          "station": 0
+        },
+        "maxAbsVerticalDisplacement": {
+          "value": -1.1380549053876997e-7,
+          "station": 2.5
+        },
+        "sectionProperties": {
+          "axialRigidity": 598080000,
+          "flexuralRigidity": 4080299999999.999,
+          "shearRigidity": 137307692.3076923,
+          "shearCorrectionFactor": 1,
+          "units": {
+            "force": "kN",
+            "length": "m"
+          },
+          "metadata": {
+            "provider": "SteelBeamSectionProvider",
+            "source": "steel-elastic-section",
+            "bendingInertiaAxis": "inertiaY",
+            "shearAreaAxis": "shearAreaY",
+            "elasticSectionModulusAxis": "elasticSectionModulusY",
+            "plasticSectionModulusAxis": "plasticSectionModulusY",
+            "profileName": "IPE200",
+            "family": "IPE",
+            "grade": "S275",
+            "fyk": 275,
+            "fyd": 261.9,
+            "gammaM0": 1.05,
+            "elasticMomentResistance": 50887169.999999985,
+            "plasticMomentResistance": 57775139.999999985,
+            "shearResistance": 257053.66035129706,
+            "limitState": "SLE"
+          }
+        }
+      }
+    },
+    "envelopes": {
+      "loadCases": {
+        "maxAxialForce": {
+          "resultId": "G1",
+          "resultType": "load-case",
+          "limitState": null,
+          "combinationType": null,
+          "quantity": "n",
+          "value": 0,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-1",
+            "station": 0,
+            "x": 0,
+            "y": 0,
+            "n": 0,
+            "v": 7.500000000000001,
+            "m": 0
+          }
+        },
+        "minAxialForce": {
+          "resultId": "G1",
+          "resultType": "load-case",
+          "limitState": null,
+          "combinationType": null,
+          "quantity": "n",
+          "value": 0,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-1",
+            "station": 0,
+            "x": 0,
+            "y": 0,
+            "n": 0,
+            "v": 7.500000000000001,
+            "m": 0
+          }
+        },
+        "maxShearForce": {
+          "resultId": "G1",
+          "resultType": "load-case",
+          "limitState": null,
+          "combinationType": null,
+          "quantity": "v",
+          "value": 7.500000000000001,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-1",
+            "station": 0,
+            "x": 0,
+            "y": 0,
+            "n": 0,
+            "v": 7.500000000000001,
+            "m": 0
+          }
+        },
+        "minShearForce": {
+          "resultId": "G1",
+          "resultType": "load-case",
+          "limitState": null,
+          "combinationType": null,
+          "quantity": "v",
+          "value": -7.5,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-4",
+            "station": 5,
+            "x": 5,
+            "y": 0,
+            "n": 0,
+            "v": -7.5,
+            "m": 0
+          }
+        },
+        "maxBendingMoment": {
+          "resultId": "G1",
+          "resultType": "load-case",
+          "limitState": null,
+          "combinationType": null,
+          "quantity": "m",
+          "value": 9.375,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-2",
+            "station": 2.5,
+            "x": 2.5,
+            "y": 0,
+            "n": 0,
+            "v": 0,
+            "m": 9.375
+          }
+        },
+        "minBendingMoment": {
+          "resultId": "LIVE",
+          "resultType": "load-case",
+          "limitState": null,
+          "combinationType": null,
+          "quantity": "m",
+          "value": -6.106226635438361e-16,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-1",
+            "station": 0,
+            "x": 0,
+            "y": 0,
+            "n": 0,
+            "v": 5,
+            "m": -6.106226635438361e-16
+          }
+        },
+        "maxAbsBendingMoment": {
+          "resultId": "G1",
+          "resultType": "load-case",
+          "limitState": null,
+          "combinationType": null,
+          "quantity": "absM",
+          "value": 9.375,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-2",
+            "station": 2.5,
+            "x": 2.5,
+            "y": 0,
+            "n": 0,
+            "v": 0,
+            "m": 9.375
+          }
+        },
+        "maxAbsVerticalDisplacement": {
+          "resultId": "G1",
+          "resultType": "load-case",
+          "limitState": null,
+          "combinationType": null,
+          "quantity": "absUy",
+          "value": 6.828329432326198e-8,
+          "sample": {
+            "nodeId": "steel-ipe200-report-beam-node-3",
+            "station": 2.5,
+            "x": 2.5,
+            "y": 0,
+            "ux": 0,
+            "uy": -6.828329432326198e-8,
+            "rz": -1.8228266461488518e-25
+          }
+        },
+        "maxHorizontalReaction": {
+          "resultId": "G1",
+          "resultType": "load-case",
+          "limitState": null,
+          "combinationType": null,
+          "quantity": "rx",
+          "value": 0,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 7.500000000000001,
+            "rz": 0
+          }
+        },
+        "minHorizontalReaction": {
+          "resultId": "G1",
+          "resultType": "load-case",
+          "limitState": null,
+          "combinationType": null,
+          "quantity": "rx",
+          "value": 0,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 7.500000000000001,
+            "rz": 0
+          }
+        },
+        "maxVerticalReaction": {
+          "resultId": "G1",
+          "resultType": "load-case",
+          "limitState": null,
+          "combinationType": null,
+          "quantity": "ry",
+          "value": 7.500000000000001,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 7.500000000000001,
+            "rz": 0
+          }
+        },
+        "minVerticalReaction": {
+          "resultId": "LIVE",
+          "resultType": "load-case",
+          "limitState": null,
+          "combinationType": null,
+          "quantity": "ry",
+          "value": 5,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 5,
+            "rz": 6.106226635438361e-16
+          }
+        },
+        "maxSupportMomentReaction": {
+          "resultId": "G1",
+          "resultType": "load-case",
+          "limitState": null,
+          "combinationType": null,
+          "quantity": "mrz",
+          "value": 1.7763568394002505e-15,
+          "sample": {
+            "supportId": "end-support",
+            "nodeId": "steel-ipe200-report-beam-node-5",
+            "station": 5,
+            "type": "roller",
+            "ux": 0,
+            "uy": 7.5,
+            "rz": 1.7763568394002505e-15
+          }
+        },
+        "minSupportMomentReaction": {
+          "resultId": "G1",
+          "resultType": "load-case",
+          "limitState": null,
+          "combinationType": null,
+          "quantity": "mrz",
+          "value": 0,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 7.500000000000001,
+            "rz": 0
+          }
+        },
+        "maxAbsHorizontalReaction": {
+          "resultId": "G1",
+          "resultType": "load-case",
+          "limitState": null,
+          "combinationType": null,
+          "quantity": "absRx",
+          "value": 0,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 7.500000000000001,
+            "rz": 0
+          }
+        },
+        "maxAbsVerticalReaction": {
+          "resultId": "G1",
+          "resultType": "load-case",
+          "limitState": null,
+          "combinationType": null,
+          "quantity": "absRy",
+          "value": 7.500000000000001,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 7.500000000000001,
+            "rz": 0
+          }
+        },
+        "maxAbsSupportMomentReaction": {
+          "resultId": "G1",
+          "resultType": "load-case",
+          "limitState": null,
+          "combinationType": null,
+          "quantity": "absMrz",
+          "value": 1.7763568394002505e-15,
+          "sample": {
+            "supportId": "end-support",
+            "nodeId": "steel-ipe200-report-beam-node-5",
+            "station": 5,
+            "type": "roller",
+            "ux": 0,
+            "uy": 7.5,
+            "rz": 1.7763568394002505e-15
+          }
+        }
+      },
+      "combinations": {
+        "maxAxialForce": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "n",
+          "value": 0,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-1",
+            "station": 0,
+            "x": 0,
+            "y": 0,
+            "n": 0,
+            "v": 17.25,
+            "m": 3.4416913763379853e-15
+          }
+        },
+        "minAxialForce": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "n",
+          "value": 0,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-1",
+            "station": 0,
+            "x": 0,
+            "y": 0,
+            "n": 0,
+            "v": 17.25,
+            "m": 3.4416913763379853e-15
+          }
+        },
+        "maxShearForce": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "v",
+          "value": 17.25,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-1",
+            "station": 0,
+            "x": 0,
+            "y": 0,
+            "n": 0,
+            "v": 17.25,
+            "m": 3.4416913763379853e-15
+          }
+        },
+        "minShearForce": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "v",
+          "value": -17.25,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-4",
+            "station": 5,
+            "x": 5,
+            "y": 0,
+            "n": 0,
+            "v": -17.25,
+            "m": -1.7763568394002505e-15
+          }
+        },
+        "maxBendingMoment": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "m",
+          "value": 21.5625,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-2",
+            "station": 2.5,
+            "x": 2.5,
+            "y": 0,
+            "n": 0,
+            "v": 1.7763568394002505e-15,
+            "m": 21.5625
+          }
+        },
+        "minBendingMoment": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "m",
+          "value": -1.7763568394002505e-15,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-4",
+            "station": 5,
+            "x": 5,
+            "y": 0,
+            "n": 0,
+            "v": -17.25,
+            "m": -1.7763568394002505e-15
+          }
+        },
+        "maxAbsBendingMoment": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "absM",
+          "value": 21.5625,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-2",
+            "station": 2.5,
+            "x": 2.5,
+            "y": 0,
+            "n": 0,
+            "v": 1.7763568394002505e-15,
+            "m": 21.5625
+          }
+        },
+        "maxAbsVerticalDisplacement": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "absUy",
+          "value": 1.5705157694350255e-7,
+          "sample": {
+            "nodeId": "steel-ipe200-report-beam-node-3",
+            "station": 2.5,
+            "x": 2.5,
+            "y": 0,
+            "ux": 0,
+            "uy": -1.5705157694350255e-7,
+            "rz": -3.155938670944281e-26
+          }
+        },
+        "maxHorizontalReaction": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "rx",
+          "value": 0,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 17.25,
+            "rz": -3.4416913763379853e-15
+          }
+        },
+        "minHorizontalReaction": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "rx",
+          "value": 0,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 17.25,
+            "rz": -3.4416913763379853e-15
+          }
+        },
+        "maxVerticalReaction": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "ry",
+          "value": 17.25,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 17.25,
+            "rz": -3.4416913763379853e-15
+          }
+        },
+        "minVerticalReaction": {
+          "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+          "resultType": "combination",
+          "limitState": "SLE",
+          "combinationType": "SLE_RARE",
+          "quantity": "ry",
+          "value": 12.5,
+          "sample": {
+            "supportId": "end-support",
+            "nodeId": "steel-ipe200-report-beam-node-5",
+            "station": 5,
+            "type": "roller",
+            "ux": 0,
+            "uy": 12.5,
+            "rz": 1.1102230246251565e-15
+          }
+        },
+        "maxSupportMomentReaction": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "mrz",
+          "value": 3.4416913763379853e-15,
+          "sample": {
+            "supportId": "end-support",
+            "nodeId": "steel-ipe200-report-beam-node-5",
+            "station": 5,
+            "type": "roller",
+            "ux": 0,
+            "uy": 17.25,
+            "rz": 3.4416913763379853e-15
+          }
+        },
+        "minSupportMomentReaction": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "mrz",
+          "value": -3.4416913763379853e-15,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 17.25,
+            "rz": -3.4416913763379853e-15
+          }
+        },
+        "maxAbsHorizontalReaction": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "absRx",
+          "value": 0,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 17.25,
+            "rz": -3.4416913763379853e-15
+          }
+        },
+        "maxAbsVerticalReaction": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "absRy",
+          "value": 17.25,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 17.25,
+            "rz": -3.4416913763379853e-15
+          }
+        },
+        "maxAbsSupportMomentReaction": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "absMrz",
+          "value": 3.4416913763379853e-15,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 17.25,
+            "rz": -3.4416913763379853e-15
+          }
+        }
+      },
+      "uls": {
+        "maxAxialForce": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "n",
+          "value": 0,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-1",
+            "station": 0,
+            "x": 0,
+            "y": 0,
+            "n": 0,
+            "v": 17.25,
+            "m": 3.4416913763379853e-15
+          }
+        },
+        "minAxialForce": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "n",
+          "value": 0,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-1",
+            "station": 0,
+            "x": 0,
+            "y": 0,
+            "n": 0,
+            "v": 17.25,
+            "m": 3.4416913763379853e-15
+          }
+        },
+        "maxShearForce": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "v",
+          "value": 17.25,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-1",
+            "station": 0,
+            "x": 0,
+            "y": 0,
+            "n": 0,
+            "v": 17.25,
+            "m": 3.4416913763379853e-15
+          }
+        },
+        "minShearForce": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "v",
+          "value": -17.25,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-4",
+            "station": 5,
+            "x": 5,
+            "y": 0,
+            "n": 0,
+            "v": -17.25,
+            "m": -1.7763568394002505e-15
+          }
+        },
+        "maxBendingMoment": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "m",
+          "value": 21.5625,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-2",
+            "station": 2.5,
+            "x": 2.5,
+            "y": 0,
+            "n": 0,
+            "v": 1.7763568394002505e-15,
+            "m": 21.5625
+          }
+        },
+        "minBendingMoment": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "m",
+          "value": -1.7763568394002505e-15,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-4",
+            "station": 5,
+            "x": 5,
+            "y": 0,
+            "n": 0,
+            "v": -17.25,
+            "m": -1.7763568394002505e-15
+          }
+        },
+        "maxAbsBendingMoment": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "absM",
+          "value": 21.5625,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-2",
+            "station": 2.5,
+            "x": 2.5,
+            "y": 0,
+            "n": 0,
+            "v": 1.7763568394002505e-15,
+            "m": 21.5625
+          }
+        },
+        "maxAbsVerticalDisplacement": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "absUy",
+          "value": 1.5705157694350255e-7,
+          "sample": {
+            "nodeId": "steel-ipe200-report-beam-node-3",
+            "station": 2.5,
+            "x": 2.5,
+            "y": 0,
+            "ux": 0,
+            "uy": -1.5705157694350255e-7,
+            "rz": -3.155938670944281e-26
+          }
+        },
+        "maxHorizontalReaction": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "rx",
+          "value": 0,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 17.25,
+            "rz": -3.4416913763379853e-15
+          }
+        },
+        "minHorizontalReaction": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "rx",
+          "value": 0,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 17.25,
+            "rz": -3.4416913763379853e-15
+          }
+        },
+        "maxVerticalReaction": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "ry",
+          "value": 17.25,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 17.25,
+            "rz": -3.4416913763379853e-15
+          }
+        },
+        "minVerticalReaction": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "ry",
+          "value": 17.25,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 17.25,
+            "rz": -3.4416913763379853e-15
+          }
+        },
+        "maxSupportMomentReaction": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "mrz",
+          "value": 3.4416913763379853e-15,
+          "sample": {
+            "supportId": "end-support",
+            "nodeId": "steel-ipe200-report-beam-node-5",
+            "station": 5,
+            "type": "roller",
+            "ux": 0,
+            "uy": 17.25,
+            "rz": 3.4416913763379853e-15
+          }
+        },
+        "minSupportMomentReaction": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "mrz",
+          "value": -3.4416913763379853e-15,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 17.25,
+            "rz": -3.4416913763379853e-15
+          }
+        },
+        "maxAbsHorizontalReaction": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "absRx",
+          "value": 0,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 17.25,
+            "rz": -3.4416913763379853e-15
+          }
+        },
+        "maxAbsVerticalReaction": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "absRy",
+          "value": 17.25,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 17.25,
+            "rz": -3.4416913763379853e-15
+          }
+        },
+        "maxAbsSupportMomentReaction": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "absMrz",
+          "value": 3.4416913763379853e-15,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 17.25,
+            "rz": -3.4416913763379853e-15
+          }
+        }
+      },
+      "sle": {
+        "maxAxialForce": {
+          "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+          "resultType": "combination",
+          "limitState": "SLE",
+          "combinationType": "SLE_RARE",
+          "quantity": "n",
+          "value": 0,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-1",
+            "station": 0,
+            "x": 0,
+            "y": 0,
+            "n": 0,
+            "v": 12.500000000000002,
+            "m": 1.1102230246251565e-15
+          }
+        },
+        "minAxialForce": {
+          "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+          "resultType": "combination",
+          "limitState": "SLE",
+          "combinationType": "SLE_RARE",
+          "quantity": "n",
+          "value": 0,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-1",
+            "station": 0,
+            "x": 0,
+            "y": 0,
+            "n": 0,
+            "v": 12.500000000000002,
+            "m": 1.1102230246251565e-15
+          }
+        },
+        "maxShearForce": {
+          "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+          "resultType": "combination",
+          "limitState": "SLE",
+          "combinationType": "SLE_RARE",
+          "quantity": "v",
+          "value": 12.500000000000002,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-1",
+            "station": 0,
+            "x": 0,
+            "y": 0,
+            "n": 0,
+            "v": 12.500000000000002,
+            "m": 1.1102230246251565e-15
+          }
+        },
+        "minShearForce": {
+          "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+          "resultType": "combination",
+          "limitState": "SLE",
+          "combinationType": "SLE_RARE",
+          "quantity": "v",
+          "value": -12.5,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-4",
+            "station": 5,
+            "x": 5,
+            "y": 0,
+            "n": 0,
+            "v": -12.5,
+            "m": 1.7763568394002505e-15
+          }
+        },
+        "maxBendingMoment": {
+          "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+          "resultType": "combination",
+          "limitState": "SLE",
+          "combinationType": "SLE_RARE",
+          "quantity": "m",
+          "value": 15.625,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-2",
+            "station": 2.5,
+            "x": 2.5,
+            "y": 0,
+            "n": 0,
+            "v": 0,
+            "m": 15.625
+          }
+        },
+        "minBendingMoment": {
+          "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+          "resultType": "combination",
+          "limitState": "SLE",
+          "combinationType": "SLE_RARE",
+          "quantity": "m",
+          "value": 1.1102230246251565e-15,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-1",
+            "station": 0,
+            "x": 0,
+            "y": 0,
+            "n": 0,
+            "v": 12.500000000000002,
+            "m": 1.1102230246251565e-15
+          }
+        },
+        "maxAbsBendingMoment": {
+          "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+          "resultType": "combination",
+          "limitState": "SLE",
+          "combinationType": "SLE_RARE",
+          "quantity": "absM",
+          "value": 15.625,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-2",
+            "station": 2.5,
+            "x": 2.5,
+            "y": 0,
+            "n": 0,
+            "v": 0,
+            "m": 15.625
+          }
+        },
+        "maxAbsVerticalDisplacement": {
+          "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+          "resultType": "combination",
+          "limitState": "SLE",
+          "combinationType": "SLE_RARE",
+          "quantity": "absUy",
+          "value": 1.1380549053876997e-7,
+          "sample": {
+            "nodeId": "steel-ipe200-report-beam-node-3",
+            "station": 2.5,
+            "x": 2.5,
+            "y": 0,
+            "ux": 0,
+            "uy": -1.1380549053876997e-7,
+            "rz": 1.4218047839961044e-24
+          }
+        },
+        "maxHorizontalReaction": {
+          "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+          "resultType": "combination",
+          "limitState": "SLE",
+          "combinationType": "SLE_RARE",
+          "quantity": "rx",
+          "value": 0,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 12.500000000000002,
+            "rz": -1.1102230246251565e-15
+          }
+        },
+        "minHorizontalReaction": {
+          "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+          "resultType": "combination",
+          "limitState": "SLE",
+          "combinationType": "SLE_RARE",
+          "quantity": "rx",
+          "value": 0,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 12.500000000000002,
+            "rz": -1.1102230246251565e-15
+          }
+        },
+        "maxVerticalReaction": {
+          "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+          "resultType": "combination",
+          "limitState": "SLE",
+          "combinationType": "SLE_RARE",
+          "quantity": "ry",
+          "value": 12.500000000000002,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 12.500000000000002,
+            "rz": -1.1102230246251565e-15
+          }
+        },
+        "minVerticalReaction": {
+          "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+          "resultType": "combination",
+          "limitState": "SLE",
+          "combinationType": "SLE_RARE",
+          "quantity": "ry",
+          "value": 12.5,
+          "sample": {
+            "supportId": "end-support",
+            "nodeId": "steel-ipe200-report-beam-node-5",
+            "station": 5,
+            "type": "roller",
+            "ux": 0,
+            "uy": 12.5,
+            "rz": 1.1102230246251565e-15
+          }
+        },
+        "maxSupportMomentReaction": {
+          "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+          "resultType": "combination",
+          "limitState": "SLE",
+          "combinationType": "SLE_RARE",
+          "quantity": "mrz",
+          "value": 1.1102230246251565e-15,
+          "sample": {
+            "supportId": "end-support",
+            "nodeId": "steel-ipe200-report-beam-node-5",
+            "station": 5,
+            "type": "roller",
+            "ux": 0,
+            "uy": 12.5,
+            "rz": 1.1102230246251565e-15
+          }
+        },
+        "minSupportMomentReaction": {
+          "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+          "resultType": "combination",
+          "limitState": "SLE",
+          "combinationType": "SLE_RARE",
+          "quantity": "mrz",
+          "value": -1.1102230246251565e-15,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 12.500000000000002,
+            "rz": -1.1102230246251565e-15
+          }
+        },
+        "maxAbsHorizontalReaction": {
+          "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+          "resultType": "combination",
+          "limitState": "SLE",
+          "combinationType": "SLE_RARE",
+          "quantity": "absRx",
+          "value": 0,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 12.500000000000002,
+            "rz": -1.1102230246251565e-15
+          }
+        },
+        "maxAbsVerticalReaction": {
+          "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+          "resultType": "combination",
+          "limitState": "SLE",
+          "combinationType": "SLE_RARE",
+          "quantity": "absRy",
+          "value": 12.500000000000002,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 12.500000000000002,
+            "rz": -1.1102230246251565e-15
+          }
+        },
+        "maxAbsSupportMomentReaction": {
+          "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+          "resultType": "combination",
+          "limitState": "SLE",
+          "combinationType": "SLE_RARE",
+          "quantity": "absMrz",
+          "value": 1.1102230246251565e-15,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 12.500000000000002,
+            "rz": -1.1102230246251565e-15
+          }
+        }
+      },
+      "all": {
+        "maxAxialForce": {
+          "resultId": "G1",
+          "resultType": "load-case",
+          "limitState": null,
+          "combinationType": null,
+          "quantity": "n",
+          "value": 0,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-1",
+            "station": 0,
+            "x": 0,
+            "y": 0,
+            "n": 0,
+            "v": 7.500000000000001,
+            "m": 0
+          }
+        },
+        "minAxialForce": {
+          "resultId": "G1",
+          "resultType": "load-case",
+          "limitState": null,
+          "combinationType": null,
+          "quantity": "n",
+          "value": 0,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-1",
+            "station": 0,
+            "x": 0,
+            "y": 0,
+            "n": 0,
+            "v": 7.500000000000001,
+            "m": 0
+          }
+        },
+        "maxShearForce": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "v",
+          "value": 17.25,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-1",
+            "station": 0,
+            "x": 0,
+            "y": 0,
+            "n": 0,
+            "v": 17.25,
+            "m": 3.4416913763379853e-15
+          }
+        },
+        "minShearForce": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "v",
+          "value": -17.25,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-4",
+            "station": 5,
+            "x": 5,
+            "y": 0,
+            "n": 0,
+            "v": -17.25,
+            "m": -1.7763568394002505e-15
+          }
+        },
+        "maxBendingMoment": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "m",
+          "value": 21.5625,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-2",
+            "station": 2.5,
+            "x": 2.5,
+            "y": 0,
+            "n": 0,
+            "v": 1.7763568394002505e-15,
+            "m": 21.5625
+          }
+        },
+        "minBendingMoment": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "m",
+          "value": -1.7763568394002505e-15,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-4",
+            "station": 5,
+            "x": 5,
+            "y": 0,
+            "n": 0,
+            "v": -17.25,
+            "m": -1.7763568394002505e-15
+          }
+        },
+        "maxAbsBendingMoment": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "absM",
+          "value": 21.5625,
+          "sample": {
+            "elementId": "steel-ipe200-report-beam-element-2",
+            "station": 2.5,
+            "x": 2.5,
+            "y": 0,
+            "n": 0,
+            "v": 1.7763568394002505e-15,
+            "m": 21.5625
+          }
+        },
+        "maxAbsVerticalDisplacement": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "absUy",
+          "value": 1.5705157694350255e-7,
+          "sample": {
+            "nodeId": "steel-ipe200-report-beam-node-3",
+            "station": 2.5,
+            "x": 2.5,
+            "y": 0,
+            "ux": 0,
+            "uy": -1.5705157694350255e-7,
+            "rz": -3.155938670944281e-26
+          }
+        },
+        "maxHorizontalReaction": {
+          "resultId": "G1",
+          "resultType": "load-case",
+          "limitState": null,
+          "combinationType": null,
+          "quantity": "rx",
+          "value": 0,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 7.500000000000001,
+            "rz": 0
+          }
+        },
+        "minHorizontalReaction": {
+          "resultId": "G1",
+          "resultType": "load-case",
+          "limitState": null,
+          "combinationType": null,
+          "quantity": "rx",
+          "value": 0,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 7.500000000000001,
+            "rz": 0
+          }
+        },
+        "maxVerticalReaction": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "ry",
+          "value": 17.25,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 17.25,
+            "rz": -3.4416913763379853e-15
+          }
+        },
+        "minVerticalReaction": {
+          "resultId": "LIVE",
+          "resultType": "load-case",
+          "limitState": null,
+          "combinationType": null,
+          "quantity": "ry",
+          "value": 5,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 5,
+            "rz": 6.106226635438361e-16
+          }
+        },
+        "maxSupportMomentReaction": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "mrz",
+          "value": 3.4416913763379853e-15,
+          "sample": {
+            "supportId": "end-support",
+            "nodeId": "steel-ipe200-report-beam-node-5",
+            "station": 5,
+            "type": "roller",
+            "ux": 0,
+            "uy": 17.25,
+            "rz": 3.4416913763379853e-15
+          }
+        },
+        "minSupportMomentReaction": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "mrz",
+          "value": -3.4416913763379853e-15,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 17.25,
+            "rz": -3.4416913763379853e-15
+          }
+        },
+        "maxAbsHorizontalReaction": {
+          "resultId": "G1",
+          "resultType": "load-case",
+          "limitState": null,
+          "combinationType": null,
+          "quantity": "absRx",
+          "value": 0,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 7.500000000000001,
+            "rz": 0
+          }
+        },
+        "maxAbsVerticalReaction": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "absRy",
+          "value": 17.25,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 17.25,
+            "rz": -3.4416913763379853e-15
+          }
+        },
+        "maxAbsSupportMomentReaction": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "limitState": "ULS",
+          "combinationType": "ULS_STR_GEO",
+          "quantity": "absMrz",
+          "value": 3.4416913763379853e-15,
+          "sample": {
+            "supportId": "start-support",
+            "nodeId": "steel-ipe200-report-beam-node-1",
+            "station": 0,
+            "type": "hinge",
+            "ux": 0,
+            "uy": 17.25,
+            "rz": -3.4416913763379853e-15
+          }
+        }
+      }
+    },
+    "raw": {
+      "id": "steel-ipe200-report",
+      "units": {
+        "force": "kN",
+        "length": "m"
+      },
+      "analysisModel": "timoshenko",
+      "loadCases": {
+        "G1": {
+          "id": "G1",
+          "resultType": "load-case",
+          "loads": [
+            {
+              "id": "g1",
+              "actionType": "G1",
+              "loadCaseId": "G1",
+              "loadDurationClass": "permanent",
+              "factor": 1
+            }
+          ],
+          "context": {
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "serviceCombination": null,
+            "leadingLoadCaseId": null,
+            "leadingActionId": null,
+            "leadingVariableCategory": null,
+            "accompanyingLoadCaseIds": [],
+            "loadCaseFactors": {
+              "G1": 1
+            },
+            "activeLoads": [
+              {
+                "id": "g1",
+                "actionType": "G1",
+                "loadCaseId": "G1",
+                "factor": 1,
+                "nature": "permanent",
+                "variableCategory": null,
+                "loadDurationClass": "permanent",
+                "leadingEligible": true,
+                "metadata": {}
+              }
+            ],
+            "governingLoadDurationClass": "permanent",
+            "governingLoad": {
+              "id": "g1",
+              "actionType": "G1",
+              "loadCaseId": "G1",
+              "factor": 1,
+              "nature": "permanent",
+              "variableCategory": null,
+              "loadDurationClass": "permanent",
+              "leadingEligible": true,
+              "metadata": {
+                "type": "circular-reference"
+              },
+              "normalizedLoadDurationClass": "permanent"
+            }
+          },
+          "units": {
+            "type": "circular-reference"
+          },
+          "geometry": {
+            "start": {
+              "x": 0,
+              "y": 0
+            },
+            "end": {
+              "x": 5,
+              "y": 0
+            },
+            "length": 5,
+            "horizontalSpan": 5
+          },
+          "sectionProperties": {
+            "axialRigidity": 598080000,
+            "flexuralRigidity": 4080299999999.999,
+            "shearRigidity": 137307692.3076923,
+            "shearCorrectionFactor": 1,
+            "units": {
+              "type": "circular-reference"
+            },
+            "metadata": {
+              "provider": "SteelBeamSectionProvider",
+              "source": "steel-elastic-section",
+              "bendingInertiaAxis": "inertiaY",
+              "shearAreaAxis": "shearAreaY",
+              "elasticSectionModulusAxis": "elasticSectionModulusY",
+              "plasticSectionModulusAxis": "plasticSectionModulusY",
+              "profileName": "IPE200",
+              "family": "IPE",
+              "grade": "S275",
+              "fyk": 275,
+              "fyd": 261.9,
+              "gammaM0": 1.05,
+              "elasticMomentResistance": 50887169.999999985,
+              "plasticMomentResistance": 57775139.999999985,
+              "shearResistance": 257053.66035129706,
+              "limitState": null
+            }
+          },
+          "nodes": [
+            {
+              "id": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "x": 0,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": 0,
+                "rz": -3.829375291032705e-12
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 7.500000000000001,
+                "rz": 0
+              }
+            },
+            {
+              "id": "steel-ipe200-report-beam-node-2",
+              "station": 1.25,
+              "x": 1.25,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": -5.121224636498803e-8,
+                "rz": -2.6326955125850414e-12
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": -8.881784197001252e-16,
+                "rz": -9.611759457781374e-16
+              }
+            },
+            {
+              "id": "steel-ipe200-report-beam-node-3",
+              "station": 2.5,
+              "x": 2.5,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": -6.828329432326198e-8,
+                "rz": -1.8228266461488518e-25
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 4.440892098500626e-16,
+                "rz": 1.7763568394002505e-15
+              }
+            },
+            {
+              "id": "steel-ipe200-report-beam-node-4",
+              "station": 3.75,
+              "x": 3.75,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": -5.121224636498802e-8,
+                "rz": 2.6326955125846763e-12
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 4.440892098500626e-16,
+                "rz": -3.552713678800501e-15
+              }
+            },
+            {
+              "id": "steel-ipe200-report-beam-node-5",
+              "station": 5,
+              "x": 5,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": 0,
+                "rz": 3.8293752910323396e-12
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 7.5,
+                "rz": 1.7763568394002505e-15
+              }
+            }
+          ],
+          "supports": [
+            {
+              "id": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "restraints": {
+                "ux": true,
+                "uy": true,
+                "uz": false,
+                "rx": false,
+                "ry": false,
+                "rz": false
+              },
+              "reaction": {
+                "type": "circular-reference"
+              }
+            },
+            {
+              "id": "end-support",
+              "nodeId": "steel-ipe200-report-beam-node-5",
+              "station": 5,
+              "type": "roller",
+              "restraints": {
+                "ux": false,
+                "uy": true,
+                "uz": false,
+                "rx": false,
+                "ry": false,
+                "rz": false
+              },
+              "reaction": {
+                "type": "circular-reference"
+              }
+            }
+          ],
+          "displacementByNode": {
+            "steel-ipe200-report-beam-node-1": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-2": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-3": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-4": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-5": {
+              "type": "circular-reference"
+            }
+          },
+          "reactionByNode": {
+            "steel-ipe200-report-beam-node-1": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-2": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-3": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-4": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-5": {
+              "type": "circular-reference"
+            }
+          },
+          "reactions": {
+            "samples": [
+              {
+                "supportId": "start-support",
+                "nodeId": "steel-ipe200-report-beam-node-1",
+                "station": 0,
+                "type": "hinge",
+                "ux": 0,
+                "uy": 7.500000000000001,
+                "rz": 0
+              },
+              {
+                "supportId": "end-support",
+                "nodeId": "steel-ipe200-report-beam-node-5",
+                "station": 5,
+                "type": "roller",
+                "ux": 0,
+                "uy": 7.5,
+                "rz": 1.7763568394002505e-15
+              }
+            ],
+            "maxHorizontalReaction": {
+              "type": "circular-reference"
+            },
+            "minHorizontalReaction": {
+              "type": "circular-reference"
+            },
+            "maxVerticalReaction": {
+              "type": "circular-reference"
+            },
+            "minVerticalReaction": {
+              "type": "circular-reference"
+            },
+            "maxSupportMomentReaction": {
+              "type": "circular-reference"
+            },
+            "minSupportMomentReaction": {
+              "type": "circular-reference"
+            },
+            "maxAbsHorizontalReaction": {
+              "type": "circular-reference"
+            },
+            "maxAbsVerticalReaction": {
+              "type": "circular-reference"
+            },
+            "maxAbsSupportMomentReaction": {
+              "type": "circular-reference"
+            }
+          },
+          "displacements": {
+            "samples": [
+              {
+                "nodeId": "steel-ipe200-report-beam-node-1",
+                "station": 0,
+                "x": 0,
+                "y": 0,
+                "ux": 0,
+                "uy": 0,
+                "rz": -3.829375291032705e-12
+              },
+              {
+                "nodeId": "steel-ipe200-report-beam-node-2",
+                "station": 1.25,
+                "x": 1.25,
+                "y": 0,
+                "ux": 0,
+                "uy": -5.121224636498803e-8,
+                "rz": -2.6326955125850414e-12
+              },
+              {
+                "nodeId": "steel-ipe200-report-beam-node-3",
+                "station": 2.5,
+                "x": 2.5,
+                "y": 0,
+                "ux": 0,
+                "uy": -6.828329432326198e-8,
+                "rz": -1.8228266461488518e-25
+              },
+              {
+                "nodeId": "steel-ipe200-report-beam-node-4",
+                "station": 3.75,
+                "x": 3.75,
+                "y": 0,
+                "ux": 0,
+                "uy": -5.121224636498802e-8,
+                "rz": 2.6326955125846763e-12
+              },
+              {
+                "nodeId": "steel-ipe200-report-beam-node-5",
+                "station": 5,
+                "x": 5,
+                "y": 0,
+                "ux": 0,
+                "uy": 0,
+                "rz": 3.8293752910323396e-12
+              }
+            ],
+            "maxAbsVerticalDisplacement": {
+              "type": "circular-reference"
+            }
+          },
+          "internalForces": {
+            "samples": [
+              {
+                "elementId": "steel-ipe200-report-beam-element-1",
+                "station": 0,
+                "x": 0,
+                "y": 0,
+                "n": 0,
+                "v": 7.500000000000001,
+                "m": 0
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-1",
+                "station": 0.625,
+                "x": 0.625,
+                "y": 0,
+                "n": 0,
+                "v": 5.625000000000001,
+                "m": 4.101562500000001
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-1",
+                "station": 1.25,
+                "x": 1.25,
+                "y": 0,
+                "n": 0,
+                "v": 3.750000000000001,
+                "m": 7.031250000000002
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-2",
+                "station": 1.25,
+                "x": 1.25,
+                "y": 0,
+                "n": 0,
+                "v": 3.75,
+                "m": 7.031250000000001
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-2",
+                "station": 1.875,
+                "x": 1.875,
+                "y": 0,
+                "n": 0,
+                "v": 1.875,
+                "m": 8.7890625
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-2",
+                "station": 2.5,
+                "x": 2.5,
+                "y": 0,
+                "n": 0,
+                "v": 0,
+                "m": 9.375
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-3",
+                "station": 2.5,
+                "x": 2.5,
+                "y": 0,
+                "n": 0,
+                "v": -4.440892098500626e-16,
+                "m": 9.374999999999998
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-3",
+                "station": 3.125,
+                "x": 3.125,
+                "y": 0,
+                "n": 0,
+                "v": -1.8750000000000004,
+                "m": 8.789062499999998
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-3",
+                "station": 3.75,
+                "x": 3.75,
+                "y": 0,
+                "n": 0,
+                "v": -3.7500000000000004,
+                "m": 7.031249999999998
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-4",
+                "station": 3.75,
+                "x": 3.75,
+                "y": 0,
+                "n": 0,
+                "v": -3.75,
+                "m": 7.03125
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-4",
+                "station": 4.375,
+                "x": 4.375,
+                "y": 0,
+                "n": 0,
+                "v": -5.625,
+                "m": 4.1015625
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-4",
+                "station": 5,
+                "x": 5,
+                "y": 0,
+                "n": 0,
+                "v": -7.5,
+                "m": 0
+              }
+            ],
+            "maxAxialForce": {
+              "type": "circular-reference"
+            },
+            "minAxialForce": {
+              "type": "circular-reference"
+            },
+            "maxShearForce": {
+              "type": "circular-reference"
+            },
+            "minShearForce": {
+              "type": "circular-reference"
+            },
+            "maxBendingMoment": {
+              "type": "circular-reference"
+            },
+            "minBendingMoment": {
+              "type": "circular-reference"
+            },
+            "maxAbsBendingMoment": {
+              "type": "circular-reference"
+            }
+          },
+          "fem": {
+            "nodeCount": 5,
+            "elementCount": 4,
+            "loadCount": 4
+          }
+        },
+        "LIVE": {
+          "id": "LIVE",
+          "resultType": "load-case",
+          "loads": [
+            {
+              "id": "live",
+              "actionType": "Qk",
+              "loadCaseId": "LIVE",
+              "loadDurationClass": "medium",
+              "factor": 1
+            }
+          ],
+          "context": {
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "serviceCombination": null,
+            "leadingLoadCaseId": null,
+            "leadingActionId": null,
+            "leadingVariableCategory": null,
+            "accompanyingLoadCaseIds": [],
+            "loadCaseFactors": {
+              "LIVE": 1
+            },
+            "activeLoads": [
+              {
+                "id": "live",
+                "actionType": "Qk",
+                "loadCaseId": "LIVE",
+                "factor": 1,
+                "nature": "variable",
+                "variableCategory": "B",
+                "loadDurationClass": "medium",
+                "leadingEligible": true,
+                "metadata": {}
+              }
+            ],
+            "governingLoadDurationClass": "medium",
+            "governingLoad": {
+              "id": "live",
+              "actionType": "Qk",
+              "loadCaseId": "LIVE",
+              "factor": 1,
+              "nature": "variable",
+              "variableCategory": "B",
+              "loadDurationClass": "medium",
+              "leadingEligible": true,
+              "metadata": {
+                "type": "circular-reference"
+              },
+              "normalizedLoadDurationClass": "medium"
+            }
+          },
+          "units": {
+            "type": "circular-reference"
+          },
+          "geometry": {
+            "start": {
+              "x": 0,
+              "y": 0
+            },
+            "end": {
+              "x": 5,
+              "y": 0
+            },
+            "length": 5,
+            "horizontalSpan": 5
+          },
+          "sectionProperties": {
+            "axialRigidity": 598080000,
+            "flexuralRigidity": 4080299999999.999,
+            "shearRigidity": 137307692.3076923,
+            "shearCorrectionFactor": 1,
+            "units": {
+              "type": "circular-reference"
+            },
+            "metadata": {
+              "provider": "SteelBeamSectionProvider",
+              "source": "steel-elastic-section",
+              "bendingInertiaAxis": "inertiaY",
+              "shearAreaAxis": "shearAreaY",
+              "elasticSectionModulusAxis": "elasticSectionModulusY",
+              "plasticSectionModulusAxis": "plasticSectionModulusY",
+              "profileName": "IPE200",
+              "family": "IPE",
+              "grade": "S275",
+              "fyk": 275,
+              "fyd": 261.9,
+              "gammaM0": 1.05,
+              "elasticMomentResistance": 50887169.999999985,
+              "plasticMomentResistance": 57775139.999999985,
+              "shearResistance": 257053.66035129706,
+              "limitState": null
+            }
+          },
+          "nodes": [
+            {
+              "id": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "x": 0,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": 0,
+                "rz": -2.5529168606880384e-12
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 5,
+                "rz": 6.106226635438361e-16
+              }
+            },
+            {
+              "id": "steel-ipe200-report-beam-node-2",
+              "station": 1.25,
+              "x": 1.25,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": -3.414149757665868e-8,
+                "rz": -1.7551303417229297e-12
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 0,
+                "rz": 5.680760526513129e-16
+              }
+            },
+            {
+              "id": "steel-ipe200-report-beam-node-3",
+              "station": 2.5,
+              "x": 2.5,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": -4.5522196215507984e-8,
+                "rz": 3.096084661667751e-25
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 0,
+                "rz": 1.7763568394002505e-15
+              }
+            },
+            {
+              "id": "steel-ipe200-report-beam-node-4",
+              "station": 3.75,
+              "x": 3.75,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": -3.414149757665868e-8,
+                "rz": 1.7551303417235487e-12
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 4.440892098500626e-16,
+                "rz": 0
+              }
+            },
+            {
+              "id": "steel-ipe200-report-beam-node-5",
+              "station": 5,
+              "x": 5,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": 0,
+                "rz": 2.5529168606886576e-12
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 5,
+                "rz": 1.1657341758564144e-15
+              }
+            }
+          ],
+          "supports": [
+            {
+              "id": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "restraints": {
+                "ux": true,
+                "uy": true,
+                "uz": false,
+                "rx": false,
+                "ry": false,
+                "rz": false
+              },
+              "reaction": {
+                "type": "circular-reference"
+              }
+            },
+            {
+              "id": "end-support",
+              "nodeId": "steel-ipe200-report-beam-node-5",
+              "station": 5,
+              "type": "roller",
+              "restraints": {
+                "ux": false,
+                "uy": true,
+                "uz": false,
+                "rx": false,
+                "ry": false,
+                "rz": false
+              },
+              "reaction": {
+                "type": "circular-reference"
+              }
+            }
+          ],
+          "displacementByNode": {
+            "steel-ipe200-report-beam-node-1": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-2": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-3": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-4": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-5": {
+              "type": "circular-reference"
+            }
+          },
+          "reactionByNode": {
+            "steel-ipe200-report-beam-node-1": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-2": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-3": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-4": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-5": {
+              "type": "circular-reference"
+            }
+          },
+          "reactions": {
+            "samples": [
+              {
+                "supportId": "start-support",
+                "nodeId": "steel-ipe200-report-beam-node-1",
+                "station": 0,
+                "type": "hinge",
+                "ux": 0,
+                "uy": 5,
+                "rz": 6.106226635438361e-16
+              },
+              {
+                "supportId": "end-support",
+                "nodeId": "steel-ipe200-report-beam-node-5",
+                "station": 5,
+                "type": "roller",
+                "ux": 0,
+                "uy": 5,
+                "rz": 1.1657341758564144e-15
+              }
+            ],
+            "maxHorizontalReaction": {
+              "type": "circular-reference"
+            },
+            "minHorizontalReaction": {
+              "type": "circular-reference"
+            },
+            "maxVerticalReaction": {
+              "type": "circular-reference"
+            },
+            "minVerticalReaction": {
+              "type": "circular-reference"
+            },
+            "maxSupportMomentReaction": {
+              "type": "circular-reference"
+            },
+            "minSupportMomentReaction": {
+              "type": "circular-reference"
+            },
+            "maxAbsHorizontalReaction": {
+              "type": "circular-reference"
+            },
+            "maxAbsVerticalReaction": {
+              "type": "circular-reference"
+            },
+            "maxAbsSupportMomentReaction": {
+              "type": "circular-reference"
+            }
+          },
+          "displacements": {
+            "samples": [
+              {
+                "nodeId": "steel-ipe200-report-beam-node-1",
+                "station": 0,
+                "x": 0,
+                "y": 0,
+                "ux": 0,
+                "uy": 0,
+                "rz": -2.5529168606880384e-12
+              },
+              {
+                "nodeId": "steel-ipe200-report-beam-node-2",
+                "station": 1.25,
+                "x": 1.25,
+                "y": 0,
+                "ux": 0,
+                "uy": -3.414149757665868e-8,
+                "rz": -1.7551303417229297e-12
+              },
+              {
+                "nodeId": "steel-ipe200-report-beam-node-3",
+                "station": 2.5,
+                "x": 2.5,
+                "y": 0,
+                "ux": 0,
+                "uy": -4.5522196215507984e-8,
+                "rz": 3.096084661667751e-25
+              },
+              {
+                "nodeId": "steel-ipe200-report-beam-node-4",
+                "station": 3.75,
+                "x": 3.75,
+                "y": 0,
+                "ux": 0,
+                "uy": -3.414149757665868e-8,
+                "rz": 1.7551303417235487e-12
+              },
+              {
+                "nodeId": "steel-ipe200-report-beam-node-5",
+                "station": 5,
+                "x": 5,
+                "y": 0,
+                "ux": 0,
+                "uy": 0,
+                "rz": 2.5529168606886576e-12
+              }
+            ],
+            "maxAbsVerticalDisplacement": {
+              "type": "circular-reference"
+            }
+          },
+          "internalForces": {
+            "samples": [
+              {
+                "elementId": "steel-ipe200-report-beam-element-1",
+                "station": 0,
+                "x": 0,
+                "y": 0,
+                "n": 0,
+                "v": 5,
+                "m": -6.106226635438361e-16
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-1",
+                "station": 0.625,
+                "x": 0.625,
+                "y": 0,
+                "n": 0,
+                "v": 3.75,
+                "m": 2.7343749999999996
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-1",
+                "station": 1.25,
+                "x": 1.25,
+                "y": 0,
+                "n": 0,
+                "v": 2.5,
+                "m": 4.687499999999999
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-2",
+                "station": 1.25,
+                "x": 1.25,
+                "y": 0,
+                "n": 0,
+                "v": 2.5,
+                "m": 4.687499999999999
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-2",
+                "station": 1.875,
+                "x": 1.875,
+                "y": 0,
+                "n": 0,
+                "v": 1.25,
+                "m": 5.859374999999999
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-2",
+                "station": 2.5,
+                "x": 2.5,
+                "y": 0,
+                "n": 0,
+                "v": 0,
+                "m": 6.249999999999999
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-3",
+                "station": 2.5,
+                "x": 2.5,
+                "y": 0,
+                "n": 0,
+                "v": 0,
+                "m": 6.249999999999998
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-3",
+                "station": 3.125,
+                "x": 3.125,
+                "y": 0,
+                "n": 0,
+                "v": -1.25,
+                "m": 5.859374999999998
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-3",
+                "station": 3.75,
+                "x": 3.75,
+                "y": 0,
+                "n": 0,
+                "v": -2.5,
+                "m": 4.687499999999998
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-4",
+                "station": 3.75,
+                "x": 3.75,
+                "y": 0,
+                "n": 0,
+                "v": -2.4999999999999996,
+                "m": 4.687499999999999
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-4",
+                "station": 4.375,
+                "x": 4.375,
+                "y": 0,
+                "n": 0,
+                "v": -3.7499999999999996,
+                "m": 2.734374999999999
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-4",
+                "station": 5,
+                "x": 5,
+                "y": 0,
+                "n": 0,
+                "v": -5,
+                "m": -4.440892098500626e-16
+              }
+            ],
+            "maxAxialForce": {
+              "type": "circular-reference"
+            },
+            "minAxialForce": {
+              "type": "circular-reference"
+            },
+            "maxShearForce": {
+              "type": "circular-reference"
+            },
+            "minShearForce": {
+              "type": "circular-reference"
+            },
+            "maxBendingMoment": {
+              "type": "circular-reference"
+            },
+            "minBendingMoment": {
+              "type": "circular-reference"
+            },
+            "maxAbsBendingMoment": {
+              "type": "circular-reference"
+            }
+          },
+          "fem": {
+            "nodeCount": 5,
+            "elementCount": 4,
+            "loadCount": 4
+          }
+        }
+      },
+      "combinations": {
+        "steel-ipe200-report-ULS-LIVE": {
+          "id": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "loads": [
+            {
+              "id": "g1",
+              "actionType": "G1",
+              "loadCaseId": "G1",
+              "loadDurationClass": "permanent",
+              "factor": 1.3
+            },
+            {
+              "id": "live",
+              "actionType": "Qk",
+              "loadCaseId": "LIVE",
+              "loadDurationClass": "medium",
+              "factor": 1.5
+            }
+          ],
+          "context": {
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "serviceCombination": null,
+            "leadingLoadCaseId": "LIVE",
+            "leadingActionId": "ACT-LIVE",
+            "leadingVariableCategory": "B",
+            "accompanyingLoadCaseIds": [],
+            "loadCaseFactors": {
+              "G1": 1.3,
+              "LIVE": 1.5
+            },
+            "activeLoads": [
+              {
+                "id": "g1",
+                "actionType": "G1",
+                "loadCaseId": "G1",
+                "factor": 1.3,
+                "nature": "permanent",
+                "variableCategory": null,
+                "loadDurationClass": "permanent",
+                "leadingEligible": true,
+                "metadata": {}
+              },
+              {
+                "id": "live",
+                "actionType": "Qk",
+                "loadCaseId": "LIVE",
+                "factor": 1.5,
+                "nature": "variable",
+                "variableCategory": "B",
+                "loadDurationClass": "medium",
+                "leadingEligible": true,
+                "metadata": {}
+              }
+            ],
+            "governingLoadDurationClass": "medium",
+            "governingLoad": {
+              "id": "live",
+              "actionType": "Qk",
+              "loadCaseId": "LIVE",
+              "factor": 1.5,
+              "nature": "variable",
+              "variableCategory": "B",
+              "loadDurationClass": "medium",
+              "leadingEligible": true,
+              "metadata": {
+                "type": "circular-reference"
+              },
+              "normalizedLoadDurationClass": "medium"
+            }
+          },
+          "units": {
+            "type": "circular-reference"
+          },
+          "geometry": {
+            "start": {
+              "x": 0,
+              "y": 0
+            },
+            "end": {
+              "x": 5,
+              "y": 0
+            },
+            "length": 5,
+            "horizontalSpan": 5
+          },
+          "sectionProperties": {
+            "axialRigidity": 598080000,
+            "flexuralRigidity": 4080299999999.999,
+            "shearRigidity": 137307692.3076923,
+            "shearCorrectionFactor": 1,
+            "units": {
+              "type": "circular-reference"
+            },
+            "metadata": {
+              "provider": "SteelBeamSectionProvider",
+              "source": "steel-elastic-section",
+              "bendingInertiaAxis": "inertiaY",
+              "shearAreaAxis": "shearAreaY",
+              "elasticSectionModulusAxis": "elasticSectionModulusY",
+              "plasticSectionModulusAxis": "plasticSectionModulusY",
+              "profileName": "IPE200",
+              "family": "IPE",
+              "grade": "S275",
+              "fyk": 275,
+              "fyd": 261.9,
+              "gammaM0": 1.05,
+              "elasticMomentResistance": 50887169.999999985,
+              "plasticMomentResistance": 57775139.999999985,
+              "shearResistance": 257053.66035129706,
+              "limitState": "ULS"
+            }
+          },
+          "nodes": [
+            {
+              "id": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "x": 0,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": 0,
+                "rz": -8.807563169374834e-12
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 17.25,
+                "rz": -3.4416913763379853e-15
+              }
+            },
+            {
+              "id": "steel-ipe200-report-beam-node-2",
+              "station": 1.25,
+              "x": 1.25,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": -1.1778816663947244e-7,
+                "rz": -6.055199678945208e-12
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 3.552713678800501e-15,
+                "rz": -3.565352056449834e-15
+              }
+            },
+            {
+              "id": "steel-ipe200-report-beam-node-3",
+              "station": 2.5,
+              "x": 2.5,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": -1.5705157694350255e-7,
+                "rz": -3.155938670944281e-26
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": -3.552713678800501e-15,
+                "rz": 7.105427357601002e-15
+              }
+            },
+            {
+              "id": "steel-ipe200-report-beam-node-4",
+              "station": 3.75,
+              "x": 3.75,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": -1.1778816663947246e-7,
+                "rz": 6.055199678945143e-12
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": -1.7763568394002505e-15,
+                "rz": -7.105427357601002e-15
+              }
+            },
+            {
+              "id": "steel-ipe200-report-beam-node-5",
+              "station": 5,
+              "x": 5,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": 0,
+                "rz": 8.807563169374769e-12
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 17.25,
+                "rz": 3.4416913763379853e-15
+              }
+            }
+          ],
+          "supports": [
+            {
+              "id": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "restraints": {
+                "ux": true,
+                "uy": true,
+                "uz": false,
+                "rx": false,
+                "ry": false,
+                "rz": false
+              },
+              "reaction": {
+                "type": "circular-reference"
+              }
+            },
+            {
+              "id": "end-support",
+              "nodeId": "steel-ipe200-report-beam-node-5",
+              "station": 5,
+              "type": "roller",
+              "restraints": {
+                "ux": false,
+                "uy": true,
+                "uz": false,
+                "rx": false,
+                "ry": false,
+                "rz": false
+              },
+              "reaction": {
+                "type": "circular-reference"
+              }
+            }
+          ],
+          "displacementByNode": {
+            "steel-ipe200-report-beam-node-1": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-2": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-3": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-4": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-5": {
+              "type": "circular-reference"
+            }
+          },
+          "reactionByNode": {
+            "steel-ipe200-report-beam-node-1": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-2": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-3": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-4": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-5": {
+              "type": "circular-reference"
+            }
+          },
+          "reactions": {
+            "samples": [
+              {
+                "supportId": "start-support",
+                "nodeId": "steel-ipe200-report-beam-node-1",
+                "station": 0,
+                "type": "hinge",
+                "ux": 0,
+                "uy": 17.25,
+                "rz": -3.4416913763379853e-15
+              },
+              {
+                "supportId": "end-support",
+                "nodeId": "steel-ipe200-report-beam-node-5",
+                "station": 5,
+                "type": "roller",
+                "ux": 0,
+                "uy": 17.25,
+                "rz": 3.4416913763379853e-15
+              }
+            ],
+            "maxHorizontalReaction": {
+              "type": "circular-reference"
+            },
+            "minHorizontalReaction": {
+              "type": "circular-reference"
+            },
+            "maxVerticalReaction": {
+              "type": "circular-reference"
+            },
+            "minVerticalReaction": {
+              "type": "circular-reference"
+            },
+            "maxSupportMomentReaction": {
+              "type": "circular-reference"
+            },
+            "minSupportMomentReaction": {
+              "type": "circular-reference"
+            },
+            "maxAbsHorizontalReaction": {
+              "type": "circular-reference"
+            },
+            "maxAbsVerticalReaction": {
+              "type": "circular-reference"
+            },
+            "maxAbsSupportMomentReaction": {
+              "type": "circular-reference"
+            }
+          },
+          "displacements": {
+            "samples": [
+              {
+                "nodeId": "steel-ipe200-report-beam-node-1",
+                "station": 0,
+                "x": 0,
+                "y": 0,
+                "ux": 0,
+                "uy": 0,
+                "rz": -8.807563169374834e-12
+              },
+              {
+                "nodeId": "steel-ipe200-report-beam-node-2",
+                "station": 1.25,
+                "x": 1.25,
+                "y": 0,
+                "ux": 0,
+                "uy": -1.1778816663947244e-7,
+                "rz": -6.055199678945208e-12
+              },
+              {
+                "nodeId": "steel-ipe200-report-beam-node-3",
+                "station": 2.5,
+                "x": 2.5,
+                "y": 0,
+                "ux": 0,
+                "uy": -1.5705157694350255e-7,
+                "rz": -3.155938670944281e-26
+              },
+              {
+                "nodeId": "steel-ipe200-report-beam-node-4",
+                "station": 3.75,
+                "x": 3.75,
+                "y": 0,
+                "ux": 0,
+                "uy": -1.1778816663947246e-7,
+                "rz": 6.055199678945143e-12
+              },
+              {
+                "nodeId": "steel-ipe200-report-beam-node-5",
+                "station": 5,
+                "x": 5,
+                "y": 0,
+                "ux": 0,
+                "uy": 0,
+                "rz": 8.807563169374769e-12
+              }
+            ],
+            "maxAbsVerticalDisplacement": {
+              "type": "circular-reference"
+            }
+          },
+          "internalForces": {
+            "samples": [
+              {
+                "elementId": "steel-ipe200-report-beam-element-1",
+                "station": 0,
+                "x": 0,
+                "y": 0,
+                "n": 0,
+                "v": 17.25,
+                "m": 3.4416913763379853e-15
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-1",
+                "station": 0.625,
+                "x": 0.625,
+                "y": 0,
+                "n": 0,
+                "v": 12.9375,
+                "m": 9.433593750000004
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-1",
+                "station": 1.25,
+                "x": 1.25,
+                "y": 0,
+                "n": 0,
+                "v": 8.625,
+                "m": 16.171875000000004
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-2",
+                "station": 1.25,
+                "x": 1.25,
+                "y": 0,
+                "n": 0,
+                "v": 8.625000000000002,
+                "m": 16.171875
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-2",
+                "station": 1.875,
+                "x": 1.875,
+                "y": 0,
+                "n": 0,
+                "v": 4.312500000000002,
+                "m": 20.21484375
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-2",
+                "station": 2.5,
+                "x": 2.5,
+                "y": 0,
+                "n": 0,
+                "v": 1.7763568394002505e-15,
+                "m": 21.5625
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-3",
+                "station": 2.5,
+                "x": 2.5,
+                "y": 0,
+                "n": 0,
+                "v": 8.881784197001252e-16,
+                "m": 21.562499999999993
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-3",
+                "station": 3.125,
+                "x": 3.125,
+                "y": 0,
+                "n": 0,
+                "v": -4.312499999999999,
+                "m": 20.214843749999993
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-3",
+                "station": 3.75,
+                "x": 3.75,
+                "y": 0,
+                "n": 0,
+                "v": -8.625,
+                "m": 16.171874999999993
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-4",
+                "station": 3.75,
+                "x": 3.75,
+                "y": 0,
+                "n": 0,
+                "v": -8.625000000000002,
+                "m": 16.171875
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-4",
+                "station": 4.375,
+                "x": 4.375,
+                "y": 0,
+                "n": 0,
+                "v": -12.937500000000002,
+                "m": 9.43359375
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-4",
+                "station": 5,
+                "x": 5,
+                "y": 0,
+                "n": 0,
+                "v": -17.25,
+                "m": -1.7763568394002505e-15
+              }
+            ],
+            "maxAxialForce": {
+              "type": "circular-reference"
+            },
+            "minAxialForce": {
+              "type": "circular-reference"
+            },
+            "maxShearForce": {
+              "type": "circular-reference"
+            },
+            "minShearForce": {
+              "type": "circular-reference"
+            },
+            "maxBendingMoment": {
+              "type": "circular-reference"
+            },
+            "minBendingMoment": {
+              "type": "circular-reference"
+            },
+            "maxAbsBendingMoment": {
+              "type": "circular-reference"
+            }
+          },
+          "fem": {
+            "nodeCount": 5,
+            "elementCount": 4,
+            "loadCount": 8
+          },
+          "factors": {
+            "G1": 1.3,
+            "LIVE": 1.5
+          },
+          "name": "ULS LIVE"
+        },
+        "steel-ipe200-report-SLE_RARE-LIVE": {
+          "id": "steel-ipe200-report-SLE_RARE-LIVE",
+          "resultType": "combination",
+          "loads": [
+            {
+              "id": "g1",
+              "actionType": "G1",
+              "loadCaseId": "G1",
+              "loadDurationClass": "permanent",
+              "factor": 1
+            },
+            {
+              "id": "live",
+              "actionType": "Qk",
+              "loadCaseId": "LIVE",
+              "loadDurationClass": "medium",
+              "factor": 1
+            }
+          ],
+          "context": {
+            "resultType": "combination",
+            "limitState": "SLE",
+            "combinationType": "SLE_RARE",
+            "serviceCombination": "rare",
+            "leadingLoadCaseId": "LIVE",
+            "leadingActionId": "ACT-LIVE",
+            "leadingVariableCategory": "B",
+            "accompanyingLoadCaseIds": [],
+            "loadCaseFactors": {
+              "G1": 1,
+              "LIVE": 1
+            },
+            "activeLoads": [
+              {
+                "id": "g1",
+                "actionType": "G1",
+                "loadCaseId": "G1",
+                "factor": 1,
+                "nature": "permanent",
+                "variableCategory": null,
+                "loadDurationClass": "permanent",
+                "leadingEligible": true,
+                "metadata": {}
+              },
+              {
+                "id": "live",
+                "actionType": "Qk",
+                "loadCaseId": "LIVE",
+                "factor": 1,
+                "nature": "variable",
+                "variableCategory": "B",
+                "loadDurationClass": "medium",
+                "leadingEligible": true,
+                "metadata": {}
+              }
+            ],
+            "governingLoadDurationClass": "medium",
+            "governingLoad": {
+              "id": "live",
+              "actionType": "Qk",
+              "loadCaseId": "LIVE",
+              "factor": 1,
+              "nature": "variable",
+              "variableCategory": "B",
+              "loadDurationClass": "medium",
+              "leadingEligible": true,
+              "metadata": {
+                "type": "circular-reference"
+              },
+              "normalizedLoadDurationClass": "medium"
+            }
+          },
+          "units": {
+            "type": "circular-reference"
+          },
+          "geometry": {
+            "start": {
+              "x": 0,
+              "y": 0
+            },
+            "end": {
+              "x": 5,
+              "y": 0
+            },
+            "length": 5,
+            "horizontalSpan": 5
+          },
+          "sectionProperties": {
+            "axialRigidity": 598080000,
+            "flexuralRigidity": 4080299999999.999,
+            "shearRigidity": 137307692.3076923,
+            "shearCorrectionFactor": 1,
+            "units": {
+              "type": "circular-reference"
+            },
+            "metadata": {
+              "provider": "SteelBeamSectionProvider",
+              "source": "steel-elastic-section",
+              "bendingInertiaAxis": "inertiaY",
+              "shearAreaAxis": "shearAreaY",
+              "elasticSectionModulusAxis": "elasticSectionModulusY",
+              "plasticSectionModulusAxis": "plasticSectionModulusY",
+              "profileName": "IPE200",
+              "family": "IPE",
+              "grade": "S275",
+              "fyk": 275,
+              "fyd": 261.9,
+              "gammaM0": 1.05,
+              "elasticMomentResistance": 50887169.999999985,
+              "plasticMomentResistance": 57775139.999999985,
+              "shearResistance": 257053.66035129706,
+              "limitState": "SLE"
+            }
+          },
+          "nodes": [
+            {
+              "id": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "x": 0,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": 0,
+                "rz": -6.38229215171945e-12
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 12.500000000000002,
+                "rz": -1.1102230246251565e-15
+              }
+            },
+            {
+              "id": "steel-ipe200-report-beam-node-2",
+              "station": 1.25,
+              "x": 1.25,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": -8.535374394164672e-8,
+                "rz": -4.387825854306677e-12
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": -1.7763568394002505e-15,
+                "rz": 5.693807034086164e-16
+              }
+            },
+            {
+              "id": "steel-ipe200-report-beam-node-3",
+              "station": 2.5,
+              "x": 2.5,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": -1.1380549053876997e-7,
+                "rz": 1.4218047839961044e-24
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": -1.7763568394002505e-15,
+                "rz": 3.552713678800501e-15
+              }
+            },
+            {
+              "id": "steel-ipe200-report-beam-node-4",
+              "station": 3.75,
+              "x": 3.75,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": -8.53537439416467e-8,
+                "rz": 4.38782585430952e-12
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 1.7763568394002505e-15,
+                "rz": -3.552713678800501e-15
+              }
+            },
+            {
+              "id": "steel-ipe200-report-beam-node-5",
+              "station": 5,
+              "x": 5,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": 0,
+                "rz": 6.382292151722292e-12
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 12.5,
+                "rz": 1.1102230246251565e-15
+              }
+            }
+          ],
+          "supports": [
+            {
+              "id": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "restraints": {
+                "ux": true,
+                "uy": true,
+                "uz": false,
+                "rx": false,
+                "ry": false,
+                "rz": false
+              },
+              "reaction": {
+                "type": "circular-reference"
+              }
+            },
+            {
+              "id": "end-support",
+              "nodeId": "steel-ipe200-report-beam-node-5",
+              "station": 5,
+              "type": "roller",
+              "restraints": {
+                "ux": false,
+                "uy": true,
+                "uz": false,
+                "rx": false,
+                "ry": false,
+                "rz": false
+              },
+              "reaction": {
+                "type": "circular-reference"
+              }
+            }
+          ],
+          "displacementByNode": {
+            "steel-ipe200-report-beam-node-1": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-2": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-3": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-4": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-5": {
+              "type": "circular-reference"
+            }
+          },
+          "reactionByNode": {
+            "steel-ipe200-report-beam-node-1": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-2": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-3": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-4": {
+              "type": "circular-reference"
+            },
+            "steel-ipe200-report-beam-node-5": {
+              "type": "circular-reference"
+            }
+          },
+          "reactions": {
+            "samples": [
+              {
+                "supportId": "start-support",
+                "nodeId": "steel-ipe200-report-beam-node-1",
+                "station": 0,
+                "type": "hinge",
+                "ux": 0,
+                "uy": 12.500000000000002,
+                "rz": -1.1102230246251565e-15
+              },
+              {
+                "supportId": "end-support",
+                "nodeId": "steel-ipe200-report-beam-node-5",
+                "station": 5,
+                "type": "roller",
+                "ux": 0,
+                "uy": 12.5,
+                "rz": 1.1102230246251565e-15
+              }
+            ],
+            "maxHorizontalReaction": {
+              "type": "circular-reference"
+            },
+            "minHorizontalReaction": {
+              "type": "circular-reference"
+            },
+            "maxVerticalReaction": {
+              "type": "circular-reference"
+            },
+            "minVerticalReaction": {
+              "type": "circular-reference"
+            },
+            "maxSupportMomentReaction": {
+              "type": "circular-reference"
+            },
+            "minSupportMomentReaction": {
+              "type": "circular-reference"
+            },
+            "maxAbsHorizontalReaction": {
+              "type": "circular-reference"
+            },
+            "maxAbsVerticalReaction": {
+              "type": "circular-reference"
+            },
+            "maxAbsSupportMomentReaction": {
+              "type": "circular-reference"
+            }
+          },
+          "displacements": {
+            "samples": [
+              {
+                "nodeId": "steel-ipe200-report-beam-node-1",
+                "station": 0,
+                "x": 0,
+                "y": 0,
+                "ux": 0,
+                "uy": 0,
+                "rz": -6.38229215171945e-12
+              },
+              {
+                "nodeId": "steel-ipe200-report-beam-node-2",
+                "station": 1.25,
+                "x": 1.25,
+                "y": 0,
+                "ux": 0,
+                "uy": -8.535374394164672e-8,
+                "rz": -4.387825854306677e-12
+              },
+              {
+                "nodeId": "steel-ipe200-report-beam-node-3",
+                "station": 2.5,
+                "x": 2.5,
+                "y": 0,
+                "ux": 0,
+                "uy": -1.1380549053876997e-7,
+                "rz": 1.4218047839961044e-24
+              },
+              {
+                "nodeId": "steel-ipe200-report-beam-node-4",
+                "station": 3.75,
+                "x": 3.75,
+                "y": 0,
+                "ux": 0,
+                "uy": -8.53537439416467e-8,
+                "rz": 4.38782585430952e-12
+              },
+              {
+                "nodeId": "steel-ipe200-report-beam-node-5",
+                "station": 5,
+                "x": 5,
+                "y": 0,
+                "ux": 0,
+                "uy": 0,
+                "rz": 6.382292151722292e-12
+              }
+            ],
+            "maxAbsVerticalDisplacement": {
+              "type": "circular-reference"
+            }
+          },
+          "internalForces": {
+            "samples": [
+              {
+                "elementId": "steel-ipe200-report-beam-element-1",
+                "station": 0,
+                "x": 0,
+                "y": 0,
+                "n": 0,
+                "v": 12.500000000000002,
+                "m": 1.1102230246251565e-15
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-1",
+                "station": 0.625,
+                "x": 0.625,
+                "y": 0,
+                "n": 0,
+                "v": 9.375000000000002,
+                "m": 6.835937500000002
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-1",
+                "station": 1.25,
+                "x": 1.25,
+                "y": 0,
+                "n": 0,
+                "v": 6.250000000000002,
+                "m": 11.718750000000004
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-2",
+                "station": 1.25,
+                "x": 1.25,
+                "y": 0,
+                "n": 0,
+                "v": 6.25,
+                "m": 11.718750000000002
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-2",
+                "station": 1.875,
+                "x": 1.875,
+                "y": 0,
+                "n": 0,
+                "v": 3.125,
+                "m": 14.648437500000002
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-2",
+                "station": 2.5,
+                "x": 2.5,
+                "y": 0,
+                "n": 0,
+                "v": 0,
+                "m": 15.625
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-3",
+                "station": 2.5,
+                "x": 2.5,
+                "y": 0,
+                "n": 0,
+                "v": -1.3322676295501878e-15,
+                "m": 15.624999999999998
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-3",
+                "station": 3.125,
+                "x": 3.125,
+                "y": 0,
+                "n": 0,
+                "v": -3.1250000000000013,
+                "m": 14.648437499999998
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-3",
+                "station": 3.75,
+                "x": 3.75,
+                "y": 0,
+                "n": 0,
+                "v": -6.250000000000002,
+                "m": 11.718749999999996
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-4",
+                "station": 3.75,
+                "x": 3.75,
+                "y": 0,
+                "n": 0,
+                "v": -6.25,
+                "m": 11.718750000000002
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-4",
+                "station": 4.375,
+                "x": 4.375,
+                "y": 0,
+                "n": 0,
+                "v": -9.375,
+                "m": 6.835937500000002
+              },
+              {
+                "elementId": "steel-ipe200-report-beam-element-4",
+                "station": 5,
+                "x": 5,
+                "y": 0,
+                "n": 0,
+                "v": -12.5,
+                "m": 1.7763568394002505e-15
+              }
+            ],
+            "maxAxialForce": {
+              "type": "circular-reference"
+            },
+            "minAxialForce": {
+              "type": "circular-reference"
+            },
+            "maxShearForce": {
+              "type": "circular-reference"
+            },
+            "minShearForce": {
+              "type": "circular-reference"
+            },
+            "maxBendingMoment": {
+              "type": "circular-reference"
+            },
+            "minBendingMoment": {
+              "type": "circular-reference"
+            },
+            "maxAbsBendingMoment": {
+              "type": "circular-reference"
+            }
+          },
+          "fem": {
+            "nodeCount": 5,
+            "elementCount": 4,
+            "loadCount": 8
+          },
+          "factors": {
+            "G1": 1,
+            "LIVE": 1
+          },
+          "name": "SLE_RARE LIVE"
+        }
+      },
+      "envelopes": {
+        "loadCases": {
+          "maxAxialForce": {
+            "resultId": "G1",
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "quantity": "n",
+            "value": 0,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-1",
+              "station": 0,
+              "x": 0,
+              "y": 0,
+              "n": 0,
+              "v": 7.500000000000001,
+              "m": 0
+            }
+          },
+          "minAxialForce": {
+            "resultId": "G1",
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "quantity": "n",
+            "value": 0,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-1",
+              "station": 0,
+              "x": 0,
+              "y": 0,
+              "n": 0,
+              "v": 7.500000000000001,
+              "m": 0
+            }
+          },
+          "maxShearForce": {
+            "resultId": "G1",
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "quantity": "v",
+            "value": 7.500000000000001,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-1",
+              "station": 0,
+              "x": 0,
+              "y": 0,
+              "n": 0,
+              "v": 7.500000000000001,
+              "m": 0
+            }
+          },
+          "minShearForce": {
+            "resultId": "G1",
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "quantity": "v",
+            "value": -7.5,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-4",
+              "station": 5,
+              "x": 5,
+              "y": 0,
+              "n": 0,
+              "v": -7.5,
+              "m": 0
+            }
+          },
+          "maxBendingMoment": {
+            "resultId": "G1",
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "quantity": "m",
+            "value": 9.375,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-2",
+              "station": 2.5,
+              "x": 2.5,
+              "y": 0,
+              "n": 0,
+              "v": 0,
+              "m": 9.375
+            }
+          },
+          "minBendingMoment": {
+            "resultId": "LIVE",
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "quantity": "m",
+            "value": -6.106226635438361e-16,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-1",
+              "station": 0,
+              "x": 0,
+              "y": 0,
+              "n": 0,
+              "v": 5,
+              "m": -6.106226635438361e-16
+            }
+          },
+          "maxAbsBendingMoment": {
+            "resultId": "G1",
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "quantity": "absM",
+            "value": 9.375,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-2",
+              "station": 2.5,
+              "x": 2.5,
+              "y": 0,
+              "n": 0,
+              "v": 0,
+              "m": 9.375
+            }
+          },
+          "maxAbsVerticalDisplacement": {
+            "resultId": "G1",
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "quantity": "absUy",
+            "value": 6.828329432326198e-8,
+            "sample": {
+              "nodeId": "steel-ipe200-report-beam-node-3",
+              "station": 2.5,
+              "x": 2.5,
+              "y": 0,
+              "ux": 0,
+              "uy": -6.828329432326198e-8,
+              "rz": -1.8228266461488518e-25
+            }
+          },
+          "maxHorizontalReaction": {
+            "resultId": "G1",
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "quantity": "rx",
+            "value": 0,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 7.500000000000001,
+              "rz": 0
+            }
+          },
+          "minHorizontalReaction": {
+            "resultId": "G1",
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "quantity": "rx",
+            "value": 0,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 7.500000000000001,
+              "rz": 0
+            }
+          },
+          "maxVerticalReaction": {
+            "resultId": "G1",
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "quantity": "ry",
+            "value": 7.500000000000001,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 7.500000000000001,
+              "rz": 0
+            }
+          },
+          "minVerticalReaction": {
+            "resultId": "LIVE",
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "quantity": "ry",
+            "value": 5,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 5,
+              "rz": 6.106226635438361e-16
+            }
+          },
+          "maxSupportMomentReaction": {
+            "resultId": "G1",
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "quantity": "mrz",
+            "value": 1.7763568394002505e-15,
+            "sample": {
+              "supportId": "end-support",
+              "nodeId": "steel-ipe200-report-beam-node-5",
+              "station": 5,
+              "type": "roller",
+              "ux": 0,
+              "uy": 7.5,
+              "rz": 1.7763568394002505e-15
+            }
+          },
+          "minSupportMomentReaction": {
+            "resultId": "G1",
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "quantity": "mrz",
+            "value": 0,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 7.500000000000001,
+              "rz": 0
+            }
+          },
+          "maxAbsHorizontalReaction": {
+            "resultId": "G1",
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "quantity": "absRx",
+            "value": 0,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 7.500000000000001,
+              "rz": 0
+            }
+          },
+          "maxAbsVerticalReaction": {
+            "resultId": "G1",
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "quantity": "absRy",
+            "value": 7.500000000000001,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 7.500000000000001,
+              "rz": 0
+            }
+          },
+          "maxAbsSupportMomentReaction": {
+            "resultId": "G1",
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "quantity": "absMrz",
+            "value": 1.7763568394002505e-15,
+            "sample": {
+              "supportId": "end-support",
+              "nodeId": "steel-ipe200-report-beam-node-5",
+              "station": 5,
+              "type": "roller",
+              "ux": 0,
+              "uy": 7.5,
+              "rz": 1.7763568394002505e-15
+            }
+          }
+        },
+        "combinations": {
+          "maxAxialForce": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "n",
+            "value": 0,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-1",
+              "station": 0,
+              "x": 0,
+              "y": 0,
+              "n": 0,
+              "v": 17.25,
+              "m": 3.4416913763379853e-15
+            }
+          },
+          "minAxialForce": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "n",
+            "value": 0,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-1",
+              "station": 0,
+              "x": 0,
+              "y": 0,
+              "n": 0,
+              "v": 17.25,
+              "m": 3.4416913763379853e-15
+            }
+          },
+          "maxShearForce": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "v",
+            "value": 17.25,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-1",
+              "station": 0,
+              "x": 0,
+              "y": 0,
+              "n": 0,
+              "v": 17.25,
+              "m": 3.4416913763379853e-15
+            }
+          },
+          "minShearForce": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "v",
+            "value": -17.25,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-4",
+              "station": 5,
+              "x": 5,
+              "y": 0,
+              "n": 0,
+              "v": -17.25,
+              "m": -1.7763568394002505e-15
+            }
+          },
+          "maxBendingMoment": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "m",
+            "value": 21.5625,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-2",
+              "station": 2.5,
+              "x": 2.5,
+              "y": 0,
+              "n": 0,
+              "v": 1.7763568394002505e-15,
+              "m": 21.5625
+            }
+          },
+          "minBendingMoment": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "m",
+            "value": -1.7763568394002505e-15,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-4",
+              "station": 5,
+              "x": 5,
+              "y": 0,
+              "n": 0,
+              "v": -17.25,
+              "m": -1.7763568394002505e-15
+            }
+          },
+          "maxAbsBendingMoment": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "absM",
+            "value": 21.5625,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-2",
+              "station": 2.5,
+              "x": 2.5,
+              "y": 0,
+              "n": 0,
+              "v": 1.7763568394002505e-15,
+              "m": 21.5625
+            }
+          },
+          "maxAbsVerticalDisplacement": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "absUy",
+            "value": 1.5705157694350255e-7,
+            "sample": {
+              "nodeId": "steel-ipe200-report-beam-node-3",
+              "station": 2.5,
+              "x": 2.5,
+              "y": 0,
+              "ux": 0,
+              "uy": -1.5705157694350255e-7,
+              "rz": -3.155938670944281e-26
+            }
+          },
+          "maxHorizontalReaction": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "rx",
+            "value": 0,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 17.25,
+              "rz": -3.4416913763379853e-15
+            }
+          },
+          "minHorizontalReaction": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "rx",
+            "value": 0,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 17.25,
+              "rz": -3.4416913763379853e-15
+            }
+          },
+          "maxVerticalReaction": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "ry",
+            "value": 17.25,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 17.25,
+              "rz": -3.4416913763379853e-15
+            }
+          },
+          "minVerticalReaction": {
+            "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+            "resultType": "combination",
+            "limitState": "SLE",
+            "combinationType": "SLE_RARE",
+            "quantity": "ry",
+            "value": 12.5,
+            "sample": {
+              "supportId": "end-support",
+              "nodeId": "steel-ipe200-report-beam-node-5",
+              "station": 5,
+              "type": "roller",
+              "ux": 0,
+              "uy": 12.5,
+              "rz": 1.1102230246251565e-15
+            }
+          },
+          "maxSupportMomentReaction": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "mrz",
+            "value": 3.4416913763379853e-15,
+            "sample": {
+              "supportId": "end-support",
+              "nodeId": "steel-ipe200-report-beam-node-5",
+              "station": 5,
+              "type": "roller",
+              "ux": 0,
+              "uy": 17.25,
+              "rz": 3.4416913763379853e-15
+            }
+          },
+          "minSupportMomentReaction": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "mrz",
+            "value": -3.4416913763379853e-15,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 17.25,
+              "rz": -3.4416913763379853e-15
+            }
+          },
+          "maxAbsHorizontalReaction": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "absRx",
+            "value": 0,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 17.25,
+              "rz": -3.4416913763379853e-15
+            }
+          },
+          "maxAbsVerticalReaction": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "absRy",
+            "value": 17.25,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 17.25,
+              "rz": -3.4416913763379853e-15
+            }
+          },
+          "maxAbsSupportMomentReaction": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "absMrz",
+            "value": 3.4416913763379853e-15,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 17.25,
+              "rz": -3.4416913763379853e-15
+            }
+          }
+        },
+        "uls": {
+          "maxAxialForce": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "n",
+            "value": 0,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-1",
+              "station": 0,
+              "x": 0,
+              "y": 0,
+              "n": 0,
+              "v": 17.25,
+              "m": 3.4416913763379853e-15
+            }
+          },
+          "minAxialForce": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "n",
+            "value": 0,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-1",
+              "station": 0,
+              "x": 0,
+              "y": 0,
+              "n": 0,
+              "v": 17.25,
+              "m": 3.4416913763379853e-15
+            }
+          },
+          "maxShearForce": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "v",
+            "value": 17.25,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-1",
+              "station": 0,
+              "x": 0,
+              "y": 0,
+              "n": 0,
+              "v": 17.25,
+              "m": 3.4416913763379853e-15
+            }
+          },
+          "minShearForce": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "v",
+            "value": -17.25,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-4",
+              "station": 5,
+              "x": 5,
+              "y": 0,
+              "n": 0,
+              "v": -17.25,
+              "m": -1.7763568394002505e-15
+            }
+          },
+          "maxBendingMoment": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "m",
+            "value": 21.5625,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-2",
+              "station": 2.5,
+              "x": 2.5,
+              "y": 0,
+              "n": 0,
+              "v": 1.7763568394002505e-15,
+              "m": 21.5625
+            }
+          },
+          "minBendingMoment": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "m",
+            "value": -1.7763568394002505e-15,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-4",
+              "station": 5,
+              "x": 5,
+              "y": 0,
+              "n": 0,
+              "v": -17.25,
+              "m": -1.7763568394002505e-15
+            }
+          },
+          "maxAbsBendingMoment": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "absM",
+            "value": 21.5625,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-2",
+              "station": 2.5,
+              "x": 2.5,
+              "y": 0,
+              "n": 0,
+              "v": 1.7763568394002505e-15,
+              "m": 21.5625
+            }
+          },
+          "maxAbsVerticalDisplacement": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "absUy",
+            "value": 1.5705157694350255e-7,
+            "sample": {
+              "nodeId": "steel-ipe200-report-beam-node-3",
+              "station": 2.5,
+              "x": 2.5,
+              "y": 0,
+              "ux": 0,
+              "uy": -1.5705157694350255e-7,
+              "rz": -3.155938670944281e-26
+            }
+          },
+          "maxHorizontalReaction": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "rx",
+            "value": 0,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 17.25,
+              "rz": -3.4416913763379853e-15
+            }
+          },
+          "minHorizontalReaction": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "rx",
+            "value": 0,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 17.25,
+              "rz": -3.4416913763379853e-15
+            }
+          },
+          "maxVerticalReaction": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "ry",
+            "value": 17.25,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 17.25,
+              "rz": -3.4416913763379853e-15
+            }
+          },
+          "minVerticalReaction": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "ry",
+            "value": 17.25,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 17.25,
+              "rz": -3.4416913763379853e-15
+            }
+          },
+          "maxSupportMomentReaction": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "mrz",
+            "value": 3.4416913763379853e-15,
+            "sample": {
+              "supportId": "end-support",
+              "nodeId": "steel-ipe200-report-beam-node-5",
+              "station": 5,
+              "type": "roller",
+              "ux": 0,
+              "uy": 17.25,
+              "rz": 3.4416913763379853e-15
+            }
+          },
+          "minSupportMomentReaction": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "mrz",
+            "value": -3.4416913763379853e-15,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 17.25,
+              "rz": -3.4416913763379853e-15
+            }
+          },
+          "maxAbsHorizontalReaction": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "absRx",
+            "value": 0,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 17.25,
+              "rz": -3.4416913763379853e-15
+            }
+          },
+          "maxAbsVerticalReaction": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "absRy",
+            "value": 17.25,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 17.25,
+              "rz": -3.4416913763379853e-15
+            }
+          },
+          "maxAbsSupportMomentReaction": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "absMrz",
+            "value": 3.4416913763379853e-15,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 17.25,
+              "rz": -3.4416913763379853e-15
+            }
+          }
+        },
+        "sle": {
+          "maxAxialForce": {
+            "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+            "resultType": "combination",
+            "limitState": "SLE",
+            "combinationType": "SLE_RARE",
+            "quantity": "n",
+            "value": 0,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-1",
+              "station": 0,
+              "x": 0,
+              "y": 0,
+              "n": 0,
+              "v": 12.500000000000002,
+              "m": 1.1102230246251565e-15
+            }
+          },
+          "minAxialForce": {
+            "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+            "resultType": "combination",
+            "limitState": "SLE",
+            "combinationType": "SLE_RARE",
+            "quantity": "n",
+            "value": 0,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-1",
+              "station": 0,
+              "x": 0,
+              "y": 0,
+              "n": 0,
+              "v": 12.500000000000002,
+              "m": 1.1102230246251565e-15
+            }
+          },
+          "maxShearForce": {
+            "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+            "resultType": "combination",
+            "limitState": "SLE",
+            "combinationType": "SLE_RARE",
+            "quantity": "v",
+            "value": 12.500000000000002,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-1",
+              "station": 0,
+              "x": 0,
+              "y": 0,
+              "n": 0,
+              "v": 12.500000000000002,
+              "m": 1.1102230246251565e-15
+            }
+          },
+          "minShearForce": {
+            "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+            "resultType": "combination",
+            "limitState": "SLE",
+            "combinationType": "SLE_RARE",
+            "quantity": "v",
+            "value": -12.5,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-4",
+              "station": 5,
+              "x": 5,
+              "y": 0,
+              "n": 0,
+              "v": -12.5,
+              "m": 1.7763568394002505e-15
+            }
+          },
+          "maxBendingMoment": {
+            "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+            "resultType": "combination",
+            "limitState": "SLE",
+            "combinationType": "SLE_RARE",
+            "quantity": "m",
+            "value": 15.625,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-2",
+              "station": 2.5,
+              "x": 2.5,
+              "y": 0,
+              "n": 0,
+              "v": 0,
+              "m": 15.625
+            }
+          },
+          "minBendingMoment": {
+            "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+            "resultType": "combination",
+            "limitState": "SLE",
+            "combinationType": "SLE_RARE",
+            "quantity": "m",
+            "value": 1.1102230246251565e-15,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-1",
+              "station": 0,
+              "x": 0,
+              "y": 0,
+              "n": 0,
+              "v": 12.500000000000002,
+              "m": 1.1102230246251565e-15
+            }
+          },
+          "maxAbsBendingMoment": {
+            "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+            "resultType": "combination",
+            "limitState": "SLE",
+            "combinationType": "SLE_RARE",
+            "quantity": "absM",
+            "value": 15.625,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-2",
+              "station": 2.5,
+              "x": 2.5,
+              "y": 0,
+              "n": 0,
+              "v": 0,
+              "m": 15.625
+            }
+          },
+          "maxAbsVerticalDisplacement": {
+            "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+            "resultType": "combination",
+            "limitState": "SLE",
+            "combinationType": "SLE_RARE",
+            "quantity": "absUy",
+            "value": 1.1380549053876997e-7,
+            "sample": {
+              "nodeId": "steel-ipe200-report-beam-node-3",
+              "station": 2.5,
+              "x": 2.5,
+              "y": 0,
+              "ux": 0,
+              "uy": -1.1380549053876997e-7,
+              "rz": 1.4218047839961044e-24
+            }
+          },
+          "maxHorizontalReaction": {
+            "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+            "resultType": "combination",
+            "limitState": "SLE",
+            "combinationType": "SLE_RARE",
+            "quantity": "rx",
+            "value": 0,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 12.500000000000002,
+              "rz": -1.1102230246251565e-15
+            }
+          },
+          "minHorizontalReaction": {
+            "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+            "resultType": "combination",
+            "limitState": "SLE",
+            "combinationType": "SLE_RARE",
+            "quantity": "rx",
+            "value": 0,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 12.500000000000002,
+              "rz": -1.1102230246251565e-15
+            }
+          },
+          "maxVerticalReaction": {
+            "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+            "resultType": "combination",
+            "limitState": "SLE",
+            "combinationType": "SLE_RARE",
+            "quantity": "ry",
+            "value": 12.500000000000002,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 12.500000000000002,
+              "rz": -1.1102230246251565e-15
+            }
+          },
+          "minVerticalReaction": {
+            "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+            "resultType": "combination",
+            "limitState": "SLE",
+            "combinationType": "SLE_RARE",
+            "quantity": "ry",
+            "value": 12.5,
+            "sample": {
+              "supportId": "end-support",
+              "nodeId": "steel-ipe200-report-beam-node-5",
+              "station": 5,
+              "type": "roller",
+              "ux": 0,
+              "uy": 12.5,
+              "rz": 1.1102230246251565e-15
+            }
+          },
+          "maxSupportMomentReaction": {
+            "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+            "resultType": "combination",
+            "limitState": "SLE",
+            "combinationType": "SLE_RARE",
+            "quantity": "mrz",
+            "value": 1.1102230246251565e-15,
+            "sample": {
+              "supportId": "end-support",
+              "nodeId": "steel-ipe200-report-beam-node-5",
+              "station": 5,
+              "type": "roller",
+              "ux": 0,
+              "uy": 12.5,
+              "rz": 1.1102230246251565e-15
+            }
+          },
+          "minSupportMomentReaction": {
+            "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+            "resultType": "combination",
+            "limitState": "SLE",
+            "combinationType": "SLE_RARE",
+            "quantity": "mrz",
+            "value": -1.1102230246251565e-15,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 12.500000000000002,
+              "rz": -1.1102230246251565e-15
+            }
+          },
+          "maxAbsHorizontalReaction": {
+            "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+            "resultType": "combination",
+            "limitState": "SLE",
+            "combinationType": "SLE_RARE",
+            "quantity": "absRx",
+            "value": 0,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 12.500000000000002,
+              "rz": -1.1102230246251565e-15
+            }
+          },
+          "maxAbsVerticalReaction": {
+            "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+            "resultType": "combination",
+            "limitState": "SLE",
+            "combinationType": "SLE_RARE",
+            "quantity": "absRy",
+            "value": 12.500000000000002,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 12.500000000000002,
+              "rz": -1.1102230246251565e-15
+            }
+          },
+          "maxAbsSupportMomentReaction": {
+            "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+            "resultType": "combination",
+            "limitState": "SLE",
+            "combinationType": "SLE_RARE",
+            "quantity": "absMrz",
+            "value": 1.1102230246251565e-15,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 12.500000000000002,
+              "rz": -1.1102230246251565e-15
+            }
+          }
+        },
+        "all": {
+          "maxAxialForce": {
+            "resultId": "G1",
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "quantity": "n",
+            "value": 0,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-1",
+              "station": 0,
+              "x": 0,
+              "y": 0,
+              "n": 0,
+              "v": 7.500000000000001,
+              "m": 0
+            }
+          },
+          "minAxialForce": {
+            "resultId": "G1",
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "quantity": "n",
+            "value": 0,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-1",
+              "station": 0,
+              "x": 0,
+              "y": 0,
+              "n": 0,
+              "v": 7.500000000000001,
+              "m": 0
+            }
+          },
+          "maxShearForce": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "v",
+            "value": 17.25,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-1",
+              "station": 0,
+              "x": 0,
+              "y": 0,
+              "n": 0,
+              "v": 17.25,
+              "m": 3.4416913763379853e-15
+            }
+          },
+          "minShearForce": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "v",
+            "value": -17.25,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-4",
+              "station": 5,
+              "x": 5,
+              "y": 0,
+              "n": 0,
+              "v": -17.25,
+              "m": -1.7763568394002505e-15
+            }
+          },
+          "maxBendingMoment": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "m",
+            "value": 21.5625,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-2",
+              "station": 2.5,
+              "x": 2.5,
+              "y": 0,
+              "n": 0,
+              "v": 1.7763568394002505e-15,
+              "m": 21.5625
+            }
+          },
+          "minBendingMoment": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "m",
+            "value": -1.7763568394002505e-15,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-4",
+              "station": 5,
+              "x": 5,
+              "y": 0,
+              "n": 0,
+              "v": -17.25,
+              "m": -1.7763568394002505e-15
+            }
+          },
+          "maxAbsBendingMoment": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "absM",
+            "value": 21.5625,
+            "sample": {
+              "elementId": "steel-ipe200-report-beam-element-2",
+              "station": 2.5,
+              "x": 2.5,
+              "y": 0,
+              "n": 0,
+              "v": 1.7763568394002505e-15,
+              "m": 21.5625
+            }
+          },
+          "maxAbsVerticalDisplacement": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "absUy",
+            "value": 1.5705157694350255e-7,
+            "sample": {
+              "nodeId": "steel-ipe200-report-beam-node-3",
+              "station": 2.5,
+              "x": 2.5,
+              "y": 0,
+              "ux": 0,
+              "uy": -1.5705157694350255e-7,
+              "rz": -3.155938670944281e-26
+            }
+          },
+          "maxHorizontalReaction": {
+            "resultId": "G1",
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "quantity": "rx",
+            "value": 0,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 7.500000000000001,
+              "rz": 0
+            }
+          },
+          "minHorizontalReaction": {
+            "resultId": "G1",
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "quantity": "rx",
+            "value": 0,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 7.500000000000001,
+              "rz": 0
+            }
+          },
+          "maxVerticalReaction": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "ry",
+            "value": 17.25,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 17.25,
+              "rz": -3.4416913763379853e-15
+            }
+          },
+          "minVerticalReaction": {
+            "resultId": "LIVE",
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "quantity": "ry",
+            "value": 5,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 5,
+              "rz": 6.106226635438361e-16
+            }
+          },
+          "maxSupportMomentReaction": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "mrz",
+            "value": 3.4416913763379853e-15,
+            "sample": {
+              "supportId": "end-support",
+              "nodeId": "steel-ipe200-report-beam-node-5",
+              "station": 5,
+              "type": "roller",
+              "ux": 0,
+              "uy": 17.25,
+              "rz": 3.4416913763379853e-15
+            }
+          },
+          "minSupportMomentReaction": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "mrz",
+            "value": -3.4416913763379853e-15,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 17.25,
+              "rz": -3.4416913763379853e-15
+            }
+          },
+          "maxAbsHorizontalReaction": {
+            "resultId": "G1",
+            "resultType": "load-case",
+            "limitState": null,
+            "combinationType": null,
+            "quantity": "absRx",
+            "value": 0,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 7.500000000000001,
+              "rz": 0
+            }
+          },
+          "maxAbsVerticalReaction": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "absRy",
+            "value": 17.25,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 17.25,
+              "rz": -3.4416913763379853e-15
+            }
+          },
+          "maxAbsSupportMomentReaction": {
+            "resultId": "steel-ipe200-report-ULS-LIVE",
+            "resultType": "combination",
+            "limitState": "ULS",
+            "combinationType": "ULS_STR_GEO",
+            "quantity": "absMrz",
+            "value": 3.4416913763379853e-15,
+            "sample": {
+              "supportId": "start-support",
+              "nodeId": "steel-ipe200-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "ux": 0,
+              "uy": 17.25,
+              "rz": -3.4416913763379853e-15
+            }
+          }
+        }
+      },
+      "metadata": {
+        "generatedBy": "SingleBeamAnalysis"
+      }
+    }
+  },
+  "verification": {
+    "applicationId": "steel-frames",
+    "status": "ok",
+    "summary": "Steel member base resistance verification from FEM beam results.",
+    "outputs": {
+      "stationResultCount": 12,
+      "governing": {
+        "utilizationRatio": 0.000067,
+        "demand": 17.25,
+        "capacity": 257053.660351,
+        "metadata": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "station": 0,
+          "limitState": "ULS",
+          "governingCheckId": "steel-shear"
+        }
+      }
+    },
+    "warnings": [
+      "Section classification and local buckling are not included in this first steel verification.",
+      "Lateral-torsional buckling and member stability are not included yet."
+    ],
+    "assumptions": [],
+    "metadata": {
+      "code": "NTC2018",
+      "memberId": "steel-ipe200-report",
+      "governingCheckId": "steel-shear"
+    },
+    "utilizationRatio": 0.000067,
+    "demand": 17.25,
+    "capacity": 257053.660351,
+    "checks": [
+      {
+        "id": "steel-bending",
+        "description": "Elastic bending resistance verification",
+        "demand": 0,
+        "capacity": 50887170,
+        "utilizationRatio": 0,
+        "ok": true,
+        "metadata": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "station": 0,
+          "limitState": "ULS",
+          "fyd": 261.9,
+          "gammaM0": 1.05
+        }
+      },
+      {
+        "id": "steel-shear",
+        "description": "Shear resistance verification",
+        "demand": 17.25,
+        "capacity": 257053.660351,
+        "utilizationRatio": 0.000067,
+        "ok": true,
+        "metadata": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "station": 0,
+          "limitState": "ULS",
+          "fyd": 261.9,
+          "shearArea": 1700
+        }
+      },
+      {
+        "id": "steel-axial",
+        "description": "Axial resistance verification",
+        "demand": 0,
+        "capacity": 745891.2,
+        "utilizationRatio": 0,
+        "ok": true,
+        "metadata": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "station": 0,
+          "limitState": "ULS",
+          "fyd": 261.9,
+          "area": 2848
+        }
+      },
+      {
+        "id": "steel-axial-bending-interaction",
+        "description": "Linear axial-bending interaction",
+        "demand": 0,
+        "capacity": 1,
+        "utilizationRatio": 0,
+        "ok": true,
+        "metadata": {
+          "resultId": "steel-ipe200-report-ULS-LIVE",
+          "resultType": "combination",
+          "station": 0,
+          "limitState": "ULS",
+          "axialUtilizationRatio": 0,
+          "bendingUtilizationRatio": 0
+        }
+      }
+    ]
+  },
+  "governing": {
+    "verification": {
+      "utilizationRatio": 0.000067,
+      "demand": 17.25,
+      "capacity": 257053.660351,
+      "metadata": {
+        "resultId": "steel-ipe200-report-ULS-LIVE",
+        "resultType": "combination",
+        "station": 0,
+        "limitState": "ULS",
+        "governingCheckId": "steel-shear"
+      }
+    },
+    "utilizationRatio": 0.000067,
+    "checkId": "steel-shear",
+    "ulsMoment": {
+      "resultId": "steel-ipe200-report-ULS-LIVE",
+      "resultType": "combination",
+      "limitState": "ULS",
+      "combinationType": "ULS_STR_GEO",
+      "quantity": "absM",
+      "value": 21.5625,
+      "sample": {
+        "elementId": "steel-ipe200-report-beam-element-2",
+        "station": 2.5,
+        "x": 2.5,
+        "y": 0,
+        "n": 0,
+        "v": 1.7763568394002505e-15,
+        "m": 21.5625
+      }
+    },
+    "sleDeflection": {
+      "resultId": "steel-ipe200-report-SLE_RARE-LIVE",
+      "resultType": "combination",
+      "limitState": "SLE",
+      "combinationType": "SLE_RARE",
+      "quantity": "absUy",
+      "value": 1.1380549053876997e-7,
+      "sample": {
+        "nodeId": "steel-ipe200-report-beam-node-3",
+        "station": 2.5,
+        "x": 2.5,
+        "y": 0,
+        "ux": 0,
+        "uy": -1.1380549053876997e-7,
+        "rz": 1.4218047839961044e-24
+      }
+    }
+  },
+  "warnings": [
+    "Section classification and local buckling are not included in this first steel verification.",
+    "Lateral-torsional buckling and member stability are not included yet."
+  ],
+  "assumptions": [],
+  "metadata": {
+    "generatedBy": "BeamReportBuilder"
+  }
+}

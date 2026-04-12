@@ -8,6 +8,7 @@ import {
   TimberConcreteCompositeBeamApplication,
   TimberConcreteCompositeBeamModel,
   TimberConcreteCompositeBeamSectionProvider,
+  TimberConcreteCompositeBeamVerification,
   createNTC2018ConcreteMaterial,
   createNTC2018ReinforcementSteelMaterial,
   createNTC2018TimberMaterial,
@@ -200,8 +201,28 @@ test("timber-concrete verification can use FEM diagrams instead of closed-form a
 
   const result = new TimberConcreteCompositeBeamApplication().run({ model });
 
-  assert.equal(result.metadata.actionSource, "fem-diagrams");
+  assert.equal(result.metadata.actionSource, "fem-section-actions");
   assert.ok(result.outputs.bendingEd > 0);
   assert.ok(result.outputs.shearEd > 0);
   assert.ok(result.outputs.deflectionSle > 0);
+  assert.ok(result.outputs.sectionActionVerification.stationResultCount > 0);
+  assert.ok(
+    result.checks.some((check) => check.metadata?.method === "gelfi-gamma-method-section-actions"),
+  );
+});
+
+test("timber-concrete verification exposes standalone section-action adapter", () => {
+  const model = createReferenceModel();
+  const result = new TimberConcreteCompositeBeamVerification().verifySectionActions({
+    vEd: (model.loads.ulsLineLoad * model.span) / 8,
+    mEd: (model.loads.ulsLineLoad * model.span ** 2) / 32,
+    context: {
+      model,
+      units,
+    },
+  });
+
+  assert.equal(result.status, "ok");
+  assert.ok(result.checks.some((check) => check.id === "connector"));
+  assert.equal(result.metadata.method, "gelfi-gamma-method-section-actions");
 });

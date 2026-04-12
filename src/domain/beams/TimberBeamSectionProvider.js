@@ -161,6 +161,7 @@ export class TimberBeamSectionProvider {
     const finalStiffness =
       context.deformationState === "final" ||
       context.serviceCombination === "final" ||
+      context.serviceCombination === "quasi-permanent" ||
       this.useFinalStiffness;
     const stiffnessReduction =
       finalStiffness && Number.isFinite(this.kdef) ? 1 + this.kdef : 1;

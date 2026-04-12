@@ -4,6 +4,7 @@ import { MasonryRingBeamApplication } from "./masonry-ring-beams/index.js";
 import { MicropileBromsApplication } from "./micropiles-broms/index.js";
 import { RCrackedDeflectionApplication } from "./rc-cracked-deflection/index.js";
 import { ReinforcedConcreteSectionApplication } from "./reinforced-concrete-sections/index.js";
+import { SingleBeamDesignApplication } from "./single-beam-design/index.js";
 import { SteelFrameApplication } from "./steel-frames/index.js";
 import { TimberConcreteCompositeBeamApplication } from "./timber-concrete-composite-beams/index.js";
 import { TimberXlamCompositeBeamApplication } from "./timber-xlam-composite-beams/index.js";
@@ -23,6 +24,7 @@ export { RCrackedDeflectionApplication } from "./rc-cracked-deflection/index.js"
 export { CrackedSectionBeamModel } from "./rc-cracked-deflection/index.js";
 export { CrackedSectionDeflectionAnalysis } from "./rc-cracked-deflection/index.js";
 export { ReinforcedConcreteSectionApplication } from "./reinforced-concrete-sections/index.js";
+export { ReinforcedConcreteBeamVerification } from "./reinforced-concrete-sections/index.js";
 export { RCBiaxialDomainBuilder } from "./reinforced-concrete-sections/index.js";
 export { ReinforcedConcreteSectionModel } from "./reinforced-concrete-sections/index.js";
 export { RCServiceStressSolver } from "./reinforced-concrete-sections/index.js";
@@ -32,6 +34,10 @@ export { ReinforcedConcreteSectionVerification } from "./reinforced-concrete-sec
 export { RCSectionStateIntegrator } from "./reinforced-concrete-sections/index.js";
 export { SectionFiberDiscretizer } from "./reinforced-concrete-sections/index.js";
 export { StrainField } from "./reinforced-concrete-sections/index.js";
+export { SingleBeamDesignApplication } from "./single-beam-design/index.js";
+export { SingleBeamDesignModel } from "./single-beam-design/index.js";
+export { BeamReportBuilder } from "./single-beam-design/index.js";
+export { createBeamReportArtifacts } from "./single-beam-design/index.js";
 export { SteelFrameApplication } from "./steel-frames/index.js";
 export { TimberConcreteCompositeBeamApplication } from "./timber-concrete-composite-beams/index.js";
 export { TimberConcreteCompositeBeamModel } from "./timber-concrete-composite-beams/index.js";
@@ -54,6 +60,7 @@ export { XlamOutOfPlanePanelVerification } from "./xlam-panels-out-of-plane/inde
 
 export function createDefaultApplicationRegistry() {
   return new ApplicationRegistry([
+    new SingleBeamDesignApplication(),
     new SteelFrameApplication(),
     new MasonryRingBeamApplication(),
     new ReinforcedConcreteSectionApplication(),

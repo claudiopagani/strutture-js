@@ -1,4 +1,5 @@
 export { ReinforcedConcreteSectionApplication } from "./ReinforcedConcreteSectionApplication.js";
+export { ReinforcedConcreteBeamVerification } from "./checks/ReinforcedConcreteBeamVerification.js";
 export { ReinforcedConcreteSectionVerification } from "./checks/ReinforcedConcreteSectionVerification.js";
 export { ReinforcedConcreteSectionModel } from "./models/ReinforcedConcreteSectionModel.js";
 export {

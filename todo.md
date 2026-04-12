@@ -7,7 +7,9 @@ Obiettivo generale:
 * mantenere separati i motori di calcolo: algebra, FEM, analisi di sezione, combinazioni normative, verifiche di materiale;
 * usare il modulo trave singola come orchestratore FEM, non come verificatore normativo;
 * permettere ai moduli specialistici di fornire rigidezze, resistenze e verifiche tramite interfacce comuni;
-* restituire sempre risultati leggibili: combinazioni usate, rigidezze adottate, reazioni, spostamenti, diagrammi `N`, `V`, `M`, inviluppi e verifiche governanti.
+* restituire sempre risultati leggibili: combinazioni usate, rigidezze adottate, reazioni, spostamenti, diagrammi `N`, `V`, `M`, inviluppi e verifiche governanti;
+* mantenere ogni risultato serializzabile in JSON, cosi da poterlo usare senza attrito in report, CLI, API e futuro frontend React;
+* produrre report tecnici in due forme: JSON completo per macchine/interfacce e Markdown leggibile per revisione e consegna.
 
 ## Principio architetturale principale
 
@@ -25,6 +27,92 @@ Il modulo trave non deve conoscere le formule normative dei materiali. Deve solo
 6. restituire risultati e metadata sufficienti per verifiche successive.
 
 Questo e essenziale per sezioni composte e legno: se `EI` cambia tra SLU e SLE, o se `kmod` dipende dalla durata del carico governante, la combinazione non puo essere ottenuta sommando semplicemente i risultati dei casi singoli. La combinazione deve essere risolta con i carichi combinati e con la rigidezza coerente con il suo contesto.
+
+## Contratti architetturali da rispettare
+
+Questa fase deve consolidare una regola importante: i moduli di verifica devono funzionare sia da soli sia insieme al modulo di trave semplice.
+
+### Verificatori standalone
+
+Ogni verificatore specialistico deve poter essere usato anche senza `SingleBeamAnalysis`.
+
+Modalita standalone attesa:
+
+* riceve un modello applicativo specifico o azioni di progetto gia note;
+* esegue le verifiche proprie del materiale o della tipologia strutturale;
+* restituisce sempre un `VerificationResult` serializzabile;
+* dichiara assunzioni, warning, coefficienti normativi e limiti del metodo;
+* non dipende da DOM, React, canvas, file system o stato globale.
+
+Questa modalita serve per:
+
+* verifiche di sola sezione;
+* workflow storici gia presenti, come legno-calcestruzzo e legno-XLAM;
+* test numerici contro workbook o formule chiuse;
+* futuri strumenti frontend che vogliono verificare una sezione o un componente senza costruire una trave FEM.
+
+### Verificatori collegati alla trave semplice
+
+Ogni verificatore che puo usare una trave FEM deve esporre o adattarsi al contratto:
+
+```js
+verifySectionActions({
+  nEd,
+  vEd,
+  mEd,
+  x,
+  context
+})
+```
+
+Oppure deve avere un wrapper che usa `BeamSectionActionVerifier`.
+
+Modalita integrata attesa:
+
+* `SingleBeamAnalysis` calcola casi, combinazioni, diagrammi e inviluppi;
+* il verificatore legge `analysisResult`, `sectionProperties`, metadata di combinazione e unita;
+* le verifiche sono eseguite sulle stazioni FEM o su stazioni critiche derivate;
+* il risultato aggrega la verifica governante e mantiene il riferimento a combinazione, stazione e stato limite;
+* il modulo trave non conosce formule normative del materiale.
+
+Da fare:
+
+* applicare lo stesso schema gia usato per legno e acciaio anche ai moduli composti: completato in prima versione per legno-calcestruzzo e legno-XLAM con adapter `verifySectionActions`;
+* creare un verificatore o adapter per travi in c.a. che usi le azioni FEM almeno per verifiche base `N-M`: completato in prima versione;
+* rendere configurabile la densita di campionamento delle stazioni da verificare;
+* distinguere stazioni informative, stazioni critiche e stazioni utente.
+
+### Preparazione al frontend React
+
+Il motore deve restare indipendente dal frontend. React dovra consumare DTO/JSON, non classi con stato nascosto.
+
+Regole da mantenere:
+
+* input e output devono essere oggetti serializzabili;
+* ogni risultato deve avere `id`, `status`, `summary`, `outputs`, `checks`, `warnings`, `assumptions`, `metadata`;
+* le unita devono essere sempre esplicite negli input nuovi e nei risultati;
+* i report devono essere generati da funzioni pure o classi senza dipendenza UI;
+* i diagrammi devono essere restituiti come array di punti, non come immagini;
+* i messaggi destinati all'utente devono essere gia pronti per UI: niente stack trace grezzi nei risultati ordinari;
+* i cataloghi materiali/sezioni devono poter alimentare select, form e validazioni lato frontend;
+* gli errori bloccanti devono restare eccezioni; le condizioni progettuali discutibili devono diventare `warnings`.
+
+DTO minimi da stabilizzare:
+
+* `BeamModelInput`;
+* `BeamLoadInput`;
+* `BeamCombinationInput`;
+* `BeamAnalysisResult`;
+* `BeamVerificationResult`;
+* `BeamReport`.
+
+Completato in prima versione:
+
+* `SingleBeamDesignModel` serializza l'input applicativo senza funzioni o istanze non gestibili dal frontend;
+* `BeamReport` contiene modello, analisi, verifiche, inviluppi, warning, assunzioni e metadata in JSON serializzabile;
+* `BeamReportArtifact` espone JSON e Markdown come DTO `{ kind, format, fileName, mediaType, content, metadata }`;
+* il contratto minimo e documentato in `docs/beam-report-dto.md`;
+* la scrittura su file resta fuori dal core e avviene con `npm run example:beam-reports:write`.
 
 ## Stato attuale dei moduli
 
@@ -448,7 +536,7 @@ Completato:
 
 Da fare:
 
-* applicare lo stesso contratto ai moduli composti;
+* applicare lo stesso contratto ai moduli composti: completato in prima versione per legno-calcestruzzo e legno-XLAM;
 * distinguere stazioni critiche da stazioni solo informative;
 * rendere configurabile la densita di campionamento richiesta dalle verifiche;
 * separare meglio verifiche di sezione e verifiche globali, come freccia e vibrazioni.
@@ -535,6 +623,8 @@ Completato:
 * usare `SingleBeamAnalysis` per ottenere diagrammi e spostamenti in un test di integrazione;
 * mantenere un test di regressione sul workbook esistente.
 * usare opzionalmente i diagrammi FEM per `M`, `V` e frecce quando `model.analysisResult` e disponibile.
+* esporre un adapter `verifySectionActions` per verifiche ULS lungo le stazioni FEM, mantenendo il workflow standalone da workbook.
+* collegare l'adapter al workflow `SingleBeamDesignApplication` tramite input `{ model, analysisResult }`, senza mutare il modello applicativo.
 
 Da fare:
 
@@ -550,6 +640,8 @@ Completato:
 * gestione base di stato limite e rigidezza istantanea/finale;
 * test di collegamento al modulo trave.
 * uso opzionale dei diagrammi FEM per `M`, `V` e frecce quando `model.analysisResult` e disponibile.
+* esporre un adapter `verifySectionActions` per verifiche ULS lungo le stazioni FEM, mantenendo il workflow standalone da workbook.
+* collegare l'adapter al workflow `SingleBeamDesignApplication` tramite input `{ model, analysisResult }`, senza mutare il modello applicativo.
 
 Da fare:
 
@@ -638,6 +730,105 @@ Idee da mantenere:
 
 ## Roadmap operativa consigliata
 
+### Fase corrente - MVP esempi, verifiche e report
+
+Stato: avviata.
+
+Obiettivo:
+
+* arrivare in poco tempo a una serie di esempi completi di travi semplici;
+* coprire materiali e sezioni diverse;
+* generare per ogni esempio un report JSON completo e un report Markdown leggibile;
+* usare gli esempi come base futura per CLI, API e frontend React.
+
+Architettura consigliata:
+
+* creare un orchestratore applicativo dedicato, per esempio `SingleBeamDesignApplication`;
+* non caricare questa responsabilita su `SingleBeamAnalysis`, che deve restare il motore FEM della trave;
+* creare un modello applicativo serializzabile, per esempio `SingleBeamDesignModel`;
+* creare un builder di report separato, per esempio `BeamReportBuilder`;
+* tenere separati:
+  * analisi FEM;
+  * provider di rigidezza;
+  * verificatore materiale;
+  * report;
+  * cataloghi/preset normativi.
+
+Contratto operativo del workflow:
+
+```js
+{
+  modelDescription,
+  normalizedInput,
+  analysisResult,
+  verificationResult,
+  report: {
+    json,
+    markdown
+  }
+}
+```
+
+Report JSON:
+
+* deve contenere input normalizzati, unita, combinazioni, risultati FEM, verifiche, warning e assunzioni;
+* deve essere stabile e consumabile da test, API e frontend;
+* deve evitare oggetti ciclici o istanze non serializzabili;
+* deve conservare riferimenti a combinazione governante, stazione governante e verifica governante.
+
+Report Markdown:
+
+* deve essere generato dal JSON o dagli stessi DTO del JSON;
+* deve includere descrizione del modello, schema statico, materiali, sezione, carichi e combinazioni;
+* deve riportare rigidezze adottate per combinazione, reazioni, spostamenti, inviluppi e verifiche;
+* deve elencare esplicitamente assunzioni, warning e limiti del metodo;
+* non deve contenere logica di calcolo.
+
+Esempi prioritari da creare:
+
+1. trave in legno massiccio C24, sezione rettangolare, appoggio-appoggio, carichi `G1`, `G2`, `Qk`;
+2. trave in legno lamellare GL24h, sezione rettangolare alta, controllo freccia piu evidente;
+3. trave in acciaio S275 con profilo IPE, appoggio-appoggio, verifiche base a flessione, taglio, assiale e interazione;
+4. mensola in acciaio S355 con profilo HEA/IPE e carico puntuale in estremita;
+5. trave in c.a. C25/30 + B450C con sezione rettangolare armata, per ora analisi elastica non fessurata e report con limiti dichiarati;
+6. trave composta legno-calcestruzzo usando il provider context-aware e i diagrammi FEM;
+7. trave composta legno-XLAM usando il provider context-aware e combinazioni SLE istantanea/finale;
+8. striscia XLAM come trave Timoshenko, dopo aver completato il provider dedicato.
+
+Priorita verifiche:
+
+1. legno semplice: chiudere il workflow end-to-end con flessione, taglio, freccia istantanea e freccia finale;
+2. acciaio: consolidare verifiche base e reportare chiaramente che instabilita e classificazione non sono ancora incluse;
+3. composti legno-calcestruzzo e legno-XLAM: mantenere i workflow storici standalone, ma aggiungere adapter piu coerenti con `verifySectionActions`: completato in prima versione;
+4. c.a.: usare subito il provider elastico per esempi di analisi, poi aggiungere verifiche di sezione da azioni FEM;
+5. c.a. fessurato: lasciarlo dopo il primo pacchetto di esempi/report, perche e il blocco con complessita maggiore.
+
+Criteri di accettazione per ogni esempio:
+
+* il modello gira senza eccezioni;
+* genera almeno una combinazione SLU e una SLE quando applicabile;
+* produce reazioni, spostamenti, diagrammi e inviluppi;
+* produce un report JSON serializzabile;
+* produce un report Markdown leggibile;
+* indica verifica governante, combinazione governante e stazione governante quando disponibili;
+* contiene warning chiari per le verifiche non ancora implementate;
+* ha almeno un test automatico leggero di regressione.
+
+Cose mancanti per chiudere questa fase:
+
+* creare `SingleBeamDesignApplication` o equivalente: completato in prima versione;
+* creare `SingleBeamDesignModel` o DTO equivalente: completato in prima versione;
+* creare `BeamReportBuilder`: completato in prima versione;
+* aggiungere script esempio, per esempio `npm run example:beam-reports`: completato con tutti gli esempi MVP;
+* aggiungere script di esportazione file JSON/Markdown: completato con `npm run example:beam-reports:write`;
+* aggiungere fixture esempi in una cartella dedicata: completato in prima versione con `examples/beam-report-fixtures.js`;
+* aggiungere test sui report JSON/Markdown: completato in prima versione per legno e acciaio;
+* completare inviluppi di reazione e stazioni utente: completato in prima versione;
+* completare freccia finale nel workflow legno semplice: completato in prima versione tramite combinazioni quasi permanenti/finali e check dedicato;
+* portare i composti verso il contratto comune di verifica lungo trave: completato in prima versione con adapter `verifySectionActions` per legno-calcestruzzo e legno-XLAM, usando `BeamSectionActionVerifier` quando e disponibile `analysisResult`;
+* creare una prima verifica c.a. da azioni FEM o dichiarare esplicitamente nel report che il c.a. e solo analisi elastica in questa fase: completato in prima versione per verifica ULS uniaxiale `N-M`;
+* stabilizzare i DTO pensati per il futuro frontend React: completato in prima versione con documento DTO e artefatti report JSON/Markdown.
+
 ### Fase 1 - Chiudere il ponte normativo
 
 Stato: completata per NTC 2018.
@@ -690,7 +881,7 @@ Stato: avviata; inviluppi principali e interfaccia comune di verifica implementa
 
 1. aggiungere inviluppi a `SingleBeamAnalysis`: completato in prima versione;
 2. definire `verifySectionActions`: completato in prima versione;
-3. applicare verifiche a tutte le stazioni FEM o a stazioni critiche: avviato per legno semplice;
+3. applicare verifiche a tutte le stazioni FEM o a stazioni critiche: completato in prima versione per legno semplice, acciaio, c.a. `N-M`, legno-calcestruzzo e legno-XLAM;
 4. restituire verifiche governanti.
 
 Risultato atteso:
@@ -736,7 +927,10 @@ Ogni nuovo modulo dovrebbe:
 * non duplicare formule FEM;
 * non incorporare logica normativa nel core trave;
 * restituire warning chiari quando un calcolo e fuori dominio;
-* permettere di sostituire provider e verificatori senza cambiare il modulo trave.
+* permettere di sostituire provider e verificatori senza cambiare il modulo trave;
+* funzionare, quando possibile, sia come modulo standalone sia come modulo collegato a `SingleBeamAnalysis`;
+* produrre risultati serializzabili e stabili per un futuro frontend React;
+* separare calcolo, verifica, report e presentazione grafica.
 
 ## Checklist sintetica
 
@@ -752,18 +946,35 @@ Completato:
 * workflow legno-calcestruzzo;
 * workflow legno-XLAM;
 * sezione e pannello XLAM;
-* cataloghi/materiali/azioni NTC di base.
+* cataloghi/materiali/azioni NTC di base;
+* adapter NTC 2018 per combinazioni di trave semplice;
+* provider elastico legno semplice;
+* provider elastico acciaio da profili;
+* provider c.a. per rigidezza lorda e trasformata non fessurata;
+* provider context-aware per legno-calcestruzzo;
+* provider context-aware per legno-XLAM;
+* interfaccia `verifySectionActions` e helper `BeamSectionActionVerifier`;
+* verifiche base legno semplice da azioni FEM;
+* verifiche base acciaio da azioni FEM;
+* verifiche base composte legno-calcestruzzo e legno-XLAM da azioni FEM tramite adapter `verifySectionActions`;
+* inviluppi principali di `N`, `V`, `M` e freccia.
 
 Da fare a breve:
 
-* applicare `verifySectionActions` ai moduli composti;
-* provider elastico per acciaio;
-* provider RC iniziale per rigidezza lorda/trasformata.
+* creare orchestratore applicativo per esempi completi di trave semplice;
+* creare report JSON e Markdown: completato in prima versione;
+* aggiungere esempi legno C24, legno lamellare, acciaio IPE, acciaio mensola, c.a. elastico, legno-calcestruzzo, legno-XLAM: completato in prima versione;
+* applicare `verifySectionActions` o adapter equivalenti ai moduli composti: completato in prima versione per legno-calcestruzzo e legno-XLAM;
+* completare freccia finale nel workflow legno semplice: completato in prima versione;
+* aggiungere inviluppi di reazione e stazioni utente: completato in prima versione;
+* stabilizzare DTO serializzabili per futuro frontend React: completato in prima versione con `SingleBeamDesignModel`, `BeamReport`, `BeamReportArtifact` e `docs/beam-report-dto.md`;
+* aggiungere test automatici sui report e sugli esempi: completato in prima versione.
 
 Da fare dopo:
 
-* acciaio;
-* c.a. fessurato;
+* ogni verifica avanzata deve essere discussa e approvata prima dell'implementazione, con campo di applicazione, assunzioni, formule e test attesi;
+* verifiche acciaio avanzate: instabilita flesso-torsionale, aste compresse, classificazione sezione;
+* completare verifiche c.a. avanzate da azioni FEM: taglio, fessurazione, esercizio e deflessioni fessurate;
 * vibrazioni XLAM;
 * incendio XLAM;
 * sistemi misti acciaio-calcestruzzo;

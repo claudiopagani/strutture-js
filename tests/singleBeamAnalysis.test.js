@@ -173,6 +173,28 @@ test("single beam analysis returns governing envelopes across combinations", () 
   assert.equal(result.envelopes.uls.maxAbsBendingMoment.resultId, "uls-live");
   assert.equal(result.envelopes.sle.maxAbsBendingMoment.resultId, "sle-wind");
   assert.equal(result.envelopes.all.maxAbsVerticalDisplacement.resultId, "uls-live");
+  assert.equal(result.envelopes.uls.maxAbsVerticalReaction.resultId, "uls-live");
+  approx(result.envelopes.uls.maxAbsVerticalReaction.value, 14.2);
+  assert.ok(
+    ["start-support", "end-support"].includes(
+      result.envelopes.uls.maxAbsVerticalReaction.sample.supportId,
+    ),
+  );
+});
+
+test("single beam analysis inserts user discretization stations", () => {
+  const result = new SingleBeamAnalysis().analyze(
+    createSimpleBeamInput({
+      discretization: {
+        elementCount: 2,
+        stations: [1.25],
+      },
+    }),
+  );
+  const loadCase = result.loadCases.G1;
+
+  assert.ok(loadCase.displacements.samples.some((sample) => sample.station === 1.25));
+  assert.ok(loadCase.internalForces.samples.some((sample) => sample.station === 1.25));
 });
 
 test("beam section action verifier checks FEM samples through a common contract", () => {

@@ -312,6 +312,14 @@ function addDiscretizationStations(stations, geometry, unitResolver, discretizat
     discretization.maxElementLength == null
       ? null
       : unitResolver.length(discretization.maxElementLength);
+  const rawUserStations =
+    discretization.stations ??
+    discretization.userStations ??
+    discretization.checkStations ??
+    [];
+  const userStations = Array.isArray(rawUserStations)
+    ? rawUserStations
+    : [rawUserStations];
 
   if (elementCount !== null) {
     if (!Number.isInteger(elementCount) || elementCount <= 0) {
@@ -331,6 +339,19 @@ function addDiscretizationStations(stations, geometry, unitResolver, discretizat
     for (let index = 1; index < count; index += 1) {
       addStation(stations, (geometry.length * index) / count, 1e-9);
     }
+  }
+
+  for (const [index, station] of userStations.entries()) {
+    addStation(
+      stations,
+      resolveStation(
+        station,
+        geometry,
+        unitResolver,
+        `discretization.stations[${index}]`,
+      ),
+      1e-9,
+    );
   }
 }
 
@@ -520,6 +541,32 @@ function summarizeInternalForces(samples) {
   };
 }
 
+function summarizeReactions(samples) {
+  return {
+    maxHorizontalReaction: extremum(samples, "ux", (a, b) => a > b),
+    minHorizontalReaction: extremum(samples, "ux", (a, b) => a < b),
+    maxVerticalReaction: extremum(samples, "uy", (a, b) => a > b),
+    minVerticalReaction: extremum(samples, "uy", (a, b) => a < b),
+    maxSupportMomentReaction: extremum(samples, "rz", (a, b) => a > b),
+    minSupportMomentReaction: extremum(samples, "rz", (a, b) => a < b),
+    maxAbsHorizontalReaction: samples.reduce(
+      (selected, sample) =>
+        Math.abs(sample.ux) > Math.abs(selected.ux) ? sample : selected,
+      samples[0] ?? null,
+    ),
+    maxAbsVerticalReaction: samples.reduce(
+      (selected, sample) =>
+        Math.abs(sample.uy) > Math.abs(selected.uy) ? sample : selected,
+      samples[0] ?? null,
+    ),
+    maxAbsSupportMomentReaction: samples.reduce(
+      (selected, sample) =>
+        Math.abs(sample.rz) > Math.abs(selected.rz) ? sample : selected,
+      samples[0] ?? null,
+    ),
+  };
+}
+
 function selectExtreme(current, candidate, valueSelector, compare) {
   if (!candidate) {
     return current;
@@ -559,11 +606,21 @@ function createEnvelope(resultsById) {
     minBendingMoment: null,
     maxAbsBendingMoment: null,
     maxAbsVerticalDisplacement: null,
+    maxHorizontalReaction: null,
+    minHorizontalReaction: null,
+    maxVerticalReaction: null,
+    minVerticalReaction: null,
+    maxSupportMomentReaction: null,
+    minSupportMomentReaction: null,
+    maxAbsHorizontalReaction: null,
+    maxAbsVerticalReaction: null,
+    maxAbsSupportMomentReaction: null,
   };
 
   for (const result of results) {
     const forces = result.internalForces ?? {};
     const displacements = result.displacements ?? {};
+    const reactions = result.reactions ?? {};
 
     state.maxAxialForce = selectExtreme(
       state.maxAxialForce,
@@ -653,6 +710,105 @@ function createEnvelope(resultsById) {
       (item) => item.value,
       (a, b) => a > b,
     );
+    state.maxHorizontalReaction = selectExtreme(
+      state.maxHorizontalReaction,
+      annotateEnvelopeSample(
+        result,
+        reactions.maxHorizontalReaction,
+        "rx",
+        reactions.maxHorizontalReaction?.ux,
+      ),
+      (item) => item.value,
+      (a, b) => a > b,
+    );
+    state.minHorizontalReaction = selectExtreme(
+      state.minHorizontalReaction,
+      annotateEnvelopeSample(
+        result,
+        reactions.minHorizontalReaction,
+        "rx",
+        reactions.minHorizontalReaction?.ux,
+      ),
+      (item) => item.value,
+      (a, b) => a < b,
+    );
+    state.maxVerticalReaction = selectExtreme(
+      state.maxVerticalReaction,
+      annotateEnvelopeSample(
+        result,
+        reactions.maxVerticalReaction,
+        "ry",
+        reactions.maxVerticalReaction?.uy,
+      ),
+      (item) => item.value,
+      (a, b) => a > b,
+    );
+    state.minVerticalReaction = selectExtreme(
+      state.minVerticalReaction,
+      annotateEnvelopeSample(
+        result,
+        reactions.minVerticalReaction,
+        "ry",
+        reactions.minVerticalReaction?.uy,
+      ),
+      (item) => item.value,
+      (a, b) => a < b,
+    );
+    state.maxSupportMomentReaction = selectExtreme(
+      state.maxSupportMomentReaction,
+      annotateEnvelopeSample(
+        result,
+        reactions.maxSupportMomentReaction,
+        "mrz",
+        reactions.maxSupportMomentReaction?.rz,
+      ),
+      (item) => item.value,
+      (a, b) => a > b,
+    );
+    state.minSupportMomentReaction = selectExtreme(
+      state.minSupportMomentReaction,
+      annotateEnvelopeSample(
+        result,
+        reactions.minSupportMomentReaction,
+        "mrz",
+        reactions.minSupportMomentReaction?.rz,
+      ),
+      (item) => item.value,
+      (a, b) => a < b,
+    );
+    state.maxAbsHorizontalReaction = selectExtreme(
+      state.maxAbsHorizontalReaction,
+      annotateEnvelopeSample(
+        result,
+        reactions.maxAbsHorizontalReaction,
+        "absRx",
+        Math.abs(reactions.maxAbsHorizontalReaction?.ux ?? 0),
+      ),
+      (item) => item.value,
+      (a, b) => a > b,
+    );
+    state.maxAbsVerticalReaction = selectExtreme(
+      state.maxAbsVerticalReaction,
+      annotateEnvelopeSample(
+        result,
+        reactions.maxAbsVerticalReaction,
+        "absRy",
+        Math.abs(reactions.maxAbsVerticalReaction?.uy ?? 0),
+      ),
+      (item) => item.value,
+      (a, b) => a > b,
+    );
+    state.maxAbsSupportMomentReaction = selectExtreme(
+      state.maxAbsSupportMomentReaction,
+      annotateEnvelopeSample(
+        result,
+        reactions.maxAbsSupportMomentReaction,
+        "absMrz",
+        Math.abs(reactions.maxAbsSupportMomentReaction?.rz ?? 0),
+      ),
+      (item) => item.value,
+      (a, b) => a > b,
+    );
   }
 
   return state;
@@ -705,6 +861,15 @@ function sampleBeamResult({ model, femModel, solution, sectionProperties }) {
     type: support.metadata.type ?? null,
     restraints: { ...support.restraints },
     reaction: reactionByNode[support.node.id],
+  }));
+  const reactionSamples = supports.map((support) => ({
+    supportId: support.id,
+    nodeId: support.nodeId,
+    station: support.station,
+    type: support.type,
+    ux: support.reaction?.ux ?? 0,
+    uy: support.reaction?.uy ?? 0,
+    rz: support.reaction?.rz ?? 0,
   }));
   const internalForceSamples = [];
 
@@ -759,6 +924,10 @@ function sampleBeamResult({ model, femModel, solution, sectionProperties }) {
     supports,
     displacementByNode,
     reactionByNode,
+    reactions: {
+      samples: reactionSamples,
+      ...summarizeReactions(reactionSamples),
+    },
     displacements: {
       samples: displacementSamples,
       maxAbsVerticalDisplacement,

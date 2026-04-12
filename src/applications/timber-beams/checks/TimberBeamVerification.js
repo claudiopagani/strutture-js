@@ -57,6 +57,42 @@ function filterByLimitState(entries, limitState) {
   return filtered.length > 0 ? filtered : entries;
 }
 
+function isFinalServiceEntry(entry) {
+  const serviceCombination = String(entry.context?.serviceCombination ?? "")
+    .trim()
+    .toLowerCase();
+  const deformationState = String(entry.context?.deformationState ?? "")
+    .trim()
+    .toLowerCase();
+
+  return (
+    serviceCombination === "final" ||
+    serviceCombination === "quasi-permanent" ||
+    deformationState === "final" ||
+    entry.sectionProperties?.metadata?.finalStiffness === true
+  );
+}
+
+function maxAbsDeflection(entries) {
+  return entries.reduce((selected, entry) => {
+    const sample = entry.displacements?.maxAbsVerticalDisplacement;
+
+    if (!sample || !Number.isFinite(sample.uy)) {
+      return selected;
+    }
+
+    const candidate = {
+      resultId: entry.id,
+      resultType: entry.resultType,
+      value: Math.abs(sample.uy),
+      sample,
+      final: isFinalServiceEntry(entry),
+    };
+
+    return !selected || candidate.value > selected.value ? candidate : selected;
+  }, null);
+}
+
 function resolveStrengths({ material, sectionProperties = {}, gammaM, fallbackKmod }) {
   const metadata = sectionProperties.metadata ?? {};
   const resolvedGammaM = gammaM ?? metadata.gammaM ?? material.metadata?.gammaM ?? 1.5;
@@ -145,11 +181,14 @@ export class TimberBeamVerification {
     code = "NTC2018",
     gammaM = null,
     deflectionLimitDenominator = 300,
+    finalDeflectionLimitDenominator = null,
     metadata = {},
   } = {}) {
     this.code = code;
     this.gammaM = gammaM;
     this.deflectionLimitDenominator = deflectionLimitDenominator;
+    this.finalDeflectionLimitDenominator =
+      finalDeflectionLimitDenominator ?? deflectionLimitDenominator;
     this.metadata = { ...metadata };
   }
 
@@ -159,6 +198,7 @@ export class TimberBeamVerification {
     material = null,
     analysisResult = null,
     deflectionLimitDenominator = this.deflectionLimitDenominator,
+    finalDeflectionLimitDenominator = this.finalDeflectionLimitDenominator,
   } = {}) {
     if (!section || !material || !analysisResult) {
       return new VerificationResult({
@@ -182,6 +222,8 @@ export class TimberBeamVerification {
     const allEntries = combinationEntries(analysisResult);
     const availableEntries = allEntries.length > 0 ? allEntries : loadCaseEntries(analysisResult);
     const sleEntries = filterByLimitState(availableEntries, "SLE");
+    const instantSleEntries = sleEntries.filter((entry) => !isFinalServiceEntry(entry));
+    const finalSleEntries = sleEntries.filter(isFinalServiceEntry);
     const actionVerification = new BeamSectionActionVerifier({
       applicationId: "timber-beams",
       sectionVerifier: createTimberActionVerifier({
@@ -192,23 +234,9 @@ export class TimberBeamVerification {
       }),
       limitStates: "ULS",
     }).verify({ analysisResult });
-    const governingDeflection = analysisResult.envelopes?.sle?.maxAbsVerticalDisplacement ??
-      sleEntries.reduce((selected, entry) => {
-        const sample = entry.displacements?.maxAbsVerticalDisplacement;
-
-        if (!sample || !Number.isFinite(sample.uy)) {
-          return selected;
-        }
-
-        const candidate = {
-          resultId: entry.id,
-          resultType: entry.resultType,
-          value: Math.abs(sample.uy),
-          sample,
-        };
-
-        return !selected || candidate.value > selected.value ? candidate : selected;
-      }, null);
+    const governingDeflection =
+      maxAbsDeflection(instantSleEntries.length > 0 ? instantSleEntries : sleEntries);
+    const governingFinalDeflection = maxAbsDeflection(finalSleEntries);
     const span = analysisResult.combinations?.[governingDeflection?.combinationId]?.geometry?.length ??
       analysisResult.geometry?.length ??
       availableEntries[0]?.geometry?.length;
@@ -233,6 +261,29 @@ export class TimberBeamVerification {
         limitDenominator: deflectionLimitDenominator,
       },
     });
+    const finalDeflectionCheck =
+      governingFinalDeflection == null
+        ? null
+        : utilizationCheck({
+            id: "timber-final-deflection",
+            description: "Final serviceability vertical deflection verification",
+            demand:
+              governingFinalDeflection.sample?.uy ??
+              governingFinalDeflection.value ??
+              0,
+            capacity: span / finalDeflectionLimitDenominator,
+            metadata: {
+              combinationId:
+                governingFinalDeflection.resultId ??
+                governingFinalDeflection.combinationId ??
+                null,
+              station:
+                governingFinalDeflection.sample?.station ??
+                governingFinalDeflection.station ??
+                null,
+              limitDenominator: finalDeflectionLimitDenominator,
+            },
+          });
     const governingActionChecks = Object.values(
       actionVerification.checks.reduce((acc, check) => {
         const current = acc[check.id];
@@ -247,6 +298,7 @@ export class TimberBeamVerification {
     const checks = [
       ...governingActionChecks,
       deflectionCheck,
+      ...(finalDeflectionCheck ? [finalDeflectionCheck] : []),
     ];
     const governingCheck = checks.reduce((selected, check) =>
       check.utilizationRatio > selected.utilizationRatio ? check : selected,

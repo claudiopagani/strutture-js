@@ -12,8 +12,9 @@ test("default application registry exposes all scaffolded structural application
   const registry = createDefaultApplicationRegistry();
 
   assert.ok(registry instanceof ApplicationRegistry);
-  assert.equal(registry.list().length, 10);
-  assert.equal(APPLICATION_CATALOG.length, 10);
+  assert.equal(registry.list().length, 11);
+  assert.equal(APPLICATION_CATALOG.length, 11);
+  assert.ok(registry.has("single-beam-design"));
   assert.ok(registry.has("steel-frames"));
   assert.ok(registry.has("micropiles-broms"));
   assert.ok(registry.has("timber-concrete-composite-beams"));
@@ -28,7 +29,7 @@ test("application registry returns manifests and placeholder results", () => {
     model: { id: "beam-01" },
   });
 
-  assert.equal(manifests[0].metadata.maturity, "scaffolded");
+  assert.ok(manifests.some((manifest) => manifest.metadata.maturity === "scaffolded"));
   assert.equal(result.status, "not-implemented");
   assert.equal(result.outputs.beamId, "beam-01");
 });
