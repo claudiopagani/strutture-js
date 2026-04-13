@@ -663,28 +663,51 @@ Da fare:
 
 Priorita: media-alta.
 
-Stato: provider elastico implementato in prima versione.
+Stato: MVP completato per travi semplici da azioni FEM, con resistenza di sezione governata dalla classe, controlli di stabilita principali e dominio di pressoflessione `N + My`.
 
 Completato:
 
 * provider elastico da profili acciaio;
+* unita del provider acciaio corrette: rigidezze e resistenze esposte in `N/mm` e convertite dal motore FEM nelle unita del modello;
 * collegamento a `SingleBeamAnalysis` anche con modello Timoshenko;
 * metadata con profilo, famiglia, grado acciaio, `fyk`, `fyd`, `gammaM0`, resistenza elastica/plastica a flessione e resistenza a taglio base.
 * verifiche base lungo trave tramite `verifySectionActions`:
-  * flessione elastica;
+  * flessione governata dalla classe locale: `Wpl` per classi 1-2, `Wel` per classe 3;
   * taglio;
   * sforzo normale;
+  * screening tensionale con modulo resistente selezionato;
   * interazione lineare assiale-flessione.
+* verifica SLE di freccia verticale da combinazioni FEM con limite default `L/250` modificabile;
+* classificazione locale della sezione per stazioni FEM ULS, dipendente da `N-M`;
+* classificazione profili I/H (`IPE`, `HEA`, `HEB`, `HEM`) e `UPN`;
+* instabilita flesso-torsionale MVP:
+  * calcolo automatico `Mcr` per profili I/H doppiamente simmetrici;
+  * verifica `UPN` possibile con `Mcr` fornito dall'utente;
+  * input per lunghezza libera laterale o segmenti non controventati;
+* instabilita di aste compresse secondo NTC 2018:
+  * calcolo `Ncr,y/z`, snellezze normalizzate, curve di instabilita e coefficienti `chi_y/chi_z`;
+  * lunghezze libere `y/z` configurabili;
+  * default inferito dai vincoli della trave semplice: appoggio-appoggio `1L`, mensola `2L`, incastro-cerniera `0.7L`, incastro-incastro `0.5L`;
+* interazione normativa di stabilita `N + My` secondo Metodo B della Circolare:
+  * due disuguaglianze con `chi_y`, `chi_z`, `chiLT`, `kyy`, `kzy`;
+  * termini `Mz` nulli per dominio attuale;
+  * coefficienti di momento `alphaMy` e `alphaMLT` configurabili, default `1.0`;
+* blocco prudente per sezioni in classe 4 con warning su proprieta efficaci non implementate;
+* integrazione nei report JSON/Markdown di trave semplice;
+* test automatici su provider, ULS, SLE e report;
+* documentazione metodo in `docs/steel-beam-method.md`.
 
-Da implementare:
+Da implementare dopo approvazione:
 
 * verifiche avanzate:
-  * instabilita flesso-torsionale;
-  * instabilita di asta compressa;
-  * interazioni normative piu raffinate;
-* deformazioni SLE;
-* classificazione sezione, se si vuole impostazione normativa completa;
-* collegamento al database profili gia presente.
+  * affinare la classificazione per pressoflessione forte e casi con convenzione assiale esplicita;
+  * affinare instabilita flesso-torsionale con coefficienti di momento, quote di applicazione carico, vincoli torsionali e casi non doppiamente simmetrici;
+  * estendere la pressoflessione da `N + My` a `N + My + Mz`;
+  * interazioni normative piu raffinate e casi non doppiamente simmetrici, inclusi `UPN` senza override manuale;
+  * influenza del taglio sulla resistenza a flessione;
+  * torsione e interazioni torsionali;
+* per sezioni in classe 4, mantenere blocco con warning esplicito e, in futuro, implementare la sezione efficace per permettere la verifica;
+* definizione input per vincoli laterali, lunghezze libere e coefficienti di vincolo.
 
 ### 5. Taglio di travi in c.a.
 
@@ -893,7 +916,7 @@ Esempi prioritari da creare:
 Priorita verifiche:
 
 1. legno semplice: chiudere il workflow end-to-end con flessione, taglio, freccia istantanea e freccia finale;
-2. acciaio: consolidare verifiche base e reportare chiaramente che instabilita e classificazione non sono ancora incluse;
+2. acciaio: consolidare verifiche base, classificazione locale, uso plastico controllato dalla classe, LTB MVP, aste compresse, interazione `N + My` e report; restano da discutere estensione `Mz`, torsione/interazioni torsionali, affinamenti LTB e sezioni efficaci di classe 4;
 3. composti legno-calcestruzzo e legno-XLAM: mantenere i workflow storici standalone, ma aggiungere adapter piu coerenti con `verifySectionActions`: completato in prima versione;
 4. c.a.: usare subito il provider elastico per esempi di analisi, poi aggiungere verifiche di sezione da azioni FEM;
 5. c.a. fessurato: lasciarlo dopo il primo pacchetto di esempi/report, perche e il blocco con complessita maggiore.
@@ -999,13 +1022,17 @@ Risultato atteso:
 
 ### Fase 6 - Acciaio
 
-Stato: avviata.
+Stato: MVP completato per trave semplice nel dominio attuale `N + My`.
 
 1. provider elastico profili acciaio: completato in prima versione;
-2. verifiche base: completate in prima versione;
-3. instabilita;
-4. classificazione sezione;
-5. report.
+2. verifiche base ULS, resistenza di sezione governata dalla classe e freccia SLE: completate in prima versione;
+3. classificazione sezione locale per stazioni FEM ULS: completata in prima versione per I/H e UPN;
+4. instabilita flesso-torsionale MVP: completata in prima versione per I/H automatico e UPN con `Mcr` utente;
+5. blocco prudente classe 4: completato con warning su proprieta efficaci non implementate;
+6. report JSON/Markdown: completati in prima versione;
+7. instabilita di asta compressa: completata in prima versione con lunghezze efficaci configurabili e default da vincoli di trave semplice;
+8. pressoflessione normativa `N + My`: completata in prima versione con Metodo B della Circolare per sezioni I/H doppiamente simmetriche di classe 1-3;
+9. da fare dopo approvazione: estensione `N + My + Mz`, torsione/interazioni torsionali, affinamenti LTB, casi non doppiamente simmetrici completi, sezioni efficaci classe 4.
 
 Risultato atteso:
 
@@ -1068,7 +1095,7 @@ Da fare a breve:
 Da fare dopo:
 
 * ogni verifica avanzata deve essere discussa e approvata prima dell'implementazione, con campo di applicazione, assunzioni, formule e test attesi;
-* verifiche acciaio avanzate: instabilita flesso-torsionale, aste compresse, classificazione sezione;
+* verifiche acciaio avanzate: estensione da `N + My` a `N + My + Mz`, torsione/interazioni torsionali, affinamenti instabilita flesso-torsionale, casi non doppiamente simmetrici completi, affinamento classificazione per forte pressoflessione, sezione efficace per classe 4;
 * consolidare verifiche c.a. avanzate da azioni FEM: taglio, tensioni SLE, fessurazione indiretta e deflessioni fessurate sono completati in MVP prudente; restano validazioni normative estese, casi ambientali, sezioni generiche, minimi/limiti costruttivi e affinamento deformazioni;
 * vibrazioni XLAM;
 * incendio XLAM;

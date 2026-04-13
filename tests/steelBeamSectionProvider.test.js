@@ -5,6 +5,10 @@ import {
   SingleBeamAnalysis,
   SteelBeamSectionProvider,
   SteelMemberVerification,
+  verifySteelBeamColumnInteractionMy,
+  verifySteelCompressionBuckling,
+  verifySteelLateralTorsionalBuckling,
+  classifySteelSection,
   createNTC2018StructuralSteelMaterial,
   createSteelBeamSectionProvider,
   createSteelProfileSection,
@@ -38,6 +42,7 @@ test("steel beam provider returns elastic stiffness and resistance metadata", ()
   });
   const properties = provider.getElasticBeamProperties({ limitState: "ULS" });
 
+  assert.deepEqual(properties.units, { force: "N", length: "mm" });
   approx(properties.axialRigidity, material.elasticModulus * section.area);
   approx(properties.flexuralRigidity, material.elasticModulus * section.inertiaY);
   assert.ok(properties.shearRigidity > 0);
@@ -99,6 +104,7 @@ test("steel beam provider can drive SingleBeamAnalysis with Timoshenko model", (
 
   assert.equal(combination.sectionProperties.metadata.provider, "SteelBeamSectionProvider");
   assert.equal(combination.sectionProperties.metadata.limitState, "ULS");
+  approx(combination.sectionProperties.flexuralRigidity, 4080.3, 1e-9);
   assert.ok(Math.abs(combination.displacements.maxAbsVerticalDisplacement.uy) > 0);
   assert.ok(result.envelopes.uls.maxAbsBendingMoment.value > 0);
 });
@@ -149,8 +155,316 @@ test("steel member verification checks base resistance from FEM samples", () => 
 
   assert.equal(verification.applicationId, "steel-frames");
   assert.equal(verification.status, "ok");
+  const classification = verification.checks.find(
+    (check) => check.id === "steel-section-classification",
+  );
+
+  assert.ok(classification);
+  assert.equal(classification.metadata.sectionClass, 1);
+  assert.equal(classification.metadata.flangeClass, 1);
+  assert.equal(classification.metadata.webClass, 1);
+  assert.ok(classification.metadata.mEd > 0);
+  assert.ok(classification.metadata.mEdSectionUnits > 0);
+  const bending = verification.checks.find((check) => check.id === "steel-bending");
+  const ltb = verification.checks.find(
+    (check) => check.id === "steel-lateral-torsional-buckling",
+  );
+  const compressionBuckling = verification.checks.find(
+    (check) => check.id === "steel-compression-buckling",
+  );
+  const beamColumnInteraction = verification.checks.find(
+    (check) => check.id === "steel-beam-column-interaction-n-my",
+  );
+
+  assert.equal(bending.metadata.resistanceBasis, "plastic");
+  assert.ok(bending.capacity > 50.887);
+  assert.ok(ltb);
+  assert.equal(ltb.metadata.criticalMomentSource, "automatic-simplified");
+  assert.ok(compressionBuckling);
+  assert.equal(compressionBuckling.metadata.lengthInferenceSource, "inferred-pinned-pinned");
+  assert.ok(beamColumnInteraction);
+  assert.equal(beamColumnInteraction.metadata.domain, "N+My");
+  assert.equal(
+    beamColumnInteraction.metadata.excludedActions,
+    "Mz, torsion, torsional-interactions",
+  );
   assert.ok(verification.checks.some((check) => check.id === "steel-bending"));
   assert.ok(verification.checks.some((check) => check.id === "steel-shear"));
   assert.ok(verification.checks.some((check) => check.id === "steel-axial"));
+  assert.ok(verification.checks.some((check) => check.id === "steel-elastic-stress"));
   assert.ok(verification.utilizationRatio < 1);
+});
+
+test("steel lateral-torsional buckling supports automatic I/H Mcr and user Mcr for UPN", () => {
+  const material = createNTC2018StructuralSteelMaterial({
+    grade: "S275",
+    units,
+  });
+  const ipe = createSteelProfileSection({
+    profileName: "IPE200",
+    units,
+  });
+  const upn = createSteelProfileSection({
+    profileName: "UPN200",
+    units,
+  });
+  const ipeCheck = verifySteelLateralTorsionalBuckling({
+    section: ipe,
+    material,
+    mEd: 5e6,
+    sectionClass: 1,
+    bendingSectionModulus: ipe.catalogProperties.Wpl_y * 1e9,
+    unbracedLength: 2500,
+  });
+  const upnCheck = verifySteelLateralTorsionalBuckling({
+    section: upn,
+    material,
+    mEd: 5e6,
+    sectionClass: 1,
+    bendingSectionModulus: upn.catalogProperties.Wpl_y * 1e9,
+    unbracedLength: 3000,
+    criticalMoment: 120e6,
+  });
+
+  assert.equal(ipeCheck.status, "ok");
+  assert.ok(ipeCheck.check.capacity > 0);
+  assert.equal(ipeCheck.check.metadata.criticalMomentSource, "automatic-simplified");
+  assert.equal(upnCheck.status, "ok");
+  assert.equal(upnCheck.check.metadata.family, "UPN");
+  assert.equal(upnCheck.check.metadata.criticalMomentSource, "user-provided");
+  assert.equal(upnCheck.check.metadata.criticalMoment, 120e6);
+});
+
+test("steel compression buckling and N+My Method B work as standalone checks", () => {
+  const material = createNTC2018StructuralSteelMaterial({
+    grade: "S275",
+    units,
+  });
+  const ipe = createSteelProfileSection({
+    profileName: "IPE200",
+    units,
+  });
+  const compression = verifySteelCompressionBuckling({
+    section: ipe,
+    material,
+    nEd: 50e3,
+    sectionClass: 1,
+    lengthY: 5000,
+    lengthZ: 5000,
+  });
+  const interaction = verifySteelBeamColumnInteractionMy({
+    section: ipe,
+    material,
+    nEd: 50e3,
+    myEd: 10e6,
+    sectionClass: 1,
+    bendingSectionModulus: ipe.catalogProperties.Wpl_y * 1e9,
+    compressionBucklingResult: compression,
+    chiLT: 1,
+  });
+
+  assert.equal(compression.status, "ok");
+  assert.equal(compression.check.metadata.curveY, "a");
+  assert.equal(compression.check.metadata.curveZ, "b");
+  assert.ok(compression.check.metadata.axisZResistance < compression.check.metadata.axisYResistance);
+  assert.equal(interaction.status, "ok");
+  assert.equal(interaction.check.metadata.method, "circolare-ntc2018-c4.2.4.1.3.3.2-method-b-n-my");
+  assert.equal(interaction.check.metadata.domain, "N+My");
+  assert.ok(interaction.check.metadata.kyy > 1);
+  assert.equal(
+    interaction.check.metadata.excludedActions,
+    "Mz, torsion, torsional-interactions",
+  );
+});
+
+test("steel section classification supports I/H and UPN profiles", () => {
+  const material = createNTC2018StructuralSteelMaterial({
+    grade: "S275",
+    units,
+  });
+  const ipe = createSteelProfileSection({
+    profileName: "IPE200",
+    units,
+  });
+  const upn = createSteelProfileSection({
+    profileName: "UPN200",
+    units,
+  });
+  const ipeClassification = classifySteelSection({
+    section: ipe,
+    material,
+    nEd: 0,
+    mEd: 2e7,
+  });
+  const upnClassification = classifySteelSection({
+    section: upn,
+    material,
+    nEd: 0,
+    mEd: 2e7,
+  });
+  const tinyActionClassification = classifySteelSection({
+    section: ipe,
+    material,
+    nEd: 0,
+    mEd: 1e-12,
+  });
+
+  assert.equal(ipeClassification.status, "ok");
+  assert.equal(ipeClassification.class, 1);
+  assert.equal(
+    ipeClassification.parts.find((part) => part.id === "flange").class,
+    1,
+  );
+  assert.equal(
+    ipeClassification.parts.find((part) => part.id === "web").class,
+    1,
+  );
+  assert.equal(upnClassification.status, "ok");
+  assert.equal(upnClassification.family, "UPN");
+  assert.equal(upnClassification.class, 1);
+  assert.equal(
+    tinyActionClassification.parts.find((part) => part.id === "web").compression,
+    false,
+  );
+});
+
+test("steel member verification blocks class 4 sections until effective properties exist", () => {
+  const section = createSteelProfileSection({
+    profileName: "IPE200",
+    units,
+    width: 0.3,
+    height: 0.8,
+    webThickness: 0.001,
+    flangeThickness: 0.001,
+    rootRadius: 0,
+    area: 0.0012,
+    inertiaY: 6e-5,
+    shearAreaY: 0.0008,
+    elasticSectionModulusY: 0.00015,
+  });
+  const material = createNTC2018StructuralSteelMaterial({
+    grade: "S355",
+    units,
+  });
+  const sectionProvider = createSteelBeamSectionProvider({
+    section,
+    material,
+  });
+  const analysisResult = new SingleBeamAnalysis().analyze({
+    id: "steel-class4-check",
+    units: beamUnits,
+    geometry: {
+      start: { x: 0, y: 0 },
+      end: { x: 4, y: 0 },
+    },
+    sectionProvider,
+    supports: {
+      start: "hinge",
+      end: "roller",
+    },
+    loads: [
+      {
+        id: "g1",
+        actionType: "G1",
+        type: "uniform",
+        value: -0.2,
+      },
+    ],
+    combinations: [
+      {
+        id: "uls",
+        limitState: "ULS",
+        factors: { G1: 1.3 },
+      },
+    ],
+    discretization: {
+      elementCount: 2,
+      stations: [2],
+    },
+  });
+  const verification = new SteelMemberVerification().verify({
+    memberId: "steel-class4-check",
+    section,
+    material,
+    analysisResult,
+  });
+  const classification = verification.checks.find(
+    (check) => check.id === "steel-section-classification",
+  );
+
+  assert.equal(verification.status, "not-verified");
+  assert.equal(classification.metadata.sectionClass, 4);
+  assert.equal(classification.ok, false);
+  assert.ok(
+    verification.warnings.some((warning) =>
+      warning.includes("effective section properties"),
+    ),
+  );
+});
+
+test("steel member verification checks SLE deflection from FEM results", () => {
+  const { section, material } = createSteelFixture();
+  const sectionProvider = createSteelBeamSectionProvider({
+    section,
+    material,
+  });
+  const analysisResult = new SingleBeamAnalysis().analyze({
+    id: "steel-sle-check",
+    units: beamUnits,
+    geometry: {
+      start: { x: 0, y: 0 },
+      end: { x: 5, y: 0 },
+    },
+    sectionProvider,
+    supports: {
+      start: "hinge",
+      end: "roller",
+    },
+    loads: [
+      {
+        id: "g1",
+        actionType: "G1",
+        type: "uniform",
+        value: -3,
+      },
+      {
+        id: "q",
+        actionType: "Qk",
+        type: "uniform",
+        value: -2,
+      },
+    ],
+    combinations: [
+      {
+        id: "uls",
+        limitState: "ULS",
+        factors: { G1: 1.3, Qk: 1.5 },
+      },
+      {
+        id: "sle-rare",
+        limitState: "SLE",
+        combinationType: "SLE_RARE",
+        factors: { G1: 1, Qk: 1 },
+      },
+    ],
+    discretization: {
+      elementCount: 4,
+      stations: [2.5],
+    },
+  });
+  const verification = new SteelMemberVerification().verify({
+    memberId: "steel-sle-check",
+    section,
+    material,
+    analysisResult,
+  });
+  const deflection = verification.checks.find(
+    (check) => check.id === "steel-sle-deflection",
+  );
+
+  assert.equal(verification.status, "ok");
+  assert.ok(deflection);
+  approx(deflection.capacity, 0.02);
+  assert.equal(deflection.metadata.deflectionLimitRatio, 250);
+  assert.equal(verification.outputs.serviceability.checkCount, 1);
 });

@@ -57,7 +57,12 @@ test("single beam design application supports steel verification reports", () =>
   assert.equal(result.status, "ok");
   assert.equal(report.json.id, "steel-ipe200-report");
   assert.ok(report.json.verification.checks.some((check) => check.id === "steel-bending"));
-  assert.ok(report.json.warnings.some((warning) => warning.includes("Lateral-torsional")));
+  assert.ok(report.json.verification.checks.some((check) => check.id === "steel-elastic-stress"));
+  assert.ok(report.json.verification.checks.some((check) => check.id === "steel-lateral-torsional-buckling"));
+  assert.ok(report.json.verification.checks.some((check) => check.id === "steel-compression-buckling"));
+  assert.ok(report.json.verification.checks.some((check) => check.id === "steel-beam-column-interaction-n-my"));
+  assert.ok(report.json.verification.checks.some((check) => check.id === "steel-sle-deflection"));
+  assert.ok(report.json.warnings.some((warning) => warning.includes("N+My only")));
   assert.ok(report.markdown.includes("# Trave in acciaio IPE200"));
   assert.doesNotThrow(() => JSON.stringify(report.json));
 });

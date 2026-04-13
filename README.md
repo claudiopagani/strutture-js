@@ -73,6 +73,24 @@ La codebase ora include anche componenti condivise utili per futuri moduli di ve
 - classe `TimberDowelConnector` per unioni legno-legno con rigidezza `Kser/Ku` e resistenza tipo Johansen.
 - catalogo estendibile dei pannelli XLAM con `registerXlamPanelProduct`, `getXlamPanelProduct`, `listXlamPanelProducts`.
 
+## Travi In Acciaio
+
+Il workflow per travi semplici in acciaio include ora un MVP di sezione e stabilita:
+
+- profili da catalogo `HEA`, `HEB`, `HEM`, `IPE`, `UPN`;
+- materiali `S235`, `S275`, `S355`;
+- provider elastico coerente con le unita interne `N/mm` e conversione automatica verso le unita della trave;
+- classificazione locale della sezione per profili I/H e UPN in funzione dello stato `N-M` della stazione FEM ULS;
+- verifiche ULS da diagrammi FEM: flessione governata dalla classe (`Wpl` per classi 1-2, `Wel` per classe 3), taglio, sforzo normale, screening tensionale e interazione lineare assiale-flessione;
+- instabilita flesso-torsionale MVP: automatica per profili I/H doppiamente simmetrici, oppure con `Mcr` fornito dall'utente per profili come `UPN`;
+- instabilita di aste compresse secondo NTC 2018, con curve di instabilita, lunghezze efficaci `y/z` e default inferiti dai vincoli della trave semplice;
+- pressoflessione normativa `N + My` secondo Metodo B della Circolare, per profili I/H doppiamente simmetrici e sezioni di classe 1, 2 o 3;
+- verifica SLE di freccia verticale con limite default `L/250`;
+- report JSON/Markdown con checks e metadata.
+
+Il metodo e documentato in `docs/steel-beam-method.md`.
+Il dominio attuale della stabilita a pressoflessione e `N + My`: `Mz`, torsione e interazioni torsionali non sono considerate. Proprieta efficaci per sezioni di classe 4, interazione con `Mz`, torsione/interazioni torsionali e affinamenti LTB sofisticati restano estensioni future.
+
 ## Travi Legno-Cls
 
 E stato aggiunto un primo modulo implementato per la verifica di travi in legno con soletta collaborante.

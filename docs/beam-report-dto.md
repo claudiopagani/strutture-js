@@ -143,8 +143,10 @@ Prima versione stabilizzata per:
 * legno lamellare GL24h;
 * acciaio IPE;
 * mensola in acciaio;
+* acciaio con verifiche ULS governate dalla classe, instabilita flesso-torsionale MVP, instabilita aste compresse, interazione `N + My` e freccia SLE;
 * c.a. elastico con verifiche ULS `N-M`, taglio, tensioni SLE, fessurazione indiretta e deformazioni;
 * legno-calcestruzzo;
 * legno-XLAM.
 
 Per il metodo SLE c.a. e i campi di report specifici vedere `docs/reinforced-concrete-sle-method.md`.
+Per il metodo delle travi in acciaio vedere `docs/steel-beam-method.md`.

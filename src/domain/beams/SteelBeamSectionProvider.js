@@ -8,18 +8,6 @@ function assertPositive(value, label) {
   }
 }
 
-function resolveUnits(...sources) {
-  for (const source of sources) {
-    const unitSystem = source?.units ?? source?.metadata?.unitSystem;
-
-    if (unitSystem?.force && unitSystem?.length) {
-      return unitSystem;
-    }
-  }
-
-  return DEFAULT_UNITS;
-}
-
 function resolveShearModulus(material) {
   if (Number.isFinite(material?.shearModulus)) {
     return material.shearModulus;
@@ -103,7 +91,7 @@ export class SteelBeamSectionProvider {
     this.plasticSectionModulusAxis = plasticSectionModulusAxis;
     this.shearCorrectionFactor = shearCorrectionFactor;
     this.gammaM0 = gammaM0 ?? material.metadata?.gammaM0 ?? null;
-    this.units = units ?? resolveUnits(section, material);
+    this.units = DEFAULT_UNITS;
     this.metadata = { ...metadata };
   }
 
