@@ -67,6 +67,30 @@ Trave appoggio-appoggio con carichi permanenti e variabile.
 | timber-deflection | Serviceability vertical deflection verification | 0.0028 | 0.0133 | 0.21 | si |
 | timber-final-deflection | Final serviceability vertical deflection verification | 0.0031 | 0.0133 | 0.229 | si |
 
+## Dettagli verifiche
+
+| Verifica | Parametro | Valore |
+| --- | --- | --- |
+| timber-bending | resultId | timber-c24-report-ULS-LIVE |
+| timber-bending | resultType | combination |
+| timber-bending | station | 2 |
+| timber-bending | limitState | ULS |
+| timber-bending | fmD | 12.8 |
+| timber-bending | kmod | 0.8 |
+| timber-bending | gammaM | 1.5 |
+| timber-shear | resultId | timber-c24-report-ULS-LIVE |
+| timber-shear | resultType | combination |
+| timber-shear | station | 0 |
+| timber-shear | limitState | ULS |
+| timber-shear | fvD | 2.1333 |
+| timber-shear | shearArea | 39200 |
+| timber-deflection | combinationId | timber-c24-report-SLE_RARE-LIVE |
+| timber-deflection | station | 2 |
+| timber-deflection | limitDenominator | 300 |
+| timber-final-deflection | combinationId | timber-c24-report-SLE_QUASI_PERMANENT-all |
+| timber-final-deflection | station | 2 |
+| timber-final-deflection | limitDenominator | 300 |
+
 ## Esito
 
 * Stato: ok

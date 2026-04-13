@@ -71,7 +71,11 @@ test("single beam design application can report RC elastic analysis with ULS sec
   assert.equal(result.status, "ok");
   assert.equal(report.json.verification.applicationId, "reinforced-concrete-beams");
   assert.ok(report.json.verification.checks.some((check) => check.id === "rc-uls-uniaxial-bending"));
-  assert.ok(report.json.warnings.some((warning) => warning.includes("Shear resistance")));
+  assert.ok(report.json.verification.checks.some((check) => check.id === "rc-shear-resistance"));
+  assert.ok(report.json.verification.checks.some((check) => check.id === "rc-sle-concrete-stress"));
+  assert.ok(report.json.verification.checks.some((check) => check.id === "rc-sle-crack-bar-diameter"));
+  assert.ok(report.json.verification.checks.some((check) => check.id === "rc-sle-deflection-curvature"));
+  assert.ok(report.json.warnings.some((warning) => warning.includes("second-order effects")));
   assert.ok(report.markdown.includes("# Trave in c.a. elastica C25/30"));
   assert.doesNotThrow(() => JSON.stringify(report.json));
 });

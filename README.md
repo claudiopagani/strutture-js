@@ -109,10 +109,14 @@ Il modulo `reinforced-concrete-sections` e ora utilizzabile per un primo set di 
 I blocchi principali esposti dal package sono:
 
 - `ReinforcedConcreteSection`: sezione in c.a. con geometria del cls e armature discrete;
+- `createLongitudinalReinforcementLayout`: generatore dichiarativo di armature longitudinali top/bottom per sezioni rettangolari e a T;
 - `ConcreteParabolaRectangleLaw`, `ConcreteNoTensionLaw`, `SteelElasticLaw`, `SteelElasticPerfectlyPlasticLaw`;
 - `IllinoisRootSolver`;
 - `SectionFiberDiscretizer`, `RCSectionStateIntegrator`, `RCUltimateSectionSolver`, `RCBiaxialDomainBuilder`, `RCUniaxialDomainBuilder`, `RCServiceStressSolver`;
 - `ReinforcedConcreteSectionModel` e `ReinforcedConcreteSectionApplication`.
+
+Per le travi in c.a. il workflow integrato include ora verifiche ULS `N-M`, taglio MVP, tensioni SLE, fessurazione indiretta e deformazioni fessurate da integrazione delle curvature.
+La descrizione del metodo SLE, del contratto dati e della validazione automatica e in `docs/reinforced-concrete-sle-method.md`.
 
 Struttura minima del modello applicativo:
 

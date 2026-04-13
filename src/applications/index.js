@@ -25,6 +25,8 @@ export { CrackedSectionBeamModel } from "./rc-cracked-deflection/index.js";
 export { CrackedSectionDeflectionAnalysis } from "./rc-cracked-deflection/index.js";
 export { ReinforcedConcreteSectionApplication } from "./reinforced-concrete-sections/index.js";
 export { ReinforcedConcreteBeamVerification } from "./reinforced-concrete-sections/index.js";
+export { ReinforcedConcreteShearVerification } from "./reinforced-concrete-sections/index.js";
+export { ReinforcedConcreteServiceabilityVerification } from "./reinforced-concrete-sections/index.js";
 export { RCBiaxialDomainBuilder } from "./reinforced-concrete-sections/index.js";
 export { ReinforcedConcreteSectionModel } from "./reinforced-concrete-sections/index.js";
 export { RCServiceStressSolver } from "./reinforced-concrete-sections/index.js";

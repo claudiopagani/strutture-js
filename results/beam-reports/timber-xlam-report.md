@@ -71,6 +71,67 @@ Trave lignea collaborante con pannello XLAM e connessioni legno-legno.
 | deflection-short | Short-term deflection verification | 54.7659 | 30.6667 | 1.786 | no |
 | deflection-long | Long-term deflection verification | 54.7659 | 46 | 1.191 | no |
 
+## Dettagli verifiche
+
+| Verifica | Parametro | Valore |
+| --- | --- | --- |
+| xlam-min-stress | resultId | timber-xlam-report-ULS-LIVE |
+| xlam-min-stress | resultType | combination |
+| xlam-min-stress | station | 4600 |
+| xlam-min-stress | limitState | ULS |
+| xlam-min-stress | method | timber-xlam-gamma-method-section-actions |
+| xlam-min-stress | gamma1Uls | 0.7843 |
+| xlam-min-stress | gamma2Uls | 0.3634 |
+| xlam-min-stress | ejEffUls | 33474754705799.137 |
+| xlam-max-stress | resultId | timber-xlam-report-ULS-LIVE |
+| xlam-max-stress | resultType | combination |
+| xlam-max-stress | station | 4600 |
+| xlam-max-stress | limitState | ULS |
+| xlam-max-stress | method | timber-xlam-gamma-method-section-actions |
+| xlam-max-stress | gamma1Uls | 0.7843 |
+| xlam-max-stress | gamma2Uls | 0.3634 |
+| xlam-max-stress | ejEffUls | 33474754705799.137 |
+| timber-min-stress | resultId | timber-xlam-report-ULS-LIVE |
+| timber-min-stress | resultType | combination |
+| timber-min-stress | station | 4600 |
+| timber-min-stress | limitState | ULS |
+| timber-min-stress | method | timber-xlam-gamma-method-section-actions |
+| timber-min-stress | gamma1Uls | 0.7843 |
+| timber-min-stress | gamma2Uls | 0.3634 |
+| timber-min-stress | ejEffUls | 33474754705799.137 |
+| timber-max-stress | resultId | timber-xlam-report-ULS-LIVE |
+| timber-max-stress | resultType | combination |
+| timber-max-stress | station | 4600 |
+| timber-max-stress | limitState | ULS |
+| timber-max-stress | method | timber-xlam-gamma-method-section-actions |
+| timber-max-stress | gamma1Uls | 0.7843 |
+| timber-max-stress | gamma2Uls | 0.3634 |
+| timber-max-stress | ejEffUls | 33474754705799.137 |
+| xlam-shear | resultId | timber-xlam-report-ULS-LIVE |
+| xlam-shear | resultType | combination |
+| xlam-shear | station | 0 |
+| xlam-shear | limitState | ULS |
+| xlam-shear | method | timber-xlam-gamma-method-section-actions |
+| xlam-shear | gamma1Uls | 0.7843 |
+| xlam-shear | gamma2Uls | 0.3634 |
+| xlam-shear | ejEffUls | 33474754705799.137 |
+| timber-shear | resultId | timber-xlam-report-ULS-LIVE |
+| timber-shear | resultType | combination |
+| timber-shear | station | 0 |
+| timber-shear | limitState | ULS |
+| timber-shear | method | timber-xlam-gamma-method-section-actions |
+| timber-shear | gamma1Uls | 0.7843 |
+| timber-shear | gamma2Uls | 0.3634 |
+| timber-shear | ejEffUls | 33474754705799.137 |
+| connector | resultId | timber-xlam-report-ULS-LIVE |
+| connector | resultType | combination |
+| connector | station | 0 |
+| connector | limitState | ULS |
+| connector | method | timber-xlam-gamma-method-section-actions |
+| connector | gamma1Uls | 0.7843 |
+| connector | gamma2Uls | 0.3634 |
+| connector | ejEffUls | 33474754705799.137 |
+
 ## Esito
 
 * Stato: not-verified

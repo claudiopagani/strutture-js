@@ -64,6 +64,35 @@ Trave appoggio-appoggio con profilo IPE e verifiche base.
 | steel-axial | Axial resistance verification | 0 | 745891.2 | 0 | si |
 | steel-axial-bending-interaction | Linear axial-bending interaction | 0 | 1 | 0 | si |
 
+## Dettagli verifiche
+
+| Verifica | Parametro | Valore |
+| --- | --- | --- |
+| steel-bending | resultId | steel-ipe200-report-ULS-LIVE |
+| steel-bending | resultType | combination |
+| steel-bending | station | 0 |
+| steel-bending | limitState | ULS |
+| steel-bending | fyd | 261.9 |
+| steel-bending | gammaM0 | 1.05 |
+| steel-shear | resultId | steel-ipe200-report-ULS-LIVE |
+| steel-shear | resultType | combination |
+| steel-shear | station | 0 |
+| steel-shear | limitState | ULS |
+| steel-shear | fyd | 261.9 |
+| steel-shear | shearArea | 1700 |
+| steel-axial | resultId | steel-ipe200-report-ULS-LIVE |
+| steel-axial | resultType | combination |
+| steel-axial | station | 0 |
+| steel-axial | limitState | ULS |
+| steel-axial | fyd | 261.9 |
+| steel-axial | area | 2848 |
+| steel-axial-bending-interaction | resultId | steel-ipe200-report-ULS-LIVE |
+| steel-axial-bending-interaction | resultType | combination |
+| steel-axial-bending-interaction | station | 0 |
+| steel-axial-bending-interaction | limitState | ULS |
+| steel-axial-bending-interaction | axialUtilizationRatio | 0 |
+| steel-axial-bending-interaction | bendingUtilizationRatio | 0 |
+
 ## Esito
 
 * Stato: ok

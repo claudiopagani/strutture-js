@@ -143,6 +143,8 @@ Prima versione stabilizzata per:
 * legno lamellare GL24h;
 * acciaio IPE;
 * mensola in acciaio;
-* c.a. elastico con verifica ULS `N-M`;
+* c.a. elastico con verifiche ULS `N-M`, taglio, tensioni SLE, fessurazione indiretta e deformazioni;
 * legno-calcestruzzo;
 * legno-XLAM.
+
+Per il metodo SLE c.a. e i campi di report specifici vedere `docs/reinforced-concrete-sle-method.md`.

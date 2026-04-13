@@ -63,6 +63,35 @@ Mensola con carico puntuale in estremita e verifiche base.
 | steel-axial | Axial resistance verification | 0 | 1819992.3 | 0 | si |
 | steel-axial-bending-interaction | Linear axial-bending interaction | 0 | 1 | 0 | si |
 
+## Dettagli verifiche
+
+| Verifica | Parametro | Valore |
+| --- | --- | --- |
+| steel-bending | resultId | steel-cantilever-s355-report-ULS-LIVE |
+| steel-bending | resultType | combination |
+| steel-bending | station | 0 |
+| steel-bending | limitState | ULS |
+| steel-bending | fyd | 338.1 |
+| steel-bending | gammaM0 | 1.05 |
+| steel-shear | resultId | steel-cantilever-s355-report-ULS-LIVE |
+| steel-shear | resultType | combination |
+| steel-shear | station | 0 |
+| steel-shear | limitState | ULS |
+| steel-shear | fyd | 338.1 |
+| steel-shear | shearArea | 4000 |
+| steel-axial | resultId | steel-cantilever-s355-report-ULS-LIVE |
+| steel-axial | resultType | combination |
+| steel-axial | station | 0 |
+| steel-axial | limitState | ULS |
+| steel-axial | fyd | 338.1 |
+| steel-axial | area | 5383 |
+| steel-axial-bending-interaction | resultId | steel-cantilever-s355-report-ULS-LIVE |
+| steel-axial-bending-interaction | resultType | combination |
+| steel-axial-bending-interaction | station | 0 |
+| steel-axial-bending-interaction | limitState | ULS |
+| steel-axial-bending-interaction | axialUtilizationRatio | 0 |
+| steel-axial-bending-interaction | bendingUtilizationRatio | 0 |
+
 ## Esito
 
 * Stato: ok

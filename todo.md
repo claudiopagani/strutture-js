@@ -82,6 +82,18 @@ Da fare:
 * rendere configurabile la densita di campionamento delle stazioni da verificare;
 * distinguere stazioni informative, stazioni critiche e stazioni utente.
 
+Nota taglio c.a. approvata:
+
+* il taglio deve distinguere elementi senza armatura trasversale e con armatura trasversale;
+* per NTC 2018 4.1.2.3.5.1 non si devono dedurre automaticamente `d`, `bw` e armature longitudinali tese per sezioni generiche;
+* `bw` puo essere derivato solo per rettangoli e sezioni a T chiare, altrimenti deve essere esplicito;
+* `d` e `Asl` devono essere espliciti o derivati da un gruppo di armature longitudinali dichiarato;
+* lo sforzo normale di compressione deve avere convenzione di segno dichiarata e non deve aumentare la resistenza se e di trazione;
+* per NTC 2018 4.1.2.3.5.2 l'MVP accetta staffe verticali con diametro, numero di bracci, interasse e acciaio;
+* per sezioni armate a taglio `cotTheta` deve essere scelto nel range ammesso per massimizzare `min(VRsd, VRcd)`, cioe il minimo tra meccanismo resistente a trazione delle staffe e meccanismo resistente a compressione del puntone;
+* quando sono disponibili anche i parametri del caso senza armatura trasversale, la resistenza a taglio della sezione armata e assunta come `max(VRd con staffe, VRd senza staffe)`;
+* dettagli costruttivi, minimi di armatura, ancoraggi, torsione e casi generici restano fuori dal primo MVP.
+
 ### Preparazione al frontend React
 
 Il motore deve restare indipendente dal frontend. React dovra consumare DTO/JSON, non classi con stato nascosto.
@@ -674,7 +686,75 @@ Da implementare:
 * classificazione sezione, se si vuole impostazione normativa completa;
 * collegamento al database profili gia presente.
 
-### 5. Deflessioni di travi in c.a. fessurate
+### 5. Taglio di travi in c.a.
+
+Stato: completato in prima versione MVP.
+
+Completato:
+
+* `ReinforcedConcreteShearVerification` standalone;
+* modalita `without-transverse-reinforcement` per NTC 2018 4.1.2.3.5.1;
+* modalita `with-transverse-reinforcement` per NTC 2018 4.1.2.3.5.2 con staffe verticali;
+* scelta automatica di `cotTheta` per massimizzare `min(VRsd, VRcd)` nel campo ammesso;
+* per sezioni con staffe, confronto tra resistenza con armatura trasversale e resistenza senza armatura trasversale quando i parametri necessari sono disponibili;
+* resolver prudente dei parametri:
+  * `bw` esplicito oppure derivato solo da sezione rettangolare o T;
+  * `d` esplicito oppure derivato da gruppo barre;
+  * `Asl` esplicito oppure derivato da gruppo barre;
+  * `rhoL`, `sigmaCp`, `nEdCompression` e fonti dei dati riportati negli output;
+* collegamento opzionale a `ReinforcedConcreteBeamVerification` da azioni FEM;
+* report dell'esempio c.a. aggiornato con verifica a taglio con staffe;
+* test automatici standalone e integrati.
+
+Da completare dopo approvazione:
+
+* minimi di armatura e limiti geometrici delle staffe;
+* angoli staffe diversi da 90 gradi;
+* torsione e interazione taglio-torsione;
+* gestione avanzata di sezioni generiche/poligonali;
+* selezione automatica del gruppo teso lungo la trave in base al segno del momento, da usare solo con regole dichiarate.
+
+### 6. Verifiche SLE di travi in c.a.
+
+Stato: avviato con tensioni, fessurazione indiretta e deformazioni MVP.
+
+Completato:
+
+* `ReinforcedConcreteServiceabilityVerification` standalone;
+* integrazione opzionale in `ReinforcedConcreteBeamVerification` sulle combinazioni SLE;
+* layout dichiarativo delle armature longitudinali top/bottom per sezioni rettangolari e a T tramite diametro, numero e copriferro;
+* gruppi `top`/`bottom` salvati nei metadata della sezione e riusati da fessurazione, SLE e taglio;
+* tensioni di esercizio con sezione parzializzata e metodo `n`;
+* default `n = 15`;
+* limiti di tensione NTC 2018 4.1.2.2.5:
+  * calcestruzzo in combinazione caratteristica/rara;
+  * calcestruzzo in combinazione quasi permanente;
+  * acciaio in combinazione caratteristica/rara;
+* fessurazione indiretta per armature ordinarie poco sensibili con tabelle C4.1.II e C4.1.III;
+* default ambiente `ordinary`;
+* verifica del diametro massimo e della spaziatura massima delle barre tese;
+* report JSON/Markdown con tensioni, limiti, classe di apertura `w1/w2/w3`, barra governante e metadata;
+* calcolo freccia MVP tramite integrazione delle curvature su combinazioni SLE;
+* viscosita gestita con `phi = 2.0` di default e modificabile negli input;
+* ritiro escluso dal primo modello di deformazione, con assunzione riportata nei metadata;
+* confronto semplificato di snellezza della trave secondo tabella Circolare-like.
+* validazione automatica dei fattori limite SLE `0.60 fck`, `0.45 fck`, `0.80 fyk`;
+* validazione della mappatura ambiente/combinazione verso classi `w1/w2/w3`;
+* validazione della selezione del gruppo teso `bottom`/`top` in base al segno del momento;
+* per sezioni definite per punti o generiche, richiesta esplicita dei gruppi superiori/inferiori senza deduzioni automatiche;
+* validazione del blocco prudente per sezioni generiche senza gruppi espliciti;
+* validazione di viscosita configurabile nella freccia e ritiro escluso;
+* documentazione metodo SLE in `docs/reinforced-concrete-sle-method.md`.
+
+Da completare:
+
+* validare/raffinare la deformazione con casi di riferimento e storia di carico piu completa, separando meglio quote istantanee e differite;
+* validare il confronto di snellezza semplificato con casi dedicati e valori di riferimento della Circolare;
+* casi ambientali aggressivi/molto aggressivi da ampliare con esempi numerici di progetto, oltre alla mappatura tabellare gia coperta;
+* migliorare editor/API per sezioni generiche con dichiarazione guidata dei gruppi superiori/inferiori;
+* possibilita di aggiungere armature extra oltre ai layer principali top/bottom, mantenendo chiara la loro appartenenza o esclusione dai gruppi di verifica.
+
+### 7. Deflessioni di travi in c.a. fessurate
 
 Priorita: alta, ma complessita maggiore.
 
@@ -694,6 +774,21 @@ Workflow consigliato:
 8. predisporre tension stiffening o curvatura media;
 9. integrare la curvatura lungo la trave;
 10. restituire freccia, rotazioni, zone fessurate e warning sui punti non convergenti.
+
+Decisione MVP approvata:
+
+* la viscosita entra con coefficiente `phi = 2.0` di default;
+* `phi` deve essere modificabile manualmente dall'utente negli input della verifica;
+* il ritiro non viene considerato nel primo modello di deformazione;
+* il report deve dichiarare esplicitamente `phi`, se la deformazione e istantanea o differita, e che il ritiro e escluso.
+
+Prima implementazione completata:
+
+* `CrackedSectionDeflectionAnalysis` integra le curvature dai risultati FEM SLE;
+* modello di sezione fessurata no-tension con tension stiffening MVP;
+* verifica `rc-sle-deflection-curvature` per la freccia calcolata;
+* verifica `rc-sle-deflection-slenderness` per il confronto semplificato di snellezza;
+* test automatici dedicati su casi non fessurati e fessurati.
 
 MVP:
 
@@ -718,7 +813,7 @@ Output attesi:
 * elenco punti non convergenti;
 * assunzioni adottate.
 
-### 6. Sistemi misti futuri
+### 8. Sistemi misti futuri
 
 Priorita: media-bassa, dopo i workflow principali.
 
@@ -896,7 +991,7 @@ Stato: avviata.
 2. usare il motore RC SLE per curvatura fessurata;
 3. integrare curvature;
 4. validare contro casi semplici;
-5. aggiungere opzioni lungo termine.
+5. aggiungere opzioni lungo termine con `phi = 2.0` modificabile e ritiro escluso dal primo MVP.
 
 Risultato atteso:
 
@@ -974,7 +1069,7 @@ Da fare dopo:
 
 * ogni verifica avanzata deve essere discussa e approvata prima dell'implementazione, con campo di applicazione, assunzioni, formule e test attesi;
 * verifiche acciaio avanzate: instabilita flesso-torsionale, aste compresse, classificazione sezione;
-* completare verifiche c.a. avanzate da azioni FEM: taglio, fessurazione, esercizio e deflessioni fessurate;
+* consolidare verifiche c.a. avanzate da azioni FEM: taglio, tensioni SLE, fessurazione indiretta e deflessioni fessurate sono completati in MVP prudente; restano validazioni normative estese, casi ambientali, sezioni generiche, minimi/limiti costruttivi e affinamento deformazioni;
 * vibrazioni XLAM;
 * incendio XLAM;
 * sistemi misti acciaio-calcestruzzo;

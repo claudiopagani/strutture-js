@@ -67,6 +67,30 @@ Trave lamellare con luce maggiore e controllo di deformabilita.
 | timber-deflection | Serviceability vertical deflection verification | 0.0085 | 0.02 | 0.423 | si |
 | timber-final-deflection | Final serviceability vertical deflection verification | 0.0091 | 0.02 | 0.454 | si |
 
+## Dettagli verifiche
+
+| Verifica | Parametro | Valore |
+| --- | --- | --- |
+| timber-bending | resultId | glulam-gl24h-report-ULS-LIVE |
+| timber-bending | resultType | combination |
+| timber-bending | station | 3 |
+| timber-bending | limitState | ULS |
+| timber-bending | fmD | 12.8 |
+| timber-bending | kmod | 0.8 |
+| timber-bending | gammaM | 1.5 |
+| timber-shear | resultId | glulam-gl24h-report-ULS-LIVE |
+| timber-shear | resultType | combination |
+| timber-shear | station | 0 |
+| timber-shear | limitState | ULS |
+| timber-shear | fvD | 1.8667 |
+| timber-shear | shearArea | 57600 |
+| timber-deflection | combinationId | glulam-gl24h-report-SLE_RARE-LIVE |
+| timber-deflection | station | 3 |
+| timber-deflection | limitDenominator | 300 |
+| timber-final-deflection | combinationId | glulam-gl24h-report-SLE_QUASI_PERMANENT-all |
+| timber-final-deflection | station | 3 |
+| timber-final-deflection | limitDenominator | 300 |
+
 ## Esito
 
 * Stato: ok

@@ -65,6 +65,33 @@ Trave collaborante con soletta in calcestruzzo e connettori.
 | connector | Connector shear-flow verification | 9583.571 | 10293.3333 | 0.931 | si |
 | deflection | Serviceability deflection verification | 4.2466 | 170 | 0.025 | si |
 
+## Dettagli verifiche
+
+| Verifica | Parametro | Valore |
+| --- | --- | --- |
+| timber-bottom-stress | resultId | timber-concrete-report-ULS-LIVE |
+| timber-bottom-stress | resultType | combination |
+| timber-bottom-stress | station | 2125 |
+| timber-bottom-stress | limitState | ULS |
+| timber-bottom-stress | method | gelfi-gamma-method-section-actions |
+| timber-bottom-stress | gammaUls | 0.1981 |
+| timber-bottom-stress | inertiaEffUls | 980649243.4163 |
+| timber-top-stress | resultId | timber-concrete-report-ULS-LIVE |
+| timber-top-stress | resultType | combination |
+| timber-top-stress | station | 2125 |
+| timber-top-stress | limitState | ULS |
+| timber-top-stress | method | gelfi-gamma-method-section-actions |
+| timber-top-stress | gammaUls | 0.1981 |
+| timber-top-stress | inertiaEffUls | 980649243.4163 |
+| slab-bending | resultId | timber-concrete-report-ULS-LIVE |
+| slab-bending | resultType | combination |
+| slab-bending | station | 2125 |
+| slab-bending | limitState | ULS |
+| slab-bending | method | gelfi-gamma-method-section-actions |
+| slab-bending | gammaUls | 0.1981 |
+| slab-bending | inertiaEffUls | 980649243.4163 |
+| connector | type | circular-reference |
+
 ## Esito
 
 * Stato: ok

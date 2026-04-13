@@ -164,6 +164,64 @@
               "LIVE": 1
             }
           }
+        },
+        {
+          "id": "rc-elastic-report-SLE_FREQUENT-LIVE",
+          "name": "SLE_FREQUENT LIVE",
+          "limitState": "SLE",
+          "combinationType": "SLE_FREQUENT",
+          "factors": {
+            "G1": 1,
+            "LIVE": 0.5
+          },
+          "metadata": {
+            "normativePreset": "NTC2018",
+            "ntcReference": "DM 17/01/2018 - NTC 2018",
+            "leadingLoadCaseId": "LIVE",
+            "leadingActionId": "ACT-LIVE",
+            "leadingVariableCategory": "B",
+            "accompanyingLoadCaseIds": [],
+            "loadDurations": {
+              "G1": "permanent",
+              "LIVE": "medium"
+            },
+            "generatedBy": "createNTC2018BeamCombinations",
+            "requestedType": "SLE_FREQUENT",
+            "serviceCombination": "frequent",
+            "psiFactors": {
+              "G1": 1,
+              "LIVE": 0.5
+            }
+          }
+        },
+        {
+          "id": "rc-elastic-report-SLE_QUASI_PERMANENT-all",
+          "name": "SLE_QUASI_PERMANENT all",
+          "limitState": "SLE",
+          "combinationType": "SLE_QUASI_PERMANENT",
+          "factors": {
+            "G1": 1,
+            "LIVE": 0.3
+          },
+          "metadata": {
+            "normativePreset": "NTC2018",
+            "ntcReference": "DM 17/01/2018 - NTC 2018",
+            "leadingLoadCaseId": null,
+            "leadingActionId": null,
+            "leadingVariableCategory": null,
+            "accompanyingLoadCaseIds": [],
+            "loadDurations": {
+              "G1": "permanent",
+              "LIVE": "medium"
+            },
+            "generatedBy": "createNTC2018BeamCombinations",
+            "requestedType": "SLE_QUASI_PERMANENT",
+            "serviceCombination": "quasi-permanent",
+            "psiFactors": {
+              "G1": 1,
+              "LIVE": 0.3
+            }
+          }
         }
       ],
       "discretization": {
@@ -186,12 +244,12 @@
       "centroidY": 250.00000000000009,
       "centroidZ": 150,
       "inertiaY": 3460358727.7945642,
-      "inertiaZ": 1178657396.4471302,
+      "inertiaZ": 1208839681.9486408,
       "torsionalConstant": null,
       "shearAreaY": null,
       "shearAreaZ": null,
       "elasticSectionModulusY": 13841434.911178252,
-      "elasticSectionModulusZ": 7857715.976314201,
+      "elasticSectionModulusZ": 8058931.212990939,
       "plasticSectionModulusY": null,
       "plasticSectionModulusZ": null,
       "height": 500,
@@ -215,6 +273,34 @@
         }
       ],
       "metadata": {
+        "longitudinalReinforcementGroups": [
+          {
+            "id": "bottom-main",
+            "name": "bottom longitudinal reinforcement",
+            "face": "bottom",
+            "barIds": [
+              "bottom-main-1",
+              "bottom-main-2"
+            ],
+            "diameter": 20,
+            "count": 2,
+            "cover": 40,
+            "longitudinalReinforcementArea": 628.3185307179587
+          },
+          {
+            "id": "top-main",
+            "name": "top longitudinal reinforcement",
+            "face": "top",
+            "barIds": [
+              "top-main-1",
+              "top-main-2"
+            ],
+            "diameter": 20,
+            "count": 2,
+            "cover": 40,
+            "longitudinalReinforcementArea": 628.3185307179587
+          }
+        ],
         "shape": "reinforced-concrete",
         "unitSystem": {
           "force": "N",
@@ -266,8 +352,8 @@
       },
       "reinforcementBars": [
         {
-          "id": null,
-          "name": "Rebar B450C d20",
+          "id": "bottom-main-1",
+          "name": "bottom longitudinal reinforcement 1",
           "diameter": 20,
           "area": 314.1592653589793,
           "grade": "B450C",
@@ -297,8 +383,11 @@
             "ductilityClass": "C"
           },
           "y": 50,
-          "z": 70,
+          "z": 50,
           "metadata": {
+            "face": "bottom",
+            "generatedBy": "createLongitudinalReinforcementLayout",
+            "layerId": "bottom-main",
             "unitSystem": {
               "force": "N",
               "length": "mm"
@@ -306,8 +395,8 @@
           }
         },
         {
-          "id": null,
-          "name": "Rebar B450C d20",
+          "id": "bottom-main-2",
+          "name": "bottom longitudinal reinforcement 2",
           "diameter": 20,
           "area": 314.1592653589793,
           "grade": "B450C",
@@ -336,8 +425,11 @@
             "ductilityClass": "C"
           },
           "y": 50,
-          "z": 230,
+          "z": 250,
           "metadata": {
+            "face": "bottom",
+            "generatedBy": "createLongitudinalReinforcementLayout",
+            "layerId": "bottom-main",
             "unitSystem": {
               "force": "N",
               "length": "mm"
@@ -345,8 +437,8 @@
           }
         },
         {
-          "id": null,
-          "name": "Rebar B450C d20",
+          "id": "top-main-1",
+          "name": "top longitudinal reinforcement 1",
           "diameter": 20,
           "area": 314.1592653589793,
           "grade": "B450C",
@@ -375,8 +467,11 @@
             "ductilityClass": "C"
           },
           "y": 450,
-          "z": 70,
+          "z": 50,
           "metadata": {
+            "face": "top",
+            "generatedBy": "createLongitudinalReinforcementLayout",
+            "layerId": "top-main",
             "unitSystem": {
               "force": "N",
               "length": "mm"
@@ -384,8 +479,8 @@
           }
         },
         {
-          "id": null,
-          "name": "Rebar B450C d20",
+          "id": "top-main-2",
+          "name": "top longitudinal reinforcement 2",
           "diameter": 20,
           "area": 314.1592653589793,
           "grade": "B450C",
@@ -414,8 +509,11 @@
             "ductilityClass": "C"
           },
           "y": 450,
-          "z": 230,
+          "z": 250,
           "metadata": {
+            "face": "top",
+            "generatedBy": "createLongitudinalReinforcementLayout",
+            "layerId": "top-main",
             "unitSystem": {
               "force": "N",
               "length": "mm"
@@ -481,18 +579,21 @@
         "centroidY": 250.00000000000009,
         "centroidZ": 150,
         "inertiaY": 3460358727.7945642,
-        "inertiaZ": 1178657396.4471302,
+        "inertiaZ": 1208839681.9486408,
         "torsionalConstant": null,
         "shearAreaY": null,
         "shearAreaZ": null,
         "elasticSectionModulusY": 13841434.911178252,
-        "elasticSectionModulusZ": 7857715.976314201,
+        "elasticSectionModulusZ": 8058931.212990939,
         "plasticSectionModulusY": null,
         "plasticSectionModulusZ": null,
         "height": 500,
         "width": 300,
         "outlinePoints": [],
         "metadata": {
+          "longitudinalReinforcementGroups": {
+            "type": "circular-reference"
+          },
           "shape": "composite",
           "unitSystem": {
             "force": "N",
@@ -583,8 +684,8 @@
             }
           },
           {
-            "id": "rebar-1",
-            "name": "Rebar B450C d20",
+            "id": "bottom-main-1",
+            "name": "bottom longitudinal reinforcement 1",
             "section": {
               "id": null,
               "name": "Equivalent bar 1",
@@ -635,7 +736,7 @@
               "ductilityClass": "C"
             },
             "centroidY": 50,
-            "centroidZ": 70,
+            "centroidZ": 50,
             "modularRatio": 6.671749904689287,
             "role": "reinforcement",
             "metadata": {
@@ -648,8 +749,8 @@
             }
           },
           {
-            "id": "rebar-2",
-            "name": "Rebar B450C d20",
+            "id": "bottom-main-2",
+            "name": "bottom longitudinal reinforcement 2",
             "section": {
               "id": null,
               "name": "Equivalent bar 2",
@@ -700,7 +801,7 @@
               "ductilityClass": "C"
             },
             "centroidY": 50,
-            "centroidZ": 230,
+            "centroidZ": 250,
             "modularRatio": 6.671749904689287,
             "role": "reinforcement",
             "metadata": {
@@ -713,8 +814,8 @@
             }
           },
           {
-            "id": "rebar-3",
-            "name": "Rebar B450C d20",
+            "id": "top-main-1",
+            "name": "top longitudinal reinforcement 1",
             "section": {
               "id": null,
               "name": "Equivalent bar 3",
@@ -765,7 +866,7 @@
               "ductilityClass": "C"
             },
             "centroidY": 450,
-            "centroidZ": 70,
+            "centroidZ": 50,
             "modularRatio": 6.671749904689287,
             "role": "reinforcement",
             "metadata": {
@@ -778,8 +879,8 @@
             }
           },
           {
-            "id": "rebar-4",
-            "name": "Rebar B450C d20",
+            "id": "top-main-2",
+            "name": "top longitudinal reinforcement 2",
             "section": {
               "id": null,
               "name": "Equivalent bar 4",
@@ -830,7 +931,7 @@
               "ductilityClass": "C"
             },
             "centroidY": 450,
-            "centroidZ": 230,
+            "centroidZ": 250,
             "modularRatio": 6.671749904689287,
             "role": "reinforcement",
             "metadata": {
@@ -883,12 +984,12 @@
           "centroidY": 250.00000000000009,
           "centroidZ": 150,
           "inertiaY": 3460358727.7945642,
-          "inertiaZ": 1178657396.4471302,
+          "inertiaZ": 1208839681.9486408,
           "torsionalConstant": null,
           "shearAreaY": null,
           "shearAreaZ": null,
           "elasticSectionModulusY": 13841434.911178252,
-          "elasticSectionModulusZ": 7857715.976314201,
+          "elasticSectionModulusZ": 8058931.212990939,
           "plasticSectionModulusY": null,
           "plasticSectionModulusZ": null,
           "height": 500,
@@ -912,6 +1013,34 @@
             }
           ],
           "metadata": {
+            "longitudinalReinforcementGroups": [
+              {
+                "id": "bottom-main",
+                "name": "bottom longitudinal reinforcement",
+                "face": "bottom",
+                "barIds": [
+                  "bottom-main-1",
+                  "bottom-main-2"
+                ],
+                "diameter": 20,
+                "count": 2,
+                "cover": 40,
+                "longitudinalReinforcementArea": 628.3185307179587
+              },
+              {
+                "id": "top-main",
+                "name": "top longitudinal reinforcement",
+                "face": "top",
+                "barIds": [
+                  "top-main-1",
+                  "top-main-2"
+                ],
+                "diameter": 20,
+                "count": 2,
+                "cover": 40,
+                "longitudinalReinforcementArea": 628.3185307179587
+              }
+            ],
             "shape": "reinforced-concrete",
             "unitSystem": {
               "force": "N",
@@ -963,8 +1092,8 @@
           },
           "reinforcementBars": [
             {
-              "id": null,
-              "name": "Rebar B450C d20",
+              "id": "bottom-main-1",
+              "name": "bottom longitudinal reinforcement 1",
               "diameter": 20,
               "area": 314.1592653589793,
               "grade": "B450C",
@@ -994,8 +1123,11 @@
                 "ductilityClass": "C"
               },
               "y": 50,
-              "z": 70,
+              "z": 50,
               "metadata": {
+                "face": "bottom",
+                "generatedBy": "createLongitudinalReinforcementLayout",
+                "layerId": "bottom-main",
                 "unitSystem": {
                   "force": "N",
                   "length": "mm"
@@ -1003,8 +1135,8 @@
               }
             },
             {
-              "id": null,
-              "name": "Rebar B450C d20",
+              "id": "bottom-main-2",
+              "name": "bottom longitudinal reinforcement 2",
               "diameter": 20,
               "area": 314.1592653589793,
               "grade": "B450C",
@@ -1033,8 +1165,11 @@
                 "ductilityClass": "C"
               },
               "y": 50,
-              "z": 230,
+              "z": 250,
               "metadata": {
+                "face": "bottom",
+                "generatedBy": "createLongitudinalReinforcementLayout",
+                "layerId": "bottom-main",
                 "unitSystem": {
                   "force": "N",
                   "length": "mm"
@@ -1042,8 +1177,8 @@
               }
             },
             {
-              "id": null,
-              "name": "Rebar B450C d20",
+              "id": "top-main-1",
+              "name": "top longitudinal reinforcement 1",
               "diameter": 20,
               "area": 314.1592653589793,
               "grade": "B450C",
@@ -1072,8 +1207,11 @@
                 "ductilityClass": "C"
               },
               "y": 450,
-              "z": 70,
+              "z": 50,
               "metadata": {
+                "face": "top",
+                "generatedBy": "createLongitudinalReinforcementLayout",
+                "layerId": "top-main",
                 "unitSystem": {
                   "force": "N",
                   "length": "mm"
@@ -1081,8 +1219,8 @@
               }
             },
             {
-              "id": null,
-              "name": "Rebar B450C d20",
+              "id": "top-main-2",
+              "name": "top longitudinal reinforcement 2",
               "diameter": 20,
               "area": 314.1592653589793,
               "grade": "B450C",
@@ -1111,8 +1249,11 @@
                 "ductilityClass": "C"
               },
               "y": 450,
-              "z": 230,
+              "z": 250,
               "metadata": {
+                "face": "top",
+                "generatedBy": "createLongitudinalReinforcementLayout",
+                "layerId": "top-main",
                 "unitSystem": {
                   "force": "N",
                   "length": "mm"
@@ -1178,18 +1319,21 @@
             "centroidY": 250.00000000000009,
             "centroidZ": 150,
             "inertiaY": 3460358727.7945642,
-            "inertiaZ": 1178657396.4471302,
+            "inertiaZ": 1208839681.9486408,
             "torsionalConstant": null,
             "shearAreaY": null,
             "shearAreaZ": null,
             "elasticSectionModulusY": 13841434.911178252,
-            "elasticSectionModulusZ": 7857715.976314201,
+            "elasticSectionModulusZ": 8058931.212990939,
             "plasticSectionModulusY": null,
             "plasticSectionModulusZ": null,
             "height": 500,
             "width": 300,
             "outlinePoints": [],
             "metadata": {
+              "longitudinalReinforcementGroups": {
+                "type": "circular-reference"
+              },
               "shape": "composite",
               "unitSystem": {
                 "force": "N",
@@ -1280,8 +1424,8 @@
                 }
               },
               {
-                "id": "rebar-1",
-                "name": "Rebar B450C d20",
+                "id": "bottom-main-1",
+                "name": "bottom longitudinal reinforcement 1",
                 "section": {
                   "id": null,
                   "name": "Equivalent bar 1",
@@ -1332,7 +1476,7 @@
                   "ductilityClass": "C"
                 },
                 "centroidY": 50,
-                "centroidZ": 70,
+                "centroidZ": 50,
                 "modularRatio": 6.671749904689287,
                 "role": "reinforcement",
                 "metadata": {
@@ -1345,8 +1489,8 @@
                 }
               },
               {
-                "id": "rebar-2",
-                "name": "Rebar B450C d20",
+                "id": "bottom-main-2",
+                "name": "bottom longitudinal reinforcement 2",
                 "section": {
                   "id": null,
                   "name": "Equivalent bar 2",
@@ -1397,7 +1541,7 @@
                   "ductilityClass": "C"
                 },
                 "centroidY": 50,
-                "centroidZ": 230,
+                "centroidZ": 250,
                 "modularRatio": 6.671749904689287,
                 "role": "reinforcement",
                 "metadata": {
@@ -1410,8 +1554,8 @@
                 }
               },
               {
-                "id": "rebar-3",
-                "name": "Rebar B450C d20",
+                "id": "top-main-1",
+                "name": "top longitudinal reinforcement 1",
                 "section": {
                   "id": null,
                   "name": "Equivalent bar 3",
@@ -1462,7 +1606,7 @@
                   "ductilityClass": "C"
                 },
                 "centroidY": 450,
-                "centroidZ": 70,
+                "centroidZ": 50,
                 "modularRatio": 6.671749904689287,
                 "role": "reinforcement",
                 "metadata": {
@@ -1475,8 +1619,8 @@
                 }
               },
               {
-                "id": "rebar-4",
-                "name": "Rebar B450C d20",
+                "id": "top-main-2",
+                "name": "top longitudinal reinforcement 2",
                 "section": {
                   "id": null,
                   "name": "Equivalent bar 4",
@@ -1527,7 +1671,7 @@
                   "ductilityClass": "C"
                 },
                 "centroidY": 450,
-                "centroidZ": 230,
+                "centroidZ": 250,
                 "modularRatio": 6.671749904689287,
                 "role": "reinforcement",
                 "metadata": {
@@ -1591,6 +1735,22 @@
           "fyd": 391.3,
           "ftk": 540,
           "ductilityClass": "C"
+        },
+        "shear": {
+          "mode": "with-transverse-reinforcement",
+          "effectiveDepth": 450,
+          "longitudinalReinforcementGroupId": "bottom-main",
+          "transverseReinforcement": {
+            "type": "stirrups",
+            "diameter": 8,
+            "legs": 2,
+            "spacing": 150,
+            "material": {
+              "type": "circular-reference"
+            }
+          },
+          "cotThetaMin": 1,
+          "cotThetaMax": 2.5
         }
       },
       "metadata": null
@@ -1613,7 +1773,9 @@
     ],
     "combinationIds": [
       "rc-elastic-report-ULS-LIVE",
-      "rc-elastic-report-SLE_RARE-LIVE"
+      "rc-elastic-report-SLE_RARE-LIVE",
+      "rc-elastic-report-SLE_FREQUENT-LIVE",
+      "rc-elastic-report-SLE_QUASI_PERMANENT-all"
     ],
     "loadCases": {
       "G1": {
@@ -1759,6 +1921,90 @@
         },
         "maxAbsVerticalDisplacement": {
           "value": -0.0009713181175332503,
+          "station": 2.5
+        },
+        "sectionProperties": {
+          "axialRigidity": 4985293.782901543,
+          "flexuralRigidity": 108918.2513160617,
+          "shearRigidity": 1967250,
+          "shearCorrectionFactor": 0.8333333333333334,
+          "units": {
+            "force": "kN",
+            "length": "m"
+          },
+          "metadata": {
+            "provider": "ReinforcedConcreteBeamSectionProvider",
+            "source": "uncracked-transformed-section",
+            "stiffnessState": "transformed",
+            "bendingInertiaAxis": "inertiaY",
+            "shearAreaAxis": "shearAreaY",
+            "concreteStrengthClass": "C25/30",
+            "concreteElasticModulus": 31476,
+            "concreteShearModulus": 13115,
+            "reinforcementGrade": "B450C",
+            "reinforcementArea": 1256.6370614359173,
+            "limitState": "SLE",
+            "cracked": false
+          }
+        }
+      },
+      "rc-elastic-report-SLE_FREQUENT-LIVE": {
+        "id": "rc-elastic-report-SLE_FREQUENT-LIVE",
+        "resultType": "combination",
+        "limitState": "SLE",
+        "combinationType": "SLE_FREQUENT",
+        "maxAbsBendingMoment": {
+          "value": 32.8124999999997,
+          "station": 2.5
+        },
+        "maxAbsShearForce": {
+          "value": -26.249999999999886,
+          "station": 5
+        },
+        "maxAbsVerticalDisplacement": {
+          "value": -0.0007845261718537795,
+          "station": 2.5
+        },
+        "sectionProperties": {
+          "axialRigidity": 4985293.782901543,
+          "flexuralRigidity": 108918.2513160617,
+          "shearRigidity": 1967250,
+          "shearCorrectionFactor": 0.8333333333333334,
+          "units": {
+            "force": "kN",
+            "length": "m"
+          },
+          "metadata": {
+            "provider": "ReinforcedConcreteBeamSectionProvider",
+            "source": "uncracked-transformed-section",
+            "stiffnessState": "transformed",
+            "bendingInertiaAxis": "inertiaY",
+            "shearAreaAxis": "shearAreaY",
+            "concreteStrengthClass": "C25/30",
+            "concreteElasticModulus": 31476,
+            "concreteShearModulus": 13115,
+            "reinforcementGrade": "B450C",
+            "reinforcementArea": 1256.6370614359173,
+            "limitState": "SLE",
+            "cracked": false
+          }
+        }
+      },
+      "rc-elastic-report-SLE_QUASI_PERMANENT-all": {
+        "id": "rc-elastic-report-SLE_QUASI_PERMANENT-all",
+        "resultType": "combination",
+        "limitState": "SLE",
+        "combinationType": "SLE_QUASI_PERMANENT",
+        "maxAbsBendingMoment": {
+          "value": 29.68749999999923,
+          "station": 2.5
+        },
+        "maxAbsShearForce": {
+          "value": -23.749999999999886,
+          "station": 5
+        },
+        "maxAbsVerticalDisplacement": {
+          "value": -0.0007098093935819906,
           "station": 2.5
         },
         "sectionProperties": {
@@ -2268,20 +2514,20 @@
           }
         },
         "minVerticalReaction": {
-          "resultId": "rc-elastic-report-SLE_RARE-LIVE",
+          "resultId": "rc-elastic-report-SLE_QUASI_PERMANENT-all",
           "resultType": "combination",
           "limitState": "SLE",
-          "combinationType": "SLE_RARE",
+          "combinationType": "SLE_QUASI_PERMANENT",
           "quantity": "ry",
-          "value": 32.499999999998636,
+          "value": 23.74999999999946,
           "sample": {
             "supportId": "start-support",
             "nodeId": "rc-elastic-report-beam-node-1",
             "station": 0,
             "type": "hinge",
             "ux": 0,
-            "uy": 32.499999999998636,
-            "rz": -6.348255254806645e-13
+            "uy": 23.74999999999946,
+            "rz": -4.595213098923523e-13
           }
         },
         "maxSupportMomentReaction": {
@@ -2302,20 +2548,20 @@
           }
         },
         "minSupportMomentReaction": {
-          "resultId": "rc-elastic-report-SLE_RARE-LIVE",
+          "resultId": "rc-elastic-report-SLE_FREQUENT-LIVE",
           "resultType": "combination",
           "limitState": "SLE",
-          "combinationType": "SLE_RARE",
+          "combinationType": "SLE_FREQUENT",
           "quantity": "mrz",
-          "value": -6.348255254806645e-13,
+          "value": -6.963318810448982e-13,
           "sample": {
             "supportId": "start-support",
             "nodeId": "rc-elastic-report-beam-node-1",
             "station": 0,
             "type": "hinge",
             "ux": 0,
-            "uy": 32.499999999998636,
-            "rz": -6.348255254806645e-13
+            "uy": 26.249999999998522,
+            "rz": -6.963318810448982e-13
           }
         },
         "maxAbsHorizontalReaction": {
@@ -2748,20 +2994,20 @@
           }
         },
         "minBendingMoment": {
-          "resultId": "rc-elastic-report-SLE_RARE-LIVE",
+          "resultId": "rc-elastic-report-SLE_FREQUENT-LIVE",
           "resultType": "combination",
           "limitState": "SLE",
-          "combinationType": "SLE_RARE",
+          "combinationType": "SLE_FREQUENT",
           "quantity": "m",
-          "value": -4.618527782440651e-14,
+          "value": -1.1368683772161603e-13,
           "sample": {
             "elementId": "rc-elastic-report-beam-element-6",
             "station": 5,
             "x": 5,
             "y": 0,
             "n": 0,
-            "v": -32.49999999999966,
-            "m": -4.618527782440651e-14
+            "v": -26.249999999999886,
+            "m": -1.1368683772161603e-13
           }
         },
         "maxAbsBendingMoment": {
@@ -2850,20 +3096,20 @@
           }
         },
         "minVerticalReaction": {
-          "resultId": "rc-elastic-report-SLE_RARE-LIVE",
+          "resultId": "rc-elastic-report-SLE_QUASI_PERMANENT-all",
           "resultType": "combination",
           "limitState": "SLE",
-          "combinationType": "SLE_RARE",
+          "combinationType": "SLE_QUASI_PERMANENT",
           "quantity": "ry",
-          "value": 32.499999999998636,
+          "value": 23.74999999999946,
           "sample": {
             "supportId": "start-support",
             "nodeId": "rc-elastic-report-beam-node-1",
             "station": 0,
             "type": "hinge",
             "ux": 0,
-            "uy": 32.499999999998636,
-            "rz": -6.348255254806645e-13
+            "uy": 23.74999999999946,
+            "rz": -4.595213098923523e-13
           }
         },
         "maxSupportMomentReaction": {
@@ -2884,20 +3130,20 @@
           }
         },
         "minSupportMomentReaction": {
-          "resultId": "rc-elastic-report-SLE_RARE-LIVE",
+          "resultId": "rc-elastic-report-SLE_FREQUENT-LIVE",
           "resultType": "combination",
           "limitState": "SLE",
-          "combinationType": "SLE_RARE",
+          "combinationType": "SLE_FREQUENT",
           "quantity": "mrz",
-          "value": -6.348255254806645e-13,
+          "value": -6.963318810448982e-13,
           "sample": {
             "supportId": "start-support",
             "nodeId": "rc-elastic-report-beam-node-1",
             "station": 0,
             "type": "hinge",
             "ux": 0,
-            "uy": 32.499999999998636,
-            "rz": -6.348255254806645e-13
+            "uy": 26.249999999998522,
+            "rz": -6.963318810448982e-13
           }
         },
         "maxAbsHorizontalReaction": {
@@ -2935,20 +3181,20 @@
           }
         },
         "maxAbsSupportMomentReaction": {
-          "resultId": "rc-elastic-report-SLE_RARE-LIVE",
+          "resultId": "rc-elastic-report-SLE_FREQUENT-LIVE",
           "resultType": "combination",
           "limitState": "SLE",
-          "combinationType": "SLE_RARE",
+          "combinationType": "SLE_FREQUENT",
           "quantity": "absMrz",
-          "value": 6.348255254806645e-13,
+          "value": 6.963318810448982e-13,
           "sample": {
             "supportId": "start-support",
             "nodeId": "rc-elastic-report-beam-node-1",
             "station": 0,
             "type": "hinge",
             "ux": 0,
-            "uy": 32.499999999998636,
-            "rz": -6.348255254806645e-13
+            "uy": 26.249999999998522,
+            "rz": -6.963318810448982e-13
           }
         }
       },
@@ -3175,20 +3421,20 @@
           }
         },
         "minSupportMomentReaction": {
-          "resultId": "rc-elastic-report-SLE_RARE-LIVE",
+          "resultId": "rc-elastic-report-SLE_FREQUENT-LIVE",
           "resultType": "combination",
           "limitState": "SLE",
-          "combinationType": "SLE_RARE",
+          "combinationType": "SLE_FREQUENT",
           "quantity": "mrz",
-          "value": -6.348255254806645e-13,
+          "value": -6.963318810448982e-13,
           "sample": {
             "supportId": "start-support",
             "nodeId": "rc-elastic-report-beam-node-1",
             "station": 0,
             "type": "hinge",
             "ux": 0,
-            "uy": 32.499999999998636,
-            "rz": -6.348255254806645e-13
+            "uy": 26.249999999998522,
+            "rz": -6.963318810448982e-13
           }
         },
         "maxAbsHorizontalReaction": {
@@ -5697,6 +5943,1252 @@
             "LIVE": 1
           },
           "name": "SLE_RARE LIVE"
+        },
+        "rc-elastic-report-SLE_FREQUENT-LIVE": {
+          "id": "rc-elastic-report-SLE_FREQUENT-LIVE",
+          "resultType": "combination",
+          "loads": [
+            {
+              "id": "g1",
+              "actionType": "G1",
+              "loadCaseId": "G1",
+              "loadDurationClass": "permanent",
+              "factor": 1
+            },
+            {
+              "id": "live",
+              "actionType": "Qk",
+              "loadCaseId": "LIVE",
+              "loadDurationClass": "medium",
+              "factor": 0.5
+            }
+          ],
+          "context": {
+            "resultType": "combination",
+            "limitState": "SLE",
+            "combinationType": "SLE_FREQUENT",
+            "serviceCombination": "frequent",
+            "leadingLoadCaseId": "LIVE",
+            "leadingActionId": "ACT-LIVE",
+            "leadingVariableCategory": "B",
+            "accompanyingLoadCaseIds": [],
+            "loadCaseFactors": {
+              "G1": 1,
+              "LIVE": 0.5
+            },
+            "activeLoads": [
+              {
+                "id": "g1",
+                "actionType": "G1",
+                "loadCaseId": "G1",
+                "factor": 1,
+                "nature": "permanent",
+                "variableCategory": null,
+                "loadDurationClass": "permanent",
+                "leadingEligible": true,
+                "metadata": {}
+              },
+              {
+                "id": "live",
+                "actionType": "Qk",
+                "loadCaseId": "LIVE",
+                "factor": 0.5,
+                "nature": "variable",
+                "variableCategory": "B",
+                "loadDurationClass": "medium",
+                "leadingEligible": true,
+                "metadata": {}
+              }
+            ],
+            "governingLoadDurationClass": "medium",
+            "governingLoad": {
+              "id": "live",
+              "actionType": "Qk",
+              "loadCaseId": "LIVE",
+              "factor": 0.5,
+              "nature": "variable",
+              "variableCategory": "B",
+              "loadDurationClass": "medium",
+              "leadingEligible": true,
+              "metadata": {
+                "type": "circular-reference"
+              },
+              "normalizedLoadDurationClass": "medium"
+            }
+          },
+          "units": {
+            "type": "circular-reference"
+          },
+          "geometry": {
+            "start": {
+              "x": 0,
+              "y": 0
+            },
+            "end": {
+              "x": 5,
+              "y": 0
+            },
+            "length": 5,
+            "horizontalSpan": 5
+          },
+          "sectionProperties": {
+            "axialRigidity": 4985293.782901543,
+            "flexuralRigidity": 108918.2513160617,
+            "shearRigidity": 1967250,
+            "shearCorrectionFactor": 0.8333333333333334,
+            "units": {
+              "type": "circular-reference"
+            },
+            "metadata": {
+              "provider": "ReinforcedConcreteBeamSectionProvider",
+              "source": "uncracked-transformed-section",
+              "stiffnessState": "transformed",
+              "bendingInertiaAxis": "inertiaY",
+              "shearAreaAxis": "shearAreaY",
+              "concreteStrengthClass": "C25/30",
+              "concreteElasticModulus": 31476,
+              "concreteShearModulus": 13115,
+              "reinforcementGrade": "B450C",
+              "reinforcementArea": 1256.6370614359173,
+              "limitState": "SLE",
+              "cracked": false
+            }
+          },
+          "nodes": [
+            {
+              "id": "rc-elastic-report-beam-node-1",
+              "station": 0,
+              "x": 0,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": 0,
+                "rz": -0.000502096749986419
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 26.249999999998522,
+                "rz": -6.963318810448982e-13
+              }
+            },
+            {
+              "id": "rc-elastic-report-beam-node-2",
+              "station": 1,
+              "x": 1,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": -0.000465945783987395,
+                "rz": -0.0003976606259892416
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 1.4210854715202004e-13,
+                "rz": -1.4210854715202004e-13
+              }
+            },
+            {
+              "id": "rc-elastic-report-beam-node-3",
+              "station": 2,
+              "x": 2,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": -0.0007471199639797894,
+                "rz": -0.0001486206379959835
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 1.7816859099184512e-12,
+                "rz": -9.157119507108291e-13
+              }
+            },
+            {
+              "id": "rc-elastic-report-beam-node-4",
+              "station": 2.5,
+              "x": 2.5,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": -0.0007845261718537795,
+                "rz": -4.189452415119161e-18
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": -5.115907697472721e-13,
+                "rz": -6.110667527536862e-13
+              }
+            },
+            {
+              "id": "rc-elastic-report-beam-node-5",
+              "station": 3,
+              "x": 3,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": -0.0007471199639797929,
+                "rz": 0.00014862063799597777
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": -1.7053025658242404e-13,
+                "rz": -2.8421709430404007e-13
+              }
+            },
+            {
+              "id": "rc-elastic-report-beam-node-6",
+              "station": 4,
+              "x": 4,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": -0.00046594578398739876,
+                "rz": 0.00039766062598924474
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 5.684341886080802e-14,
+                "rz": -5.684341886080802e-14
+              }
+            },
+            {
+              "id": "rc-elastic-report-beam-node-7",
+              "station": 5,
+              "x": 5,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": 0,
+                "rz": 0.0005020967499864213
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 26.249999999999886,
+                "rz": -5.684341886080802e-14
+              }
+            }
+          ],
+          "supports": [
+            {
+              "id": "start-support",
+              "nodeId": "rc-elastic-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "restraints": {
+                "ux": true,
+                "uy": true,
+                "uz": false,
+                "rx": false,
+                "ry": false,
+                "rz": false
+              },
+              "reaction": {
+                "type": "circular-reference"
+              }
+            },
+            {
+              "id": "end-support",
+              "nodeId": "rc-elastic-report-beam-node-7",
+              "station": 5,
+              "type": "roller",
+              "restraints": {
+                "ux": false,
+                "uy": true,
+                "uz": false,
+                "rx": false,
+                "ry": false,
+                "rz": false
+              },
+              "reaction": {
+                "type": "circular-reference"
+              }
+            }
+          ],
+          "displacementByNode": {
+            "rc-elastic-report-beam-node-1": {
+              "type": "circular-reference"
+            },
+            "rc-elastic-report-beam-node-2": {
+              "type": "circular-reference"
+            },
+            "rc-elastic-report-beam-node-3": {
+              "type": "circular-reference"
+            },
+            "rc-elastic-report-beam-node-4": {
+              "type": "circular-reference"
+            },
+            "rc-elastic-report-beam-node-5": {
+              "type": "circular-reference"
+            },
+            "rc-elastic-report-beam-node-6": {
+              "type": "circular-reference"
+            },
+            "rc-elastic-report-beam-node-7": {
+              "type": "circular-reference"
+            }
+          },
+          "reactionByNode": {
+            "rc-elastic-report-beam-node-1": {
+              "type": "circular-reference"
+            },
+            "rc-elastic-report-beam-node-2": {
+              "type": "circular-reference"
+            },
+            "rc-elastic-report-beam-node-3": {
+              "type": "circular-reference"
+            },
+            "rc-elastic-report-beam-node-4": {
+              "type": "circular-reference"
+            },
+            "rc-elastic-report-beam-node-5": {
+              "type": "circular-reference"
+            },
+            "rc-elastic-report-beam-node-6": {
+              "type": "circular-reference"
+            },
+            "rc-elastic-report-beam-node-7": {
+              "type": "circular-reference"
+            }
+          },
+          "reactions": {
+            "samples": [
+              {
+                "supportId": "start-support",
+                "nodeId": "rc-elastic-report-beam-node-1",
+                "station": 0,
+                "type": "hinge",
+                "ux": 0,
+                "uy": 26.249999999998522,
+                "rz": -6.963318810448982e-13
+              },
+              {
+                "supportId": "end-support",
+                "nodeId": "rc-elastic-report-beam-node-7",
+                "station": 5,
+                "type": "roller",
+                "ux": 0,
+                "uy": 26.249999999999886,
+                "rz": -5.684341886080802e-14
+              }
+            ],
+            "maxHorizontalReaction": {
+              "type": "circular-reference"
+            },
+            "minHorizontalReaction": {
+              "type": "circular-reference"
+            },
+            "maxVerticalReaction": {
+              "type": "circular-reference"
+            },
+            "minVerticalReaction": {
+              "type": "circular-reference"
+            },
+            "maxSupportMomentReaction": {
+              "type": "circular-reference"
+            },
+            "minSupportMomentReaction": {
+              "type": "circular-reference"
+            },
+            "maxAbsHorizontalReaction": {
+              "type": "circular-reference"
+            },
+            "maxAbsVerticalReaction": {
+              "type": "circular-reference"
+            },
+            "maxAbsSupportMomentReaction": {
+              "type": "circular-reference"
+            }
+          },
+          "displacements": {
+            "samples": [
+              {
+                "nodeId": "rc-elastic-report-beam-node-1",
+                "station": 0,
+                "x": 0,
+                "y": 0,
+                "ux": 0,
+                "uy": 0,
+                "rz": -0.000502096749986419
+              },
+              {
+                "nodeId": "rc-elastic-report-beam-node-2",
+                "station": 1,
+                "x": 1,
+                "y": 0,
+                "ux": 0,
+                "uy": -0.000465945783987395,
+                "rz": -0.0003976606259892416
+              },
+              {
+                "nodeId": "rc-elastic-report-beam-node-3",
+                "station": 2,
+                "x": 2,
+                "y": 0,
+                "ux": 0,
+                "uy": -0.0007471199639797894,
+                "rz": -0.0001486206379959835
+              },
+              {
+                "nodeId": "rc-elastic-report-beam-node-4",
+                "station": 2.5,
+                "x": 2.5,
+                "y": 0,
+                "ux": 0,
+                "uy": -0.0007845261718537795,
+                "rz": -4.189452415119161e-18
+              },
+              {
+                "nodeId": "rc-elastic-report-beam-node-5",
+                "station": 3,
+                "x": 3,
+                "y": 0,
+                "ux": 0,
+                "uy": -0.0007471199639797929,
+                "rz": 0.00014862063799597777
+              },
+              {
+                "nodeId": "rc-elastic-report-beam-node-6",
+                "station": 4,
+                "x": 4,
+                "y": 0,
+                "ux": 0,
+                "uy": -0.00046594578398739876,
+                "rz": 0.00039766062598924474
+              },
+              {
+                "nodeId": "rc-elastic-report-beam-node-7",
+                "station": 5,
+                "x": 5,
+                "y": 0,
+                "ux": 0,
+                "uy": 0,
+                "rz": 0.0005020967499864213
+              }
+            ],
+            "maxAbsVerticalDisplacement": {
+              "type": "circular-reference"
+            }
+          },
+          "internalForces": {
+            "samples": [
+              {
+                "elementId": "rc-elastic-report-beam-element-1",
+                "station": 0,
+                "x": 0,
+                "y": 0,
+                "n": 0,
+                "v": 26.249999999998522,
+                "m": 6.963318810448982e-13
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-1",
+                "station": 0.5,
+                "x": 0.5,
+                "y": 0,
+                "n": 0,
+                "v": 20.999999999998522,
+                "m": 11.812499999999957
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-1",
+                "station": 1,
+                "x": 1,
+                "y": 0,
+                "n": 0,
+                "v": 15.749999999998522,
+                "m": 20.99999999999922
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-2",
+                "station": 1,
+                "x": 1,
+                "y": 0,
+                "n": 0,
+                "v": 15.74999999999855,
+                "m": 20.999999999999403
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-2",
+                "station": 1.5,
+                "x": 1.5,
+                "y": 0,
+                "n": 0,
+                "v": 10.49999999999855,
+                "m": 27.56249999999868
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-2",
+                "station": 2,
+                "x": 2,
+                "y": 0,
+                "n": 0,
+                "v": 5.2499999999985505,
+                "m": 31.499999999997954
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-3",
+                "station": 2,
+                "x": 2,
+                "y": 0,
+                "n": 0,
+                "v": 5.249999999999963,
+                "m": 31.499999999999098
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-3",
+                "station": 2.25,
+                "x": 2.25,
+                "y": 0,
+                "n": 0,
+                "v": 2.6249999999999627,
+                "m": 32.48437499999909
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-3",
+                "station": 2.5,
+                "x": 2.5,
+                "y": 0,
+                "n": 0,
+                "v": -3.730349362740526e-14,
+                "m": 32.812499999999076
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-4",
+                "station": 2.5,
+                "x": 2.5,
+                "y": 0,
+                "n": 0,
+                "v": -5.115907697472721e-13,
+                "m": 32.8124999999997
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-4",
+                "station": 2.75,
+                "x": 2.75,
+                "y": 0,
+                "n": 0,
+                "v": -2.6250000000005116,
+                "m": 32.484374999999574
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-4",
+                "station": 3,
+                "x": 3,
+                "y": 0,
+                "n": 0,
+                "v": -5.250000000000512,
+                "m": 31.499999999999446
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-5",
+                "station": 3,
+                "x": 3,
+                "y": 0,
+                "n": 0,
+                "v": -5.249999999999943,
+                "m": 31.499999999999602
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-5",
+                "station": 3.5,
+                "x": 3.5,
+                "y": 0,
+                "n": 0,
+                "v": -10.499999999999943,
+                "m": 27.56249999999963
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-5",
+                "station": 4,
+                "x": 4,
+                "y": 0,
+                "n": 0,
+                "v": -15.749999999999943,
+                "m": 20.99999999999966
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-6",
+                "station": 4,
+                "x": 4,
+                "y": 0,
+                "n": 0,
+                "v": -15.749999999999886,
+                "m": 20.999999999999773
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-6",
+                "station": 4.5,
+                "x": 4.5,
+                "y": 0,
+                "n": 0,
+                "v": -20.999999999999886,
+                "m": 11.81249999999983
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-6",
+                "station": 5,
+                "x": 5,
+                "y": 0,
+                "n": 0,
+                "v": -26.249999999999886,
+                "m": -1.1368683772161603e-13
+              }
+            ],
+            "maxAxialForce": {
+              "type": "circular-reference"
+            },
+            "minAxialForce": {
+              "type": "circular-reference"
+            },
+            "maxShearForce": {
+              "type": "circular-reference"
+            },
+            "minShearForce": {
+              "type": "circular-reference"
+            },
+            "maxBendingMoment": {
+              "type": "circular-reference"
+            },
+            "minBendingMoment": {
+              "type": "circular-reference"
+            },
+            "maxAbsBendingMoment": {
+              "type": "circular-reference"
+            }
+          },
+          "fem": {
+            "nodeCount": 7,
+            "elementCount": 6,
+            "loadCount": 12
+          },
+          "factors": {
+            "G1": 1,
+            "LIVE": 0.5
+          },
+          "name": "SLE_FREQUENT LIVE"
+        },
+        "rc-elastic-report-SLE_QUASI_PERMANENT-all": {
+          "id": "rc-elastic-report-SLE_QUASI_PERMANENT-all",
+          "resultType": "combination",
+          "loads": [
+            {
+              "id": "g1",
+              "actionType": "G1",
+              "loadCaseId": "G1",
+              "loadDurationClass": "permanent",
+              "factor": 1
+            },
+            {
+              "id": "live",
+              "actionType": "Qk",
+              "loadCaseId": "LIVE",
+              "loadDurationClass": "medium",
+              "factor": 0.3
+            }
+          ],
+          "context": {
+            "resultType": "combination",
+            "limitState": "SLE",
+            "combinationType": "SLE_QUASI_PERMANENT",
+            "serviceCombination": "quasi-permanent",
+            "leadingLoadCaseId": null,
+            "leadingActionId": null,
+            "leadingVariableCategory": null,
+            "accompanyingLoadCaseIds": [],
+            "loadCaseFactors": {
+              "G1": 1,
+              "LIVE": 0.3
+            },
+            "activeLoads": [
+              {
+                "id": "g1",
+                "actionType": "G1",
+                "loadCaseId": "G1",
+                "factor": 1,
+                "nature": "permanent",
+                "variableCategory": null,
+                "loadDurationClass": "permanent",
+                "leadingEligible": true,
+                "metadata": {}
+              },
+              {
+                "id": "live",
+                "actionType": "Qk",
+                "loadCaseId": "LIVE",
+                "factor": 0.3,
+                "nature": "variable",
+                "variableCategory": "B",
+                "loadDurationClass": "medium",
+                "leadingEligible": true,
+                "metadata": {}
+              }
+            ],
+            "governingLoadDurationClass": "medium",
+            "governingLoad": {
+              "id": "live",
+              "actionType": "Qk",
+              "loadCaseId": "LIVE",
+              "factor": 0.3,
+              "nature": "variable",
+              "variableCategory": "B",
+              "loadDurationClass": "medium",
+              "leadingEligible": true,
+              "metadata": {
+                "type": "circular-reference"
+              },
+              "normalizedLoadDurationClass": "medium"
+            }
+          },
+          "units": {
+            "type": "circular-reference"
+          },
+          "geometry": {
+            "start": {
+              "x": 0,
+              "y": 0
+            },
+            "end": {
+              "x": 5,
+              "y": 0
+            },
+            "length": 5,
+            "horizontalSpan": 5
+          },
+          "sectionProperties": {
+            "axialRigidity": 4985293.782901543,
+            "flexuralRigidity": 108918.2513160617,
+            "shearRigidity": 1967250,
+            "shearCorrectionFactor": 0.8333333333333334,
+            "units": {
+              "type": "circular-reference"
+            },
+            "metadata": {
+              "provider": "ReinforcedConcreteBeamSectionProvider",
+              "source": "uncracked-transformed-section",
+              "stiffnessState": "transformed",
+              "bendingInertiaAxis": "inertiaY",
+              "shearAreaAxis": "shearAreaY",
+              "concreteStrengthClass": "C25/30",
+              "concreteElasticModulus": 31476,
+              "concreteShearModulus": 13115,
+              "reinforcementGrade": "B450C",
+              "reinforcementArea": 1256.6370614359173,
+              "limitState": "SLE",
+              "cracked": false
+            }
+          },
+          "nodes": [
+            {
+              "id": "rc-elastic-report-beam-node-1",
+              "station": 0,
+              "x": 0,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": 0,
+                "rz": -0.00045427801189247476
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 23.74999999999946,
+                "rz": -4.595213098923523e-13
+              }
+            },
+            {
+              "id": "rc-elastic-report-beam-node-2",
+              "station": 1,
+              "x": 1,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": -0.0004215699950362145,
+                "rz": -0.00035978818541883604
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": -5.684341886080802e-14,
+                "rz": 9.663381206337363e-13
+              }
+            },
+            {
+              "id": "rc-elastic-report-beam-node-3",
+              "station": 2,
+              "x": 2,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": -0.0006759656816959996,
+                "rz": -0.00013446629152017545
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 1.652011860642233e-13,
+                "rz": -7.30304705598428e-13
+              }
+            },
+            {
+              "id": "rc-elastic-report-beam-node-4",
+              "station": 2.5,
+              "x": 2.5,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": -0.0007098093935819906,
+                "rz": -3.763887271371165e-18
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 1.8758328224066645e-12,
+                "rz": -5.186961971048731e-13
+              }
+            },
+            {
+              "id": "rc-elastic-report-beam-node-5",
+              "station": 3,
+              "x": 3,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": -0.0006759656816960029,
+                "rz": 0.00013446629152017036
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": -1.4495071809506044e-12,
+                "rz": 2.2737367544323206e-13
+              }
+            },
+            {
+              "id": "rc-elastic-report-beam-node-6",
+              "station": 4,
+              "x": 4,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": -0.0004215699950362178,
+                "rz": 0.0003597881854188404
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 0,
+                "rz": -5.684341886080802e-14
+              }
+            },
+            {
+              "id": "rc-elastic-report-beam-node-7",
+              "station": 5,
+              "x": 5,
+              "y": 0,
+              "displacement": {
+                "ux": 0,
+                "uy": 0,
+                "rz": 0.0004542780118924764
+              },
+              "reaction": {
+                "ux": 0,
+                "uy": 23.749999999999886,
+                "rz": -3.785860513971784e-14
+              }
+            }
+          ],
+          "supports": [
+            {
+              "id": "start-support",
+              "nodeId": "rc-elastic-report-beam-node-1",
+              "station": 0,
+              "type": "hinge",
+              "restraints": {
+                "ux": true,
+                "uy": true,
+                "uz": false,
+                "rx": false,
+                "ry": false,
+                "rz": false
+              },
+              "reaction": {
+                "type": "circular-reference"
+              }
+            },
+            {
+              "id": "end-support",
+              "nodeId": "rc-elastic-report-beam-node-7",
+              "station": 5,
+              "type": "roller",
+              "restraints": {
+                "ux": false,
+                "uy": true,
+                "uz": false,
+                "rx": false,
+                "ry": false,
+                "rz": false
+              },
+              "reaction": {
+                "type": "circular-reference"
+              }
+            }
+          ],
+          "displacementByNode": {
+            "rc-elastic-report-beam-node-1": {
+              "type": "circular-reference"
+            },
+            "rc-elastic-report-beam-node-2": {
+              "type": "circular-reference"
+            },
+            "rc-elastic-report-beam-node-3": {
+              "type": "circular-reference"
+            },
+            "rc-elastic-report-beam-node-4": {
+              "type": "circular-reference"
+            },
+            "rc-elastic-report-beam-node-5": {
+              "type": "circular-reference"
+            },
+            "rc-elastic-report-beam-node-6": {
+              "type": "circular-reference"
+            },
+            "rc-elastic-report-beam-node-7": {
+              "type": "circular-reference"
+            }
+          },
+          "reactionByNode": {
+            "rc-elastic-report-beam-node-1": {
+              "type": "circular-reference"
+            },
+            "rc-elastic-report-beam-node-2": {
+              "type": "circular-reference"
+            },
+            "rc-elastic-report-beam-node-3": {
+              "type": "circular-reference"
+            },
+            "rc-elastic-report-beam-node-4": {
+              "type": "circular-reference"
+            },
+            "rc-elastic-report-beam-node-5": {
+              "type": "circular-reference"
+            },
+            "rc-elastic-report-beam-node-6": {
+              "type": "circular-reference"
+            },
+            "rc-elastic-report-beam-node-7": {
+              "type": "circular-reference"
+            }
+          },
+          "reactions": {
+            "samples": [
+              {
+                "supportId": "start-support",
+                "nodeId": "rc-elastic-report-beam-node-1",
+                "station": 0,
+                "type": "hinge",
+                "ux": 0,
+                "uy": 23.74999999999946,
+                "rz": -4.595213098923523e-13
+              },
+              {
+                "supportId": "end-support",
+                "nodeId": "rc-elastic-report-beam-node-7",
+                "station": 5,
+                "type": "roller",
+                "ux": 0,
+                "uy": 23.749999999999886,
+                "rz": -3.785860513971784e-14
+              }
+            ],
+            "maxHorizontalReaction": {
+              "type": "circular-reference"
+            },
+            "minHorizontalReaction": {
+              "type": "circular-reference"
+            },
+            "maxVerticalReaction": {
+              "type": "circular-reference"
+            },
+            "minVerticalReaction": {
+              "type": "circular-reference"
+            },
+            "maxSupportMomentReaction": {
+              "type": "circular-reference"
+            },
+            "minSupportMomentReaction": {
+              "type": "circular-reference"
+            },
+            "maxAbsHorizontalReaction": {
+              "type": "circular-reference"
+            },
+            "maxAbsVerticalReaction": {
+              "type": "circular-reference"
+            },
+            "maxAbsSupportMomentReaction": {
+              "type": "circular-reference"
+            }
+          },
+          "displacements": {
+            "samples": [
+              {
+                "nodeId": "rc-elastic-report-beam-node-1",
+                "station": 0,
+                "x": 0,
+                "y": 0,
+                "ux": 0,
+                "uy": 0,
+                "rz": -0.00045427801189247476
+              },
+              {
+                "nodeId": "rc-elastic-report-beam-node-2",
+                "station": 1,
+                "x": 1,
+                "y": 0,
+                "ux": 0,
+                "uy": -0.0004215699950362145,
+                "rz": -0.00035978818541883604
+              },
+              {
+                "nodeId": "rc-elastic-report-beam-node-3",
+                "station": 2,
+                "x": 2,
+                "y": 0,
+                "ux": 0,
+                "uy": -0.0006759656816959996,
+                "rz": -0.00013446629152017545
+              },
+              {
+                "nodeId": "rc-elastic-report-beam-node-4",
+                "station": 2.5,
+                "x": 2.5,
+                "y": 0,
+                "ux": 0,
+                "uy": -0.0007098093935819906,
+                "rz": -3.763887271371165e-18
+              },
+              {
+                "nodeId": "rc-elastic-report-beam-node-5",
+                "station": 3,
+                "x": 3,
+                "y": 0,
+                "ux": 0,
+                "uy": -0.0006759656816960029,
+                "rz": 0.00013446629152017036
+              },
+              {
+                "nodeId": "rc-elastic-report-beam-node-6",
+                "station": 4,
+                "x": 4,
+                "y": 0,
+                "ux": 0,
+                "uy": -0.0004215699950362178,
+                "rz": 0.0003597881854188404
+              },
+              {
+                "nodeId": "rc-elastic-report-beam-node-7",
+                "station": 5,
+                "x": 5,
+                "y": 0,
+                "ux": 0,
+                "uy": 0,
+                "rz": 0.0004542780118924764
+              }
+            ],
+            "maxAbsVerticalDisplacement": {
+              "type": "circular-reference"
+            }
+          },
+          "internalForces": {
+            "samples": [
+              {
+                "elementId": "rc-elastic-report-beam-element-1",
+                "station": 0,
+                "x": 0,
+                "y": 0,
+                "n": 0,
+                "v": 23.74999999999946,
+                "m": 4.595213098923523e-13
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-1",
+                "station": 0.5,
+                "x": 0.5,
+                "y": 0,
+                "n": 0,
+                "v": 18.99999999999946,
+                "m": 10.68750000000019
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-1",
+                "station": 1,
+                "x": 1,
+                "y": 0,
+                "n": 0,
+                "v": 14.24999999999946,
+                "m": 18.99999999999992
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-2",
+                "station": 1,
+                "x": 1,
+                "y": 0,
+                "n": 0,
+                "v": 14.249999999999488,
+                "m": 18.999999999998938
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-2",
+                "station": 1.5,
+                "x": 1.5,
+                "y": 0,
+                "n": 0,
+                "v": 9.499999999999488,
+                "m": 24.937499999998682
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-2",
+                "station": 2,
+                "x": 2,
+                "y": 0,
+                "n": 0,
+                "v": 4.749999999999488,
+                "m": 28.499999999998423
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-3",
+                "station": 2,
+                "x": 2,
+                "y": 0,
+                "n": 0,
+                "v": 4.749999999999256,
+                "m": 28.499999999999215
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-3",
+                "station": 2.25,
+                "x": 2.25,
+                "y": 0,
+                "n": 0,
+                "v": 2.3749999999992557,
+                "m": 29.39062499999903
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-3",
+                "station": 2.5,
+                "x": 2.5,
+                "y": 0,
+                "n": 0,
+                "v": -7.442935157087049e-13,
+                "m": 29.687499999998842
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-4",
+                "station": 2.5,
+                "x": 2.5,
+                "y": 0,
+                "n": 0,
+                "v": 9.663381206337363e-13,
+                "m": 29.68749999999923
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-4",
+                "station": 2.75,
+                "x": 2.75,
+                "y": 0,
+                "n": 0,
+                "v": -2.3749999999990337,
+                "m": 29.39062499999947
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-4",
+                "station": 3,
+                "x": 3,
+                "y": 0,
+                "n": 0,
+                "v": -4.749999999999034,
+                "m": 28.499999999999712
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-5",
+                "station": 3,
+                "x": 3,
+                "y": 0,
+                "n": 0,
+                "v": -4.749999999999858,
+                "m": 28.499999999999563
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-5",
+                "station": 3.5,
+                "x": 3.5,
+                "y": 0,
+                "n": 0,
+                "v": -9.499999999999858,
+                "m": 24.937499999999634
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-5",
+                "station": 4,
+                "x": 4,
+                "y": 0,
+                "n": 0,
+                "v": -14.249999999999858,
+                "m": 18.999999999999705
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-6",
+                "station": 4,
+                "x": 4,
+                "y": 0,
+                "n": 0,
+                "v": -14.249999999999886,
+                "m": 18.99999999999979
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-6",
+                "station": 4.5,
+                "x": 4.5,
+                "y": 0,
+                "n": 0,
+                "v": -18.999999999999886,
+                "m": 10.687499999999847
+              },
+              {
+                "elementId": "rc-elastic-report-beam-element-6",
+                "station": 5,
+                "x": 5,
+                "y": 0,
+                "n": 0,
+                "v": -23.749999999999886,
+                "m": -9.592326932761353e-14
+              }
+            ],
+            "maxAxialForce": {
+              "type": "circular-reference"
+            },
+            "minAxialForce": {
+              "type": "circular-reference"
+            },
+            "maxShearForce": {
+              "type": "circular-reference"
+            },
+            "minShearForce": {
+              "type": "circular-reference"
+            },
+            "maxBendingMoment": {
+              "type": "circular-reference"
+            },
+            "minBendingMoment": {
+              "type": "circular-reference"
+            },
+            "maxAbsBendingMoment": {
+              "type": "circular-reference"
+            }
+          },
+          "fem": {
+            "nodeCount": 7,
+            "elementCount": 6,
+            "loadCount": 12
+          },
+          "factors": {
+            "G1": 1,
+            "LIVE": 0.3
+          },
+          "name": "SLE_QUASI_PERMANENT all"
         }
       },
       "envelopes": {
@@ -6180,20 +7672,20 @@
             }
           },
           "minVerticalReaction": {
-            "resultId": "rc-elastic-report-SLE_RARE-LIVE",
+            "resultId": "rc-elastic-report-SLE_QUASI_PERMANENT-all",
             "resultType": "combination",
             "limitState": "SLE",
-            "combinationType": "SLE_RARE",
+            "combinationType": "SLE_QUASI_PERMANENT",
             "quantity": "ry",
-            "value": 32.499999999998636,
+            "value": 23.74999999999946,
             "sample": {
               "supportId": "start-support",
               "nodeId": "rc-elastic-report-beam-node-1",
               "station": 0,
               "type": "hinge",
               "ux": 0,
-              "uy": 32.499999999998636,
-              "rz": -6.348255254806645e-13
+              "uy": 23.74999999999946,
+              "rz": -4.595213098923523e-13
             }
           },
           "maxSupportMomentReaction": {
@@ -6214,20 +7706,20 @@
             }
           },
           "minSupportMomentReaction": {
-            "resultId": "rc-elastic-report-SLE_RARE-LIVE",
+            "resultId": "rc-elastic-report-SLE_FREQUENT-LIVE",
             "resultType": "combination",
             "limitState": "SLE",
-            "combinationType": "SLE_RARE",
+            "combinationType": "SLE_FREQUENT",
             "quantity": "mrz",
-            "value": -6.348255254806645e-13,
+            "value": -6.963318810448982e-13,
             "sample": {
               "supportId": "start-support",
               "nodeId": "rc-elastic-report-beam-node-1",
               "station": 0,
               "type": "hinge",
               "ux": 0,
-              "uy": 32.499999999998636,
-              "rz": -6.348255254806645e-13
+              "uy": 26.249999999998522,
+              "rz": -6.963318810448982e-13
             }
           },
           "maxAbsHorizontalReaction": {
@@ -6660,20 +8152,20 @@
             }
           },
           "minBendingMoment": {
-            "resultId": "rc-elastic-report-SLE_RARE-LIVE",
+            "resultId": "rc-elastic-report-SLE_FREQUENT-LIVE",
             "resultType": "combination",
             "limitState": "SLE",
-            "combinationType": "SLE_RARE",
+            "combinationType": "SLE_FREQUENT",
             "quantity": "m",
-            "value": -4.618527782440651e-14,
+            "value": -1.1368683772161603e-13,
             "sample": {
               "elementId": "rc-elastic-report-beam-element-6",
               "station": 5,
               "x": 5,
               "y": 0,
               "n": 0,
-              "v": -32.49999999999966,
-              "m": -4.618527782440651e-14
+              "v": -26.249999999999886,
+              "m": -1.1368683772161603e-13
             }
           },
           "maxAbsBendingMoment": {
@@ -6762,20 +8254,20 @@
             }
           },
           "minVerticalReaction": {
-            "resultId": "rc-elastic-report-SLE_RARE-LIVE",
+            "resultId": "rc-elastic-report-SLE_QUASI_PERMANENT-all",
             "resultType": "combination",
             "limitState": "SLE",
-            "combinationType": "SLE_RARE",
+            "combinationType": "SLE_QUASI_PERMANENT",
             "quantity": "ry",
-            "value": 32.499999999998636,
+            "value": 23.74999999999946,
             "sample": {
               "supportId": "start-support",
               "nodeId": "rc-elastic-report-beam-node-1",
               "station": 0,
               "type": "hinge",
               "ux": 0,
-              "uy": 32.499999999998636,
-              "rz": -6.348255254806645e-13
+              "uy": 23.74999999999946,
+              "rz": -4.595213098923523e-13
             }
           },
           "maxSupportMomentReaction": {
@@ -6796,20 +8288,20 @@
             }
           },
           "minSupportMomentReaction": {
-            "resultId": "rc-elastic-report-SLE_RARE-LIVE",
+            "resultId": "rc-elastic-report-SLE_FREQUENT-LIVE",
             "resultType": "combination",
             "limitState": "SLE",
-            "combinationType": "SLE_RARE",
+            "combinationType": "SLE_FREQUENT",
             "quantity": "mrz",
-            "value": -6.348255254806645e-13,
+            "value": -6.963318810448982e-13,
             "sample": {
               "supportId": "start-support",
               "nodeId": "rc-elastic-report-beam-node-1",
               "station": 0,
               "type": "hinge",
               "ux": 0,
-              "uy": 32.499999999998636,
-              "rz": -6.348255254806645e-13
+              "uy": 26.249999999998522,
+              "rz": -6.963318810448982e-13
             }
           },
           "maxAbsHorizontalReaction": {
@@ -6847,20 +8339,20 @@
             }
           },
           "maxAbsSupportMomentReaction": {
-            "resultId": "rc-elastic-report-SLE_RARE-LIVE",
+            "resultId": "rc-elastic-report-SLE_FREQUENT-LIVE",
             "resultType": "combination",
             "limitState": "SLE",
-            "combinationType": "SLE_RARE",
+            "combinationType": "SLE_FREQUENT",
             "quantity": "absMrz",
-            "value": 6.348255254806645e-13,
+            "value": 6.963318810448982e-13,
             "sample": {
               "supportId": "start-support",
               "nodeId": "rc-elastic-report-beam-node-1",
               "station": 0,
               "type": "hinge",
               "ux": 0,
-              "uy": 32.499999999998636,
-              "rz": -6.348255254806645e-13
+              "uy": 26.249999999998522,
+              "rz": -6.963318810448982e-13
             }
           }
         },
@@ -7087,20 +8579,20 @@
             }
           },
           "minSupportMomentReaction": {
-            "resultId": "rc-elastic-report-SLE_RARE-LIVE",
+            "resultId": "rc-elastic-report-SLE_FREQUENT-LIVE",
             "resultType": "combination",
             "limitState": "SLE",
-            "combinationType": "SLE_RARE",
+            "combinationType": "SLE_FREQUENT",
             "quantity": "mrz",
-            "value": -6.348255254806645e-13,
+            "value": -6.963318810448982e-13,
             "sample": {
               "supportId": "start-support",
               "nodeId": "rc-elastic-report-beam-node-1",
               "station": 0,
               "type": "hinge",
               "ux": 0,
-              "uy": 32.499999999998636,
-              "rz": -6.348255254806645e-13
+              "uy": 26.249999999998522,
+              "rz": -6.963318810448982e-13
             }
           },
           "maxAbsHorizontalReaction": {
@@ -7164,105 +8656,619 @@
   "verification": {
     "applicationId": "reinforced-concrete-beams",
     "status": "ok",
-    "summary": "RC beam ULS uniaxial section verification from FEM beam actions.",
+    "summary": "RC beam ULS and SLE section verification from FEM beam actions.",
     "outputs": {
-      "stationResultCount": 18,
-      "governing": {
-        "utilizationRatio": 0.540404,
-        "demand": 55937499.999999,
-        "capacity": 103510562.261308,
-        "metadata": {
-          "resultId": "rc-elastic-report-ULS-LIVE",
-          "resultType": "combination",
-          "station": 2.5,
-          "limitState": "ULS",
-          "governingCheckId": "rc-uls-uniaxial-bending",
-          "compressedEdge": "top",
-          "sectionResult": {
-            "applicationId": "reinforced-concrete-sections",
-            "status": "ok",
-            "summary": "ULS uniaxial reinforced-concrete section resistance solved with fiber discretization and Illinois axial-equilibrium iteration.",
-            "outputs": {
-              "analysisType": "uls-uniaxial-resistance",
-              "sectionId": "rc-elastic-report-ULS-LIVE-0",
-              "nEd": 0,
-              "mEd": 55937499.999999,
-              "compressedEdge": "top",
-              "neutralAxisDepth": 58.743306,
-              "axialResidual": 0,
-              "MxRd": 103510562.261308,
-              "MyRd": 0,
-              "fiberCount": 84,
-              "referencePoint": {
-                "y": 250,
-                "z": 150
-              },
-              "strainField": {
-                "eps0": -0.0035,
-                "kappaY": 0,
-                "kappaZ": -0.000059581256
-              },
-              "extremes": {
-                "minStrain": -0.002258723824,
-                "maxStrain": 0.025049352059,
-                "maxConcreteCompression": {
-                  "value": -14.17,
-                  "strain": -0.002258723824,
-                  "y": 20.833333,
-                  "z": 21.428571
+      "stationResultCount": 72,
+      "uls": {
+        "stationResultCount": 18,
+        "checkCount": 36,
+        "governing": {
+          "utilizationRatio": 0.540404,
+          "demand": 55937499.999999,
+          "capacity": 103510562.261308,
+          "metadata": {
+            "resultId": "rc-elastic-report-ULS-LIVE",
+            "resultType": "combination",
+            "station": 2.5,
+            "limitState": "ULS",
+            "governingCheckId": "rc-uls-uniaxial-bending",
+            "compressedEdge": "top",
+            "sectionResult": {
+              "applicationId": "reinforced-concrete-sections",
+              "status": "ok",
+              "summary": "ULS uniaxial reinforced-concrete section resistance solved with fiber discretization and Illinois axial-equilibrium iteration.",
+              "outputs": {
+                "analysisType": "uls-uniaxial-resistance",
+                "sectionId": "rc-elastic-report-ULS-LIVE-0",
+                "nEd": 0,
+                "mEd": 55937499.999999,
+                "compressedEdge": "top",
+                "neutralAxisDepth": 58.743306,
+                "axialResidual": 0,
+                "MxRd": 103510562.261308,
+                "MyRd": 0,
+                "fiberCount": 84,
+                "referencePoint": {
+                  "y": 250,
+                  "z": 150
                 },
-                "maxSteelTension": {
-                  "value": 391.3,
-                  "strain": 0.023311565412,
-                  "y": 450,
-                  "z": 70
+                "strainField": {
+                  "eps0": -0.0035,
+                  "kappaY": 0,
+                  "kappaZ": -0.000059581256
+                },
+                "extremes": {
+                  "minStrain": -0.002258723824,
+                  "maxStrain": 0.025049352059,
+                  "maxConcreteCompression": {
+                    "value": -14.17,
+                    "strain": -0.002258723824,
+                    "y": 20.833333,
+                    "z": 21.428571
+                  },
+                  "maxSteelTension": {
+                    "value": 391.3,
+                    "strain": 0.023311565412,
+                    "y": 450,
+                    "z": 50
+                  }
                 }
-              }
+              },
+              "warnings": [],
+              "assumptions": [
+                "Current workflow implements only ULS uniaxial resistance with concrete ultimate strain governing the compressed edge.",
+                "Concrete in tension is neglected during the ULS resistance integration."
+              ],
+              "metadata": {
+                "code": "NTC2018",
+                "sectionId": "rc-elastic-report-ULS-LIVE-0",
+                "analysisType": "uls-uniaxial-resistance",
+                "solverMethod": "illinois"
+              },
+              "utilizationRatio": 0.540404,
+              "demand": 55937499.999999,
+              "capacity": 103510562.261308,
+              "checks": [
+                {
+                  "id": "uls-uniaxial-bending",
+                  "description": "Uniaxial bending resistance at assigned axial force",
+                  "demand": 55937499.999999,
+                  "capacity": 103510562.261308,
+                  "utilizationRatio": 0.540404,
+                  "ok": true
+                }
+              ]
             },
-            "warnings": [],
-            "assumptions": [
-              "Current workflow implements only ULS uniaxial resistance with concrete ultimate strain governing the compressed edge.",
-              "Concrete in tension is neglected during the ULS resistance integration."
-            ],
-            "metadata": {
-              "code": "NTC2018",
-              "sectionId": "rc-elastic-report-ULS-LIVE-0",
-              "analysisType": "uls-uniaxial-resistance",
-              "solverMethod": "illinois"
-            },
-            "utilizationRatio": 0.540404,
-            "demand": 55937499.999999,
-            "capacity": 103510562.261308,
-            "checks": [
-              {
-                "id": "uls-uniaxial-bending",
-                "description": "Uniaxial bending resistance at assigned axial force",
-                "demand": 55937499.999999,
-                "capacity": 103510562.261308,
-                "utilizationRatio": 0.540404,
-                "ok": true
+            "shearResult": {
+              "status": "ok",
+              "utilizationRatio": 0,
+              "demand": 0,
+              "capacity": 265529.924356,
+              "outputs": {
+                "parameters": {
+                  "ok": true,
+                  "mode": "with-transverse-reinforcement",
+                  "bw": 300,
+                  "effectiveDepth": 450,
+                  "concreteArea": 150000,
+                  "longitudinalArea": 628.3185307179587,
+                  "rhoL": 0.004654211338651545,
+                  "rhoLEffective": 0.004654211338651545,
+                  "nEdCompression": 0,
+                  "sigmaCpRaw": 0,
+                  "sigmaCp": 0,
+                  "fck": 25,
+                  "fcd": 14.17,
+                  "gammaC": 1.5,
+                  "alphaCc": 0.85,
+                  "tensionFace": "bottom",
+                  "groupId": "bottom-main",
+                  "barIds": [
+                    "bottom-main-1",
+                    "bottom-main-2"
+                  ],
+                  "transverseReinforcement": {
+                    "type": "stirrups",
+                    "angle": 90,
+                    "legs": 2,
+                    "spacing": 150,
+                    "diameter": 8,
+                    "areaPerLeg": 50.26548245743669,
+                    "area": 100.53096491487338,
+                    "areaPerSpacing": 0.6702064327658225,
+                    "fyd": 391.3
+                  },
+                  "sources": {
+                    "bw": "derived-rectangular-section",
+                    "d": "explicit",
+                    "asl": "reinforcement-group-explicit",
+                    "ac": "derived-concrete-section",
+                    "nEdCompression": "from-nEd-compression-negative"
+                  },
+                  "warnings": []
+                },
+                "z": 405,
+                "cotTheta": 2.5,
+                "thetaSelection": "steel-boundary-max-cot",
+                "cotThetaRange": {
+                  "min": 1,
+                  "max": 2.5
+                },
+                "alphaC": 1,
+                "fcdPrime": 7.085,
+                "vRsd": 265529.924356,
+                "vRcd": 296837.068966,
+                "vRdWithTransverseReinforcement": 265529.924356,
+                "vRdWithoutTransverseReinforcement": 61182.30016,
+                "selectedMechanism": "with-transverse-reinforcement",
+                "vRd": 265529.924356,
+                "thetaBounds": {
+                  "vRsdAtMinCot": 106211.969742,
+                  "vRsdAtMaxCot": 265529.924356,
+                  "vRcdAtMinCot": 430413.75,
+                  "vRcdAtMaxCot": 296837.068966
+                }
+              },
+              "metadata": {
+                "code": "NTC2018",
+                "method": "ntc2018-4.1.2.3.5.2",
+                "governingCheckId": "rc-shear-resistance"
               }
-            ]
+            }
           }
+        }
+      },
+      "serviceability": {
+        "stationResultCount": 54,
+        "checkCount": 176,
+        "governing": {
+          "utilizationRatio": 0.666667,
+          "demand": 200,
+          "capacity": 300,
+          "metadata": {
+            "resultId": "rc-elastic-report-SLE_FREQUENT-LIVE",
+            "resultType": "combination",
+            "station": 0.5,
+            "limitState": "SLE",
+            "code": "NTC2018",
+            "method": "ntc2018-sle-serviceability",
+            "governingCheckId": "rc-sle-crack-bar-spacing",
+            "combinationType": "SLE_FREQUENT",
+            "modularRatio": 15,
+            "environment": "ordinary",
+            "reinforcementSensitivity": "low",
+            "creepCoefficient": 2,
+            "includeShrinkage": false
+          }
+        }
+      },
+      "deflection": {
+        "status": "ok",
+        "utilizationRatio": 0.5,
+        "outputs": {
+          "beamId": "rc-elastic-report",
+          "creepCoefficient": 2,
+          "includeShrinkage": false,
+          "simplifiedSlenderness": {
+            "demand": 10,
+            "capacity": 20,
+            "utilizationRatio": 0.5,
+            "ok": true,
+            "metadata": {
+              "method": "circolare-ntc2018-c4.1.i-screening",
+              "system": "simple_span",
+              "stressLevel": "low",
+              "k": 1,
+              "span": 5000,
+              "sectionHeight": 500,
+              "slendernessLimit": 20
+            }
+          },
+          "combinationCount": 3,
+          "combinations": [
+            {
+              "resultId": "rc-elastic-report-SLE_RARE-LIVE",
+              "combinationType": "SLE_RARE",
+              "creepCoefficient": 0,
+              "effectiveConcreteModulus": 31476,
+              "modularRatio": 6.67175,
+              "limitRatio": 250,
+              "span": 5000,
+              "deflectionLimit": 20,
+              "maxAbsDeflection": 2.009245,
+              "governingStation": 2.5,
+              "mcr": 32000000,
+              "points": [
+                {
+                  "station": 0,
+                  "mEd": 0.000001,
+                  "zeta": 0,
+                  "curvature": 0,
+                  "deflection": 0,
+                  "cracked": false
+                },
+                {
+                  "station": 0.5,
+                  "mEd": 14625000,
+                  "zeta": 0,
+                  "curvature": 1.34275e-7,
+                  "deflection": -0.562378,
+                  "cracked": false
+                },
+                {
+                  "station": 1,
+                  "mEd": 25999999.999999,
+                  "zeta": 0,
+                  "curvature": 2.38711e-7,
+                  "deflection": -1.093053,
+                  "cracked": false
+                },
+                {
+                  "station": 1.5,
+                  "mEd": 34124999.999998,
+                  "zeta": 0.120664,
+                  "curvature": 4.86942e-7,
+                  "deflection": -1.555062,
+                  "cracked": true
+                },
+                {
+                  "station": 2,
+                  "mEd": 38999999.999999,
+                  "zeta": 0.326759,
+                  "curvature": 8.95437e-7,
+                  "deflection": -1.88532,
+                  "cracked": true
+                },
+                {
+                  "station": 2.25,
+                  "mEd": 40218749.999999,
+                  "zeta": 0.366943,
+                  "curvature": 9.91569e-7,
+                  "deflection": -1.977765,
+                  "cracked": true
+                },
+                {
+                  "station": 2.5,
+                  "mEd": 40624999.999999,
+                  "zeta": 0.379541,
+                  "curvature": 0.000001023166,
+                  "deflection": -2.009245,
+                  "cracked": true
+                },
+                {
+                  "station": 2.75,
+                  "mEd": 40218750,
+                  "zeta": 0.366943,
+                  "curvature": 9.91569e-7,
+                  "deflection": -1.977765,
+                  "cracked": true
+                },
+                {
+                  "station": 3,
+                  "mEd": 39000000,
+                  "zeta": 0.326759,
+                  "curvature": 8.95437e-7,
+                  "deflection": -1.88532,
+                  "cracked": true
+                },
+                {
+                  "station": 3.5,
+                  "mEd": 34125000,
+                  "zeta": 0.120664,
+                  "curvature": 4.86942e-7,
+                  "deflection": -1.555062,
+                  "cracked": true
+                },
+                {
+                  "station": 4,
+                  "mEd": 26000000,
+                  "zeta": 0,
+                  "curvature": 2.38711e-7,
+                  "deflection": -1.093053,
+                  "cracked": false
+                },
+                {
+                  "station": 4.5,
+                  "mEd": 14625000,
+                  "zeta": 0,
+                  "curvature": 1.34275e-7,
+                  "deflection": -0.562378,
+                  "cracked": false
+                },
+                {
+                  "station": 5,
+                  "mEd": 0,
+                  "zeta": 0,
+                  "curvature": 0,
+                  "deflection": 0,
+                  "cracked": false
+                }
+              ]
+            },
+            {
+              "resultId": "rc-elastic-report-SLE_FREQUENT-LIVE",
+              "combinationType": "SLE_FREQUENT",
+              "creepCoefficient": 0,
+              "effectiveConcreteModulus": 31476,
+              "modularRatio": 6.67175,
+              "limitRatio": 250,
+              "span": 5000,
+              "deflectionLimit": 20,
+              "maxAbsDeflection": 0.816754,
+              "governingStation": 2.5,
+              "mcr": 32000000,
+              "points": [
+                {
+                  "station": 0,
+                  "mEd": 0.000001,
+                  "zeta": 0,
+                  "curvature": 0,
+                  "deflection": 0,
+                  "cracked": false
+                },
+                {
+                  "station": 0.5,
+                  "mEd": 11812500,
+                  "zeta": 0,
+                  "curvature": 1.08453e-7,
+                  "deflection": -0.251434,
+                  "cracked": false
+                },
+                {
+                  "station": 1,
+                  "mEd": 20999999.999999,
+                  "zeta": 0,
+                  "curvature": 1.92805e-7,
+                  "deflection": -0.477261,
+                  "cracked": false
+                },
+                {
+                  "station": 1.5,
+                  "mEd": 27562499.999999,
+                  "zeta": 0,
+                  "curvature": 2.53057e-7,
+                  "deflection": -0.656393,
+                  "cracked": false
+                },
+                {
+                  "station": 2,
+                  "mEd": 31499999.999999,
+                  "zeta": 0,
+                  "curvature": 2.89208e-7,
+                  "deflection": -0.773767,
+                  "cracked": false
+                },
+                {
+                  "station": 2.25,
+                  "mEd": 32484374.999999,
+                  "zeta": 0.0296,
+                  "curvature": 3.38791e-7,
+                  "deflection": -0.805696,
+                  "cracked": true
+                },
+                {
+                  "station": 2.5,
+                  "mEd": 32812500,
+                  "zeta": 0.048911,
+                  "curvature": 3.68932e-7,
+                  "deflection": -0.816754,
+                  "cracked": true
+                },
+                {
+                  "station": 2.75,
+                  "mEd": 32484375,
+                  "zeta": 0.0296,
+                  "curvature": 3.38791e-7,
+                  "deflection": -0.805696,
+                  "cracked": true
+                },
+                {
+                  "station": 3,
+                  "mEd": 31500000,
+                  "zeta": 0,
+                  "curvature": 2.89208e-7,
+                  "deflection": -0.773767,
+                  "cracked": false
+                },
+                {
+                  "station": 3.5,
+                  "mEd": 27562500,
+                  "zeta": 0,
+                  "curvature": 2.53057e-7,
+                  "deflection": -0.656393,
+                  "cracked": false
+                },
+                {
+                  "station": 4,
+                  "mEd": 21000000,
+                  "zeta": 0,
+                  "curvature": 1.92805e-7,
+                  "deflection": -0.477261,
+                  "cracked": false
+                },
+                {
+                  "station": 4.5,
+                  "mEd": 11812500,
+                  "zeta": 0,
+                  "curvature": 1.08453e-7,
+                  "deflection": -0.251434,
+                  "cracked": false
+                },
+                {
+                  "station": 5,
+                  "mEd": 0,
+                  "zeta": 0,
+                  "curvature": 0,
+                  "deflection": 0,
+                  "cracked": false
+                }
+              ]
+            },
+            {
+              "resultId": "rc-elastic-report-SLE_QUASI_PERMANENT-all",
+              "combinationType": "SLE_QUASI_PERMANENT",
+              "creepCoefficient": 2,
+              "effectiveConcreteModulus": 10492,
+              "modularRatio": 20.01525,
+              "limitRatio": 250,
+              "span": 5000,
+              "deflectionLimit": 20,
+              "maxAbsDeflection": 1.759438,
+              "governingStation": 2.5,
+              "mcr": 32000000,
+              "points": [
+                {
+                  "station": 0,
+                  "mEd": 0,
+                  "zeta": 0,
+                  "curvature": 0,
+                  "deflection": 0,
+                  "cracked": false
+                },
+                {
+                  "station": 0.5,
+                  "mEd": 10687500,
+                  "zeta": 0,
+                  "curvature": 2.46578e-7,
+                  "deflection": -0.55052,
+                  "cracked": false
+                },
+                {
+                  "station": 1,
+                  "mEd": 19000000,
+                  "zeta": 0,
+                  "curvature": 4.38361e-7,
+                  "deflection": -1.04282,
+                  "cracked": false
+                },
+                {
+                  "station": 1.5,
+                  "mEd": 24937499.999999,
+                  "zeta": 0,
+                  "curvature": 5.75349e-7,
+                  "deflection": -1.428955,
+                  "cracked": false
+                },
+                {
+                  "station": 2,
+                  "mEd": 28499999.999999,
+                  "zeta": 0,
+                  "curvature": 6.57542e-7,
+                  "deflection": -1.674677,
+                  "cracked": false
+                },
+                {
+                  "station": 2.25,
+                  "mEd": 29390624.999999,
+                  "zeta": 0,
+                  "curvature": 6.7809e-7,
+                  "deflection": -1.738141,
+                  "cracked": false
+                },
+                {
+                  "station": 2.5,
+                  "mEd": 29687499.999999,
+                  "zeta": 0,
+                  "curvature": 6.84939e-7,
+                  "deflection": -1.759438,
+                  "cracked": false
+                },
+                {
+                  "station": 2.75,
+                  "mEd": 29390624.999999,
+                  "zeta": 0,
+                  "curvature": 6.7809e-7,
+                  "deflection": -1.738141,
+                  "cracked": false
+                },
+                {
+                  "station": 3,
+                  "mEd": 28500000,
+                  "zeta": 0,
+                  "curvature": 6.57542e-7,
+                  "deflection": -1.674677,
+                  "cracked": false
+                },
+                {
+                  "station": 3.5,
+                  "mEd": 24937500,
+                  "zeta": 0,
+                  "curvature": 5.75349e-7,
+                  "deflection": -1.428955,
+                  "cracked": false
+                },
+                {
+                  "station": 4,
+                  "mEd": 19000000,
+                  "zeta": 0,
+                  "curvature": 4.38361e-7,
+                  "deflection": -1.04282,
+                  "cracked": false
+                },
+                {
+                  "station": 4.5,
+                  "mEd": 10687500,
+                  "zeta": 0,
+                  "curvature": 2.46578e-7,
+                  "deflection": -0.55052,
+                  "cracked": false
+                },
+                {
+                  "station": 5,
+                  "mEd": 0,
+                  "zeta": 0,
+                  "curvature": 0,
+                  "deflection": 0,
+                  "cracked": false
+                }
+              ]
+            }
+          ]
+        },
+        "metadata": {
+          "code": "NTC2018",
+          "beamId": "rc-elastic-report",
+          "method": "curvature-integration-tension-stiffening-mvp",
+          "governingCheckId": "rc-sle-deflection-slenderness",
+          "creepCoefficient": 2,
+          "includeShrinkage": false
+        }
+      },
+      "governing": {
+        "utilizationRatio": 0.666667,
+        "demand": 200,
+        "capacity": 300,
+        "metadata": {
+          "type": "circular-reference"
         }
       }
     },
     "warnings": [
-      "Shear resistance, crack control, detailing and second-order effects are not included in this first RC beam verification."
+      "Minimum shear reinforcement detailing, spacing limits, anchorage and torsion are not included in this MVP check.",
+      "Full member detailing and second-order effects are not included in this RC beam verification step."
     ],
     "assumptions": [
       "Current workflow implements only ULS uniaxial resistance with concrete ultimate strain governing the compressed edge.",
       "Concrete in tension is neglected during the ULS resistance integration.",
+      "NTC 2018 4.1.2.3.5.2 is evaluated with the variable-angle truss model for vertical stirrups and cotTheta selected to maximize min(VRsd, VRcd).",
+      "For reinforced sections the reported shear resistance is the maximum between the stirrup mechanism and the no-stirrup mechanism when both are available.",
+      "The lever arm z defaults to 0.9 d unless shear.leverArm is passed explicitly.",
+      "RC SLE stresses are solved with a linear no-tension concrete section and the modular-ratio method.",
+      "The first SLE cracking MVP uses ordinary reinforcing steel as low-sensitivity reinforcement.",
+      "Creep coefficient for the deflection MVP is set to phi = 2; shrinkage curvature is not included.",
+      "Curvatures are integrated numerically along FEM service-combination stations.",
+      "Concrete tension is excluded in cracked service-section states.",
+      "Long-term quasi-permanent curvature uses phi = 2; shrinkage curvature is excluded.",
       "Each FEM station is checked as an independent uniaxial RC section at the corresponding N-M pair."
     ],
     "metadata": {
       "code": "NTC2018",
       "beamId": "rc-elastic-report",
-      "governingCheckId": "rc-uls-uniaxial-bending"
+      "governingCheckId": "rc-sle-crack-bar-spacing"
     },
-    "utilizationRatio": 0.540404,
-    "demand": 55937499.999999,
-    "capacity": 103510562.261308,
+    "utilizationRatio": 0.666667,
+    "demand": 200,
+    "capacity": 300,
     "checks": [
       {
         "id": "rc-uls-uniaxial-bending",
@@ -7278,91 +9284,181 @@
           "limitState": "ULS",
           "compressedEdge": "top"
         }
+      },
+      {
+        "id": "rc-shear-resistance",
+        "description": "Shear resistance as maximum between stirrup and no-stirrup mechanisms",
+        "demand": 44750,
+        "capacity": 265529.924356,
+        "utilizationRatio": 0.168531,
+        "ok": true,
+        "metadata": {
+          "resultId": "rc-elastic-report-ULS-LIVE",
+          "resultType": "combination",
+          "station": 0,
+          "limitState": "ULS",
+          "method": "ntc2018-4.1.2.3.5.2",
+          "selectedMechanism": "with-transverse-reinforcement",
+          "vRdWithTransverseReinforcement": 265529.924356,
+          "vRdWithoutTransverseReinforcement": 61182.30016,
+          "vRsd": 265529.924356,
+          "vRcd": 296837.068966,
+          "Asw": 100.530965,
+          "spacing": 150,
+          "AswPerS": 0.670206433,
+          "fyd": 391.3,
+          "z": 405,
+          "cotTheta": 2.5,
+          "thetaSelection": "steel-boundary-max-cot",
+          "cotThetaMin": 1,
+          "cotThetaMax": 2.5,
+          "bw": 300,
+          "d": 450,
+          "fcd": 14.17,
+          "fcdPrime": 7.085,
+          "alphaC": 1
+        }
+      },
+      {
+        "id": "rc-sle-concrete-stress",
+        "description": "Concrete compression stress limit in service",
+        "demand": 3.424397,
+        "capacity": 15,
+        "utilizationRatio": 0.228293,
+        "ok": true,
+        "metadata": {
+          "resultId": "rc-elastic-report-SLE_RARE-LIVE",
+          "resultType": "combination",
+          "station": 2.5,
+          "limitState": "SLE",
+          "method": "ntc2018-4.1.2.2.5.1-characteristic",
+          "combinationType": "SLE_RARE",
+          "limitFactor": 0.6,
+          "fck": 25,
+          "sigmaCMax": 3.424397,
+          "modularRatio": 15
+        }
+      },
+      {
+        "id": "rc-sle-steel-stress",
+        "description": "Reinforcement stress limit in service",
+        "demand": 159.81407,
+        "capacity": 360,
+        "utilizationRatio": 0.443928,
+        "ok": true,
+        "metadata": {
+          "resultId": "rc-elastic-report-SLE_RARE-LIVE",
+          "resultType": "combination",
+          "station": 2.5,
+          "limitState": "SLE",
+          "method": "ntc2018-4.1.2.2.5.2-characteristic",
+          "combinationType": "SLE_RARE",
+          "limitFactor": 0.8,
+          "fyk": 450,
+          "sigmaSMax": 159.81407,
+          "modularRatio": 15
+        }
+      },
+      {
+        "id": "rc-sle-crack-bar-diameter",
+        "description": "Indirect crack control through maximum reinforcing bar diameter",
+        "demand": 20,
+        "capacity": 32,
+        "utilizationRatio": 0.625,
+        "ok": true,
+        "metadata": {
+          "resultId": "rc-elastic-report-SLE_QUASI_PERMANENT-all",
+          "resultType": "combination",
+          "station": 0.5,
+          "limitState": "SLE",
+          "method": "circolare-ntc2018-c4.1.ii",
+          "combinationType": "SLE_QUASI_PERMANENT",
+          "environment": "ordinary",
+          "crackWidthClass": "w2",
+          "groupId": "bottom-main",
+          "face": "bottom",
+          "barId": "bottom-main-1",
+          "sigmaS": 42.043394,
+          "diameter": 20,
+          "diameterLimit": 32
+        }
+      },
+      {
+        "id": "rc-sle-crack-bar-spacing",
+        "description": "Indirect crack control through maximum reinforcing bar spacing",
+        "demand": 200,
+        "capacity": 300,
+        "utilizationRatio": 0.666667,
+        "ok": true,
+        "metadata": {
+          "resultId": "rc-elastic-report-SLE_FREQUENT-LIVE",
+          "resultType": "combination",
+          "station": 0.5,
+          "limitState": "SLE",
+          "method": "circolare-ntc2018-c4.1.iii",
+          "combinationType": "SLE_FREQUENT",
+          "environment": "ordinary",
+          "crackWidthClass": "w3",
+          "groupId": "bottom-main",
+          "face": "bottom",
+          "barId": "bottom-main-1",
+          "sigmaS": 46.469014,
+          "spacing": 200,
+          "spacingLimit": 300,
+          "rowTolerance": 50
+        }
+      },
+      {
+        "id": "rc-sle-deflection-curvature",
+        "description": "RC deflection from curvature integration",
+        "demand": 2.009245,
+        "capacity": 20,
+        "utilizationRatio": 0.100462,
+        "ok": true,
+        "metadata": {
+          "resultId": "rc-elastic-report-SLE_RARE-LIVE",
+          "resultType": "combination",
+          "limitState": "SLE",
+          "combinationType": "SLE_RARE",
+          "station": 2.5,
+          "creepCoefficient": 0,
+          "modularRatio": 6.67175,
+          "limitRatio": 250,
+          "maxAbsDeflection": 2.009245,
+          "span": 5000,
+          "mcr": 32000000
+        }
+      },
+      {
+        "id": "rc-sle-deflection-slenderness",
+        "description": "Simplified RC span-depth deflection screening",
+        "demand": 10,
+        "capacity": 20,
+        "utilizationRatio": 0.5,
+        "ok": true,
+        "metadata": {
+          "method": "circolare-ntc2018-c4.1.i-screening",
+          "system": "simple_span",
+          "stressLevel": "low",
+          "k": 1,
+          "span": 5000,
+          "sectionHeight": 500,
+          "slendernessLimit": 20
+        }
       }
     ]
   },
   "governing": {
     "verification": {
-      "utilizationRatio": 0.540404,
-      "demand": 55937499.999999,
-      "capacity": 103510562.261308,
+      "utilizationRatio": 0.666667,
+      "demand": 200,
+      "capacity": 300,
       "metadata": {
-        "resultId": "rc-elastic-report-ULS-LIVE",
-        "resultType": "combination",
-        "station": 2.5,
-        "limitState": "ULS",
-        "governingCheckId": "rc-uls-uniaxial-bending",
-        "compressedEdge": "top",
-        "sectionResult": {
-          "applicationId": "reinforced-concrete-sections",
-          "status": "ok",
-          "summary": "ULS uniaxial reinforced-concrete section resistance solved with fiber discretization and Illinois axial-equilibrium iteration.",
-          "outputs": {
-            "analysisType": "uls-uniaxial-resistance",
-            "sectionId": "rc-elastic-report-ULS-LIVE-0",
-            "nEd": 0,
-            "mEd": 55937499.999999,
-            "compressedEdge": "top",
-            "neutralAxisDepth": 58.743306,
-            "axialResidual": 0,
-            "MxRd": 103510562.261308,
-            "MyRd": 0,
-            "fiberCount": 84,
-            "referencePoint": {
-              "y": 250,
-              "z": 150
-            },
-            "strainField": {
-              "eps0": -0.0035,
-              "kappaY": 0,
-              "kappaZ": -0.000059581256
-            },
-            "extremes": {
-              "minStrain": -0.002258723824,
-              "maxStrain": 0.025049352059,
-              "maxConcreteCompression": {
-                "value": -14.17,
-                "strain": -0.002258723824,
-                "y": 20.833333,
-                "z": 21.428571
-              },
-              "maxSteelTension": {
-                "value": 391.3,
-                "strain": 0.023311565412,
-                "y": 450,
-                "z": 70
-              }
-            }
-          },
-          "warnings": [],
-          "assumptions": [
-            "Current workflow implements only ULS uniaxial resistance with concrete ultimate strain governing the compressed edge.",
-            "Concrete in tension is neglected during the ULS resistance integration."
-          ],
-          "metadata": {
-            "code": "NTC2018",
-            "sectionId": "rc-elastic-report-ULS-LIVE-0",
-            "analysisType": "uls-uniaxial-resistance",
-            "solverMethod": "illinois"
-          },
-          "utilizationRatio": 0.540404,
-          "demand": 55937499.999999,
-          "capacity": 103510562.261308,
-          "checks": [
-            {
-              "id": "uls-uniaxial-bending",
-              "description": "Uniaxial bending resistance at assigned axial force",
-              "demand": 55937499.999999,
-              "capacity": 103510562.261308,
-              "utilizationRatio": 0.540404,
-              "ok": true
-            }
-          ]
-        }
+        "type": "circular-reference"
       }
     },
-    "utilizationRatio": 0.540404,
-    "checkId": "rc-uls-uniaxial-bending",
+    "utilizationRatio": 0.666667,
+    "checkId": "rc-sle-crack-bar-spacing",
     "ulsMoment": {
       "resultId": "rc-elastic-report-ULS-LIVE",
       "resultType": "combination",
@@ -7399,11 +9495,21 @@
     }
   },
   "warnings": [
-    "Shear resistance, crack control, detailing and second-order effects are not included in this first RC beam verification."
+    "Minimum shear reinforcement detailing, spacing limits, anchorage and torsion are not included in this MVP check.",
+    "Full member detailing and second-order effects are not included in this RC beam verification step."
   ],
   "assumptions": [
     "Current workflow implements only ULS uniaxial resistance with concrete ultimate strain governing the compressed edge.",
     "Concrete in tension is neglected during the ULS resistance integration.",
+    "NTC 2018 4.1.2.3.5.2 is evaluated with the variable-angle truss model for vertical stirrups and cotTheta selected to maximize min(VRsd, VRcd).",
+    "For reinforced sections the reported shear resistance is the maximum between the stirrup mechanism and the no-stirrup mechanism when both are available.",
+    "The lever arm z defaults to 0.9 d unless shear.leverArm is passed explicitly.",
+    "RC SLE stresses are solved with a linear no-tension concrete section and the modular-ratio method.",
+    "The first SLE cracking MVP uses ordinary reinforcing steel as low-sensitivity reinforcement.",
+    "Creep coefficient for the deflection MVP is set to phi = 2; shrinkage curvature is not included.",
+    "Curvatures are integrated numerically along FEM service-combination stations.",
+    "Concrete tension is excluded in cracked service-section states.",
+    "Long-term quasi-permanent curvature uses phi = 2; shrinkage curvature is excluded.",
     "Each FEM station is checked as an independent uniaxial RC section at the corresponding N-M pair."
   ],
   "metadata": {

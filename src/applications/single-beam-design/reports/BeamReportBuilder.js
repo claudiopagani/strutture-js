@@ -220,6 +220,27 @@ function verificationRows(verificationResult) {
   ]);
 }
 
+function isReportScalar(value) {
+  return (
+    value == null ||
+    typeof value === "number" ||
+    typeof value === "string" ||
+    typeof value === "boolean"
+  );
+}
+
+function verificationDetailRows(verificationResult) {
+  return (verificationResult?.checks ?? []).flatMap((check) =>
+    Object.entries(check.metadata ?? {})
+      .filter(([, value]) => isReportScalar(value))
+      .map(([key, value]) => [
+        check.id,
+        key,
+        typeof value === "number" ? formatNumber(value) : value,
+      ]),
+  );
+}
+
 function governingCheckFromVerification(verification) {
   const checks = verification?.checks ?? [];
 
@@ -468,6 +489,13 @@ export class BeamReportBuilder {
       markdownTable(
         ["ID", "Descrizione", "Domanda", "Capacita", "Utilizzo", "OK"],
         verificationRows(report.verification),
+      ),
+      "",
+      "## Dettagli verifiche",
+      "",
+      markdownTable(
+        ["Verifica", "Parametro", "Valore"],
+        verificationDetailRows(report.verification),
       ),
       "",
       "## Esito",

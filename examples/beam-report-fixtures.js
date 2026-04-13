@@ -25,6 +25,7 @@ import {
   createReinforcedConcreteBeamSectionProvider,
   createSteelBeamSectionProvider,
   createSteelProfileSection,
+  createLongitudinalReinforcementLayout,
   createTecnariaConnector,
   createTimberBeamSectionProvider,
   getNTC2018TimberKmod,
@@ -339,47 +340,35 @@ export function createRcElasticBeamReportModel() {
     height: 500,
     units: sectionUnits,
   });
+  const reinforcementLayout = createLongitudinalReinforcementLayout({
+    section: concreteSection,
+    material: reinforcementMaterial,
+    units: sectionUnits,
+    bottom: {
+      id: "bottom-main",
+      diameter: 20,
+      count: 2,
+      cover: 40,
+    },
+    top: {
+      id: "top-main",
+      diameter: 20,
+      count: 2,
+      cover: 40,
+    },
+  });
   const section = new ReinforcedConcreteSection({
     name: "RC 30x50",
     concreteSection,
-    reinforcementBars: [
-      new ReinforcementBar({
-        diameter: 20,
-        grade: "B450C",
-        material: reinforcementMaterial,
-        y: 50,
-        z: 70,
-        units: sectionUnits,
-      }),
-      new ReinforcementBar({
-        diameter: 20,
-        grade: "B450C",
-        material: reinforcementMaterial,
-        y: 50,
-        z: 230,
-        units: sectionUnits,
-      }),
-      new ReinforcementBar({
-        diameter: 20,
-        grade: "B450C",
-        material: reinforcementMaterial,
-        y: 450,
-        z: 70,
-        units: sectionUnits,
-      }),
-      new ReinforcementBar({
-        diameter: 20,
-        grade: "B450C",
-        material: reinforcementMaterial,
-        y: 450,
-        z: 230,
-        units: sectionUnits,
-      }),
-    ],
+    reinforcementBars: reinforcementLayout.reinforcementBars,
     concreteMaterial,
     reinforcementMaterial,
     referenceModularRatio:
       reinforcementMaterial.elasticModulus / concreteMaterial.elasticModulus,
+    metadata: {
+      longitudinalReinforcementGroups:
+        reinforcementLayout.longitudinalReinforcementGroups,
+    },
     units: sectionUnits,
   });
   const loads = [
@@ -398,7 +387,7 @@ export function createRcElasticBeamReportModel() {
   ];
   const combinations = createNTC2018BeamCombinations({
     loads,
-    types: ["ULS", "SLE_RARE"],
+    types: ["ULS", "SLE_RARE", "SLE_FREQUENT", "SLE_QUASI_PERMANENT"],
     idPrefix: id,
   });
 
@@ -445,6 +434,20 @@ export function createRcElasticBeamReportModel() {
         section,
         concreteMaterial,
         reinforcementMaterial,
+        shear: {
+          mode: "with-transverse-reinforcement",
+          effectiveDepth: 450,
+          longitudinalReinforcementGroupId: "bottom-main",
+          transverseReinforcement: {
+            type: "stirrups",
+            diameter: 8,
+            legs: 2,
+            spacing: 150,
+            material: reinforcementMaterial,
+          },
+          cotThetaMin: 1,
+          cotThetaMax: 2.5,
+        },
       },
     },
   });

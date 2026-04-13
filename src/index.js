@@ -85,6 +85,7 @@ export { DistributedLoad } from "./domain/loads/DistributedLoad.js";
 export { AreaLoad } from "./domain/loads/AreaLoad.js";
 export { VolumeLoad } from "./domain/loads/VolumeLoad.js";
 export { ReinforcementBar } from "./domain/reinforcement/ReinforcementBar.js";
+export { createLongitudinalReinforcementLayout } from "./domain/reinforcement/createLongitudinalReinforcementLayout.js";
 export { CompositeSection } from "./domain/composite/CompositeSection.js";
 export { CompositeSectionComponent } from "./domain/composite/CompositeSectionComponent.js";
 export {
@@ -150,6 +151,8 @@ export {
   CrackedSectionBeamModel,
   CrackedSectionDeflectionAnalysis,
   ReinforcedConcreteBeamVerification,
+  ReinforcedConcreteShearVerification,
+  ReinforcedConcreteServiceabilityVerification,
   ReinforcedConcreteSectionApplication,
   RCBiaxialDomainBuilder,
   ReinforcedConcreteSectionModel,
