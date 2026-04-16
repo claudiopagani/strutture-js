@@ -197,6 +197,46 @@ test("single beam analysis inserts user discretization stations", () => {
   assert.ok(loadCase.internalForces.samples.some((sample) => sample.station === 1.25));
 });
 
+test("single beam analysis inserts dedicated verification stations", () => {
+  const result = new SingleBeamAnalysis().analyze(
+    createSimpleBeamInput({
+      discretization: {
+        elementCount: 2,
+      },
+      verificationStations: {
+        mode: "combined",
+        count: 5,
+        userStations: [1.25],
+      },
+    }),
+  );
+  const loadCase = result.loadCases.G1;
+
+  assert.ok(loadCase.displacements.samples.some((sample) => sample.station === 1));
+  assert.ok(loadCase.displacements.samples.some((sample) => sample.station === 3));
+  assert.ok(loadCase.internalForces.samples.some((sample) => sample.station === 1.25));
+});
+
+test("verification station mode all leaves the FEM mesh unchanged", () => {
+  const result = new SingleBeamAnalysis().analyze(
+    createSimpleBeamInput({
+      discretization: {
+        elementCount: 2,
+      },
+      verificationStations: {
+        mode: "all",
+        count: 5,
+      },
+    }),
+  );
+  const loadCase = result.loadCases.G1;
+
+  assert.deepEqual(
+    loadCase.displacements.samples.map((sample) => sample.station),
+    [0, 2, 4],
+  );
+});
+
 test("beam section action verifier checks FEM samples through a common contract", () => {
   const analysisResult = new SingleBeamAnalysis().analyze(
     createSimpleBeamInput({
@@ -244,6 +284,56 @@ test("beam section action verifier checks FEM samples through a common contract"
     ),
   );
   assert.ok(verification.utilizationRatio > 1);
+});
+
+test("beam section action verifier can restrict checks to requested stations", () => {
+  const analysisResult = new SingleBeamAnalysis().analyze(
+    createSimpleBeamInput({
+      verificationStations: {
+        mode: "combined",
+        userStations: [1.25],
+      },
+      loads: [{ id: "g1", actionType: "G1", type: "uniform", value: -2 }],
+      combinations: [
+        {
+          id: "uls",
+          limitState: "ULS",
+          factors: { G1: 1.5 },
+        },
+      ],
+    }),
+  );
+  const verification = new BeamSectionActionVerifier({
+    sectionVerifier: {
+      verifySectionActions: ({ vEd, mEd }) => ({
+        checks: [
+          {
+            id: "requested-station-check",
+            demand: Math.abs(mEd) + Math.abs(vEd),
+            capacity: 100,
+            utilizationRatio: (Math.abs(mEd) + Math.abs(vEd)) / 100,
+            ok: true,
+          },
+        ],
+      }),
+    },
+    limitStates: "ULS",
+    verificationStations: {
+      mode: "user",
+      userStations: [1.25],
+    },
+  }).verify({ analysisResult });
+
+  assert.equal(verification.status, "ok");
+  assert.ok(verification.outputs.stationResultCount > 0);
+  assert.ok(
+    verification.checks.every(
+      (check) =>
+        check.metadata.station === 1.25 &&
+        check.metadata.isUserStation === true &&
+        check.metadata.stationSource === "user",
+    ),
+  );
 });
 
 test("elastic beam provider evaluates rigid composite section stiffness from component materials", () => {

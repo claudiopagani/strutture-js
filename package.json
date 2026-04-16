@@ -11,6 +11,7 @@
     "example:applications": "node examples/application-registry.js",
     "example:rc-sections": "node examples/rc-sections.js",
     "example:beam-reports": "node examples/beam-reports.js",
-    "example:beam-reports:write": "node examples/write-beam-reports.js"
+    "example:beam-reports:write": "node examples/write-beam-reports.js",
+    "validation": "node validation/run-validation.js"
   }
 }

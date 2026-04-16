@@ -25,3 +25,7 @@ export {
   TimberBeamSectionProvider,
   createTimberBeamSectionProvider,
 } from "./TimberBeamSectionProvider.js";
+export {
+  XlamBeamSectionProvider,
+  createXlamBeamSectionProvider,
+} from "./XlamBeamSectionProvider.js";

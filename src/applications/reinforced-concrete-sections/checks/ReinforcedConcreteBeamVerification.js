@@ -185,6 +185,7 @@ export class ReinforcedConcreteBeamVerification {
     solver = { tolerance: 1e-6, maxIterations: 100 },
     shear = null,
     serviceability = {},
+    verificationStations = null,
     metadata = {},
   } = {}) {
     this.code = code;
@@ -192,6 +193,7 @@ export class ReinforcedConcreteBeamVerification {
     this.solver = { ...solver };
     this.shear = shear;
     this.serviceability = serviceability;
+    this.verificationStations = verificationStations;
     this.metadata = { ...metadata };
   }
 
@@ -205,6 +207,7 @@ export class ReinforcedConcreteBeamVerification {
     solver = this.solver,
     shear = this.shear,
     serviceability = this.serviceability,
+    verificationStations = this.verificationStations,
   } = {}) {
     if (!section || !analysisResult) {
       return new VerificationResult({
@@ -240,6 +243,7 @@ export class ReinforcedConcreteBeamVerification {
         shear,
       }),
       limitStates: "ULS",
+      verificationStations,
     }).verify({ analysisResult });
     const serviceabilityVerification =
       serviceability === false
@@ -261,6 +265,7 @@ export class ReinforcedConcreteBeamVerification {
               serviceability,
             }),
             limitStates: "SLE",
+            verificationStations,
           }).verify({ analysisResult });
     const deflectionVerification =
       serviceability === false
@@ -419,6 +424,7 @@ export class ReinforcedConcreteBeamVerification {
         code: this.code,
         beamId,
         governingCheckId: governing?.id ?? null,
+        verificationStations,
         ...this.metadata,
       },
     });

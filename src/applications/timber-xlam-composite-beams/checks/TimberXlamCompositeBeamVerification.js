@@ -132,8 +132,9 @@ function femDemands(analysisResult) {
 }
 
 export class TimberXlamCompositeBeamVerification {
-  constructor({ model = null } = {}) {
+  constructor({ model = null, verificationStations = null } = {}) {
     this.model = model;
+    this.verificationStations = verificationStations;
   }
 
   verifySectionActions({ nEd = 0, vEd, mEd, context = {} } = {}) {
@@ -295,6 +296,10 @@ export class TimberXlamCompositeBeamVerification {
 
   verify(input) {
     const { model, analysisResult } = resolveInputModel(input, this.model);
+    const verificationStations =
+      input?.verificationStations ??
+      model?.verificationStations ??
+      this.verificationStations;
 
     if (!model) {
       throw new Error("TimberXlamCompositeBeamVerification requires a model.");
@@ -466,6 +471,7 @@ export class TimberXlamCompositeBeamVerification {
             }),
           limitStates: "ULS",
           includeLoadCases: false,
+          verificationStations,
           metadata: {
             method: "timber-xlam-gamma-method-section-actions",
           },
@@ -576,6 +582,7 @@ export class TimberXlamCompositeBeamVerification {
       metadata: {
         method: "timber-xlam-gamma-method",
         serviceClass,
+        verificationStations,
         actionSource: sectionActionVerification
           ? "fem-section-actions"
           : demands?.source ?? "workbook-closed-form",

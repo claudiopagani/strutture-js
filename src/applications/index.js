@@ -38,6 +38,8 @@ export { SectionFiberDiscretizer } from "./reinforced-concrete-sections/index.js
 export { StrainField } from "./reinforced-concrete-sections/index.js";
 export { SingleBeamDesignApplication } from "./single-beam-design/index.js";
 export { SingleBeamDesignModel } from "./single-beam-design/index.js";
+export { BEAM_REPORT_SCHEMA_VERSION } from "./single-beam-design/index.js";
+export { validateBeamReportDto } from "./single-beam-design/index.js";
 export { BeamReportBuilder } from "./single-beam-design/index.js";
 export { createBeamReportArtifacts } from "./single-beam-design/index.js";
 export { SteelFrameApplication } from "./steel-frames/index.js";
@@ -68,6 +70,7 @@ export { TimberBeamVerification } from "./timber-beams/index.js";
 export { XlamOutOfPlanePanelApplication } from "./xlam-panels-out-of-plane/index.js";
 export { XlamOutOfPlanePanelModel } from "./xlam-panels-out-of-plane/index.js";
 export { XlamOutOfPlanePanelVerification } from "./xlam-panels-out-of-plane/index.js";
+export { XlamBeamVerification } from "./xlam-beams/index.js";
 
 export function createDefaultApplicationRegistry() {
   return new ApplicationRegistry([

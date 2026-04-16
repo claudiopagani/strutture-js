@@ -14,6 +14,7 @@ Questo documento fissa il contratto minimo del report di trave semplice usato da
 
 ```js
 {
+  schemaVersion,
   applicationId,
   id,
   title,
@@ -31,6 +32,7 @@ Questo documento fissa il contratto minimo del report di trave semplice usato da
 
 Campi principali:
 
+* `schemaVersion`: versione del contratto, attualmente `beam-report/v1`.
 * `applicationId`: identificativo dell'applicazione che ha generato il report.
 * `id`: identificativo stabile del modello/report.
 * `title`: titolo utente del report.
@@ -106,7 +108,40 @@ Regole:
 * `status` usa almeno `ok`, `not-verified`, `not-implemented`.
 * `metadata.governingCheckId` dovrebbe puntare alla verifica governante.
 * Quando le verifiche arrivano da FEM, il check mantiene `resultId`, `resultType`, `station` e `limitState` nei metadata.
+* I check puntuali possono esporre anche `stationSource`, `stationRole`, `isUserStation`, `isGridStation`, `isCriticalStation` e `stationSelectionMode`.
 * Verifiche globali, come freccia e vibrazioni, possono convivere con verifiche puntuali `verifySectionActions`.
+
+## Verification Stations
+
+La trave semplice puo ricevere una configurazione `verificationStations` nel `beamInput`:
+
+```js
+{
+  mode: "all" | "auto" | "user" | "combined" | "critical",
+  count,
+  userStations,
+  tolerance
+}
+```
+
+Uso previsto:
+
+* `all`: verifica tutti i campioni FEM disponibili.
+* `auto`: usa una griglia regolare se `count` e definito.
+* `user`: verifica solo le stazioni dichiarate in `userStations`.
+* `combined`: usa griglia regolare e stazioni utente.
+* `critical`: verifica le stazioni FEM governanti per momento o taglio.
+
+Quando la configurazione e presente nel `beamInput`, `SingleBeamAnalysis` inserisce nella mesh FEM le stazioni di griglia e utente richieste da `auto`, `user` e `combined`; `SingleBeamDesignApplication` propaga poi la stessa configurazione al verificatore materiale. I moduli materiali restano comunque usabili standalone: `BeamSectionActionVerifier` accetta la stessa configurazione anche senza passare dall'applicazione trave.
+
+I metadata dei check permettono al frontend di distinguere:
+
+* campioni FEM generici;
+* punti definiti dall'utente;
+* griglia automatica di verifica;
+* appoggi;
+* carichi puntuali;
+* stazioni critiche di momento o taglio.
 
 ## BeamReportArtifact
 
@@ -119,7 +154,11 @@ Gli artefatti sono DTO pensati per CLI, API download e frontend:
   fileName,
   mediaType,
   content,
-  metadata
+  metadata: {
+    schemaVersion,
+    reportId,
+    title
+  }
 }
 ```
 
@@ -129,6 +168,19 @@ Formati attuali:
 * `markdown`: `text/markdown`, contenuto Markdown.
 
 La funzione `createBeamReportArtifacts(report)` produce questi oggetti senza scrivere su file.
+
+## Validazione DTO
+
+`validateBeamReportDto(report)` esegue una validazione runtime leggera del contratto `beam-report/v1`.
+
+Controlla:
+
+* campi top-level richiesti;
+* presenza di `analysis.loadCaseIds`, `analysis.combinationIds`, sintesi e risultato grezzo;
+* forma minima di `verification`, se presente;
+* warning, assunzioni e metadata come array/oggetti serializzabili.
+
+Non sostituisce un JSON Schema completo: e un guardiano leggero per test, API e frontend React.
 
 ## Script
 

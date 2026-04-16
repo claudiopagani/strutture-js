@@ -113,8 +113,9 @@ function femDemands(analysisResult) {
 }
 
 export class TimberConcreteCompositeBeamVerification {
-  constructor({ model = null } = {}) {
+  constructor({ model = null, verificationStations = null } = {}) {
     this.model = model;
+    this.verificationStations = verificationStations;
   }
 
   verifySectionActions({ nEd = 0, vEd, mEd, context = {} } = {}) {
@@ -289,6 +290,10 @@ export class TimberConcreteCompositeBeamVerification {
 
   verify(input) {
     const { model, analysisResult } = resolveInputModel(input, this.model);
+    const verificationStations =
+      input?.verificationStations ??
+      model?.verificationStations ??
+      this.verificationStations;
 
     if (!model) {
       throw new Error("TimberConcreteCompositeBeamVerification requires a model.");
@@ -493,6 +498,7 @@ export class TimberConcreteCompositeBeamVerification {
             }),
           limitStates: "ULS",
           includeLoadCases: false,
+          verificationStations,
           metadata: {
             method: "gelfi-gamma-method-section-actions",
           },
@@ -590,6 +596,7 @@ export class TimberConcreteCompositeBeamVerification {
       ],
       metadata: {
         method: "gelfi-gamma-method",
+        verificationStations,
         actionSource: sectionActionVerification
           ? "fem-section-actions"
           : demands?.source ?? "workbook-closed-form",

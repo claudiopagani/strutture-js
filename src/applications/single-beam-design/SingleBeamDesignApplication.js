@@ -51,11 +51,13 @@ function runVerification({ model, analysisResult }) {
     return verification({
       model,
       analysisResult,
+      verificationStations: model.beamInput?.verificationStations ?? null,
     });
   }
 
   const verifier = verification.verifier ?? verification;
   const input = {
+    verificationStations: model.beamInput?.verificationStations ?? null,
     ...(verification.input ?? {}),
     analysisResult,
   };
@@ -144,4 +146,3 @@ export class SingleBeamDesignApplication extends StructuralApplication {
     });
   }
 }
-

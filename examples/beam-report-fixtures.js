@@ -15,6 +15,9 @@ import {
   TimberXlamCompositeBeamSectionProvider,
   TimberXlamCompositeBeamVerification,
   XlamPanelSection,
+  XlamMaterial,
+  XlamBeamSectionProvider,
+  XlamBeamVerification,
   createNTC2018BeamCombinations,
   createNTC2018ConcreteMaterial,
   createNTC2018PermanentAction,
@@ -183,6 +186,91 @@ export function createGlulamGL24hBeamReportModel() {
   });
 }
 
+export function createTimberCantileverPointLoadReportModel() {
+  const id = "timber-c24-cantilever-point-report";
+  const span = 3;
+  const section = new RectangularSection({
+    width: 120,
+    height: 260,
+    units: sectionUnits,
+  });
+  const material = createNTC2018TimberMaterial({
+    strengthClass: "C24",
+    serviceClass: 1,
+    units: sectionUnits,
+  });
+  const loads = [
+    {
+      id: "g1",
+      loadCaseId: "G1",
+      type: "uniform",
+      value: -0.6,
+      action: permanentAction("ACT-G1", "G1"),
+    },
+    {
+      id: "tip-live",
+      loadCaseId: "LIVE",
+      type: "point",
+      position: "end",
+      value: -1.2,
+      action: liveAction("ACT-LIVE"),
+    },
+  ];
+  const combinations = createNTC2018BeamCombinations({
+    loads,
+    types: ["ULS", "SLE_RARE", "SLE_QUASI_PERMANENT"],
+    idPrefix: id,
+  });
+
+  return new SingleBeamDesignModel({
+    id,
+    title: "Mensola in legno C24",
+    description: "Mensola in legno massiccio con carico puntuale in estremita.",
+    units: beamUnits,
+    section,
+    material,
+    beamInput: {
+      units: beamUnits,
+      geometry: {
+        start: { x: 0, y: 0 },
+        end: { x: span, y: 0 },
+      },
+      analysisModel: "timoshenko",
+      sectionProvider: createTimberBeamSectionProvider({
+        section,
+        material,
+        gammaM: 1.5,
+        kdef: 0.6,
+        kmodResolver: timberKmodResolver,
+      }),
+      supports: {
+        start: "fixed",
+      },
+      loads,
+      combinations,
+      discretization: {
+        elementCount: 6,
+        stations: [span / 2, "end"],
+      },
+      verificationStations: {
+        mode: "combined",
+        count: 7,
+        userStations: [span / 2, "end"],
+      },
+    },
+    verification: {
+      verifier: new TimberBeamVerification({
+        deflectionLimitDenominator: 200,
+      }),
+      input: {
+        beamId: id,
+        section,
+        material,
+      },
+    },
+  });
+}
+
 export function createSteelIpeBeamReportModel() {
   const id = "steel-ipe200-report";
   const section = createSteelProfileSection({
@@ -338,6 +426,181 @@ export function createSteelCantileverReportModel() {
   });
 }
 
+export function createSteelUpnUserMcrReportModel() {
+  const id = "steel-upn200-user-mcr-report";
+  const section = createSteelProfileSection({
+    profileName: "UPN200",
+    units: beamUnits,
+  });
+  const material = createNTC2018StructuralSteelMaterial({
+    grade: "S275",
+    units: beamUnits,
+  });
+  const span = 4.5;
+  const loads = [
+    {
+      id: "g1",
+      loadCaseId: "G1",
+      value: -2.5,
+      action: permanentAction("ACT-G1", "G1"),
+    },
+    {
+      id: "live",
+      loadCaseId: "LIVE",
+      value: -1.8,
+      action: liveAction("ACT-LIVE"),
+    },
+  ];
+  const combinations = createNTC2018BeamCombinations({
+    loads,
+    types: ["ULS", "SLE_RARE"],
+    idPrefix: id,
+  });
+
+  return new SingleBeamDesignModel({
+    id,
+    title: "Trave in acciaio UPN200 con Mcr utente",
+    description: "Profilo UPN verificato con momento critico elastico fornito dall'utente.",
+    units: beamUnits,
+    section,
+    material,
+    beamInput: {
+      units: beamUnits,
+      geometry: {
+        start: { x: 0, y: 0 },
+        end: { x: span, y: 0 },
+      },
+      analysisModel: "timoshenko",
+      sectionProvider: createSteelBeamSectionProvider({
+        section,
+        material,
+      }),
+      supports: {
+        start: "hinge",
+        end: "roller",
+      },
+      loads,
+      combinations,
+      discretization: {
+        elementCount: 6,
+        stations: [span / 2],
+      },
+      verificationStations: {
+        mode: "combined",
+        count: 7,
+        userStations: [span / 2],
+      },
+    },
+    verification: {
+      verifier: new SteelMemberVerification({
+        stability: {
+          lateralTorsionalBuckling: {
+            criticalMoment: 120,
+            criticalMomentSource: "example-user-mcr",
+            unbracedLength: span,
+          },
+        },
+      }),
+      input: {
+        memberId: id,
+        section,
+        material,
+      },
+    },
+  });
+}
+
+export function createSteelCompressionInteractionReportModel() {
+  const id = "steel-ipe200-compression-interaction-report";
+  const section = createSteelProfileSection({
+    profileName: "IPE200",
+    units: beamUnits,
+  });
+  const material = createNTC2018StructuralSteelMaterial({
+    grade: "S275",
+    units: beamUnits,
+  });
+  const span = 5;
+  const loads = [
+    {
+      id: "g1",
+      loadCaseId: "G1",
+      value: -2.5,
+      action: permanentAction("ACT-G1", "G1"),
+    },
+    {
+      id: "live",
+      loadCaseId: "LIVE",
+      value: -1.5,
+      action: liveAction("ACT-LIVE"),
+    },
+    {
+      id: "axial",
+      loadCaseId: "AXIAL",
+      type: "point",
+      position: "end",
+      direction: "x",
+      value: -70,
+      action: liveAction("ACT-AXIAL"),
+    },
+  ];
+  const combinations = createNTC2018BeamCombinations({
+    loads,
+    types: ["ULS", "SLE_RARE"],
+    idPrefix: id,
+  });
+
+  return new SingleBeamDesignModel({
+    id,
+    title: "Trave in acciaio IPE200 con compressione",
+    description: "Trave appoggio-appoggio con carico assiale e verifica di interazione N + My.",
+    units: beamUnits,
+    section,
+    material,
+    beamInput: {
+      units: beamUnits,
+      geometry: {
+        start: { x: 0, y: 0 },
+        end: { x: span, y: 0 },
+      },
+      analysisModel: "timoshenko",
+      sectionProvider: createSteelBeamSectionProvider({
+        section,
+        material,
+      }),
+      supports: {
+        start: "hinge",
+        end: "roller",
+      },
+      loads,
+      combinations,
+      discretization: {
+        elementCount: 6,
+        stations: [span / 2],
+      },
+      verificationStations: {
+        mode: "combined",
+        count: 7,
+        userStations: [span / 2],
+      },
+    },
+    verification: {
+      verifier: new SteelMemberVerification({
+        stability: {
+          lateralTorsionalBuckling: {
+            unbracedLength: span,
+          },
+        },
+      }),
+      input: {
+        memberId: id,
+        section,
+        material,
+      },
+    },
+  });
+}
+
 export function createRcElasticBeamReportModel() {
   const id = "rc-elastic-report";
   const concreteMaterial = createNTC2018ConcreteMaterial({
@@ -438,6 +701,146 @@ export function createRcElasticBeamReportModel() {
     },
     verification: {
       verifier: new ReinforcedConcreteBeamVerification({
+        mesh: {
+          targetFiberCount: 80,
+        },
+      }),
+      input: {
+        beamId: id,
+        section,
+        concreteMaterial,
+        reinforcementMaterial,
+        shear: {
+          mode: "with-transverse-reinforcement",
+          effectiveDepth: 450,
+          longitudinalReinforcementGroupId: "bottom-main",
+          transverseReinforcement: {
+            type: "stirrups",
+            diameter: 8,
+            legs: 2,
+            spacing: 150,
+            material: reinforcementMaterial,
+          },
+          cotThetaMin: 1,
+          cotThetaMax: 2.5,
+        },
+      },
+    },
+  });
+}
+
+export function createRcAggressiveCrackReportModel() {
+  const id = "rc-aggressive-crack-report";
+  const concreteMaterial = createNTC2018ConcreteMaterial({
+    strengthClass: "C25/30",
+    units: sectionUnits,
+  });
+  const reinforcementMaterial = createNTC2018ReinforcementSteelMaterial({
+    grade: "B450C",
+    units: sectionUnits,
+  });
+  const concreteSection = new RectangularSection({
+    width: 300,
+    height: 500,
+    units: sectionUnits,
+  });
+  const reinforcementLayout = createLongitudinalReinforcementLayout({
+    section: concreteSection,
+    material: reinforcementMaterial,
+    units: sectionUnits,
+    bottom: {
+      id: "bottom-main",
+      diameter: 16,
+      count: 2,
+      cover: 40,
+    },
+    top: {
+      id: "top-main",
+      diameter: 16,
+      count: 2,
+      cover: 40,
+    },
+  });
+  const section = new ReinforcedConcreteSection({
+    name: "RC aggressive 30x50",
+    concreteSection,
+    reinforcementBars: reinforcementLayout.reinforcementBars,
+    concreteMaterial,
+    reinforcementMaterial,
+    referenceModularRatio:
+      reinforcementMaterial.elasticModulus / concreteMaterial.elasticModulus,
+    metadata: {
+      longitudinalReinforcementGroups:
+        reinforcementLayout.longitudinalReinforcementGroups,
+    },
+    units: sectionUnits,
+  });
+  const loads = [
+    {
+      id: "g1",
+      loadCaseId: "G1",
+      value: -7,
+      action: permanentAction("ACT-G1", "G1"),
+    },
+    {
+      id: "live",
+      loadCaseId: "LIVE",
+      value: -7,
+      action: liveAction("ACT-LIVE"),
+    },
+  ];
+  const combinations = createNTC2018BeamCombinations({
+    loads,
+    types: ["ULS", "SLE_RARE", "SLE_FREQUENT", "SLE_QUASI_PERMANENT"],
+    idPrefix: id,
+  });
+  const span = 5;
+
+  return new SingleBeamDesignModel({
+    id,
+    title: "Trave in c.a. ambiente aggressivo",
+    description: "Esempio mirato alla fessurazione indiretta SLE in ambiente aggressivo.",
+    units: beamUnits,
+    section,
+    material: concreteMaterial,
+    beamInput: {
+      units: beamUnits,
+      geometry: {
+        start: { x: 0, y: 0 },
+        end: { x: span, y: 0 },
+      },
+      sectionProvider: createReinforcedConcreteBeamSectionProvider({
+        section,
+        stiffnessState: "transformed",
+      }),
+      supports: {
+        start: "hinge",
+        end: "roller",
+      },
+      loads,
+      combinations,
+      discretization: {
+        elementCount: 6,
+        stations: [span / 2],
+      },
+      verificationStations: {
+        mode: "combined",
+        count: 7,
+        userStations: [span / 2],
+      },
+    },
+    metadata: {
+      verificationScope: "rc-sle-aggressive-crack-control",
+    },
+    verification: {
+      verifier: new ReinforcedConcreteBeamVerification({
+        serviceability: {
+          environment: "aggressive",
+          deflection: {
+            creepCoefficient: 2,
+            includeShrinkage: false,
+          },
+        },
         mesh: {
           targetFiberCount: 80,
         },
@@ -717,14 +1120,112 @@ export function createTimberXlamCompositeReportModel() {
   });
 }
 
+export function createXlamStripBeamReportModel() {
+  const id = "xlam-strip-report";
+  const span = 4.5;
+  const section = new XlamPanelSection({
+    effectiveWidth: 1000,
+    layerThicknesses: [30, 20, 30, 20, 30],
+    activeLayerIndexes: [0, 2, 4],
+    units: sectionUnits,
+  });
+  const material = new XlamMaterial({
+    name: "XLAM strip material",
+    strengthClass: "custom-xlam",
+    elasticModulus: 11000,
+    e0Mean: 11000,
+    e90Mean: 370,
+    g0Mean: 690,
+    g90Mean: 70,
+    fmK: 24,
+    fvK: 2.7,
+    rollingShearStrength: 1.2,
+    kdef: 0.8,
+    units: sectionUnits,
+  });
+  const loads = [
+    {
+      id: "g1",
+      loadCaseId: "G1",
+      value: -1.8,
+      action: permanentAction("ACT-G1", "G1"),
+    },
+    {
+      id: "live",
+      loadCaseId: "LIVE",
+      value: -1.2,
+      action: liveAction("ACT-LIVE"),
+    },
+  ];
+  const combinations = createNTC2018BeamCombinations({
+    loads,
+    types: ["ULS", "SLE_RARE", "SLE_QUASI_PERMANENT"],
+    idPrefix: id,
+  });
+
+  return new SingleBeamDesignModel({
+    id,
+    title: "Striscia XLAM come trave",
+    description: "Pannello XLAM modellato come striscia monodimensionale Timoshenko.",
+    units: beamUnits,
+    section,
+    material,
+    beamInput: {
+      units: beamUnits,
+      geometry: {
+        start: { x: 0, y: 0 },
+        end: { x: span, y: 0 },
+      },
+      analysisModel: "timoshenko",
+      sectionProvider: new XlamBeamSectionProvider({
+        section,
+        material,
+        kdef: 0.8,
+      }),
+      supports: {
+        start: "hinge",
+        end: "roller",
+      },
+      loads,
+      combinations,
+      discretization: {
+        elementCount: 8,
+        stations: [span / 2],
+      },
+      verificationStations: {
+        mode: "combined",
+        count: 9,
+        userStations: [span / 2],
+      },
+    },
+    verification: {
+      verifier: new XlamBeamVerification({
+        kmod: 0.8,
+        gammaM: 1.45,
+        deflectionLimitDenominator: 300,
+      }),
+      input: {
+        beamId: id,
+        section,
+        material,
+      },
+    },
+  });
+}
+
 export function createBeamReportExampleModels() {
   return [
     createTimberC24BeamReportModel(),
     createGlulamGL24hBeamReportModel(),
+    createTimberCantileverPointLoadReportModel(),
     createSteelIpeBeamReportModel(),
     createSteelCantileverReportModel(),
+    createSteelUpnUserMcrReportModel(),
+    createSteelCompressionInteractionReportModel(),
     createRcElasticBeamReportModel(),
+    createRcAggressiveCrackReportModel(),
     createTimberConcreteCompositeReportModel(),
     createTimberXlamCompositeReportModel(),
+    createXlamStripBeamReportModel(),
   ];
 }

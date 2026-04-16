@@ -355,6 +355,73 @@ function addDiscretizationStations(stations, geometry, unitResolver, discretizat
   }
 }
 
+function normalizeVerificationStationMode(mode) {
+  const normalized = String(mode ?? "combined").trim().toLowerCase();
+  const aliases = {
+    automatic: "auto",
+    declared: "combined",
+    grid: "auto",
+    selected: "combined",
+    fem: "all",
+    samples: "all",
+  };
+
+  return aliases[normalized] ?? normalized;
+}
+
+function addVerificationStations(stations, geometry, unitResolver, verificationStations = null) {
+  if (!verificationStations || verificationStations.enabled === false) {
+    return;
+  }
+
+  const options = Array.isArray(verificationStations)
+    ? { mode: "user", userStations: verificationStations }
+    : verificationStations;
+  const hasDeclaredStations =
+    options.count != null ||
+    options.stationCount != null ||
+    options.userStations != null ||
+    options.stations != null ||
+    options.checkStations != null;
+  const mode = normalizeVerificationStationMode(
+    options.mode ?? (hasDeclaredStations ? "combined" : "all"),
+  );
+  const count = options.count ?? options.stationCount ?? null;
+  const rawUserStations =
+    options.userStations ??
+    options.stations ??
+    options.checkStations ??
+    [];
+  const userStations = Array.isArray(rawUserStations)
+    ? rawUserStations
+    : [rawUserStations];
+
+  if (count != null && ["auto", "combined"].includes(mode)) {
+    if (!Number.isInteger(count) || count < 2) {
+      throw new Error("verificationStations.count must be an integer greater than or equal to 2.");
+    }
+
+    for (let index = 1; index < count - 1; index += 1) {
+      addStation(stations, (geometry.length * index) / (count - 1), 1e-9);
+    }
+  }
+
+  if (["user", "combined"].includes(mode)) {
+    for (const [index, station] of userStations.entries()) {
+      addStation(
+        stations,
+        resolveStation(
+          station,
+          geometry,
+          unitResolver,
+          `verificationStations.userStations[${index}]`,
+        ),
+        1e-9,
+      );
+    }
+  }
+}
+
 function normalizeSupportDefinitions(supports) {
   if (Array.isArray(supports)) {
     return supports.map((support, index) => ({
@@ -958,6 +1025,7 @@ export class SingleBeamModel {
     loads = [],
     combinations = null,
     discretization = {},
+    verificationStations = null,
     metadata = {},
   } = {}) {
     if (!id) {
@@ -981,6 +1049,11 @@ export class SingleBeamModel {
     this.loads = normalizeLoads(loads);
     this.combinations = combinations;
     this.discretization = { ...discretization };
+    this.verificationStations = Array.isArray(verificationStations)
+      ? [...verificationStations]
+      : verificationStations
+        ? { ...verificationStations }
+        : null;
     this.metadata = { ...metadata };
   }
 }
@@ -1055,6 +1128,12 @@ export class SingleBeamFemBuilder {
       geometry,
       unitResolver,
       model.discretization,
+    );
+    addVerificationStations(
+      stations,
+      geometry,
+      unitResolver,
+      model.verificationStations,
     );
 
     for (const support of model.supports) {

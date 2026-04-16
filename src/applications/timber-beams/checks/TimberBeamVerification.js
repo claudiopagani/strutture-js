@@ -182,6 +182,7 @@ export class TimberBeamVerification {
     gammaM = null,
     deflectionLimitDenominator = 300,
     finalDeflectionLimitDenominator = null,
+    verificationStations = null,
     metadata = {},
   } = {}) {
     this.code = code;
@@ -189,6 +190,7 @@ export class TimberBeamVerification {
     this.deflectionLimitDenominator = deflectionLimitDenominator;
     this.finalDeflectionLimitDenominator =
       finalDeflectionLimitDenominator ?? deflectionLimitDenominator;
+    this.verificationStations = verificationStations;
     this.metadata = { ...metadata };
   }
 
@@ -199,6 +201,7 @@ export class TimberBeamVerification {
     analysisResult = null,
     deflectionLimitDenominator = this.deflectionLimitDenominator,
     finalDeflectionLimitDenominator = this.finalDeflectionLimitDenominator,
+    verificationStations = this.verificationStations,
   } = {}) {
     if (!section || !material || !analysisResult) {
       return new VerificationResult({
@@ -233,6 +236,7 @@ export class TimberBeamVerification {
         gammaM: this.gammaM,
       }),
       limitStates: "ULS",
+      verificationStations,
     }).verify({ analysisResult });
     const governingDeflection =
       maxAbsDeflection(instantSleEntries.length > 0 ? instantSleEntries : sleEntries);
@@ -319,6 +323,7 @@ export class TimberBeamVerification {
         code: this.code,
         beamId,
         governingCheckId: governingCheck.id,
+        verificationStations,
         ...this.metadata,
       },
     });

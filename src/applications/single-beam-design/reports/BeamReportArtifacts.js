@@ -31,6 +31,7 @@ export function createBeamReportArtifacts(report, {
       mediaType: "application/json",
       content: JSON.stringify(report.json, null, jsonSpacing),
       metadata: {
+        schemaVersion: report.json.schemaVersion ?? null,
         reportId: report.json.id,
         title: report.json.title,
       },
@@ -45,6 +46,7 @@ export function createBeamReportArtifacts(report, {
       mediaType: "text/markdown",
       content: report.markdown,
       metadata: {
+        schemaVersion: report.json.schemaVersion ?? null,
         reportId: report.json.id,
         title: report.json.title,
       },

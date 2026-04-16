@@ -1054,6 +1054,267 @@ Ogni nuovo modulo dovrebbe:
 * produrre risultati serializzabili e stabili per un futuro frontend React;
 * separare calcolo, verifica, report e presentazione grafica.
 
+## Fase attiva - Chiusura travi semplici
+
+Decisione corrente:
+
+* completare ora:
+  * campagna di validazione;
+  * stazioni di verifica piu controllabili;
+  * esempi aggiuntivi mirati;
+  * validazione SLE c.a. piu profonda;
+  * XLAM come trave;
+  * schema DTO/frontend piu formale;
+* conservare nel backlog gli altri sviluppi avanzati, senza implementarli in questa fase.
+
+### A. Campagna di validazione
+
+Obiettivo:
+
+* costruire una campagna di test numerici ripetibile, con casi semplici e valori attesi documentati;
+* separare casi di validazione da esempi dimostrativi;
+* produrre output consultabili in JSON/Markdown o snapshot testabili.
+
+Prima implementazione completata:
+
+* creata cartella dedicata `validation/`;
+* definita struttura dati comune per casi di validazione: input calcolato da `evaluate`, valore atteso, tolleranza, fonte, note;
+* aggiunto comando `npm run validation`, con output Markdown o JSON tramite `-- --json`;
+* integrata la campagna in `npm test`;
+* creato documento `docs/beam-validation-campaign.md`;
+* casi iniziali:
+  * trave Euler-Bernoulli appoggio-appoggio con carico uniforme contro formule chiuse;
+  * classificazione acciaio IPE200 S275 in flessione pura;
+  * taglio c.a. con staffe verticali e ottimizzazione `cotTheta` contro regressione dal foglio utente;
+  * selezione stazioni utente tramite `verificationStations`.
+
+Da ampliare:
+
+* acciaio:
+  * classificazione sezione;
+  * flessione/taglio/assiale;
+  * LTB;
+  * aste compresse;
+  * interazione `N + My`;
+* c.a.:
+  * SLU `N-M`;
+  * taglio senza staffe;
+  * taglio con staffe;
+  * SLE tensioni;
+  * fessurazione indiretta;
+  * frecce fessurate;
+* legno e composti:
+  * appoggio-appoggio;
+  * mensola;
+  * carichi puntuali;
+  * geometrie inclinate;
+  * combinazioni con rigidezze diverse;
+* esportazione opzionale degli artefatti di validazione in `results/validation-campaign`.
+
+### B. Stazioni di verifica piu controllabili
+
+Obiettivo:
+
+* distinguere in modo esplicito stazioni FEM, stazioni informative, stazioni critiche e stazioni utente;
+* rendere configurabile la densita di campionamento usata dalle verifiche;
+* evitare che una verifica importante dipenda solo dalla discretizzazione FEM di default.
+
+Prima implementazione completata:
+
+* introdotta una configurazione stabile, per esempio:
+
+```js
+verificationStations: {
+  mode: "all" | "auto" | "user" | "combined" | "critical",
+  count: 21,
+  includeSupports: true,
+  includeLoadPoints: true,
+  includeExtrema: true,
+  userStations: [0, 2.5, 5]
+}
+```
+
+* `SingleBeamAnalysis` inserisce nella mesh le stazioni di griglia e utente dichiarate;
+* `SingleBeamDesignApplication` propaga `verificationStations` al verificatore materiale;
+* `BeamSectionActionVerifier` puo usare tutte le stazioni, solo quelle utente, una griglia, combinazioni griglia+utente o le stazioni critiche;
+* i verificatori c.a., acciaio, legno, legno-calcestruzzo e legno-XLAM accettano la stessa configurazione;
+* metadata dei check aggiornati con:
+  * `stationSource`;
+  * `stationRole`;
+  * `isUserStation`;
+  * `isGridStation`;
+  * `isCriticalStation`;
+  * `stationSelectionMode`;
+* report JSON/Markdown alimentati dai metadata dei check;
+* test automatici su inserimento stazioni e filtro per stazioni utente.
+
+Da raffinare:
+
+* usare in modo esplicito le opzioni `includeSupports`, `includeLoadPoints` e `includeExtrema` per costruire set misti di verifica;
+* aggiungere test su campionamento molto rado/fitto e modalita `critical`;
+* valutare una tabella dedicata nel report Markdown per spiegare le stazioni verificate, oltre ai metadata dei singoli check.
+
+### C. Esempi aggiuntivi mirati
+
+Obiettivo:
+
+* coprire casi che esercitano davvero i warning, i limiti e le nuove verifiche;
+* usare gli esempi come materiale di test, documentazione e futura UI.
+
+Prima implementazione completata:
+
+* acciaio `UPN200` con `Mcr` fornito dall'utente;
+* acciaio `IPE200` con carico assiale e momento, per mostrare il check `N + My`;
+* c.a. in ambiente aggressivo con fessurazione SLE nei metadata di report;
+* legno C24 a mensola con carico puntuale;
+* test sui report mirati per verificare metadata `UPN`/`Mcr` utente e ambiente aggressivo c.a.;
+
+Da aggiungere:
+
+* acciaio classe 4, con blocco e warning su proprieta efficaci non implementate;
+* c.a. senza staffe e c.a. con staffe in due report affiancati;
+* trave composta con carico puntuale o geometria inclinata;
+* striscia XLAM Timoshenko.
+
+### D. Validazione SLE c.a. piu profonda
+
+Obiettivo:
+
+* trasformare lo SLE c.a. da MVP prudente a modulo piu affidabile per uso ricorrente.
+
+Prima implementazione completata:
+
+* aggiunti alla campagna di validazione:
+  * limiti tensionali SLE `0.60 fck`, `0.45 fck`, `0.80 fyk`;
+  * mappatura ambiente/combinazione verso classi di fessurazione `w1/w2/w3`;
+  * selezione gruppo teso `bottom`/`top` in funzione del segno del momento;
+* aggiunto report c.a. in ambiente aggressivo.
+
+Da raffinare:
+
+* validare tensioni con metodo `n` contro casi manuali esterni:
+  * sezione non fessurata;
+  * sezione fessurata;
+  * momento positivo e negativo;
+* validare fessurazione indiretta con esempi numerici di progetto:
+  * ambiente ordinario;
+  * ambiente aggressivo;
+  * ambiente molto aggressivo;
+  * combinazione rara/frequente/quasi permanente quando applicabile;
+* validare deformazioni:
+  * caso non fessurato contro formula elastica;
+  * caso fessurato con freccia maggiore della non fessurata;
+  * effetto di `phi` modificabile;
+  * ritiro escluso e dichiarato nei metadata;
+* validare confronto semplificato di snellezza con casi dedicati;
+* migliorare metadata e report:
+  * quota istantanea;
+  * quota differita;
+  * `phi`;
+  * zone fessurate;
+  * punti non convergenti;
+* ampliare esempi numerici con classi ambientali diverse.
+
+### E. XLAM come trave
+
+Obiettivo:
+
+* usare una striscia di pannello XLAM come trave semplice Timoshenko;
+* ottenere analisi FEM, verifiche e report come per gli altri materiali.
+
+Prima implementazione completata:
+
+* creato provider dedicato `XlamBeamSectionProvider`;
+* esposti:
+  * `EA`;
+  * `EI`;
+  * `GA`;
+  * unita;
+  * metadata di layer, orientamento, larghezza efficace e prodotto;
+* collegato il provider a `SingleBeamAnalysis` con modello Timoshenko;
+* creato verificatore trave XLAM da azioni FEM:
+  * flessione;
+  * taglio;
+  * deformazione;
+  * warning su vibrazioni/incendio fuori dominio;
+* aggiunto esempio/report `xlam-strip-report`;
+* aggiunti test su rigidezza, freccia e verifiche base;
+* documentato metodo in `docs/xlam-beam-method.md`.
+
+Da raffinare:
+
+* calibrare la rigidezza a taglio efficace contro riferimenti esterni o produttori;
+* aggiungere vibrazioni XLAM;
+* aggiungere incendio XLAM;
+* ampliare cataloghi/prodotti con preset di strati reali.
+
+### F. Frontend/schema DTO piu formale
+
+Obiettivo:
+
+* stabilizzare il contratto JSON per API e futuro frontend React;
+* rendere validabili input, risultati, report e cataloghi.
+
+Prima implementazione completata:
+
+* versionato `BeamReport` con `schemaVersion = "beam-report/v1"`;
+* aggiunto validatore runtime leggero `validateBeamReportDto`;
+* aggiunta costante `BEAM_REPORT_SCHEMA_VERSION`;
+* propagata la versione negli artefatti JSON/Markdown;
+* aggiornata documentazione in `docs/beam-report-dto.md`;
+* aggiunti test strutturali sul report e sugli artefatti.
+
+Da fare:
+
+* formalizzare in modo completo:
+  * `BeamModelInput`;
+  * `BeamLoadInput`;
+  * `BeamCombinationInput`;
+  * `BeamAnalysisResult`;
+  * `BeamVerificationResult`;
+  * `BeamReport`;
+  * `BeamReportArtifact`;
+* creare JSON Schema o Zod-like schema se il frontend ne avra bisogno;
+* normalizzare warning e assunzioni con campi strutturati:
+  * `code`;
+  * `severity`;
+  * `message`;
+  * `source`;
+  * `relatedCheckId`;
+* esporre cataloghi materiali/sezioni in DTO comodi per form React;
+* aggiungere esempi JSON minimi per ogni famiglia di trave.
+
+## Backlog conservato per fasi successive
+
+Questi punti restano nella todolist ma non fanno parte della fase attiva.
+
+### Acciaio avanzato
+
+* estensione da `N + My` a `N + My + Mz`;
+* torsione e interazioni torsionali;
+* affinamenti LTB con coefficienti di momento, quote di applicazione carico, vincoli torsionali e casi non doppiamente simmetrici;
+* gestione completa di `UPN` e altri profili non doppiamente simmetrici senza override manuale;
+* influenza del taglio sulla resistenza a flessione;
+* sezioni efficaci di classe 4;
+* affinamento della classificazione in forte pressoflessione.
+
+### C.A. avanzato
+
+* minimi di armatura trasversale;
+* limiti geometrici delle staffe;
+* staffe inclinate diverse da 90 gradi;
+* torsione e interazione taglio-torsione;
+* gestione avanzata di sezioni generiche/poligonali;
+* selezione automatica del gruppo teso lungo la trave, solo con regole dichiarate.
+
+### Legno, composti e XLAM avanzati
+
+* eventuale stabilita laterale delle travi in legno;
+* vibrazioni XLAM;
+* incendio XLAM;
+* sistemi misti acciaio-calcestruzzo;
+* pannelli XLAM collaboranti con profili metallici.
+
 ## Checklist sintetica
 
 Completato:
@@ -1079,25 +1340,25 @@ Completato:
 * verifiche base legno semplice da azioni FEM;
 * verifiche base acciaio da azioni FEM;
 * verifiche base composte legno-calcestruzzo e legno-XLAM da azioni FEM tramite adapter `verifySectionActions`;
-* inviluppi principali di `N`, `V`, `M` e freccia.
+* inviluppi principali di `N`, `V`, `M` e freccia;
+* stazioni di verifica configurabili e metadata di sorgente/ruolo della stazione;
+* prima campagna di validazione ripetibile con comando `npm run validation`;
+* esempi mirati aggiuntivi: UPN con `Mcr` utente, acciaio con compressione, c.a. aggressivo, mensola in legno;
+* validazione SLE c.a. rafforzata su limiti tensionali, fessurazione per ambiente e gruppi tesi;
+* XLAM come trave semplice con provider Timoshenko, verificatore FEM e report `xlam-strip-report`;
+* DTO report versionato `beam-report/v1` con validatore runtime leggero;
+* report JSON/Markdown ed esempi MVP.
 
-Da fare a breve:
+Da fare nella fase attiva:
 
-* creare orchestratore applicativo per esempi completi di trave semplice;
-* creare report JSON e Markdown: completato in prima versione;
-* aggiungere esempi legno C24, legno lamellare, acciaio IPE, acciaio mensola, c.a. elastico, legno-calcestruzzo, legno-XLAM: completato in prima versione;
-* applicare `verifySectionActions` o adapter equivalenti ai moduli composti: completato in prima versione per legno-calcestruzzo e legno-XLAM;
-* completare freccia finale nel workflow legno semplice: completato in prima versione;
-* aggiungere inviluppi di reazione e stazioni utente: completato in prima versione;
-* stabilizzare DTO serializzabili per futuro frontend React: completato in prima versione con `SingleBeamDesignModel`, `BeamReport`, `BeamReportArtifact` e `docs/beam-report-dto.md`;
-* aggiungere test automatici sui report e sugli esempi: completato in prima versione.
+* fase attiva completata in prima implementazione; restano solo raffinamenti puntuali indicati sopra.
 
 Da fare dopo:
 
-* ogni verifica avanzata deve essere discussa e approvata prima dell'implementazione, con campo di applicazione, assunzioni, formule e test attesi;
-* verifiche acciaio avanzate: estensione da `N + My` a `N + My + Mz`, torsione/interazioni torsionali, affinamenti instabilita flesso-torsionale, casi non doppiamente simmetrici completi, affinamento classificazione per forte pressoflessione, sezione efficace per classe 4;
-* consolidare verifiche c.a. avanzate da azioni FEM: taglio, tensioni SLE, fessurazione indiretta e deflessioni fessurate sono completati in MVP prudente; restano validazioni normative estese, casi ambientali, sezioni generiche, minimi/limiti costruttivi e affinamento deformazioni;
-* vibrazioni XLAM;
-* incendio XLAM;
+* verifiche acciaio avanzate oltre `N + My`;
+* dettagli costruttivi avanzati c.a.;
+* torsione e interazioni torsionali;
+* sezioni efficaci acciaio classe 4;
+* vibrazioni e incendio XLAM;
 * sistemi misti acciaio-calcestruzzo;
 * pannelli XLAM collaboranti con profili metallici.

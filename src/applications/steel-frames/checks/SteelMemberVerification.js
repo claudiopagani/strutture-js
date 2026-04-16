@@ -1301,6 +1301,7 @@ export class SteelMemberVerification {
     resistance = {},
     stability = {},
     deflectionLimitRatio = null,
+    verificationStations = null,
     metadata = {},
   } = {}) {
     this.code = code;
@@ -1309,6 +1310,7 @@ export class SteelMemberVerification {
     this.classification = { ...classification };
     this.resistance = { ...resistance };
     this.stability = { ...stability };
+    this.verificationStations = verificationStations;
     this.deflectionLimitRatio =
       deflectionLimitRatio ??
       serviceability.deflectionLimitRatio ??
@@ -1327,6 +1329,7 @@ export class SteelMemberVerification {
     classification = this.classification,
     resistance = this.resistance,
     stability = this.stability,
+    verificationStations = this.verificationStations,
     deflectionLimitRatio =
       serviceability.deflectionLimitRatio ??
       serviceability.deflection?.limitRatio ??
@@ -1366,6 +1369,7 @@ export class SteelMemberVerification {
         resistance,
       }),
       limitStates: "ULS",
+      verificationStations,
     }).verify({ analysisResult });
     const deflectionChecks = createDeflectionChecks({
       analysisResult,
@@ -1516,6 +1520,7 @@ export class SteelMemberVerification {
         method: "steel-elastic-member-mvp",
         governingCheckId: governing?.id ?? null,
         deflectionLimitRatio,
+        verificationStations,
         ...this.metadata,
       },
     });

@@ -1,3 +1,5 @@
+import { BEAM_REPORT_SCHEMA_VERSION } from "../dto/BeamReportDto.js";
+
 function isPlainObject(value) {
   return (
     value !== null &&
@@ -292,9 +294,11 @@ function collectAssumptions(...sources) {
 export class BeamReportBuilder {
   constructor({
     applicationId = "single-beam-design",
+    schemaVersion = BEAM_REPORT_SCHEMA_VERSION,
     metadata = {},
   } = {}) {
     this.applicationId = applicationId;
+    this.schemaVersion = schemaVersion;
     this.metadata = { ...metadata };
   }
 
@@ -355,6 +359,7 @@ export class BeamReportBuilder {
     const assumptions = collectAssumptions(analysisResult, verification);
 
     return {
+      schemaVersion: this.schemaVersion,
       applicationId: this.applicationId,
       id: model.id,
       title: model.title,

@@ -2,14 +2,19 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  BEAM_REPORT_SCHEMA_VERSION,
   SingleBeamDesignApplication,
   createBeamReportArtifacts,
+  validateBeamReportDto,
 } from "../src/index.js";
 import {
   createBeamReportExampleModels,
   createRcElasticBeamReportModel,
+  createRcAggressiveCrackReportModel,
   createSteelIpeBeamReportModel,
+  createSteelUpnUserMcrReportModel,
   createTimberC24BeamReportModel,
+  createXlamStripBeamReportModel,
 } from "../examples/beam-report-fixtures.js";
 
 test("single beam design application generates JSON and Markdown reports for timber", () => {
@@ -20,6 +25,12 @@ test("single beam design application generates JSON and Markdown reports for tim
 
   assert.equal(result.applicationId, "single-beam-design");
   assert.equal(result.status, "ok");
+  assert.equal(report.json.schemaVersion, BEAM_REPORT_SCHEMA_VERSION);
+  assert.deepEqual(validateBeamReportDto(report.json), {
+    ok: true,
+    schemaVersion: BEAM_REPORT_SCHEMA_VERSION,
+    errors: [],
+  });
   assert.equal(report.json.id, "timber-c24-report");
   assert.ok(report.json.analysis.combinationIds.includes("timber-c24-report-ULS-LIVE"));
   assert.ok(report.json.verification.checks.some((check) => check.id === "timber-bending"));
@@ -43,6 +54,8 @@ test("single beam design reports expose frontend-ready file artifacts", () => {
   assert.equal(jsonArtifact.fileName, "timber-c24-report.json");
   assert.equal(markdownArtifact.fileName, "timber-c24-report.md");
   assert.equal(JSON.parse(jsonArtifact.content).id, "timber-c24-report");
+  assert.equal(jsonArtifact.metadata.schemaVersion, BEAM_REPORT_SCHEMA_VERSION);
+  assert.equal(markdownArtifact.metadata.schemaVersion, BEAM_REPORT_SCHEMA_VERSION);
   assert.ok(markdownArtifact.content.includes("# Trave in legno C24"));
   assert.equal(jsonArtifact.mediaType, "application/json");
   assert.equal(markdownArtifact.mediaType, "text/markdown");
@@ -85,13 +98,52 @@ test("single beam design application can report RC elastic analysis with ULS sec
   assert.doesNotThrow(() => JSON.stringify(report.json));
 });
 
+test("targeted report examples expose UPN Mcr and aggressive RC crack metadata", () => {
+  const application = new SingleBeamDesignApplication();
+  const upnResult = application.run({
+    model: createSteelUpnUserMcrReportModel(),
+  });
+  const rcResult = application.run({
+    model: createRcAggressiveCrackReportModel(),
+  });
+  const ltb = upnResult.outputs.report.json.verification.checks.find(
+    (check) => check.id === "steel-lateral-torsional-buckling",
+  );
+  const crack = rcResult.outputs.report.json.verification.checks.find(
+    (check) => check.id === "rc-sle-crack-bar-diameter",
+  );
+
+  assert.ok(ltb);
+  assert.equal(ltb.metadata.family, "UPN");
+  assert.equal(ltb.metadata.criticalMomentSource, "example-user-mcr");
+  assert.ok(crack);
+  assert.equal(crack.metadata.environment, "aggressive");
+  assert.ok(
+    rcResult.outputs.report.json.verification.metadata.verificationStations,
+  );
+});
+
+test("xlam strip report example exposes beam checks and declared limitations", () => {
+  const result = new SingleBeamDesignApplication().run({
+    model: createXlamStripBeamReportModel(),
+  });
+  const report = result.outputs.report;
+
+  assert.equal(report.json.id, "xlam-strip-report");
+  assert.ok(report.json.verification.checks.some((check) => check.id === "xlam-beam-bending"));
+  assert.ok(report.json.verification.checks.some((check) => check.id === "xlam-beam-rolling-shear"));
+  assert.ok(report.json.verification.checks.some((check) => check.id === "xlam-beam-deflection"));
+  assert.ok(report.json.warnings.some((warning) => warning.includes("vibration")));
+  assert.ok(report.json.warnings.some((warning) => warning.includes("fire")));
+});
+
 test("single beam design application runs all report example models", () => {
   const application = new SingleBeamDesignApplication();
   const results = createBeamReportExampleModels().map((model) =>
     application.run({ model }),
   );
 
-  assert.equal(results.length, 7);
+  assert.equal(results.length, 12);
 
   for (const result of results) {
     assert.ok(["ok", "not-verified"].includes(result.status));
