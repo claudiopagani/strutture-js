@@ -135,3 +135,79 @@ test("xlam beam verification checks FEM bending, rolling shear and deflection", 
   assert.ok(verification.warnings.some((warning) => warning.includes("vibration")));
   assert.ok(verification.warnings.some((warning) => warning.includes("fire")));
 });
+
+test("xlam beam verification neglects rotated in-plane components with a physical warning", () => {
+  const { section, material } = createXlamFixture();
+  const analysisResult = new SingleBeamAnalysis().analyze({
+    id: "xlam-strip-rotated",
+    units: beamUnits,
+    geometry: {
+      start: { x: 0, y: 0 },
+      end: { x: 4.5, y: 0 },
+    },
+    sectionRotation: {
+      alpha: 12,
+      units: "deg",
+    },
+    analysisModel: "timoshenko",
+    sectionProvider: new XlamBeamSectionProvider({
+      section,
+      material,
+      kdef: 0.8,
+    }),
+    supports: {
+      start: "hinge",
+      end: "roller",
+    },
+    loads: [
+      { id: "g1", actionType: "G1", type: "uniform", value: -1.2 },
+      { id: "q", actionType: "Qk", type: "uniform", value: -0.8 },
+    ],
+    combinations: [
+      {
+        id: "uls",
+        limitState: "ULS",
+        factors: { G1: 1.3, Qk: 1.5 },
+      },
+      {
+        id: "sle",
+        limitState: "SLE",
+        combinationType: "SLE_RARE",
+        factors: { G1: 1, Qk: 1 },
+      },
+    ],
+    discretization: {
+      elementCount: 6,
+      stations: [2.25],
+    },
+    verificationStations: {
+      mode: "combined",
+      userStations: [2.25],
+    },
+  });
+  const verification = new XlamBeamVerification({
+    kmod: 0.8,
+    gammaM: 1.45,
+    verificationStations: {
+      mode: "user",
+      userStations: [2.25],
+    },
+  }).verify({
+    beamId: "xlam-strip-rotated",
+    section,
+    material,
+    analysisResult,
+  });
+  const bending = verification.checks.find(
+    (check) => check.id === "xlam-beam-bending",
+  );
+
+  assert.equal(verification.status, "ok");
+  assert.equal(bending.metadata.weakAxisComponentsNeglected, true);
+  assert.ok(Math.abs(bending.metadata.mZEdSectionUnits) > 0);
+  assert.ok(
+    verification.warnings.some((warning) =>
+      warning.includes("slab action provides high in-plane stiffness/resistance"),
+    ),
+  );
+});

@@ -217,6 +217,36 @@ test("timber-xlam verification can use FEM diagrams instead of closed-form actio
   );
 });
 
+test("timber-xlam verification neglects slab in-plane rotated components with warning", () => {
+  const model = createReferenceModel();
+  const mY = (model.loads.ulsLineLoad * model.span ** 2) / 32;
+  const vY = (model.loads.ulsLineLoad * model.span) / 8;
+  const result = new TimberXlamCompositeBeamVerification().verifySectionActions({
+    principalActions: {
+      mY,
+      mZ: mY * 0.05,
+      vY,
+      vZ: vY * 0.05,
+    },
+    context: {
+      model,
+      units,
+    },
+  });
+  const timberCheck = result.checks.find(
+    (check) => check.id === "timber-max-stress",
+  );
+
+  assert.equal(result.status, "ok");
+  assert.equal(timberCheck.metadata.weakAxisComponentsNeglected, true);
+  assert.ok(Math.abs(timberCheck.metadata.mZEdSectionUnits) > 0);
+  assert.ok(
+    result.warnings.some((warning) =>
+      warning.includes("slab action provides high in-plane stiffness/resistance"),
+    ),
+  );
+});
+
 test("timber-xlam verification exposes standalone section-action adapter", () => {
   const model = createReferenceModel();
   const result = new TimberXlamCompositeBeamVerification().verifySectionActions({

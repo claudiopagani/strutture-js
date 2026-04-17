@@ -61,6 +61,47 @@ test("single beam design reports expose frontend-ready file artifacts", () => {
   assert.equal(markdownArtifact.mediaType, "text/markdown");
 });
 
+test("single beam design reports expose section rotation and principal actions", () => {
+  const model = createTimberC24BeamReportModel();
+  model.beamInput.sectionRotation = {
+    alpha: 15,
+    units: "deg",
+  };
+
+  const result = new SingleBeamDesignApplication().run({ model });
+  const report = result.outputs.report;
+  const principalEnvelopes = report.json.analysis.principalActionEnvelopes.uls;
+
+  assert.deepEqual(validateBeamReportDto(report.json), {
+    ok: true,
+    schemaVersion: BEAM_REPORT_SCHEMA_VERSION,
+    errors: [],
+  });
+  assert.equal(report.json.model.beamInput.sectionRotation.alpha, 15);
+  assert.equal(report.json.analysis.sectionRotation.inputUnits, "deg");
+  assert.ok(
+    Math.abs(report.json.analysis.sectionRotation.alpha - Math.PI / 12) < 1e-12,
+  );
+  assert.equal(report.json.analysis.principalAxes.primaryAxis, "principalY");
+  assert.equal(
+    report.json.analysis.sectionRigidity.verticalFlexuralRigiditySource,
+    "flexuralRigidity-harmonic-projection-yz",
+  );
+  assert.ok(principalEnvelopes.maxAbsBendingMomentY.value > 0);
+  assert.ok(principalEnvelopes.maxAbsBendingMomentZ.value > 0);
+  assert.ok(principalEnvelopes.maxAbsShearForceY.value > 0);
+  assert.ok(principalEnvelopes.maxAbsShearForceZ.value > 0);
+  assert.ok(report.json.governing.ulsMomentY);
+  assert.ok(report.json.governing.ulsMomentZ);
+  assert.ok(
+    report.json.warnings.some((warning) =>
+      warning.includes("SingleBeamAnalysis remains a 2D FEM model"),
+    ),
+  );
+  assert.ok(report.markdown.includes("## Assi principali"));
+  assert.ok(report.markdown.includes("## Azioni principali"));
+});
+
 test("single beam design application supports steel verification reports", () => {
   const result = new SingleBeamDesignApplication().run({
     model: createSteelIpeBeamReportModel(),
@@ -75,7 +116,7 @@ test("single beam design application supports steel verification reports", () =>
   assert.ok(report.json.verification.checks.some((check) => check.id === "steel-compression-buckling"));
   assert.ok(report.json.verification.checks.some((check) => check.id === "steel-beam-column-interaction-n-my"));
   assert.ok(report.json.verification.checks.some((check) => check.id === "steel-sle-deflection"));
-  assert.ok(report.json.warnings.some((warning) => warning.includes("N+My only")));
+  assert.ok(report.json.warnings.some((warning) => warning.includes("torsion and torsional interactions")));
   assert.ok(report.markdown.includes("# Trave in acciaio IPE200"));
   assert.doesNotThrow(() => JSON.stringify(report.json));
 });

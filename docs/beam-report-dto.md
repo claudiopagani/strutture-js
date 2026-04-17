@@ -58,6 +58,10 @@ Campi principali:
   loadCases,
   combinations,
   envelopes,
+  sectionRotation,
+  principalAxes,
+  sectionRigidity,
+  principalActionEnvelopes,
   raw
 }
 ```
@@ -67,7 +71,47 @@ Uso previsto nel frontend:
 * `loadCaseIds` e `combinationIds` alimentano navigazione e select.
 * `loadCases` e `combinations` contengono sintesi pronte per tabelle.
 * `envelopes` contiene estremi governanti per dashboard e badge.
+* `sectionRotation`, `principalAxes` e `sectionRigidity` descrivono assi principali, angolo `alpha`, rigidezze principali e rigidezza verticale equivalente usata dal FEM 2D.
+* `principalActionEnvelopes` espone gli inviluppi gia separati in `mY`, `mZ`, `vY`, `vZ`, senza costringere il frontend a scavare nel risultato grezzo.
 * `raw` contiene punti dei diagrammi, reazioni, spostamenti e metadata completi.
+
+## Assi Ruotati E Azioni Principali
+
+Per travi inclinate o sezioni con assi principali ruotati, il report mantiene separati tre livelli:
+
+* `model.beamInput.sectionRotation`: input utente, per esempio `{ alpha: 15, units: "deg" }`.
+* `analysis.sectionRotation`: rotazione normalizzata in radianti, con `inputAlpha`, `inputUnits`, `convention` e `primaryAxis`.
+* `analysis.principalActionEnvelopes`: estremi principali per `mY`, `mZ`, `vY`, `vZ`.
+
+Esempio minimo:
+
+```js
+{
+  sectionRotation: {
+    alpha: 0.261799,
+    inputAlpha: 15,
+    inputUnits: "deg",
+    convention: "vertical-load-projected-on-principal-section-axes",
+    primaryAxis: "principalY"
+  },
+  sectionRigidity: {
+    flexuralRigidity: 12345,
+    flexuralRigidityY: 15000,
+    flexuralRigidityZ: 5000,
+    verticalFlexuralRigiditySource: "flexuralRigidity-harmonic-projection-yz"
+  },
+  principalActionEnvelopes: {
+    uls: {
+      maxAbsBendingMomentY: { value, station, resultId },
+      maxAbsBendingMomentZ: { value, station, resultId },
+      maxAbsShearForceY: { value, station, resultId },
+      maxAbsShearForceZ: { value, station, resultId }
+    }
+  }
+}
+```
+
+Il Markdown contiene le sezioni `Assi principali` e `Azioni principali`. Quando `alpha` e diverso da zero, i warning ricordano che il solver resta un FEM 2D: usa rigidezza verticale equivalente e non modella torsione o spostamento trasversale debole indipendente.
 
 ## Verification
 
@@ -177,6 +221,7 @@ Controlla:
 
 * campi top-level richiesti;
 * presenza di `analysis.loadCaseIds`, `analysis.combinationIds`, sintesi e risultato grezzo;
+* presenza dei campi espliciti per assi ruotati e azioni principali;
 * forma minima di `verification`, se presente;
 * warning, assunzioni e metadata come array/oggetti serializzabili.
 
@@ -198,7 +243,8 @@ Prima versione stabilizzata per:
 * acciaio con verifiche ULS governate dalla classe, instabilita flesso-torsionale MVP, instabilita aste compresse, interazione `N + My` e freccia SLE;
 * c.a. elastico con verifiche ULS `N-M`, taglio, tensioni SLE, fessurazione indiretta e deformazioni;
 * legno-calcestruzzo;
-* legno-XLAM.
+* legno-XLAM;
+* report con assi principali ruotati `sectionRotation`, rigidezze principali e inviluppi `mY/mZ/vY/vZ`.
 
 Per il metodo SLE c.a. e i campi di report specifici vedere `docs/reinforced-concrete-sle-method.md`.
 Per il metodo delle travi in acciaio vedere `docs/steel-beam-method.md`.

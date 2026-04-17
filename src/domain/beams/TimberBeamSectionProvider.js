@@ -1,3 +1,5 @@
+import { applySectionRotationToBeamProperties } from "./SectionRotation.js";
+
 const DEFAULT_UNITS = Object.freeze({ force: "N", length: "mm" });
 
 function assertPositive(value, label) {
@@ -183,7 +185,7 @@ export class TimberBeamSectionProvider {
     assertPositive(elasticModulus, "timber material elasticModulus");
     assertPositive(shearArea, `timber section ${this.shearAreaAxis} or area`);
 
-    return {
+    const properties = {
       axialRigidity: effectiveElasticModulus * area,
       flexuralRigidity: effectiveElasticModulus * inertia,
       shearRigidity:
@@ -213,6 +215,27 @@ export class TimberBeamSectionProvider {
         ft0D: designStrength(this.material.ft0K, kmod, this.gammaM),
       },
     };
+
+    return applySectionRotationToBeamProperties({
+      properties,
+      sectionRotation: context.sectionRotation,
+      flexuralRigidityY:
+        Number.isFinite(this.section.inertiaY)
+          ? effectiveElasticModulus * this.section.inertiaY
+          : properties.flexuralRigidity,
+      flexuralRigidityZ:
+        Number.isFinite(this.section.inertiaZ)
+          ? effectiveElasticModulus * this.section.inertiaZ
+          : null,
+      shearRigidityY:
+        Number.isFinite(effectiveShearModulus)
+          ? effectiveShearModulus * (this.section.shearAreaY ?? this.section.area)
+          : null,
+      shearRigidityZ:
+        Number.isFinite(effectiveShearModulus)
+          ? effectiveShearModulus * (this.section.shearAreaZ ?? this.section.area)
+          : null,
+    });
   }
 }
 

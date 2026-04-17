@@ -13,6 +13,7 @@ export class CrossSection {
     centroidZ = null,
     inertiaY = null,
     inertiaZ = null,
+    productOfInertiaYZ = null,
     torsionalConstant = null,
     shearAreaY = null,
     shearAreaZ = null,
@@ -46,6 +47,7 @@ export class CrossSection {
     this.centroidZ = unitResolver.length(centroidZ);
     this.inertiaY = unitResolver.inertia(inertiaY);
     this.inertiaZ = unitResolver.inertia(inertiaZ);
+    this.productOfInertiaYZ = unitResolver.inertia(productOfInertiaYZ);
     this.torsionalConstant = unitResolver.inertia(torsionalConstant);
     this.shearAreaY = unitResolver.area(shearAreaY);
     this.shearAreaZ = unitResolver.area(shearAreaZ);
@@ -72,6 +74,7 @@ export class CrossSection {
       centroidZ: this.centroidZ,
       inertiaY: this.inertiaY,
       inertiaZ: this.inertiaZ,
+      productOfInertiaYZ: this.productOfInertiaYZ,
       torsionalConstant: this.torsionalConstant,
       shearAreaY: this.shearAreaY,
       shearAreaZ: this.shearAreaZ,

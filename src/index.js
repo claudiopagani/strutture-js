@@ -16,6 +16,12 @@ export { RectangularSection } from "./domain/geometry/RectangularSection.js";
 export { CircularSection } from "./domain/geometry/CircularSection.js";
 export { TSection } from "./domain/geometry/TSection.js";
 export { PolygonSection } from "./domain/geometry/PolygonSection.js";
+export {
+  calculateSectionMassProperties,
+  principalSecondMoments,
+  resolvePrincipalSectionFrame,
+  rotateSecondMoments,
+} from "./domain/geometry/SectionMassProperties.js";
 export { ReinforcedConcreteSection } from "./domain/geometry/ReinforcedConcreteSection.js";
 export { XlamPanelSection } from "./domain/geometry/XlamPanelSection.js";
 export { createXlamPanelSection } from "./domain/geometry/createXlamPanelSection.js";
@@ -34,6 +40,7 @@ export { BeamElement } from "./domain/elements/BeamElement.js";
 export { BeamSystem } from "./domain/elements/BeamSystem.js";
 export {
   BEAM_SUPPORT_PRESETS,
+  DEFAULT_SECTION_ROTATION,
   BeamSectionActionVerifier,
   ElasticBeamSectionProvider,
   ReinforcedConcreteBeamSectionProvider,
@@ -48,7 +55,9 @@ export {
   createSteelBeamSectionProvider,
   createTimberBeamSectionProvider,
   createXlamBeamSectionProvider,
+  normalizeSectionRotation,
   resolveBeamSupportPreset,
+  splitPrincipalActions,
   verifyBeamSectionActions,
 } from "./domain/beams/index.js";
 export {
@@ -174,10 +183,12 @@ export {
   calculateElasticCriticalMomentLT,
   calculateSteelCompressionBucklingAxis,
   calculateSteelMethodBInteractionCoefficients,
+  calculateSteelMethodBInteractionCoefficientsMyMz,
   classifySteelSection,
   inferSteelCompressionBucklingCurves,
   steelBucklingCurveImperfectionFactor,
   verifySteelBeamColumnInteractionMy,
+  verifySteelBeamColumnInteractionMyMz,
   verifySteelCompressionBuckling,
   verifySteelLateralTorsionalBuckling,
   BeamReportBuilder,
@@ -193,6 +204,9 @@ export {
   TimberBeamApplication,
   TimberBeamModel,
   TimberBeamVerification,
+  calculateTimberLateralBucklingReduction,
+  calculateTimberRectangularCriticalBendingStress,
+  verifyTimberLateralTorsionalStability,
   StrainField,
   XlamOutOfPlanePanelApplication,
   XlamOutOfPlanePanelModel,

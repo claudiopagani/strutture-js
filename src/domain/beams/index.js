@@ -11,6 +11,14 @@ export {
   createReinforcedConcreteBeamSectionProvider,
 } from "./ReinforcedConcreteBeamSectionProvider.js";
 export {
+  DEFAULT_SECTION_ROTATION,
+  applySectionRotationToBeamProperties,
+  equivalentVerticalRigidity,
+  normalizeSectionRotation,
+  sectionRotationFactors,
+  splitPrincipalActions,
+} from "./SectionRotation.js";
+export {
   BEAM_SUPPORT_PRESETS,
   SingleBeamAnalysis,
   SingleBeamFemBuilder,

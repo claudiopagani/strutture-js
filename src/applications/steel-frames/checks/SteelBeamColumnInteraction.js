@@ -139,6 +139,75 @@ export function calculateSteelMethodBInteractionCoefficients({
   };
 }
 
+export function calculateSteelMethodBInteractionCoefficientsMyMz({
+  sectionClass,
+  relativeSlendernessY,
+  relativeSlendernessZ,
+  axialRatioY,
+  axialRatioZ,
+  alphaMy = 1,
+  alphaMz = 1,
+  alphaMLT = 1,
+} = {}) {
+  if (
+    !Number.isFinite(sectionClass) ||
+    !Number.isFinite(relativeSlendernessY) ||
+    !Number.isFinite(relativeSlendernessZ) ||
+    !Number.isFinite(axialRatioY) ||
+    !Number.isFinite(axialRatioZ) ||
+    !isFinitePositive(alphaMy) ||
+    !isFinitePositive(alphaMz) ||
+    !isFinitePositive(alphaMLT)
+  ) {
+    return null;
+  }
+
+  const kyy = methodBCoefficientKyy({
+    sectionClass,
+    lambdaY: relativeSlendernessY,
+    axialRatioY,
+    alphaMy,
+  });
+  const kyz = methodBCoefficientKzy({
+    sectionClass,
+    lambdaZ: relativeSlendernessY,
+    axialRatioZ: axialRatioY,
+    alphaMLT: alphaMz,
+  });
+  const kzy = methodBCoefficientKzy({
+    sectionClass,
+    lambdaZ: relativeSlendernessZ,
+    axialRatioZ,
+    alphaMLT,
+  });
+  const kzz = methodBCoefficientKyy({
+    sectionClass,
+    lambdaY: relativeSlendernessZ,
+    axialRatioY: axialRatioZ,
+    alphaMy: alphaMz,
+  });
+
+  if (
+    !Number.isFinite(kyy) ||
+    !Number.isFinite(kyz) ||
+    !Number.isFinite(kzy) ||
+    !Number.isFinite(kzz)
+  ) {
+    return null;
+  }
+
+  return {
+    kyy: round(kyy),
+    kyz: round(kyz),
+    kzy: round(kzy),
+    kzz: round(kzz),
+    alphaMy: round(alphaMy),
+    alphaMz: round(alphaMz),
+    alphaMLT: round(alphaMLT),
+    source: "method-b-biaxial-mvp",
+  };
+}
+
 export function verifySteelBeamColumnInteractionMy({
   section,
   material,
@@ -287,6 +356,181 @@ export function verifySteelBeamColumnInteractionMy({
         axialRatioY: round(axialRatioY),
         axialRatioZ: round(axialRatioZ),
         bendingRatio: round(bendingRatio),
+        equationY: round(equationY),
+        equationZ: round(equationZ),
+        governingEquation,
+        ...coefficients,
+      },
+    },
+    warnings,
+  };
+}
+
+export function verifySteelBeamColumnInteractionMyMz({
+  section,
+  material,
+  nEd = 0,
+  myEd = 0,
+  mzEd = 0,
+  sectionClass = 1,
+  bendingSectionModulusY,
+  bendingSectionModulusZ,
+  compressionBucklingResult,
+  chiLT = 1,
+  alphaMy = 1,
+  alphaMz = 1,
+  alphaMLT = 1,
+  gammaM1 = null,
+  axialForceConvention = "absolute",
+  allowSinglySymmetric = false,
+} = {}) {
+  const warnings = [];
+  const family = normalizedFamily(section);
+  const resolvedGammaM1 = gammaM1FromMaterial(material, gammaM1);
+  const fyk = material?.fyk;
+  const area = section?.area;
+  const demandN = compressionAxialForce(nEd, axialForceConvention);
+  const demandMy = Math.abs(myEd ?? 0);
+  const demandMz = Math.abs(mzEd ?? 0);
+
+  if (!I_H_FAMILIES.has(family) && !allowSinglySymmetric) {
+    return {
+      status: "not-supported",
+      check: null,
+      warnings: [
+        `N+My+Mz Method B stability interaction is implemented for doubly symmetric I/H profiles; profile family ${family || "unknown"} requires a dedicated extension or explicit override.`,
+      ],
+      metadata: {
+        method: "circolare-ntc2018-c4.2.4.1.3.3.2-method-b-n-my-mz",
+        family,
+        domain: "N+My+Mz",
+      },
+    };
+  }
+
+  if (sectionClass > 3) {
+    return {
+      status: "not-supported",
+      check: null,
+      warnings: [
+        "N+My+Mz Method B stability interaction is blocked for class 4 sections until effective properties are implemented.",
+      ],
+      metadata: {
+        method: "circolare-ntc2018-c4.2.4.1.3.3.2-method-b-n-my-mz",
+        family,
+        sectionClass,
+      },
+    };
+  }
+
+  const axisY = compressionBucklingResult?.axisResults?.y;
+  const axisZ = compressionBucklingResult?.axisResults?.z;
+
+  if (
+    !axisY ||
+    !axisZ ||
+    !isFinitePositive(axisY.reductionFactor) ||
+    !isFinitePositive(axisZ.reductionFactor) ||
+    !Number.isFinite(axisY.relativeSlenderness) ||
+    !Number.isFinite(axisZ.relativeSlenderness) ||
+    !isFinitePositive(chiLT) ||
+    !isFinitePositive(area) ||
+    !isFinitePositive(fyk) ||
+    !isFinitePositive(resolvedGammaM1) ||
+    !isFinitePositive(bendingSectionModulusY) ||
+    !isFinitePositive(bendingSectionModulusZ)
+  ) {
+    return {
+      status: "not-supported",
+      check: null,
+      warnings: [
+        "N+My+Mz Method B interaction requires compression buckling reductions, chiLT, A, fyk, gammaM1, Wy and Wz.",
+      ],
+      metadata: {
+        method: "circolare-ntc2018-c4.2.4.1.3.3.2-method-b-n-my-mz",
+        family,
+        sectionClass,
+      },
+    };
+  }
+
+  const axialRatioY =
+    (demandN * resolvedGammaM1) / (axisY.reductionFactor * area * fyk);
+  const axialRatioZ =
+    (demandN * resolvedGammaM1) / (axisZ.reductionFactor * area * fyk);
+  const bendingRatioYLT =
+    (demandMy * resolvedGammaM1) / (chiLT * bendingSectionModulusY * fyk);
+  const bendingRatioZ =
+    (demandMz * resolvedGammaM1) / (bendingSectionModulusZ * fyk);
+  const coefficients = calculateSteelMethodBInteractionCoefficientsMyMz({
+    sectionClass,
+    relativeSlendernessY: axisY.relativeSlenderness,
+    relativeSlendernessZ: axisZ.relativeSlenderness,
+    axialRatioY,
+    axialRatioZ,
+    alphaMy,
+    alphaMz,
+    alphaMLT,
+  });
+
+  if (!coefficients) {
+    return {
+      status: "not-supported",
+      check: null,
+      warnings: [
+        "N+My+Mz Method B interaction coefficients could not be computed; check alphaMy/alphaMz/alphaMLT and slenderness inputs.",
+      ],
+      metadata: {
+        method: "circolare-ntc2018-c4.2.4.1.3.3.2-method-b-n-my-mz",
+        family,
+        sectionClass,
+      },
+    };
+  }
+
+  const equationY =
+    axialRatioY +
+    coefficients.kyy * bendingRatioYLT +
+    coefficients.kyz * bendingRatioZ;
+  const equationZ =
+    axialRatioZ +
+    coefficients.kzy * bendingRatioYLT +
+    coefficients.kzz * bendingRatioZ;
+  const utilizationRatio = Math.max(equationY, equationZ);
+  const governingEquation = equationY >= equationZ ? "y" : "z";
+
+  return {
+    status: utilizationRatio <= 1 ? "ok" : "not-verified",
+    check: {
+      id: "steel-beam-column-interaction-n-my-mz",
+      description: "N+My+Mz member stability interaction by Method B",
+      demand: round(utilizationRatio),
+      capacity: 1,
+      utilizationRatio: round(utilizationRatio),
+      ok: utilizationRatio <= 1,
+      metadata: {
+        method: "circolare-ntc2018-c4.2.4.1.3.3.2-method-b-n-my-mz",
+        interactionTable: "C4.2.V-open-torsionally-deformable-members",
+        domain: "N+My+Mz",
+        excludedActions: "torsion, torsional-interactions",
+        coefficientModel: "biaxial-method-b-mvp",
+        family,
+        sectionClass,
+        axialForceConvention,
+        gammaM1: round(resolvedGammaM1),
+        fyk: round(fyk),
+        area: round(area),
+        bendingSectionModulusY: round(bendingSectionModulusY),
+        bendingSectionModulusZ: round(bendingSectionModulusZ),
+        chiY: axisY.reductionFactor,
+        chiZ: axisZ.reductionFactor,
+        chiLT: round(chiLT),
+        relativeSlendernessY: axisY.relativeSlenderness,
+        relativeSlendernessZ: axisZ.relativeSlenderness,
+        axialRatioY: round(axialRatioY),
+        axialRatioZ: round(axialRatioZ),
+        bendingRatioYLT: round(bendingRatioYLT),
+        bendingRatioZ: round(bendingRatioZ),
         equationY: round(equationY),
         equationZ: round(equationZ),
         governingEquation,

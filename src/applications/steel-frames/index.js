@@ -9,7 +9,9 @@ export {
 } from "./checks/SteelCompressionBuckling.js";
 export {
   calculateSteelMethodBInteractionCoefficients,
+  calculateSteelMethodBInteractionCoefficientsMyMz,
   verifySteelBeamColumnInteractionMy,
+  verifySteelBeamColumnInteractionMyMz,
 } from "./checks/SteelBeamColumnInteraction.js";
 export {
   calculateElasticCriticalMomentLT,

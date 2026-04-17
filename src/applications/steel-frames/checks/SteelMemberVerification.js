@@ -1,7 +1,10 @@
 import { VerificationResult } from "../../../core/results/VerificationResult.js";
 import { BeamSectionActionVerifier } from "../../../domain/beams/BeamSectionActionVerifier.js";
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
-import { verifySteelBeamColumnInteractionMy } from "./SteelBeamColumnInteraction.js";
+import {
+  verifySteelBeamColumnInteractionMy,
+  verifySteelBeamColumnInteractionMyMz,
+} from "./SteelBeamColumnInteraction.js";
 import { verifySteelCompressionBuckling } from "./SteelCompressionBuckling.js";
 import { verifySteelLateralTorsionalBuckling } from "./SteelLateralTorsionalBuckling.js";
 import { classifySteelSection } from "./SteelSectionClassification.js";
@@ -19,6 +22,10 @@ function assertPositive(value, label) {
 
 function isFinitePositive(value) {
   return Number.isFinite(value) && value > 0;
+}
+
+function hasSignificantAction(value, tolerance = 1e-9) {
+  return Number.isFinite(value) && Math.abs(value) > tolerance;
 }
 
 function designStrength(material, gammaM0) {
@@ -137,11 +144,16 @@ function uniqueStrings(values) {
   return [...new Set(values.filter((value) => typeof value === "string" && value.length > 0))];
 }
 
-function steelSectionModulus(section, type = "elastic") {
+function steelSectionModulus(section, type = "elastic", axis = "Y") {
+  const normalizedAxis = String(axis).toUpperCase();
   const keys =
     type === "plastic"
-      ? ["Wpl_y", "Wpl_strong"]
-      : ["Wel_y", "Wel_strong"];
+      ? normalizedAxis === "Z"
+        ? ["Wpl_z", "Wpl_weak"]
+        : ["Wpl_y", "Wpl_strong"]
+      : normalizedAxis === "Z"
+        ? ["Wel_z", "Wel_weak"]
+        : ["Wel_y", "Wel_strong"];
 
   for (const key of keys) {
     const value = section.catalogProperties?.[key];
@@ -154,8 +166,14 @@ function steelSectionModulus(section, type = "elastic") {
     }
   }
 
-  return type === "plastic"
-    ? section.plasticSectionModulusY
+  if (type === "plastic") {
+    return normalizedAxis === "Z"
+      ? section.plasticSectionModulusZ
+      : section.plasticSectionModulusY;
+  }
+
+  return normalizedAxis === "Z"
+    ? section.elasticSectionModulusZ
     : section.elasticSectionModulusY;
 }
 
@@ -317,11 +335,15 @@ function sampleInSegment(sample, segment) {
   );
 }
 
+function sampleStrongAxisMoment(sample) {
+  return sample?.principalActions?.mY ?? sample?.mY ?? sample?.m ?? 0;
+}
+
 function maxAbsMomentSample(samples, segment) {
   return samples
     .filter((sample) => sampleInSegment(sample, segment))
     .reduce((selected, sample) => {
-      if (!selected || Math.abs(sample.m ?? 0) > Math.abs(selected.m ?? 0)) {
+      if (!selected || Math.abs(sampleStrongAxisMoment(sample)) > Math.abs(sampleStrongAxisMoment(selected))) {
         return sample;
       }
 
@@ -573,7 +595,10 @@ function createLateralTorsionalBucklingChecks({
         continue;
       }
 
-      const mEdSectionUnits = resultToSectionUnits.moment(sample.m ?? 0);
+      const strongAxisMoment = sampleStrongAxisMoment(sample);
+      const weakAxisMoment = sample.principalActions?.mZ ?? sample.mZ ?? 0;
+      const mEdSectionUnits = resultToSectionUnits.moment(strongAxisMoment);
+      const mzEdSectionUnits = resultToSectionUnits.moment(weakAxisMoment);
       const nEdSectionUnits = resultToSectionUnits.force(sample.n ?? 0);
       const classificationResult = classifySteelSection({
         section,
@@ -630,7 +655,7 @@ function createLateralTorsionalBucklingChecks({
 
       checks.push({
         ...ltbResult.check,
-        demand: round(Math.abs(sample.m ?? 0)),
+        demand: round(Math.abs(strongAxisMoment)),
         capacity: round(sectionToResultUnits.moment(ltbResult.check.capacity)),
         metadata: {
           ...ltbResult.check.metadata,
@@ -644,8 +669,10 @@ function createLateralTorsionalBucklingChecks({
           segmentTo: round(segment.to),
           unbracedLength: round(segment.length),
           unbracedLengthSectionUnits: round(unbracedLength),
-          mEd: round(sample.m ?? 0),
+          mEd: round(strongAxisMoment),
+          mzEd: round(weakAxisMoment),
           mEdSectionUnits: round(mEdSectionUnits),
+          mzEdSectionUnits: round(mzEdSectionUnits),
           nEdSectionUnits: round(nEdSectionUnits),
           resistanceBasis: bendingResistanceBasis.basis,
           criticalMoment: round(sectionToResultUnits.moment(ltbResult.check.metadata.criticalMoment)),
@@ -727,7 +754,9 @@ function createCompressionBucklingChecks({
       resultToSectionUnits,
     });
     const nEdSectionUnits = resultToSectionUnits.force(sample.n ?? 0);
-    const mEdSectionUnits = resultToSectionUnits.moment(sample.m ?? 0);
+    const strongAxisMoment = sampleStrongAxisMoment(sample);
+    const weakAxisMoment = sample.principalActions?.mZ ?? sample.mZ ?? 0;
+    const mEdSectionUnits = resultToSectionUnits.moment(strongAxisMoment);
     const classificationResult = classifySteelSection({
       section,
       material,
@@ -777,7 +806,8 @@ function createCompressionBucklingChecks({
         combinationType: normalizeCombinationType(result.context?.combinationType),
         nEd: round(sample.n ?? 0),
         nEdSectionUnits: round(nEdSectionUnits),
-        mEd: round(sample.m ?? 0),
+        mEd: round(strongAxisMoment),
+        mzEd: round(weakAxisMoment),
         mEdSectionUnits: round(mEdSectionUnits),
         lengthY: round(lengths.lengthYModelUnits),
         lengthZ: round(lengths.lengthZModelUnits),
@@ -858,7 +888,7 @@ function ltbReductionForInteraction({
   const ltbResult = verifySteelLateralTorsionalBuckling({
     section,
     material,
-    mEd: resultToSectionUnits.moment(sample.m ?? 0),
+    mEd: resultToSectionUnits.moment(sampleStrongAxisMoment(sample)),
     sectionClass: classificationResult.class,
     bendingSectionModulus: bendingResistanceBasis.sectionModulus,
     unbracedLength,
@@ -914,7 +944,7 @@ function createBeamColumnInteractionChecks({
   const assumptions = [];
 
   if (!isBeamColumnInteractionEnabled(interactionOptions)) {
-    assumptions.push("N+My beam-column interaction check is disabled because beamColumnInteraction.enabled is false.");
+    assumptions.push("Steel beam-column interaction check is disabled because beamColumnInteraction.enabled is false.");
     return {
       checks,
       warnings,
@@ -924,7 +954,7 @@ function createBeamColumnInteractionChecks({
   }
 
   assumptions.push(
-    "N+My stability interaction uses Circolare NTC 2018 Method B in the current domain: Mz, torsion and torsional interactions are excluded.",
+    "Steel beam-column stability interaction uses Circolare NTC 2018 Method B; Mz is included for supported doubly symmetric I/H profiles, while torsion and torsional interactions are excluded.",
   );
 
   for (const result of resultEntries(analysisResult.combinations)) {
@@ -938,14 +968,25 @@ function createBeamColumnInteractionChecks({
       resultToSectionUnits,
     });
 
-    for (const sample of result.internalForces?.samples ?? []) {
+    const samples = result.internalForces?.samples ?? [];
+    const useBiaxialInteraction = samples.some((sample) =>
+      hasSignificantAction(
+        resultToSectionUnits.moment(sample.principalActions?.mZ ?? sample.mZ ?? 0),
+      ));
+
+    for (const sample of samples) {
       const axialForceConvention =
         optionValue(interactionOptions, ["axialForceConvention"], null) ??
         optionValue(bucklingOptions, ["axialForceConvention"], null) ??
         classification.axialForceConvention ??
         "absolute";
       const nEdSectionUnits = resultToSectionUnits.force(sample.n ?? 0);
-      const mEdSectionUnits = resultToSectionUnits.moment(sample.m ?? 0);
+      const strongAxisMoment = sampleStrongAxisMoment(sample);
+      const weakAxisMoment = sample.principalActions?.mZ ?? sample.mZ ?? 0;
+      const mEdSectionUnits = resultToSectionUnits.moment(strongAxisMoment);
+      const mzEdSectionUnits = resultToSectionUnits.moment(weakAxisMoment);
+      const hasWeakAxisMomentDemand =
+        useBiaxialInteraction || hasSignificantAction(mzEdSectionUnits);
       const classificationResult = classifySteelSection({
         section,
         material,
@@ -956,10 +997,18 @@ function createBeamColumnInteractionChecks({
       });
       const elasticSectionModulus = steelSectionModulus(section, "elastic");
       const plasticSectionModulus = steelSectionModulus(section, "plastic");
+      const elasticSectionModulusZ = steelSectionModulus(section, "elastic", "Z");
+      const plasticSectionModulusZ = steelSectionModulus(section, "plastic", "Z");
       const bendingResistanceBasis = selectBendingResistanceBasis({
         classificationResult,
         elasticSectionModulus,
         plasticSectionModulus,
+        allowPlasticResistance: resistance.allowPlastic !== false,
+      });
+      const bendingResistanceBasisZ = selectBendingResistanceBasis({
+        classificationResult,
+        elasticSectionModulus: elasticSectionModulusZ,
+        plasticSectionModulus: plasticSectionModulusZ,
         allowPlasticResistance: resistance.allowPlastic !== false,
       });
       const compressionBucklingResult = verifySteelCompressionBuckling({
@@ -999,13 +1048,12 @@ function createBeamColumnInteractionChecks({
         classificationResult,
         bendingResistanceBasis,
       });
-      const interactionResult = verifySteelBeamColumnInteractionMy({
+      const commonInteractionOptions = {
         section,
         material,
         nEd: nEdSectionUnits,
         myEd: mEdSectionUnits,
         sectionClass: classificationResult.class,
-        bendingSectionModulus: bendingResistanceBasis.sectionModulus,
         compressionBucklingResult,
         chiLT: ltbReduction.chiLT,
         alphaMy: optionValue(interactionOptions, ["alphaMy", "momentFactorY", "cmy"], 1),
@@ -1019,7 +1067,19 @@ function createBeamColumnInteractionChecks({
           ["allowSinglySymmetric", "allowUnsymmetric"],
           false,
         ),
-      });
+      };
+      const interactionResult = hasWeakAxisMomentDemand
+        ? verifySteelBeamColumnInteractionMyMz({
+            ...commonInteractionOptions,
+            mzEd: mzEdSectionUnits,
+            bendingSectionModulusY: bendingResistanceBasis.sectionModulus,
+            bendingSectionModulusZ: bendingResistanceBasisZ.sectionModulus,
+            alphaMz: optionValue(interactionOptions, ["alphaMz", "momentFactorZ", "cmz"], 1),
+          })
+        : verifySteelBeamColumnInteractionMy({
+            ...commonInteractionOptions,
+            bendingSectionModulus: bendingResistanceBasis.sectionModulus,
+          });
 
       warnings.push(
         ...compressionBucklingResult.warnings,
@@ -1042,14 +1102,17 @@ function createBeamColumnInteractionChecks({
           combinationType: normalizeCombinationType(result.context?.combinationType),
           nEd: round(sample.n ?? 0),
           nEdSectionUnits: round(nEdSectionUnits),
-          myEd: round(sample.m ?? 0),
+          myEd: round(strongAxisMoment),
+          mzEd: round(weakAxisMoment),
           myEdSectionUnits: round(mEdSectionUnits),
+          mzEdSectionUnits: round(mzEdSectionUnits),
           lengthY: round(lengths.lengthYModelUnits),
           lengthZ: round(lengths.lengthZModelUnits),
           effectiveLengthY: round(lengths.effectiveLengthYModelUnits),
           effectiveLengthZ: round(lengths.effectiveLengthZModelUnits),
           lengthInferenceSource: lengths.inferenceSource,
           resistanceBasis: bendingResistanceBasis.basis,
+          resistanceBasisZ: bendingResistanceBasisZ.basis,
           ...ltbReduction.metadata,
         },
       });
@@ -1058,7 +1121,7 @@ function createBeamColumnInteractionChecks({
 
   if (checks.length === 0) {
     warnings.push(
-      "No N+My beam-column interaction check was generated; Method B needs ULS FEM samples, class 1-3 section, compression buckling data and chiLT.",
+      "No steel beam-column interaction check was generated; Method B needs ULS FEM samples, class 1-3 section, compression buckling data, chiLT and section moduli.",
     );
   }
 
@@ -1067,7 +1130,8 @@ function createBeamColumnInteractionChecks({
     warnings: uniqueStrings(warnings),
     assumptions,
     status:
-      checks.length > 0 && checks.every((check) => check.ok)
+      checks.length > 0 &&
+      checks.every((check) => check.ok)
         ? "ok"
         : "not-verified",
   };
@@ -1083,13 +1147,16 @@ function createSteelActionVerifier({
   resistance = {},
 }) {
   return {
-    verifySectionActions({ nEd, vEd, mEd, context }) {
+    verifySectionActions({ nEd, vEd, mEd, principalActions, context }) {
       const metadata = context.sectionProperties?.metadata ?? {};
       const resolvedGammaM0 = gammaM0 ?? metadata.gammaM0 ?? material.metadata?.gammaM0 ?? 1.05;
       const fyd = metadata.fyd ?? designStrength(material, resolvedGammaM0);
-      const elasticSectionModulus = steelSectionModulus(section, "elastic");
-      const plasticSectionModulus = steelSectionModulus(section, "plastic");
+      const elasticSectionModulus = steelSectionModulus(section, "elastic", "Y");
+      const plasticSectionModulus = steelSectionModulus(section, "plastic", "Y");
+      const elasticSectionModulusZ = steelSectionModulus(section, "elastic", "Z");
+      const plasticSectionModulusZ = steelSectionModulus(section, "plastic", "Z");
       const shearArea = steelShearArea(section);
+      const shearAreaZ = section.shearAreaZ ?? section.area;
       const elasticMomentResistance =
         metadata.elasticMomentResistance ??
         (Number.isFinite(fyd) && Number.isFinite(elasticSectionModulus)
@@ -1109,11 +1176,22 @@ function createSteelActionVerifier({
         Number.isFinite(fyd) && Number.isFinite(section.area)
           ? fyd * section.area
           : null;
+      const shearResistanceZ =
+        Number.isFinite(fyd) && Number.isFinite(shearAreaZ)
+          ? (fyd * shearAreaZ) / Math.sqrt(3)
+          : null;
       const shearCapacity = sectionToResultUnits.force(shearResistance);
+      const shearCapacityZ = sectionToResultUnits.force(shearResistanceZ);
       const axialCapacity = sectionToResultUnits.force(axialResistance);
       const convertedNEd = resultToSectionUnits.force(nEd ?? 0);
-      const convertedVEd = resultToSectionUnits.force(vEd ?? 0);
-      const convertedMEd = resultToSectionUnits.moment(mEd ?? 0);
+      const mYEd = principalActions?.mY ?? mEd ?? 0;
+      const mZEd = principalActions?.mZ ?? 0;
+      const vYEd = principalActions?.vY ?? vEd ?? 0;
+      const vZEd = principalActions?.vZ ?? 0;
+      const convertedVEd = resultToSectionUnits.force(vYEd);
+      const convertedVZEd = resultToSectionUnits.force(vZEd);
+      const convertedMEd = resultToSectionUnits.moment(mYEd);
+      const convertedMZEd = resultToSectionUnits.moment(mZEd);
       const classificationResult = classifySteelSection({
         section,
         material,
@@ -1157,9 +1235,11 @@ function createSteelActionVerifier({
           axialCompressionForce:
             classificationResult.metadata?.axialCompressionForce,
           nEd: round(nEd ?? 0),
-          mEd: round(mEd ?? 0),
+          mEd: round(mYEd ?? 0),
+          mzEd: round(mZEd ?? 0),
           nEdSectionUnits: classificationResult.metadata?.nEd,
           mEdSectionUnits: classificationResult.metadata?.mEd,
+          mzEdSectionUnits: round(convertedMZEd),
           classificationSeverity: round(classificationSeverity(classificationResult)),
           flangeClass: flangePart?.class ?? null,
           webClass: webPart?.class ?? null,
@@ -1175,50 +1255,132 @@ function createSteelActionVerifier({
       const bendingStress = isFinitePositive(bendingResistanceBasis.sectionModulus)
         ? Math.abs(convertedMEd) / bendingResistanceBasis.sectionModulus
         : null;
+      const bendingResistanceBasisZ = selectBendingResistanceBasis({
+        classificationResult,
+        elasticSectionModulus: elasticSectionModulusZ,
+        plasticSectionModulus: plasticSectionModulusZ,
+        allowPlasticResistance: resistance.allowPlastic !== false,
+      });
+      const bendingResistanceZ =
+        bendingResistanceBasisZ.basis === "plastic"
+          ? Number.isFinite(fyd) && Number.isFinite(plasticSectionModulusZ)
+            ? fyd * plasticSectionModulusZ
+            : null
+          : Number.isFinite(fyd) && Number.isFinite(elasticSectionModulusZ)
+            ? fyd * elasticSectionModulusZ
+            : null;
+      const bendingStressZ = isFinitePositive(bendingResistanceBasisZ.sectionModulus)
+        ? Math.abs(convertedMZEd) / bendingResistanceBasisZ.sectionModulus
+        : null;
       const maxNormalStress =
-        (axialStress ?? 0) + (bendingStress ?? 0);
+        (axialStress ?? 0) + (bendingStress ?? 0) + (bendingStressZ ?? 0);
       const shearStress = isFinitePositive(shearArea)
         ? Math.abs(convertedVEd) / shearArea
         : null;
+      const shearStressZ = isFinitePositive(shearAreaZ)
+        ? Math.abs(convertedVZEd) / shearAreaZ
+        : null;
       const equivalentStress =
-        Number.isFinite(maxNormalStress) && Number.isFinite(shearStress)
-          ? Math.sqrt(maxNormalStress ** 2 + 3 * shearStress ** 2)
+        Number.isFinite(maxNormalStress) &&
+        Number.isFinite(shearStress) &&
+        Number.isFinite(shearStressZ)
+          ? Math.sqrt(maxNormalStress ** 2 + 3 * (shearStress ** 2 + shearStressZ ** 2))
           : null;
       const bendingCapacity = sectionToResultUnits.moment(bendingResistance);
-      const bending = utilizationCheck({
+      const bendingCapacityZ = sectionToResultUnits.moment(bendingResistanceZ);
+      const bendingRatioY =
+        Number.isFinite(bendingCapacity) && bendingCapacity > 0
+          ? Math.abs(mYEd) / bendingCapacity
+          : Infinity;
+      const bendingRatioZ =
+        Number.isFinite(bendingCapacityZ) && bendingCapacityZ > 0
+          ? Math.abs(mZEd) / bendingCapacityZ
+          : Math.abs(mZEd) > 1e-12
+            ? Infinity
+            : 0;
+      const bendingRatio = bendingRatioY + bendingRatioZ;
+      const bendingCapacityForReport =
+        Number.isFinite(bendingCapacity) && bendingCapacity > 0
+          ? bendingCapacity
+          : 1;
+      const bendingDemandForReport =
+        Number.isFinite(bendingCapacity) && bendingCapacity > 0
+          ? bendingRatio * bendingCapacity
+          : bendingRatio;
+      const bending = {
         id: "steel-bending",
         description:
-          bendingResistanceBasis.basis === "plastic"
-            ? "Plastic bending resistance verification governed by section class"
-            : "Elastic bending resistance verification governed by section class",
-        demand: mEd,
-        capacity: bendingCapacity,
+          "Biaxial bending resistance verification governed by section class",
+        demand: round(bendingDemandForReport),
+        capacity: round(bendingCapacityForReport),
+        utilizationRatio: round(bendingRatio),
+        ok: bendingRatio <= 1,
         metadata: {
           fyd: round(fyd),
           gammaM0: round(resolvedGammaM0),
           sectionClass: classificationResult.class,
           resistanceBasis: bendingResistanceBasis.basis,
+          resistanceBasisZ: bendingResistanceBasisZ.basis,
+          actionBasis: principalActions ? "principal-actions" : "global-actions",
+          mYEd: round(mYEd),
+          mZEd: round(mZEd),
           selectedSectionModulus: round(bendingResistanceBasis.sectionModulus),
+          selectedSectionModulusZ: round(bendingResistanceBasisZ.sectionModulus),
           elasticSectionModulus: round(elasticSectionModulus),
+          elasticSectionModulusZ: round(elasticSectionModulusZ),
           plasticSectionModulus: round(plasticSectionModulus),
+          plasticSectionModulusZ: round(plasticSectionModulusZ),
           elasticMomentResistance: round(elasticMomentResistance),
           plasticMomentResistance: round(plasticMomentResistance),
+          bendingCapacityY: round(bendingCapacity),
+          bendingCapacityZ: round(bendingCapacityZ),
+          utilizationRatioY: round(bendingRatioY),
+          utilizationRatioZ: round(bendingRatioZ),
         },
-      });
-      const shear = utilizationCheck({
+      };
+      const shearRatioY =
+        Number.isFinite(shearCapacity) && shearCapacity > 0
+          ? Math.abs(vYEd) / shearCapacity
+          : Infinity;
+      const shearRatioZ =
+        Number.isFinite(shearCapacityZ) && shearCapacityZ > 0
+          ? Math.abs(vZEd) / shearCapacityZ
+          : Math.abs(vZEd) > 1e-12
+            ? Infinity
+            : 0;
+      const shearRatio = shearRatioY + shearRatioZ;
+      const shearCapacityForReport =
+        Number.isFinite(shearCapacity) && shearCapacity > 0
+          ? shearCapacity
+          : 1;
+      const shearDemandForReport =
+        Number.isFinite(shearCapacity) && shearCapacity > 0
+          ? shearRatio * shearCapacity
+          : shearRatio;
+      const shear = {
         id: "steel-shear",
-        description: "Shear resistance verification",
-        demand: vEd,
-        capacity: shearCapacity,
+        description: "Biaxial shear resistance verification",
+        demand: round(shearDemandForReport),
+        capacity: round(shearCapacityForReport),
+        utilizationRatio: round(shearRatio),
+        ok: shearRatio <= 1,
         metadata: {
           fyd: round(fyd),
           shearArea: round(shearArea),
+          shearAreaY: round(shearArea),
+          shearAreaZ: round(shearAreaZ),
+          vYEd: round(vYEd),
+          vZEd: round(vZEd),
+          shearCapacityY: round(shearCapacity),
+          shearCapacityZ: round(shearCapacityZ),
+          utilizationRatioY: round(shearRatioY),
+          utilizationRatioZ: round(shearRatioZ),
         },
-      });
+      };
       const axial = utilizationCheck({
         id: "steel-axial",
         description: "Axial resistance verification",
-        demand: nEd,
+          demand: nEd,
         capacity: axialCapacity,
         metadata: {
           fyd: round(fyd),
@@ -1235,8 +1397,10 @@ function createSteelActionVerifier({
           fyd: round(fyd),
           axialStress: round(axialStress),
           bendingStress: round(bendingStress),
+          bendingStressZ: round(bendingStressZ),
           maxNormalStress: round(maxNormalStress),
           shearStress: round(shearStress),
+          shearStressZ: round(shearStressZ),
           equivalentStress: round(equivalentStress),
           area: round(section.area),
           resistanceBasis: bendingResistanceBasis.basis,
@@ -1505,7 +1669,7 @@ export class SteelMemberVerification {
         ...lateralTorsionalBuckling.warnings,
         ...compressionBuckling.warnings,
         ...beamColumnInteraction.warnings,
-        "Current steel member stability domain is N+My only: Mz, torsion and torsional interactions are not considered.",
+        "Steel member stability excludes torsion and torsional interactions; N+My+Mz is available only for supported doubly symmetric I/H profiles.",
       ]),
       assumptions: [
         ...actionVerification.assumptions,

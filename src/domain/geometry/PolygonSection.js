@@ -4,6 +4,7 @@ import {
   createUnitResolver,
   convertPointCoordinates,
 } from "../units/UnitSystem.js";
+import { calculateSectionMassProperties } from "./SectionMassProperties.js";
 
 const INTERNAL_UNITS = Object.freeze({ force: "N", length: "mm" });
 
@@ -69,6 +70,9 @@ export class PolygonSection extends CrossSection {
       Math.abs(inertiaYOrigin / 12 - signedArea * centroidY ** 2);
     const inertiaZ =
       Math.abs(inertiaZOrigin / 12 - signedArea * centroidZ ** 2);
+    const massProperties = calculateSectionMassProperties({
+      points: resolvedPoints,
+    });
     const ys = resolvedPoints.map((point) => point.y);
     const zs = resolvedPoints.map((point) => point.z);
     const minY = Math.min(...ys);
@@ -84,6 +88,7 @@ export class PolygonSection extends CrossSection {
       centroidZ,
       inertiaY,
       inertiaZ,
+      productOfInertiaYZ: massProperties.productOfInertiaYZ,
       elasticSectionModulusY:
         inertiaY / Math.max(maxY - centroidY, centroidY - minY),
       elasticSectionModulusZ:

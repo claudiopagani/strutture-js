@@ -532,6 +532,11 @@ export class BeamSectionActionVerifier {
             nEd: sample.n,
             vEd: sample.v,
             mEd: sample.m,
+            principalActions: sample.principalActions ?? null,
+            vYEd: sample.principalActions?.vY ?? sample.vY ?? null,
+            vZEd: sample.principalActions?.vZ ?? sample.vZ ?? null,
+            mYEd: sample.principalActions?.mY ?? sample.mY ?? null,
+            mZEd: sample.principalActions?.mZ ?? sample.mZ ?? null,
             x: sample.station,
             station: sample.station,
             sample,
@@ -553,6 +558,9 @@ export class BeamSectionActionVerifier {
             resultType: entry.resultType,
             station: sample.station,
             limitState: entry.context?.limitState ?? null,
+            principalActions: sample.principalActions
+              ? { ...sample.principalActions }
+              : null,
             ...stationMetadata,
           },
         );

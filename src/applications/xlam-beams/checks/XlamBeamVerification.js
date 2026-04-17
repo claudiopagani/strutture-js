@@ -13,6 +13,20 @@ function assertPositive(value, label) {
   }
 }
 
+function hasSignificantAction(value, tolerance = 1e-12) {
+  return Number.isFinite(value) && Math.abs(value) > tolerance;
+}
+
+function slabWeakAxisNeglectWarning({
+  systemLabel,
+  mZEd,
+  vZEd,
+  mZEdSectionUnits,
+  vZEdSectionUnits,
+}) {
+  return `${systemLabel}: mZ/vZ from section rotation are reported and neglected in this 1D out-of-plane verification because the slab action provides high in-plane stiffness/resistance; checked governing components are mY/vY. mZ=${round(mZEd)}, vZ=${round(vZEd)}, mZSectionUnits=${round(mZEdSectionUnits)}, vZSectionUnits=${round(vZEdSectionUnits)}.`;
+}
+
 function utilizationCheck({
   id,
   description,
@@ -141,10 +155,28 @@ function createXlamActionVerifier({
   includeCrossLayerBending,
 }) {
   return {
-    verifySectionActions({ nEd, vEd, mEd, context }) {
+    verifySectionActions({ nEd, vEd, mEd, principalActions, context }) {
       const convertedNEd = resultToSectionUnits.force(nEd ?? 0);
-      const convertedVEd = resultToSectionUnits.force(vEd ?? 0);
-      const convertedMEd = resultToSectionUnits.moment(mEd ?? 0);
+      const mYEd = principalActions?.mY ?? mEd ?? 0;
+      const mZEd = principalActions?.mZ ?? 0;
+      const vYEd = principalActions?.vY ?? vEd ?? 0;
+      const vZEd = principalActions?.vZ ?? 0;
+      const convertedVEd = resultToSectionUnits.force(vYEd);
+      const convertedMEd = resultToSectionUnits.moment(mYEd);
+      const convertedVZEd = resultToSectionUnits.force(vZEd);
+      const convertedMZEd = resultToSectionUnits.moment(mZEd);
+      const weakAxisNeglected =
+        hasSignificantAction(convertedMZEd) || hasSignificantAction(convertedVZEd);
+      const weakAxisMetadata = {
+        mZEd: round(mZEd),
+        vZEd: round(vZEd),
+        mZEdSectionUnits: round(convertedMZEd),
+        vZEdSectionUnits: round(convertedVZEd),
+        weakAxisComponentsNeglected: weakAxisNeglected,
+        weakAxisNeglectReason: weakAxisNeglected
+          ? "slab-in-plane-stiffness-resistance"
+          : null,
+      };
       const e0 = materialValue(material, ["e0Mean", "elasticModulus"]);
       const rollingShearStrength =
         materialValue(material, ["rollingShearStrength", "fvK"]) ??
@@ -182,6 +214,7 @@ function createXlamActionVerifier({
             gammaM: round(gammaM),
             kSystem: round(kSystem),
             includeCrossLayerBending,
+            ...weakAxisMetadata,
           },
         }),
         utilizationCheck({
@@ -196,6 +229,7 @@ function createXlamActionVerifier({
             rollingShearStrength: round(rollingShearStrength),
             kmod: round(kmod),
             gammaM: round(gammaM),
+            ...weakAxisMetadata,
           },
         }),
       ];
@@ -204,6 +238,17 @@ function createXlamActionVerifier({
       if (Math.abs(convertedNEd) > 1e-9) {
         warnings.push(
           "Axial force is not included in the current XLAM strip stress checks.",
+        );
+      }
+      if (weakAxisNeglected) {
+        warnings.push(
+          slabWeakAxisNeglectWarning({
+            systemLabel: "XLAM strip",
+            mZEd,
+            vZEd,
+            mZEdSectionUnits: convertedMZEd,
+            vZEdSectionUnits: convertedVZEd,
+          }),
         );
       }
 
@@ -221,6 +266,7 @@ function createXlamActionVerifier({
           bendingStiffness: round(bendingStiffness),
           mEdSectionUnits: round(convertedMEd),
           vEdSectionUnits: round(convertedVEd),
+          ...weakAxisMetadata,
         },
       };
     },

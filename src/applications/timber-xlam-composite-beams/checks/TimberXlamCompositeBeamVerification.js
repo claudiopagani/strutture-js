@@ -11,6 +11,20 @@ function assertPositive(value, label) {
   }
 }
 
+function hasSignificantAction(value, tolerance = 1e-12) {
+  return Number.isFinite(value) && Math.abs(value) > tolerance;
+}
+
+function slabCompositeWeakAxisNeglectWarning({
+  systemLabel,
+  mZEd,
+  vZEd,
+  mZEdSectionUnits,
+  vZEdSectionUnits,
+}) {
+  return `${systemLabel}: mZ/vZ from section rotation are reported and neglected in this 1D gamma-method verification because the slab action provides high in-plane stiffness/resistance; checked governing components are mY/vY. mZ=${round(mZEd)}, vZ=${round(vZEd)}, mZSectionUnits=${round(mZEdSectionUnits)}, vZSectionUnits=${round(vZEdSectionUnits)}.`;
+}
+
 function evaluateCheck(demand, capacity) {
   const utilizationRatio = demand / capacity;
 
@@ -137,7 +151,7 @@ export class TimberXlamCompositeBeamVerification {
     this.verificationStations = verificationStations;
   }
 
-  verifySectionActions({ nEd = 0, vEd, mEd, context = {} } = {}) {
+  verifySectionActions({ nEd = 0, vEd, mEd, principalActions, context = {} } = {}) {
     const model = context.model ?? this.model;
 
     if (!model) {
@@ -147,8 +161,26 @@ export class TimberXlamCompositeBeamVerification {
     }
 
     const resolver = demandResolver(context);
-    const bendingEd = Math.abs(resolver.moment(mEd ?? 0));
-    const shearEd = Math.abs(resolver.force(vEd ?? 0));
+    const mYEd = principalActions?.mY ?? mEd ?? 0;
+    const mZEd = principalActions?.mZ ?? 0;
+    const vYEd = principalActions?.vY ?? vEd ?? 0;
+    const vZEd = principalActions?.vZ ?? 0;
+    const bendingEd = Math.abs(resolver.moment(mYEd));
+    const shearEd = Math.abs(resolver.force(vYEd));
+    const mZEdSectionUnits = resolver.moment(mZEd);
+    const vZEdSectionUnits = resolver.force(vZEd);
+    const weakAxisNeglected =
+      hasSignificantAction(mZEdSectionUnits) || hasSignificantAction(vZEdSectionUnits);
+    const weakAxisMetadata = {
+      mZEd: round(mZEd),
+      vZEd: round(vZEd),
+      mZEdSectionUnits: round(mZEdSectionUnits),
+      vZEdSectionUnits: round(vZEdSectionUnits),
+      weakAxisComponentsNeglected: weakAxisNeglected,
+      weakAxisNeglectReason: weakAxisNeglected
+        ? "slab-in-plane-stiffness-resistance"
+        : null,
+    };
     const axialEd = Math.abs(resolver.force(nEd ?? 0));
     const {
       span,
@@ -265,6 +297,7 @@ export class TimberXlamCompositeBeamVerification {
         gamma1Uls: round(gamma1Uls),
         gamma2Uls: round(gamma2Uls),
         ejEffUls: round(ejEffUls),
+        ...weakAxisMetadata,
       },
     }));
     const governingCheck = checks.reduce((max, current) =>
@@ -275,6 +308,17 @@ export class TimberXlamCompositeBeamVerification {
     if (axialEd > 1e-9) {
       warnings.push(
         "Axial force is not included in the current timber-XLAM composite section adapter.",
+      );
+    }
+    if (weakAxisNeglected) {
+      warnings.push(
+        slabCompositeWeakAxisNeglectWarning({
+          systemLabel: "Timber-XLAM composite beam",
+          mZEd,
+          vZEd,
+          mZEdSectionUnits,
+          vZEdSectionUnits,
+        }),
       );
     }
 
@@ -290,6 +334,7 @@ export class TimberXlamCompositeBeamVerification {
         method: "timber-xlam-gamma-method-section-actions",
         bendingEd: round(bendingEd),
         shearEd: round(shearEd),
+        ...weakAxisMetadata,
       },
     };
   }

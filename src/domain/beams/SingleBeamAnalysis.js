@@ -12,6 +12,10 @@ import {
 } from "../fem/elements/index.js";
 import { LinearStaticSolver2D } from "../fem/LinearStaticSolver2D.js";
 import { ElasticBeamSectionProvider } from "./ElasticBeamSectionProvider.js";
+import {
+  normalizeSectionRotation,
+  splitPrincipalActions,
+} from "./SectionRotation.js";
 
 const FEM_UNITS = Object.freeze({ force: "kN", length: "m" });
 const DEFAULT_SECTION_PROPERTY_UNITS = Object.freeze({ force: "N", length: "mm" });
@@ -24,6 +28,8 @@ const LOAD_DURATION_ORDER = Object.freeze({
   short: 2,
   instantaneous: 1,
 });
+const SECTION_ROTATION_2D_WARNING =
+  "Section rotation alpha is non-zero: SingleBeamAnalysis remains a 2D FEM model. Vertical deflection uses equivalent projected EI/GA and actions are split into principal components; torsion and independent weak-axis transverse displacement are not modeled.";
 
 export const BEAM_SUPPORT_PRESETS = Object.freeze({
   free: Object.freeze({ ux: false, uy: false, rz: false }),
@@ -44,6 +50,12 @@ function assertPositive(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`SingleBeamAnalysis requires a positive ${label}.`);
   }
+}
+
+function sectionRotationWarnings(sectionRotation) {
+  return Math.abs(sectionRotation?.alpha ?? 0) > 1e-14
+    ? [SECTION_ROTATION_2D_WARNING]
+    : [];
 }
 
 function normalizePresetName(type) {
@@ -518,16 +530,30 @@ function projectedLineLoadValue(value, load, geometry) {
 function convertBeamProperties(properties, targetUnits) {
   const propertyUnits = properties.units ?? DEFAULT_SECTION_PROPERTY_UNITS;
   const resolver = createUnitResolver(propertyUnits, targetUnits);
+  const flexural = (value) =>
+    value == null
+      ? null
+      : resolver.convert(value, {
+          forceExponent: 1,
+          lengthExponent: 2,
+        });
   const converted = {
     axialRigidity: resolver.force(properties.axialRigidity),
-    flexuralRigidity: resolver.convert(properties.flexuralRigidity, {
-      forceExponent: 1,
-      lengthExponent: 2,
-    }),
+    flexuralRigidity: flexural(properties.flexuralRigidity),
+    flexuralRigidityY: flexural(properties.flexuralRigidityY),
+    flexuralRigidityZ: flexural(properties.flexuralRigidityZ),
     shearRigidity:
       properties.shearRigidity == null
         ? null
         : resolver.force(properties.shearRigidity),
+    shearRigidityY:
+      properties.shearRigidityY == null
+        ? null
+        : resolver.force(properties.shearRigidityY),
+    shearRigidityZ:
+      properties.shearRigidityZ == null
+        ? null
+        : resolver.force(properties.shearRigidityZ),
     shearCorrectionFactor: properties.shearCorrectionFactor ?? null,
     units: targetUnits,
     metadata: { ...properties.metadata },
@@ -598,11 +624,39 @@ function summarizeInternalForces(samples) {
     minAxialForce: extremum(samples, "n", (a, b) => a < b),
     maxShearForce: extremum(samples, "v", (a, b) => a > b),
     minShearForce: extremum(samples, "v", (a, b) => a < b),
+    maxShearForceY: extremum(samples, "vY", (a, b) => a > b),
+    minShearForceY: extremum(samples, "vY", (a, b) => a < b),
+    maxShearForceZ: extremum(samples, "vZ", (a, b) => a > b),
+    minShearForceZ: extremum(samples, "vZ", (a, b) => a < b),
     maxBendingMoment: extremum(samples, "m", (a, b) => a > b),
     minBendingMoment: extremum(samples, "m", (a, b) => a < b),
+    maxBendingMomentY: extremum(samples, "mY", (a, b) => a > b),
+    minBendingMomentY: extremum(samples, "mY", (a, b) => a < b),
+    maxBendingMomentZ: extremum(samples, "mZ", (a, b) => a > b),
+    minBendingMomentZ: extremum(samples, "mZ", (a, b) => a < b),
     maxAbsBendingMoment: samples.reduce(
       (selected, sample) =>
         Math.abs(sample.m) > Math.abs(selected.m) ? sample : selected,
+      samples[0] ?? null,
+    ),
+    maxAbsBendingMomentY: samples.reduce(
+      (selected, sample) =>
+        Math.abs(sample.mY ?? 0) > Math.abs(selected.mY ?? 0) ? sample : selected,
+      samples[0] ?? null,
+    ),
+    maxAbsBendingMomentZ: samples.reduce(
+      (selected, sample) =>
+        Math.abs(sample.mZ ?? 0) > Math.abs(selected.mZ ?? 0) ? sample : selected,
+      samples[0] ?? null,
+    ),
+    maxAbsShearForceY: samples.reduce(
+      (selected, sample) =>
+        Math.abs(sample.vY ?? 0) > Math.abs(selected.vY ?? 0) ? sample : selected,
+      samples[0] ?? null,
+    ),
+    maxAbsShearForceZ: samples.reduce(
+      (selected, sample) =>
+        Math.abs(sample.vZ ?? 0) > Math.abs(selected.vZ ?? 0) ? sample : selected,
       samples[0] ?? null,
     ),
   };
@@ -669,9 +723,21 @@ function createEnvelope(resultsById) {
     minAxialForce: null,
     maxShearForce: null,
     minShearForce: null,
+    maxShearForceY: null,
+    minShearForceY: null,
+    maxShearForceZ: null,
+    minShearForceZ: null,
+    maxAbsShearForceY: null,
+    maxAbsShearForceZ: null,
     maxBendingMoment: null,
     minBendingMoment: null,
     maxAbsBendingMoment: null,
+    maxBendingMomentY: null,
+    minBendingMomentY: null,
+    maxBendingMomentZ: null,
+    minBendingMomentZ: null,
+    maxAbsBendingMomentY: null,
+    maxAbsBendingMomentZ: null,
     maxAbsVerticalDisplacement: null,
     maxHorizontalReaction: null,
     minHorizontalReaction: null,
@@ -733,6 +799,30 @@ function createEnvelope(resultsById) {
       (item) => item.value,
       (a, b) => a < b,
     );
+    state.maxShearForceY = selectExtreme(
+      state.maxShearForceY,
+      annotateEnvelopeSample(result, forces.maxShearForceY, "vY", forces.maxShearForceY?.vY),
+      (item) => item.value,
+      (a, b) => a > b,
+    );
+    state.minShearForceY = selectExtreme(
+      state.minShearForceY,
+      annotateEnvelopeSample(result, forces.minShearForceY, "vY", forces.minShearForceY?.vY),
+      (item) => item.value,
+      (a, b) => a < b,
+    );
+    state.maxShearForceZ = selectExtreme(
+      state.maxShearForceZ,
+      annotateEnvelopeSample(result, forces.maxShearForceZ, "vZ", forces.maxShearForceZ?.vZ),
+      (item) => item.value,
+      (a, b) => a > b,
+    );
+    state.minShearForceZ = selectExtreme(
+      state.minShearForceZ,
+      annotateEnvelopeSample(result, forces.minShearForceZ, "vZ", forces.minShearForceZ?.vZ),
+      (item) => item.value,
+      (a, b) => a < b,
+    );
     state.maxBendingMoment = selectExtreme(
       state.maxBendingMoment,
       annotateEnvelopeSample(
@@ -755,6 +845,30 @@ function createEnvelope(resultsById) {
       (item) => item.value,
       (a, b) => a < b,
     );
+    state.maxBendingMomentY = selectExtreme(
+      state.maxBendingMomentY,
+      annotateEnvelopeSample(result, forces.maxBendingMomentY, "mY", forces.maxBendingMomentY?.mY),
+      (item) => item.value,
+      (a, b) => a > b,
+    );
+    state.minBendingMomentY = selectExtreme(
+      state.minBendingMomentY,
+      annotateEnvelopeSample(result, forces.minBendingMomentY, "mY", forces.minBendingMomentY?.mY),
+      (item) => item.value,
+      (a, b) => a < b,
+    );
+    state.maxBendingMomentZ = selectExtreme(
+      state.maxBendingMomentZ,
+      annotateEnvelopeSample(result, forces.maxBendingMomentZ, "mZ", forces.maxBendingMomentZ?.mZ),
+      (item) => item.value,
+      (a, b) => a > b,
+    );
+    state.minBendingMomentZ = selectExtreme(
+      state.minBendingMomentZ,
+      annotateEnvelopeSample(result, forces.minBendingMomentZ, "mZ", forces.minBendingMomentZ?.mZ),
+      (item) => item.value,
+      (a, b) => a < b,
+    );
     state.maxAbsBendingMoment = selectExtreme(
       state.maxAbsBendingMoment,
       annotateEnvelopeSample(
@@ -762,6 +876,50 @@ function createEnvelope(resultsById) {
         forces.maxAbsBendingMoment,
         "absM",
         Math.abs(forces.maxAbsBendingMoment?.m ?? 0),
+      ),
+      (item) => item.value,
+      (a, b) => a > b,
+    );
+    state.maxAbsBendingMomentY = selectExtreme(
+      state.maxAbsBendingMomentY,
+      annotateEnvelopeSample(
+        result,
+        forces.maxAbsBendingMomentY,
+        "absMY",
+        Math.abs(forces.maxAbsBendingMomentY?.mY ?? 0),
+      ),
+      (item) => item.value,
+      (a, b) => a > b,
+    );
+    state.maxAbsBendingMomentZ = selectExtreme(
+      state.maxAbsBendingMomentZ,
+      annotateEnvelopeSample(
+        result,
+        forces.maxAbsBendingMomentZ,
+        "absMZ",
+        Math.abs(forces.maxAbsBendingMomentZ?.mZ ?? 0),
+      ),
+      (item) => item.value,
+      (a, b) => a > b,
+    );
+    state.maxAbsShearForceY = selectExtreme(
+      state.maxAbsShearForceY,
+      annotateEnvelopeSample(
+        result,
+        forces.maxAbsShearForceY,
+        "absVY",
+        Math.abs(forces.maxAbsShearForceY?.vY ?? 0),
+      ),
+      (item) => item.value,
+      (a, b) => a > b,
+    );
+    state.maxAbsShearForceZ = selectExtreme(
+      state.maxAbsShearForceZ,
+      annotateEnvelopeSample(
+        result,
+        forces.maxAbsShearForceZ,
+        "absVZ",
+        Math.abs(forces.maxAbsShearForceZ?.vZ ?? 0),
       ),
       (item) => item.value,
       (a, b) => a > b,
@@ -955,6 +1113,14 @@ function sampleBeamResult({ model, femModel, solution, sectionProperties }) {
     for (const sample of samples) {
       const station = (element.metadata.startStation ?? 0) + sample.x;
       const coordinates = coordinateAtStation(femModel.geometry, station);
+      const principalActions = splitPrincipalActions(
+        {
+          n: resolver.force(sample.n),
+          v: resolver.force(sample.v),
+          m: resolver.moment(sample.m),
+        },
+        model.sectionRotation,
+      );
 
       internalForceSamples.push({
         elementId: element.id,
@@ -964,6 +1130,11 @@ function sampleBeamResult({ model, femModel, solution, sectionProperties }) {
         n: resolver.force(sample.n),
         v: resolver.force(sample.v),
         m: resolver.moment(sample.m),
+        vY: principalActions.vY,
+        vZ: principalActions.vZ,
+        mY: principalActions.mY,
+        mZ: principalActions.mZ,
+        principalActions,
       });
     }
   }
@@ -987,6 +1158,8 @@ function sampleBeamResult({ model, femModel, solution, sectionProperties }) {
     units: model.units,
     geometry: femModel.outputGeometry,
     sectionProperties: convertBeamProperties(sectionProperties, model.units),
+    sectionRotation: { ...model.sectionRotation },
+    warnings: sectionRotationWarnings(model.sectionRotation),
     nodes: nodeResults,
     supports,
     displacementByNode,
@@ -1026,6 +1199,7 @@ export class SingleBeamModel {
     combinations = null,
     discretization = {},
     verificationStations = null,
+    sectionRotation = null,
     metadata = {},
   } = {}) {
     if (!id) {
@@ -1054,6 +1228,7 @@ export class SingleBeamModel {
       : verificationStations
         ? { ...verificationStations }
         : null;
+    this.sectionRotation = normalizeSectionRotation(sectionRotation);
     this.metadata = { ...metadata };
   }
 }
@@ -1097,6 +1272,7 @@ export class SingleBeamFemBuilder {
       geometry: outputGeometry,
       span: outputGeometry.length,
       units: model.units,
+      sectionRotation: model.sectionRotation,
     };
     const sectionProperties =
       model.sectionProvider.getElasticBeamProperties(providerContext);
@@ -1405,6 +1581,7 @@ export class SingleBeamFemBuilder {
       metadata: {
         sourceUnits: model.units,
         analysisModel: model.analysisModel,
+        sectionRotation: { ...model.sectionRotation },
         generatedBy: "SingleBeamFemBuilder",
       },
     };
@@ -1666,6 +1843,7 @@ export class SingleBeamAnalysis {
       loadCases,
       combinations,
       envelopes: createEnvelopes(loadCases, combinations),
+      warnings: sectionRotationWarnings(model.sectionRotation),
       metadata: {
         ...model.metadata,
         generatedBy: "SingleBeamAnalysis",
@@ -1712,6 +1890,7 @@ export class SingleBeamAnalysis {
         governingLoad: analysisContext.governingLoad
           ? { ...analysisContext.governingLoad }
           : null,
+        sectionRotation: { ...model.sectionRotation },
       },
       ...sampleBeamResult({
         model,

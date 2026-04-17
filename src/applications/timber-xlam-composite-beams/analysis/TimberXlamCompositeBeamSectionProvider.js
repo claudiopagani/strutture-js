@@ -1,3 +1,5 @@
+import { applySectionRotationToBeamProperties } from "../../../domain/beams/SectionRotation.js";
+
 const DEFAULT_UNITS = Object.freeze({ force: "N", length: "mm" });
 
 function assertPositive(value, label) {
@@ -155,7 +157,7 @@ export class TimberXlamCompositeBeamSectionProvider {
         ? xlamShearModulus * xlamShearArea + timberShearModulus * timberShearArea
         : null;
 
-    return {
+    const properties = {
       axialRigidity: props.e1 * props.a1 + props.e2 * props.a2,
       flexuralRigidity: props.flexuralRigidity,
       shearRigidity,
@@ -188,6 +190,18 @@ export class TimberXlamCompositeBeamSectionProvider {
         relativeCentroidDistance: props.a,
       },
     };
+
+    return applySectionRotationToBeamProperties({
+      properties,
+      sectionRotation: context.sectionRotation,
+      flexuralRigidityY: props.flexuralRigidity,
+      flexuralRigidityZ:
+        Number.isFinite(xlamSection.inertiaZ) && Number.isFinite(timberSection.inertiaZ)
+          ? props.e1 * xlamSection.inertiaZ + props.e2 * timberSection.inertiaZ
+          : null,
+      shearRigidityY: shearRigidity,
+      shearRigidityZ: shearRigidity,
+    });
   }
 }
 

@@ -1,8 +1,8 @@
 # Metodo per travi semplici in acciaio
 
 Questo documento descrive il metodo implementato per travi semplici in acciaio.
-Il perimetro e prudente: la classificazione locale della sezione governa la resistenza a flessione, l'instabilita flesso-torsionale e implementata in MVP per profili I/H o con `Mcr` fornito dall'utente, l'instabilita di aste compresse segue le curve NTC 2018 e la pressoflessione normativa e limitata al dominio `N + My`.
-`Mz`, torsione, interazioni torsionali, affinamenti LTB sofisticati e sezioni efficaci di classe 4 restano fuori dal dominio attuale.
+Il perimetro e prudente: la classificazione locale della sezione governa la resistenza a flessione, l'instabilita flesso-torsionale e implementata in MVP per profili I/H o con `Mcr` fornito dall'utente, l'instabilita di aste compresse segue le curve NTC 2018 e la pressoflessione normativa copre `N + My`, con estensione `N + My + Mz` per profili I/H doppiamente simmetrici.
+Torsione, interazioni torsionali, affinamenti LTB sofisticati e sezioni efficaci di classe 4 restano fuori dal dominio attuale.
 
 ## Perimetro
 
@@ -15,7 +15,7 @@ Il workflow copre:
 * verifiche ULS di sezione da diagrammi FEM, con flessione governata dalla classe;
 * instabilita flesso-torsionale su segmenti non controventati;
 * instabilita di aste compresse con lunghezze efficaci configurabili;
-* interazione di stabilita `N + My` secondo Metodo B della Circolare;
+* interazione di stabilita `N + My` e, quando `Mz` e presente, `N + My + Mz` secondo Metodo B della Circolare per profili I/H supportati;
 * verifica SLE di freccia verticale;
 * report JSON/Markdown con checks, metadata, warning e assunzioni.
 
@@ -48,6 +48,7 @@ Checks implementati:
 * `steel-lateral-torsional-buckling`: instabilita flesso-torsionale del segmento non controventato.
 * `steel-compression-buckling`: instabilita di asta compressa.
 * `steel-beam-column-interaction-n-my`: interazione di stabilita `N + My`.
+* `steel-beam-column-interaction-n-my-mz`: interazione di stabilita `N + My + Mz`.
 
 La tensione di progetto e:
 
@@ -239,25 +240,32 @@ Se non sono fornite, il wrapper della trave semplice usa la luce FEM e prova a i
 
 Per telai complessi o vincoli non riconducibili allo schema di trave semplice, la lunghezza libera deve essere fornita dall'utente.
 
-## Pressoflessione N + My
+## Pressoflessione N + My e N + My + Mz
 
-La verifica implementata e:
+Le verifiche implementate sono:
 
 * `steel-beam-column-interaction-n-my`
+* `steel-beam-column-interaction-n-my-mz`
 
-Il dominio attuale e:
+Il dominio `N + My` resta usato quando `Mz` e nullo:
 
 ```txt
 NEd + My,Ed
 ```
 
-Non sono considerati:
+Quando `Mz` e significativo e il profilo e I/H doppiamente simmetrico, il dominio diventa:
 
-* `Mz`;
+```txt
+NEd + My,Ed + Mz,Ed
+```
+
+Restano non considerate:
+
 * torsione;
-* interazioni torsionali.
+* interazioni torsionali;
+* instabilita torsionale non rappresentata dal modello LTB MVP.
 
-Per sezioni di classe 1, 2 o 3 il controllo usa il Metodo B della Circolare, con termini `Mz` nulli:
+Per sezioni di classe 1, 2 o 3 il controllo `N + My` usa il Metodo B della Circolare:
 
 ```txt
 NEd * gammaM1 / (chi_y * A * fyk)
@@ -267,13 +275,26 @@ NEd * gammaM1 / (chi_z * A * fyk)
   + kzy * My,Ed * gammaM1 / (chiLT * Wy * fyk) <= 1
 ```
 
+Il controllo `N + My + Mz` usa l'estensione biaxiale:
+
+```txt
+NEd * gammaM1 / (chi_y * A * fyk)
+  + kyy * My,Ed * gammaM1 / (chiLT * Wy * fyk)
+  + kyz * Mz,Ed * gammaM1 / (Wz * fyk) <= 1
+
+NEd * gammaM1 / (chi_z * A * fyk)
+  + kzy * My,Ed * gammaM1 / (chiLT * Wy * fyk)
+  + kzz * Mz,Ed * gammaM1 / (Wz * fyk) <= 1
+```
+
 Dove:
 
 * `chi_y` e `chi_z` arrivano dal modulo di instabilita a compressione;
 * `chiLT` arriva dal modulo di instabilita flesso-torsionale, oppure vale `1` se la trave e dichiarata controventata;
 * `Wy` e `Wpl,y` per classi 1-2 e `Wel,y` per classe 3;
-* `kyy` e `kzy` sono i coefficienti di interazione della Tabella C4.2.V per elementi aperti deformabili torsionalmente;
-* i coefficienti di momento `alphaMy` e `alphaMLT` valgono `1.0` di default e sono configurabili.
+* `Wz` e `Wpl,z` per classi 1-2 e `Wel,z` per classe 3;
+* `kyy`, `kyz`, `kzy` e `kzz` sono i coefficienti di interazione del modello Metodo B MVP;
+* i coefficienti di momento `alphaMy`, `alphaMz` e `alphaMLT` valgono `1.0` di default e sono configurabili.
 
 Configurazione tipica:
 
@@ -289,6 +310,7 @@ new SteelMemberVerification({
     },
     beamColumnInteraction: {
       alphaMy: 1,
+      alphaMz: 1,
       alphaMLT: 1
     }
   }
@@ -296,7 +318,7 @@ new SteelMemberVerification({
 ```
 
 Per sezioni di classe 4 il check e bloccato, perche servono `Aeff` e `Weff`.
-Per `UPN`, il motore mantiene le verifiche di sezione, classificazione, aste compresse e LTB con `Mcr` utente; l'interazione Method B automatica resta limitata ai profili I/H doppiamente simmetrici, salvo override esplicito dell'utente.
+Per `UPN`, il motore mantiene le verifiche di sezione, classificazione, aste compresse e LTB con `Mcr` utente; l'interazione Method B automatica `N + My + Mz` resta limitata ai profili I/H doppiamente simmetrici, salvo override esplicito dell'utente.
 
 ## Verifica SLE
 
@@ -405,8 +427,9 @@ npm run example:beam-reports:write
 
 Restano fuori dal perimetro di questo MVP:
 
-* interazione con `Mz`;
 * torsione e interazioni torsionali;
+* verifica `N + My + Mz` automatica per profili non doppiamente simmetrici;
+* classificazione locale biaxiale raffinata oltre il criterio MVP;
 * affinamento dei coefficienti LTB per diagrammi di momento e vincoli laterali specifici;
 * influenza del taglio sulla resistenza a flessione;
 * imbozzamento locale;

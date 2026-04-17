@@ -64,6 +64,10 @@ export class CompositeSectionComponent {
     return this.modularRatio * (this.section.inertiaZ ?? 0);
   }
 
+  transformedProductOfInertiaYZ() {
+    return this.modularRatio * (this.section.productOfInertiaYZ ?? 0);
+  }
+
   toJSON() {
     return {
       id: this.id,

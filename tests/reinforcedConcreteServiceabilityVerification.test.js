@@ -309,6 +309,38 @@ test("RC serviceability crack control selects bottom or top reinforcement groups
   );
 });
 
+test("RC serviceability stress check can include biaxial moment while crack control stays primary-plane", () => {
+  const { section, concreteMaterial, reinforcementMaterial } =
+    createGroupedServiceabilityFixture();
+  const result = new ReinforcedConcreteServiceabilityVerification().verifySectionActions({
+    nEd: 0,
+    mEd: 1e7,
+    mxEd: -1e7,
+    myEd: 1e6,
+    context: {
+      section,
+      concreteMaterial,
+      reinforcementMaterial,
+      combinationType: "SLE_QUASI_PERMANENT",
+    },
+  });
+  const concreteStress = findCheck(result, "rc-sle-concrete-stress");
+  const crackDiameter = findCheck(result, "rc-sle-crack-bar-diameter");
+
+  assert.equal(result.status, "ok");
+  assert.equal(result.outputs.biaxialStress, true);
+  assert.equal(concreteStress.metadata.biaxialStress, true);
+  assert.equal(concreteStress.metadata.myEd, 1e6);
+  assert.equal(crackDiameter.metadata.momentBasis, "primary-moment-only");
+  assert.equal(crackDiameter.metadata.weakAxisMomentNeglected, true);
+  assert.equal(result.outputs.crackControlGroupId, "bottom-main");
+  assert.ok(
+    result.warnings.some((warning) =>
+      warning.includes("weak-axis service moment component"),
+    ),
+  );
+});
+
 test("RC serviceability requires explicit crack-control groups for generic sections", () => {
   const concreteMaterial = createNTC2018ConcreteMaterial({
     strengthClass: "C25/30",

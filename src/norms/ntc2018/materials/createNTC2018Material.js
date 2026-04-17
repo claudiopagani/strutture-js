@@ -182,6 +182,7 @@ export function createNTC2018TimberMaterial({
     strengthClass,
     density: unitResolver.volumeLoad(preset.density),
     elasticModulus: preset.meanElasticModulus,
+    e0_05: preset.e0_05 ?? preset.meanElasticModulus * (2 / 3),
     timberType: preset.timberType,
     productStandard: preset.productStandard,
     strengthStandard: preset.strengthStandard,
@@ -201,6 +202,11 @@ export function createNTC2018TimberMaterial({
       glulamType: preset.glulamType,
       productStandard: preset.productStandard,
       strengthStandard: preset.strengthStandard,
+      e0_05: round(preset.e0_05 ?? preset.meanElasticModulus * (2 / 3), 2),
+      e0_05Source:
+        preset.e0_05 != null
+          ? "strength-class-catalog"
+          : "mean-elastic-modulus-ratio-2/3",
       gammaM,
       fmD: round((kmod * preset.fmK) / gammaM, 2),
       fc0D: round((kmod * preset.fc0K) / gammaM, 2),

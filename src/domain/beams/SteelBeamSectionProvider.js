@@ -1,4 +1,5 @@
 import { createUnitResolver } from "../units/UnitSystem.js";
+import { applySectionRotationToBeamProperties } from "./SectionRotation.js";
 
 const DEFAULT_UNITS = Object.freeze({ force: "N", length: "mm" });
 
@@ -116,7 +117,7 @@ export class SteelBeamSectionProvider {
     assertPositive(elasticModulus, "steel material elasticModulus");
     assertPositive(shearArea, `steel section ${this.shearAreaAxis} or area`);
 
-    return {
+    const properties = {
       axialRigidity: elasticModulus * area,
       flexuralRigidity: elasticModulus * inertia,
       shearRigidity:
@@ -152,6 +153,27 @@ export class SteelBeamSectionProvider {
         limitState: context.limitState ?? null,
       },
     };
+
+    return applySectionRotationToBeamProperties({
+      properties,
+      sectionRotation: context.sectionRotation,
+      flexuralRigidityY:
+        Number.isFinite(this.section.inertiaY)
+          ? elasticModulus * this.section.inertiaY
+          : properties.flexuralRigidity,
+      flexuralRigidityZ:
+        Number.isFinite(this.section.inertiaZ)
+          ? elasticModulus * this.section.inertiaZ
+          : null,
+      shearRigidityY:
+        Number.isFinite(shearModulus)
+          ? shearModulus * (this.section.shearAreaY ?? this.section.area)
+          : null,
+      shearRigidityZ:
+        Number.isFinite(shearModulus)
+          ? shearModulus * (this.section.shearAreaZ ?? this.section.area)
+          : null,
+    });
   }
 }
 

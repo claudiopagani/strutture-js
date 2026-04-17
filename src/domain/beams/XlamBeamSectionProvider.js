@@ -1,3 +1,5 @@
+import { applySectionRotationToBeamProperties } from "./SectionRotation.js";
+
 const DEFAULT_UNITS = Object.freeze({ force: "N", length: "mm" });
 
 function assertPositive(value, label) {
@@ -102,7 +104,7 @@ export class XlamBeamSectionProvider {
     assertPositive(bendingStiffness, "XLAM bending stiffness");
     assertPositive(beamShearRigidity.value, "XLAM beam shear stiffness");
 
-    return {
+    const properties = {
       axialRigidity: (e0 * this.section.area) / stiffnessReduction,
       flexuralRigidity: bendingStiffness / stiffnessReduction,
       shearRigidity: beamShearRigidity.value / stiffnessReduction,
@@ -127,6 +129,23 @@ export class XlamBeamSectionProvider {
         stiffnessReduction,
       },
     };
+
+    return applySectionRotationToBeamProperties({
+      properties,
+      sectionRotation: context.sectionRotation,
+      flexuralRigidityY: bendingStiffness / stiffnessReduction,
+      flexuralRigidityZ:
+        Number.isFinite(this.section.inertiaZ)
+          ? (e0 * this.section.inertiaZ) / stiffnessReduction
+          : null,
+      shearRigidityY: beamShearRigidity.value / stiffnessReduction,
+      shearRigidityZ:
+        Number.isFinite(materialValue(this.material, ["g0Mean", "shearModulus"])) &&
+        Number.isFinite(this.section.area)
+          ? (materialValue(this.material, ["g0Mean", "shearModulus"]) * this.section.area) /
+            stiffnessReduction
+          : null,
+    });
   }
 }
 

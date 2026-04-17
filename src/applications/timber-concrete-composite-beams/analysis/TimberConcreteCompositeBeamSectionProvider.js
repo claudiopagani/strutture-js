@@ -1,3 +1,5 @@
+import { applySectionRotationToBeamProperties } from "../../../domain/beams/SectionRotation.js";
+
 const DEFAULT_UNITS = Object.freeze({ force: "N", length: "mm" });
 
 function assertPositive(value, label) {
@@ -177,7 +179,7 @@ export class TimberConcreteCompositeBeamSectionProvider {
 
     assertPositive(gammaProperties.idealComposite.area, "Ideal transformed area");
 
-    return {
+    const properties = {
       axialRigidity: effectiveTimberModulus * gammaProperties.idealComposite.area,
       flexuralRigidity: effectiveTimberModulus * inertiaEffective,
       shearRigidity,
@@ -212,6 +214,18 @@ export class TimberConcreteCompositeBeamSectionProvider {
         centroidDistance: gammaProperties.centroidDistance,
       },
     };
+
+    return applySectionRotationToBeamProperties({
+      properties,
+      sectionRotation: context.sectionRotation,
+      flexuralRigidityY: effectiveTimberModulus * inertiaEffective,
+      flexuralRigidityZ:
+        Number.isFinite(gammaProperties.idealComposite.inertiaZ)
+          ? effectiveTimberModulus * gammaProperties.idealComposite.inertiaZ
+          : null,
+      shearRigidityY: shearRigidity,
+      shearRigidityZ: shearRigidity,
+    });
   }
 }
 

@@ -53,6 +53,15 @@ export class CompositeSection extends CrossSection {
         component.transformedArea() * (component.centroidZ - centroidZ) ** 2,
       0,
     );
+    const productOfInertiaYZ = components.reduce(
+      (sum, component) =>
+        sum +
+        component.transformedProductOfInertiaYZ() +
+        component.transformedArea() *
+          (component.centroidY - centroidY) *
+          (component.centroidZ - centroidZ),
+      0,
+    );
 
     const topFiberY = Math.max(
       ...components.map(
@@ -90,6 +99,7 @@ export class CompositeSection extends CrossSection {
       centroidZ,
       inertiaY,
       inertiaZ,
+      productOfInertiaYZ,
       elasticSectionModulusY:
         inertiaY / maxDistance([topFiberY, bottomFiberY], centroidY),
       elasticSectionModulusZ:

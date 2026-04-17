@@ -1237,6 +1237,7 @@ Prima implementazione completata:
   * taglio;
   * deformazione;
   * warning su vibrazioni/incendio fuori dominio;
+  * gestione esplicita di `mZ/vZ` da assi ruotati come componenti nel piano della lastra, riportate nei metadata e trascurate con warning fisico;
 * aggiunto esempio/report `xlam-strip-report`;
 * aggiunti test su rigidezza, freccia e verifiche base;
 * documentato metodo in `docs/xlam-beam-method.md`.
@@ -1283,6 +1284,547 @@ Da fare:
   * `relatedCheckId`;
 * esporre cataloghi materiali/sezioni in DTO comodi per form React;
 * aggiungere esempi JSON minimi per ogni famiglia di trave.
+
+## Fase nuova - Assi principali ruotati della sezione
+
+Stato implementazione MVP, 2026-04-17:
+
+* completato modulo di geometria masse con `Iyz`, inerzie principali e rotazione delle inerzie;
+* completato contratto `sectionRotation` con `alpha = 0` come default compatibile e input in radianti o gradi;
+* completata proiezione 2D delle rigidezze verticali equivalenti `EI`/`GA`;
+* completata scomposizione delle azioni FEM in `vY/vZ` e `mY/mZ`;
+* completata propagazione verso provider, inviluppi, report e `BeamSectionActionVerifier`;
+* completata integrazione nelle verifiche legno, acciaio e c.a.; per XLAM e travi composte viene verificato l'asse principale gia coperto dal metodo e dichiarata in warning la componente debole non coperta dal modello specialistico 1D;
+* aggiunto warning automatico quando `alpha != 0`: il core resta FEM 2D con rigidezza verticale equivalente, senza torsione e senza spostamento trasversale debole indipendente;
+* test di regressione e suite completa verdi.
+
+Stato copertura `Mz` da completare:
+
+* le azioni `mZ/vZ` ora non spariscono piu: sono nei risultati, negli inviluppi, nei metadata e nei report;
+* la verifica resistente di sezione e gia biaxiale per legno semplice e acciaio base;
+* il c.a. usa il dominio biaxiale in SLU quando `mZ` e significativo;
+* restano da coprire o dichiarare meglio le verifiche di stabilita e servizio dove la componente `mZ` cambia il dominio del metodo;
+* per sezioni a lastra o sistemi collaboranti estesi, `mZ` puo essere trascurato in prima implementazione se il verificatore emette un warning motivato: la rigidezza/resistenza nel piano della lastra rende questa componente in genere non governante rispetto alla flessione fuori piano forte, ma la scelta deve essere visibile nel risultato.
+
+Obiettivo:
+
+* permettere che gli assi principali di inerzia della sezione siano ruotati di un angolo `alpha` rispetto alla configurazione corrente della trave;
+* modellare il caso tipico delle travi di falda, dove la trave segue una pendenza ma il carico gravitazionale resta agente nel piano verticale;
+* scomporre le azioni trasversali verticali nelle due componenti sugli assi principali della sezione;
+* mantenere `alpha = 0` come comportamento identico a oggi;
+* portare le componenti principali dentro rigidezze, diagrammi, verifiche, report e DTO, senza rompere i moduli gia esistenti.
+
+### Stato attuale rilevato
+
+Esiste gia una base di proprieta geometriche nelle classi di sezione:
+
+* `CrossSection` espone area, baricentro, `inertiaY`, `inertiaZ`, moduli elastici/plastici e aree di taglio;
+* `RectangularSection`, `CircularSection`, `TSection`, `PolygonSection`, `SteelProfileSection`, `ReinforcedConcreteSection`, `XlamPanelSection` e `CompositeSection` calcolano o ricevono proprieta geometriche;
+* i provider di trave usano quasi sempre `bendingInertiaAxis = "inertiaY"` e `shearAreaAxis = "shearAreaY"`;
+* `SingleBeamAnalysis` supporta gia geometria inclinata della linea trave e carichi verticali globali con `loadProjection: "horizontal"` di default;
+* i risultati FEM e `BeamSectionActionVerifier` passano oggi solo `nEd`, `vEd`, `mEd`;
+* i verificatori materiali sono quindi principalmente uniaxiali: legno, acciaio, XLAM e composti leggono `V` e `M`; il c.a. ha gia un motore biaxiale standalone, ma il wrapper trave usa ancora il dominio uniaxiale `N-M`.
+
+Manca invece un modulo unitario di geometria delle masse della sezione:
+
+* non esiste ancora un calcolo comune di `Iyz`;
+* non esiste una risoluzione unica degli assi principali;
+* non esiste una trasformazione standard delle inerzie sotto rotazione;
+* non esiste un contratto comune per dire a provider, FEM e verificatori quali sono asse forte, asse debole e angolo di rotazione.
+
+### Decisioni di modellazione
+
+Distinguere sempre due concetti:
+
+* inclinazione geometrica della linea trave: gia presente in `geometry.start/end`;
+* rotazione degli assi principali della sezione attorno all'asse longitudinale della trave: nuova proprieta `sectionRotation`.
+
+Contratto input proposto:
+
+```js
+sectionRotation: {
+  alpha: 0,
+  units: "rad", // "rad" default, "deg" ammesso negli input ergonomici
+  convention: "roof-slope",
+  primaryAxis: "principalY"
+}
+```
+
+Convenzione MVP:
+
+* `alpha = 0` riproduce il comportamento attuale: il carico verticale produce solo azione sul ramo principale gia usato da `inertiaY`;
+* per una trave di falda con pendenza `alpha`, il carico verticale viene scomposto in:
+  * componente principale forte: `qY = q * cos(alpha)`;
+  * componente principale debole: `qZ = q * sin(alpha)`;
+* la stessa scomposizione vale per taglio e momento derivati dal diagramma FEM:
+  * `vY = v * cos(alpha)`;
+  * `vZ = v * sin(alpha)`;
+  * `mY = m * cos(alpha)`;
+  * `mZ = m * sin(alpha)`;
+* i segni devono essere conservati nei valori e accompagnati da metadata, evitando di nascondere il verso fisico dietro valori assoluti;
+* il nome `alpha` resta allineato al linguaggio di progetto delle falde, ma il DTO deve dichiarare chiaramente la convenzione.
+
+Per le deformazioni nel piano verticale, finche il core resta FEM 2D, usare una rigidezza equivalente coerente con la scomposizione:
+
+```txt
+EI_vertical = 1 / (cos(alpha)^2 / EIY + sin(alpha)^2 / EIZ)
+GA_vertical = 1 / (cos(alpha)^2 / GAY + sin(alpha)^2 / GAZ)
+```
+
+Questa e una scelta da MVP 2D:
+
+* conserva equilibrio verticale, reazioni e diagrammi globali;
+* rende la freccia verticale sensibile anche alla rigidezza debole;
+* produce azioni principali `Y/Z` per le verifiche;
+* non sostituisce un futuro elemento beam 3D con due spostamenti trasversali indipendenti e torsione.
+
+### A. Modulo geometria delle masse della sezione
+
+Creare un modulo puro, per esempio:
+
+* `src/domain/geometry/SectionMassProperties.js`;
+* export pubblici da `src/index.js`.
+
+Funzioni minime:
+
+```js
+calculateSectionMassProperties(sectionOrShape)
+principalSecondMoments({ inertiaY, inertiaZ, productOfInertiaYZ })
+rotateSecondMoments({ inertiaY, inertiaZ, productOfInertiaYZ, alpha })
+resolvePrincipalSectionFrame(section)
+```
+
+Output comune:
+
+```js
+{
+  area,
+  centroidY,
+  centroidZ,
+  inertiaY,
+  inertiaZ,
+  productOfInertiaYZ,
+  principalInertiaMajor,
+  principalInertiaMinor,
+  principalAxisAngle,
+  radiusOfGyrationY,
+  radiusOfGyrationZ,
+  metadata
+}
+```
+
+Copertura per tutte le sezioni disponibili:
+
+* `CrossSection`: accetta `productOfInertiaYZ`, proprieta principali esplicite e fallback prudente `Iyz = 0` quando le assi sono dichiarate principali;
+* `RectangularSection`: `Iyz = 0`, assi principali coincidenti con assi locali;
+* `CircularSection`: `Iy = Iz`, ogni asse baricentrico e principale; metadata dedicato per evitare ambiguita;
+* `TSection`: `Iyz = 0` per la T simmetrica oggi modellata;
+* `PolygonSection`: calcolo generale con formule di shoelace per area, baricentro, `Iy`, `Iz`, `Iyz` e assi principali;
+* `SteelProfileSection`: usa dati catalogo `Iy/Iz`; `Iyz = 0` se il profilo di catalogo e gia espresso sugli assi principali; permettere override per profili non standard;
+* `CompositeSection`: calcolo trasformato con teorema di Huygens anche per `Iyz`;
+* `ReinforcedConcreteSection`: propaga proprieta lorde e trasformate, con barre come aree puntuali nella trasformata;
+* `XlamPanelSection`: proprieta degli strati attivi e, dove serve, proprieta totali del pannello; `Iyz = 0` nel caso stratificato simmetrico attuale.
+
+Test da aggiungere:
+
+* rettangolo e cerchio con `Iyz = 0`;
+* poligono non simmetrico con `Iyz != 0` e assi principali ruotati;
+* sezione composta con componenti eccentriche anche in `Y` e `Z`;
+* c.a. trasformato con barre eccentriche;
+* profilo acciaio da catalogo con metadata di assi principali;
+* XLAM con assi coerenti con strati attivi.
+
+### B. Contratto provider per due assi principali
+
+Estendere i provider mantenendo compatibilita:
+
+* i campi attuali `axialRigidity`, `flexuralRigidity`, `shearRigidity` restano validi;
+* quando `sectionRotation.alpha` e diverso da zero, il provider deve esporre anche le rigidezze principali:
+
+```js
+{
+  flexuralRigidityY,
+  flexuralRigidityZ,
+  shearRigidityY,
+  shearRigidityZ,
+  principalAxes: {
+    alpha,
+    primaryAxis,
+    convention
+  }
+}
+```
+
+Regola:
+
+* se `alpha = 0`, usare il percorso attuale senza cambiare numeri e metadata;
+* se `alpha != 0` e mancano proprieta del secondo asse, il provider deve generare errore bloccante o warning esplicito a seconda del dominio applicativo;
+* il core FEM riceve `EI_vertical` e `GA_vertical` equivalenti;
+* i verificatori ricevono invece le componenti principali, non solo il momento verticale risultante.
+
+Provider da aggiornare:
+
+* `ElasticBeamSectionProvider`: caso generale per sezioni elastiche semplici e composte;
+* `TimberBeamSectionProvider`: `EIY/EIZ`, `GAY/GAZ`, moduli `Wy/Wz`;
+* `SteelBeamSectionProvider`: `Iy/Iz`, `Wel_y/Wel_z`, `Wpl_y/Wpl_z`, aree di taglio `Av_y/Av_z`;
+* `ReinforcedConcreteBeamSectionProvider`: stati `gross` e `transformed` su entrambi gli assi;
+* `XlamBeamSectionProvider`: asse longitudinale e asse trasversale del pannello, con warning se la componente debole esce dal metodo 1D;
+* `TimberConcreteCompositeBeamSectionProvider`: asse collaborante forte piu una rigidezza debole dichiarata o calcolata in modo prudente;
+* `TimberXlamCompositeBeamSectionProvider`: idem, distinguendo componente collaborante e componente trasversale.
+
+### C. Analisi trave e risultati FEM
+
+Aggiornare `SingleBeamModel` e `SingleBeamFemBuilder`:
+
+* accettare `sectionRotation` nell'input trave;
+* normalizzare `alpha`, unita e convenzione;
+* passare `sectionRotation` al `providerContext`;
+* ricevere dal provider rigidezze principali e rigidezza equivalente verticale;
+* salvare nei metadata di ogni risultato:
+  * `sectionRotation`;
+  * `principalAxes`;
+  * `verticalFlexuralRigiditySource`;
+  * `verticalShearRigiditySource`.
+
+Aggiornare `sampleBeamResult`:
+
+* mantenere `n`, `v`, `m` come oggi;
+* aggiungere a ogni sample:
+
+```js
+principalActions: {
+  vY,
+  vZ,
+  mY,
+  mZ,
+  alpha,
+  convention
+}
+```
+
+Aggiornare inviluppi:
+
+* mantenere inviluppi attuali;
+* aggiungere, quando disponibili:
+  * `maxAbsBendingMomentY`;
+  * `maxAbsBendingMomentZ`;
+  * `maxAbsShearForceY`;
+  * `maxAbsShearForceZ`.
+
+Nota sui carichi:
+
+* non duplicare i casi di carico in due analisi FEM nel primo MVP;
+* la linea FEM resta una trave 2D con rigidezza verticale equivalente;
+* la scomposizione `Y/Z` serve per recupero tensionale e verifica;
+* un vero beam 3D con `uy/uz/rx/ry/rz`, torsione e vincoli fuori piano resta una fase successiva.
+
+### D. Contratto verifiche di sezione
+
+Estendere il contratto senza rompere quello vecchio:
+
+```js
+verifySectionActions({
+  nEd,
+  vEd,
+  mEd,
+  principalActions: {
+    vY,
+    vZ,
+    mY,
+    mZ
+  },
+  x,
+  context
+})
+```
+
+Regole:
+
+* i verificatori vecchi continuano a funzionare con `vEd/mEd`;
+* i verificatori aggiornati devono preferire `principalActions` quando presenti;
+* `BeamSectionActionVerifier` deve propagare `principalActions` e metadata di stazione;
+* ogni check deve indicare nei metadata se usa azioni globali o componenti principali.
+
+### E. Impatto sui verificatori materiali
+
+Legno semplice:
+
+* aggiornare flessione da uniaxiale a biaxiale: completato in MVP:
+  * `sigmaM,Y = |mY| / Wy`;
+  * `sigmaM,Z = |mZ| / Wz`;
+  * check combinato elastico con somma dei rapporti sui due assi principali;
+* aggiornare taglio su `vY/vZ` con `shearAreaY/shearAreaZ`: completato in MVP;
+* freccia verticale usa il risultato FEM gia calcolato con rigidezza equivalente;
+* stabilita laterale/flesso-torsionale: completata in MVP per sezioni rettangolari con tratti non controventati, `kcrit` automatico o override utente.
+
+Acciaio:
+
+* estendere resistenza di sezione da `N + My` a `N + My + Mz` almeno per verifiche elastiche/plastiche base;
+* usare `Wel_y/Wel_z` e `Wpl_y/Wpl_z`;
+* classificazione locale: inizialmente mantenere classificazione governata dal caso piu severo, poi raffinare per biaxialita;
+* LTB resta legata al momento forte `My` nel primo passaggio, con metadata che dichiara la quota `Mz`;
+* interazione di stabilita Metodo B deve diventare una fase esplicita: oggi e `N + My`, quindi con `mZ` non trascurabile deve avvisare o usare formula estesa solo quando implementata.
+
+Calcestruzzo armato:
+
+* usare il motore biaxiale gia presente per SLU quando `mZ` non e nullo: completato;
+* aggiornare `ReinforcedConcreteBeamVerification` per scegliere: completato:
+  * uniaxiale se `|mZ|` e trascurabile;
+  * biaxiale se `|mZ|` e significativo;
+* SLE tensioni: passare `N-Mx-My` al solver di servizio gia predisposto: completato;
+* SLE fessurazione: mantenere controllo indiretto sul momento principale `My`, con warning quando `Mz` viene trascurato;
+* taglio: usare solo la componente principale `vY`; `vZ` viene trascurato nel primo dominio con warning esplicito.
+
+XLAM come trave:
+
+* componente `mY/vY`: verificata con il metodo attuale di trave/striscia fuori piano;
+* componente `mZ/vZ`: completata in MVP come componente nel piano della lastra, riportata nei metadata di risultato e di check e trascurata con warning motivato;
+* rolling shear e freccia dichiarano implicitamente il dominio `mY/vY` tramite metadata delle azioni principali e warning sulle componenti escluse.
+
+Composti legno-calcestruzzo:
+
+* il metodo gamma attuale resta forte-asse;
+* recupero azioni `mY/vY` sul sistema collaborante: completato via `verifySectionActions`;
+* componente `mZ/vZ`: completata in MVP come componente nel piano della soletta collaborante, riportata nei metadata di risultato e di check e trascurata con warning motivato;
+* il report deve mostrare chiaramente quale quota del carico e stata verificata come collaborante e quale e stata esclusa per dominio fisico del metodo.
+
+Composti legno-XLAM:
+
+* stesso schema dei legno-calcestruzzo;
+* componente forte `mY/vY` nel metodo gamma esistente;
+* componente `mZ/vZ`: completata in MVP come azione nel piano del pannello XLAM, riportata nei metadata di risultato e di check e trascurata con warning motivato.
+
+### E-bis. Copertura residua della componente `Mz`
+
+Regola di progetto:
+
+* ogni verifica deve classificare esplicitamente `mZ/vZ` come:
+  * verificata con formula dedicata;
+  * inclusa in una verifica combinata conservativa;
+  * trascurata con warning motivato;
+  * non verificata con warning bloccante e stato `not-verified`;
+* nessun verificatore deve ignorare `mZ/vZ` in modo silenzioso.
+
+Acciaio:
+
+* completare instabilita asta-colonna da `N + My` a `N + My + Mz`;
+* aggiornare o affiancare il check LTB per dichiarare il dominio corretto in presenza di `Mz`;
+* chiarire la classificazione locale con pressoflessione biaxiale, almeno con criterio conservativo governante;
+* mantenere l'attuale comportamento prudente finche il dominio non e completo: `Mz` significativo produce warning e `not-verified` per l'interazione di stabilita completa.
+
+#### Fase acciaio - definizione implementativa e normativa
+
+Stato implementazione, 2026-04-17:
+
+* completata funzione `verifySteelBeamColumnInteractionMyMz`;
+* completati coefficienti `kyy/kyz/kzy/kzz` nel modello Method B MVP;
+* completata integrazione nel verificatore FEM: `Mz = 0` usa il vecchio check `N + My`, `Mz` significativo usa il nuovo check `N + My + Mz`;
+* completato fallback prudente per profili non supportati, torsione/interazioni torsionali e sezioni di classe 4;
+* completati test standalone e da risultati FEM per la nuova interazione.
+
+Obiettivo della fase:
+
+* sostituire l'attuale interazione di stabilita `N + My` con un dominio `N + My + Mz` per profili I/H doppiamente simmetrici;
+* mantenere comportamento prudente per profili non doppiamente simmetrici, sezioni di classe 4, torsione o dati mancanti;
+* lasciare la LTB come riduzione del termine di momento forte `My`, facendo entrare `Mz` nelle equazioni di interazione complessive;
+* evitare che il warning su `Mz` resti permanente quando la verifica `N + My + Mz` e effettivamente disponibile.
+
+Dominio normativo proposto:
+
+* NTC 2018 / Circolare per aste compresse e inflesse, usando lo schema di interazione tipo Metodo B gia avviato nel codice;
+* due equazioni da soddisfare:
+  * asse instabilita `y`: termine assiale con `chi_y`, termine `My` con `chiLT`, termine `Mz` senza riduzione LTB;
+  * asse instabilita `z`: termine assiale con `chi_z`, termine `My` con `chiLT`, termine `Mz` senza riduzione LTB;
+* coefficienti di interazione da estendere da `kyy/kzy` a `kyy/kyz/kzy/kzz`;
+* `My,Rk` e `Mz,Rk` scelti con lo stesso criterio gia usato per la resistenza di sezione: plastico per classi 1/2 se disponibile, elastico per classe 3 o fallback;
+* `chiLT` applicato solo al termine `My`, non al termine `Mz`;
+* torsione, instabilita torsionale e flesso-torsionale non sono incluse in questa fase.
+
+Scelte implementative adottate:
+
+* creata una nuova funzione `verifySteelBeamColumnInteractionMyMz` in `SteelBeamColumnInteraction.js`;
+* mantenere `verifySteelBeamColumnInteractionMy` come wrapper o alias compatibile per i test e gli utenti esistenti;
+* aggiunta `calculateSteelMethodBInteractionCoefficientsMyMz` con output completo:
+
+```js
+{
+  kyy,
+  kyz,
+  kzy,
+  kzz,
+  cmy,
+  cmz,
+  cmLT,
+  source
+}
+```
+
+* input configurabili in `stability.beamColumnInteraction`:
+  * `momentFactorY` / `cmy`;
+  * `momentFactorZ` / `cmz`;
+  * `momentFactorLT` / `cmLT`;
+  * `method: "B"` come default;
+  * `allowSinglySymmetric` solo come override esplicito e con warning;
+* aggiungere metadata con i singoli rapporti:
+  * `axialRatioY`, `axialRatioZ`;
+  * `bendingRatioYLT`;
+  * `bendingRatioZ`;
+  * `equationY`, `equationZ`;
+  * `governingEquation`;
+* id check nuovo: `steel-beam-column-interaction-n-my-mz`;
+* durante una transizione, raggruppare il vecchio e il nuovo check evitando duplicati fuorvianti nel report.
+
+Classificazione della sezione:
+
+* MVP prudente: classificare separatamente `N + My` e `N + Mz` quando possibile e usare la classe peggiore;
+* se il classificatore non sa ancora modellare correttamente `N + Mz` per una famiglia, usare la classificazione esistente `N + My` e aggiungere metadata/warning `biaxialClassification: "not-fully-resolved"`;
+* le sezioni di classe 4 restano bloccate finche non esistono proprieta efficaci.
+
+LTB:
+
+* il check autonomo `steel-lateral-torsional-buckling` resta governato da `My`;
+* se `Mz` e presente e l'interazione `N + My + Mz` e disponibile, il check LTB deve indicare nei metadata che `Mz` e trattato nel check di interazione, non nel check LTB isolato;
+* se l'interazione `N + My + Mz` non viene generata, `Mz` significativo deve continuare a produrre warning e stato `not-verified`.
+
+Test minimi:
+
+* caso `alpha = 0`: resta generato il dominio equivalente al vecchio `N + My`, senza regressioni numeriche;
+* caso `alpha != 0`: il check nuovo contiene `Mz`, coefficienti `kyz/kzz`, due equazioni e non emette piu il warning "full N-Mx-My instability is not verified" quando i dati sono sufficienti;
+* caso `Mz` presente ma profilo non supportato o classe 4: warning bloccante;
+* caso LTB disabilitata o trave dichiarata controventata: `chiLT = 1` o fonte metadata chiara;
+* report acciaio: deve mostrare il check `N + My + Mz` e non solo il vecchio `N + My`.
+
+Legno semplice:
+
+* la resistenza di sezione a flessione/taglio biaxiale e coperta in MVP;
+* stabilita laterale/flesso-torsionale completata in MVP per sezioni rettangolari:
+  * input in `stability.lateralTorsionalBuckling` / `stability.ltb`;
+  * default: trave non controventata sull'intera luce FEM;
+  * tratti configurabili con `segments` / `unbracedSegments`;
+  * override disponibili: `unbracedLength`, `kcrit`, `sigmaMcrit`, `e0_05`;
+  * `My` entra con riduzione `kcrit`, `Mz` entra come termine elastico debole nella stessa verifica;
+  * `restrained: true` o `enabled: false` disabilita il check con assunzione esplicita;
+* limiti residui:
+  * formula automatica di `sigma_m,crit` limitata al rettangolo; altre sezioni richiedono `kcrit` o `sigmaMcrit`;
+  * torsione pura, vincoli torsionali avanzati e distribuzione non uniforme del momento restano fuori dall'MVP;
+  * il FEM resta 2D: con `alpha != 0` il warning globale sull'assenza di torsione/DOF fuori piano resta corretto.
+
+Calcestruzzo armato:
+
+* SLU pressoflessione biaxiale e coperta con dominio resistente campionato;
+* SLE tensioni da trave coperto con solver biaxiale `N-Mx-My`;
+* SLE fessurazione: scelta normativa MVP approvata:
+  * usa sempre il momento principale `My` per selezione gruppi intradosso/estradosso e controlli tabellari;
+  * `Mz` e riportato e trascurato con warning, assumendo angoli `alpha` generalmente piccoli e gruppi armatura definiti sul piano principale;
+* taglio debole `vZ`: escluso dal primo dominio applicativo, con warning che dichiara gli effetti trascurati;
+* resta futura una verifica direzionale di taglio debole solo se verranno definiti `bw/d` e armature coerenti anche per l'asse trasversale.
+
+Sezioni a lastra e sistemi collaboranti estesi:
+
+* per XLAM, legno-XLAM, legno-calcestruzzo e casi simili, la componente `Mz` puo essere trascurata nel primo dominio applicativo se e fisicamente una flessione/resistenza nel piano della lastra;
+* il warning deve spiegare che la verifica stringente resta quella della componente fuori piano forte gia coperta dal metodo;
+* il warning deve indicare il valore di `mZ/vZ` trascurato e il motivo fisico;
+* se la configurazione non e una lastra o non sono presenti metadata sufficienti per giustificare la trascurabilita, il risultato deve essere `not-verified`.
+
+Stato implementazione, 2026-04-17:
+
+* XLAM trave, legno-calcestruzzo e legno-XLAM: completato audit MVP;
+* `mZ/vZ` non fanno fallire la verifica quando il sistema e una lastra o contiene una lastra collaborante con rigidezza/resistenza nel piano;
+* i valori `mZ/vZ` sono riportati sia nel risultato della verifica sia nei metadata dei singoli check;
+* warning standard: la componente e trascurata per azione nel piano della lastra, mentre il metodo verifica la componente governante fuori piano `mY/vY`;
+* aggiunti test dedicati con `alpha != 0`/azioni principali ruotate per le tre famiglie.
+
+### F. DTO, report e documentazione
+
+Stato implementazione, 2026-04-17:
+
+* `SingleBeamDesignModel.toJSON` espone `beamInput.sectionRotation` quando dichiarato;
+* `BeamReportDto` valida i campi espliciti per assi ruotati e azioni principali;
+* `BeamReportBuilder` espone:
+  * `analysis.sectionRotation`;
+  * `analysis.principalAxes`;
+  * `analysis.sectionRigidity`;
+  * `analysis.principalActionEnvelopes`;
+  * `governing.ulsMomentY`;
+  * `governing.ulsMomentZ`;
+* il Markdown include sezioni dedicate `Assi principali` e `Azioni principali`;
+* `docs/beam-report-dto.md` documenta il contratto per `alpha`, rigidezze principali e inviluppi `mY/mZ/vY/vZ`;
+* aggiunto test report con `sectionRotation.alpha = 15 deg`.
+
+Aggiornamenti completati:
+
+* `SingleBeamDesignModel.toJSON`;
+* `BeamReportDto`;
+* `BeamReportBuilder`;
+* documentazione `docs/beam-report-dto.md`;
+* documenti metodo per acciaio, legno, c.a., XLAM e composti: coperti dalle note metodo gia presenti; eventuali raffinamenti restano editoriali.
+
+Campi nuovi minimi nel report:
+
+* `model.beamInput.sectionRotation`;
+* `analysis.raw.*.sectionProperties.metadata.principalAxes`;
+* `analysis.sectionRotation`, `analysis.principalAxes`, `analysis.sectionRigidity`;
+* `analysis.principalActionEnvelopes`;
+* tabella rigidezze con `EIY`, `EIZ`, `EI_vertical`;
+* tabella inviluppi con momenti/tagli principali;
+* dettagli verifica con `mY`, `mZ`, `vY`, `vZ`.
+
+### G. Test e validazione
+
+Stato implementazione, 2026-04-17:
+
+* regressioni `alpha = 0` coperte dalla suite esistente;
+* test dedicati per scomposizione `mY/mZ/vY/vZ`, rigidezze verticali equivalenti e warning FEM 2D;
+* test materiali per legno, acciaio, c.a., XLAM e compositi con componenti principali;
+* test DTO/report con `sectionRotation.alpha = 15 deg`;
+* `npm test`: verde;
+* `npm run validation`: verde, 7 casi su 7.
+
+Test di regressione obbligatori:
+
+* `alpha = 0` lascia invariati i risultati esistenti;
+* una trave orizzontale con sezione rettangolare e `alpha = 30 deg` produce:
+  * reazioni verticali uguali al carico verticale totale;
+  * `mY = m * cos(alpha)`;
+  * `mZ = m * sin(alpha)`;
+  * freccia maggiore quando `EIZ < EIY`;
+* una trave inclinata geometricamente mantiene la proiezione orizzontale del carico e in piu scompone le azioni sulla sezione ruotata;
+* provider legno, acciaio, c.a., XLAM e composti espongono metadata coerenti;
+* `BeamSectionActionVerifier` propaga le azioni principali;
+* report JSON/Markdown includono `sectionRotation` e inviluppi principali.
+
+Validazione numerica:
+
+* confronto manuale con formula chiusa di trave appoggiata:
+  * `Mmax = q L^2 / 8`;
+  * `Vmax = q L / 2`;
+  * scomposizione con seno/coseno;
+  * freccia con `EI_vertical`;
+* caso falda con `alpha = 20-35 deg`, sezione rettangolare lignea, carico permanente + neve;
+* caso acciaio IPE ruotato con `mZ` non nullo e warning/interazione documentati;
+* caso c.a. con dominio biaxiale attivato;
+* caso composto con componente debole gestita o bloccata in modo esplicito.
+
+### Sequenza operativa proposta
+
+1. Implementare e testare `SectionMassProperties`.
+2. Aggiungere `sectionRotation` e normalizzazione input, senza cambiare ancora i risultati numerici.
+3. Estendere i provider per restituire rigidezze principali e rigidezza verticale equivalente.
+4. Aggiungere `principalActions` nei risultati FEM e negli inviluppi.
+5. Estendere `BeamSectionActionVerifier`.
+6. Aggiornare verifiche legno e acciaio base.
+7. Aggiornare c.a. sfruttando il solver biaxiale gia presente.
+8. Aggiornare XLAM e composti con check reali dove disponibili e warning bloccanti dove il dominio non e ancora affidabile.
+9. Aggiornare report/DTO/documentazione.
+10. Aggiungere validazione numerica e casi report dedicati.
+
+Criterio di accettazione della feature:
+
+* nessun risultato esistente cambia con `alpha = 0`;
+* con `alpha != 0`, ogni analisi deve dichiarare rigidezze principali, rigidezza verticale equivalente e componenti principali delle azioni;
+* ogni verificatore deve usare `principalActions` oppure dichiarare in modo bloccante perche non puo verificare quella componente;
+* nessuna componente trasversale del carico deve sparire silenziosamente;
+* i report devono rendere visibile la quota forte/debole del carico e la verifica governante corrispondente.
 
 ## Backlog conservato per fasi successive
 

@@ -6,6 +6,8 @@ import {
   PolygonSection,
   RectangularSection,
   TSection,
+  calculateSectionMassProperties,
+  rotateSecondMoments,
 } from "../src/index.js";
 
 const units = { force: "N", length: "mm" };
@@ -66,4 +68,31 @@ test("polygon section computes the same properties as an equivalent rectangle", 
   approx(section.centroidZ, 110);
   approx(section.inertiaY, (220 * 250 ** 3) / 12);
   approx(section.inertiaZ, (250 * 220 ** 3) / 12);
+  approx(section.productOfInertiaYZ, 0);
+});
+
+test("section mass properties resolve principal axes for an unsymmetric polygon", () => {
+  const section = new PolygonSection({
+    points: [
+      { y: 0, z: 0 },
+      { y: 0, z: 200 },
+      { y: 80, z: 160 },
+      { y: 220, z: 60 },
+      { y: 180, z: 0 },
+    ],
+    units,
+  });
+  const properties = calculateSectionMassProperties(section);
+
+  assert.ok(Math.abs(properties.productOfInertiaYZ) > 0);
+  assert.ok(properties.principalInertiaMajor >= properties.principalInertiaMinor);
+
+  const rotated = rotateSecondMoments({
+    inertiaY: properties.inertiaY,
+    inertiaZ: properties.inertiaZ,
+    productOfInertiaYZ: properties.productOfInertiaYZ,
+    alpha: properties.principalAxisAngle,
+  });
+
+  approx(rotated.productOfInertiaYZ, 0, 1e-6);
 });

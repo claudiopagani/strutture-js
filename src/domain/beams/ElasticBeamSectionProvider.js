@@ -1,3 +1,5 @@
+import { applySectionRotationToBeamProperties } from "./SectionRotation.js";
+
 const DEFAULT_PROPERTY_UNITS = Object.freeze({ force: "N", length: "mm" });
 
 function assertPositive(value, label) {
@@ -56,6 +58,10 @@ function normalizeBeamProperties(properties, fallbackUnits, fallbackMetadata = {
     axialRigidity,
     flexuralRigidity,
     shearRigidity: shearRigidity ?? null,
+    flexuralRigidityY: firstFinite(properties.flexuralRigidityY, properties.EIy, properties.EIY),
+    flexuralRigidityZ: firstFinite(properties.flexuralRigidityZ, properties.EIz, properties.EIZ),
+    shearRigidityY: firstFinite(properties.shearRigidityY, properties.GAy, properties.GAY),
+    shearRigidityZ: firstFinite(properties.shearRigidityZ, properties.GAz, properties.GAZ),
     shearCorrectionFactor: properties.shearCorrectionFactor ?? null,
     units: resolveUnits(properties, { units: fallbackUnits }),
     metadata: {
@@ -103,12 +109,77 @@ function resolveShearArea(section, shearAreaAxis) {
   };
 }
 
+function oppositeInertiaAxis(axis) {
+  return axis === "inertiaZ" ? "inertiaY" : "inertiaZ";
+}
+
+function oppositeShearAreaAxis(axis) {
+  return axis === "shearAreaZ" ? "shearAreaY" : "shearAreaZ";
+}
+
 function resolveBendingCoordinate(component, bendingInertiaAxis) {
   if (bendingInertiaAxis === "inertiaZ") {
     return component.centroidZ;
   }
 
   return component.centroidY;
+}
+
+function calculateCompositeFlexuralRigidity(section, material, inertiaAxis) {
+  const pieces = section.components.map((component) => {
+    const componentMaterial = component.material ?? material;
+    const elasticModulus = componentMaterial?.elasticModulus;
+    const area = component.section?.area;
+    const inertia = component.section?.[inertiaAxis];
+    const centroid = resolveBendingCoordinate(component, inertiaAxis);
+
+    if (!Number.isFinite(elasticModulus) || !Number.isFinite(area) || !Number.isFinite(inertia)) {
+      return null;
+    }
+
+    return {
+      elasticModulus,
+      area,
+      inertia,
+      centroid,
+    };
+  });
+
+  if (pieces.some((piece) => piece === null)) {
+    return null;
+  }
+
+  const axialRigidity = pieces.reduce(
+    (sum, piece) => sum + piece.elasticModulus * piece.area,
+    0,
+  );
+  const elasticCentroid =
+    pieces.reduce(
+      (sum, piece) => sum + piece.elasticModulus * piece.area * piece.centroid,
+      0,
+    ) / axialRigidity;
+
+  return pieces.reduce(
+    (sum, piece) =>
+      sum +
+      piece.elasticModulus *
+        (piece.inertia + piece.area * (piece.centroid - elasticCentroid) ** 2),
+    0,
+  );
+}
+
+function calculateCompositeShearRigidity(section, material, shearAreaAxis) {
+  const value = section.components.reduce((sum, component) => {
+    const componentMaterial = component.material ?? material;
+    const shearModulus = resolveShearModulus(componentMaterial);
+    const { shearArea } = resolveShearArea(component.section, shearAreaAxis);
+
+    return Number.isFinite(shearModulus) && Number.isFinite(shearArea)
+      ? sum + shearModulus * shearArea
+      : sum;
+  }, 0);
+
+  return value > 0 ? value : null;
 }
 
 function calculateSimpleSectionProperties({
@@ -118,6 +189,7 @@ function calculateSimpleSectionProperties({
   shearAreaAxis,
   shearCorrectionFactor,
   units,
+  context = {},
 }) {
   const elasticModulus = material?.elasticModulus;
   const area = section?.area;
@@ -136,7 +208,12 @@ function calculateSimpleSectionProperties({
       ? shearModulus * shearArea
       : null;
 
-  return normalizeBeamProperties(
+  const oppositeInertia = section?.[oppositeInertiaAxis(bendingInertiaAxis)];
+  const { shearArea: shearAreaOpposite } = resolveShearArea(
+    section,
+    oppositeShearAreaAxis(shearAreaAxis),
+  );
+  const normalized = normalizeBeamProperties(
     {
       axialRigidity: elasticModulus * area,
       flexuralRigidity: elasticModulus * inertia,
@@ -152,6 +229,25 @@ function calculateSimpleSectionProperties({
     },
     units,
   );
+
+  return applySectionRotationToBeamProperties({
+    properties: normalized,
+    sectionRotation: context.sectionRotation,
+    flexuralRigidityY: elasticModulus * (section?.inertiaY ?? inertia),
+    flexuralRigidityZ: Number.isFinite(section?.inertiaZ)
+      ? elasticModulus * section.inertiaZ
+      : Number.isFinite(oppositeInertia)
+        ? elasticModulus * oppositeInertia
+        : null,
+    shearRigidityY:
+      Number.isFinite(shearModulus) && Number.isFinite(section?.shearAreaY ?? section?.area)
+        ? shearModulus * (section.shearAreaY ?? section.area)
+        : null,
+    shearRigidityZ:
+      Number.isFinite(shearModulus) && Number.isFinite(shearAreaOpposite)
+        ? shearModulus * shearAreaOpposite
+        : null,
+  });
 }
 
 function calculateCompositeSectionProperties({
@@ -161,6 +257,7 @@ function calculateCompositeSectionProperties({
   shearAreaAxis,
   shearCorrectionFactor,
   units,
+  context = {},
 }) {
   const pieces = section.components.map((component) => {
     const componentMaterial = component.material ?? material;
@@ -208,7 +305,11 @@ function calculateCompositeSectionProperties({
     0,
   );
 
-  return normalizeBeamProperties(
+  const flexuralRigidityY = calculateCompositeFlexuralRigidity(section, material, "inertiaY");
+  const flexuralRigidityZ = calculateCompositeFlexuralRigidity(section, material, "inertiaZ");
+  const shearRigidityY = calculateCompositeShearRigidity(section, material, "shearAreaY");
+  const shearRigidityZ = calculateCompositeShearRigidity(section, material, "shearAreaZ");
+  const normalized = normalizeBeamProperties(
     {
       axialRigidity,
       flexuralRigidity,
@@ -223,6 +324,15 @@ function calculateCompositeSectionProperties({
     },
     units,
   );
+
+  return applySectionRotationToBeamProperties({
+    properties: normalized,
+    sectionRotation: context.sectionRotation,
+    flexuralRigidityY,
+    flexuralRigidityZ,
+    shearRigidityY,
+    shearRigidityZ,
+  });
 }
 
 export class ElasticBeamSectionProvider {
@@ -256,16 +366,21 @@ export class ElasticBeamSectionProvider {
     };
 
     if (typeof this.propertyResolver === "function") {
-      return normalizeBeamProperties(
-        this.propertyResolver({
-          section: this.section,
-          material: this.material,
-          provider: this,
-          context,
-        }),
-        fallbackUnits,
-        fallbackMetadata,
-      );
+      const normalized = normalizeBeamProperties(
+          this.propertyResolver({
+            section: this.section,
+            material: this.material,
+            provider: this,
+            context,
+          }),
+          fallbackUnits,
+          fallbackMetadata,
+        );
+
+      return applySectionRotationToBeamProperties({
+        properties: normalized,
+        sectionRotation: context.sectionRotation,
+      });
     }
 
     for (const methodName of [
@@ -275,7 +390,7 @@ export class ElasticBeamSectionProvider {
       const method = this.source?.[methodName];
 
       if (typeof method === "function") {
-        return normalizeBeamProperties(
+        const normalized = normalizeBeamProperties(
           method.call(this.source, {
             section: this.section,
             material: this.material,
@@ -287,6 +402,11 @@ export class ElasticBeamSectionProvider {
           fallbackUnits,
           fallbackMetadata,
         );
+
+        return applySectionRotationToBeamProperties({
+          properties: normalized,
+          sectionRotation: context.sectionRotation,
+        });
       }
     }
 
@@ -302,6 +422,7 @@ export class ElasticBeamSectionProvider {
         shearAreaAxis: this.shearAreaAxis,
         shearCorrectionFactor: this.shearCorrectionFactor,
         units: fallbackUnits,
+        context,
       });
     }
 
@@ -316,6 +437,7 @@ export class ElasticBeamSectionProvider {
       shearAreaAxis: this.shearAreaAxis,
       shearCorrectionFactor: this.shearCorrectionFactor,
       units: fallbackUnits,
+      context,
     });
   }
 }

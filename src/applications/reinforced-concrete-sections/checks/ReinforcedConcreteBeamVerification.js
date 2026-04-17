@@ -23,8 +23,50 @@ function governingCheck(checks) {
   }, null);
 }
 
+function hasSignificantAction(value, reference = 0, tolerance = 1e-9) {
+  return Number.isFinite(value) &&
+    Math.abs(value) > Math.max(tolerance, Math.abs(reference) * tolerance);
+}
+
 function compressedEdgeForMoment(mEd) {
   return mEd >= 0 ? "top" : "bottom";
+}
+
+function momentVectorCapacityFromDomain(points, mxEd, myEd) {
+  const demandNorm = Math.sqrt(mxEd ** 2 + myEd ** 2);
+
+  if (demandNorm <= 1e-9) {
+    return {
+      demandNorm: 0,
+      capacityNorm: Infinity,
+      utilizationRatio: 0,
+      governingPoint: null,
+    };
+  }
+
+  const ux = mxEd / demandNorm;
+  const uy = myEd / demandNorm;
+  const candidates = points
+    .map((point) => ({
+      point,
+      projection: point.MxRd * ux + point.MyRd * uy,
+    }))
+    .filter((candidate) => Number.isFinite(candidate.projection) && candidate.projection > 0);
+  const selected = candidates.reduce(
+    (best, candidate) =>
+      !best || candidate.projection > best.projection ? candidate : best,
+    null,
+  );
+
+  return {
+    demandNorm,
+    capacityNorm: selected?.projection ?? null,
+    utilizationRatio:
+      selected?.projection && selected.projection > 0
+        ? demandNorm / selected.projection
+        : Infinity,
+    governingPoint: selected?.point ?? null,
+  };
 }
 
 function createRcActionVerifier({
@@ -43,10 +85,22 @@ function createRcActionVerifier({
     : null;
 
   return {
-    verifySectionActions({ nEd, vEd, mEd, context }) {
+    verifySectionActions({ nEd, vEd, mEd, principalActions, context }) {
       const convertedNEd = resultToSectionUnits.force(nEd ?? 0);
-      const convertedVEd = resultToSectionUnits.force(vEd ?? 0);
-      const convertedMEd = resultToSectionUnits.moment(mEd ?? 0);
+      const convertedVEd = resultToSectionUnits.force(
+        principalActions?.vY ?? vEd ?? 0,
+      );
+      const convertedVZEd = resultToSectionUnits.force(
+        principalActions?.vZ ?? 0,
+      );
+      const convertedMEd = resultToSectionUnits.moment(
+        principalActions?.mY ?? mEd ?? 0,
+      );
+      const convertedMZEd = resultToSectionUnits.moment(
+        principalActions?.mZ ?? 0,
+      );
+      const isBiaxial = Math.abs(convertedMZEd) > Math.max(1e-9, Math.abs(convertedMEd) * 1e-9);
+      const hasWeakAxisShear = hasSignificantAction(convertedVZEd, convertedVEd);
       const model = new ReinforcedConcreteSectionModel({
         id: `${context.resultId ?? "beam"}-${Math.round((context.station ?? 0) * 1000)}`,
         section,
@@ -54,15 +108,18 @@ function createRcActionVerifier({
           concreteMaterial,
           reinforcementMaterial,
         },
-        analysisType: "uls-uniaxial-resistance",
+        analysisType: isBiaxial ? "uls-biaxial-domain" : "uls-uniaxial-resistance",
         analysisSettings: {
           compressedEdge: compressedEdgeForMoment(convertedMEd),
+          angleCount: context.biaxialAngleCount ?? 48,
         },
         mesh,
         solver,
         actions: {
           nEd: convertedNEd,
           mEd: convertedMEd,
+          mxEd: convertedMEd,
+          myEd: convertedMZEd,
         },
         units: DEFAULT_SECTION_UNITS,
         metadata: {
@@ -71,14 +128,40 @@ function createRcActionVerifier({
         },
       });
       const result = sectionVerification.verify(model);
-      const bendingChecks = result.checks.map((check) => ({
-        ...check,
-        id: `rc-${check.id}`,
-        metadata: {
-          compressedEdge: model.analysisSettings.compressedEdge,
-          ...check.metadata,
-        },
-      }));
+      const bendingChecks = isBiaxial
+        ? (() => {
+            const capacity = momentVectorCapacityFromDomain(
+              result.outputs?.points ?? [],
+              convertedMEd,
+              convertedMZEd,
+            );
+
+            return [
+              {
+                id: "rc-uls-biaxial-bending",
+                description: "Biaxial bending resistance at assigned axial force",
+                demand: capacity.demandNorm,
+                capacity: capacity.capacityNorm,
+                utilizationRatio: capacity.utilizationRatio,
+                ok: capacity.utilizationRatio <= 1,
+                metadata: {
+                  method: "sampled-biaxial-domain-projection",
+                  mxEd: convertedMEd,
+                  myEd: convertedMZEd,
+                  angleCount: model.analysisSettings.angleCount,
+                  governingPoint: capacity.governingPoint,
+                },
+              },
+            ];
+          })()
+        : result.checks.map((check) => ({
+            ...check,
+            id: `rc-${check.id}`,
+            metadata: {
+              compressedEdge: model.analysisSettings.compressedEdge,
+              ...check.metadata,
+            },
+          }));
       const shearResult = shearVerification?.verifySectionActions({
         nEd: convertedNEd,
         vEd: convertedVEd,
@@ -103,7 +186,10 @@ function createRcActionVerifier({
       ];
 
       return {
-        status: statuses.every((status) => status === "ok") ? "ok" : "not-verified",
+        status:
+          statuses.every((status) => status === "ok")
+            ? "ok"
+            : "not-verified",
         utilizationRatio: governing?.utilizationRatio ?? result.utilizationRatio,
         demand: governing?.demand ?? result.demand,
         capacity: governing?.capacity ?? result.capacity,
@@ -111,6 +197,11 @@ function createRcActionVerifier({
         warnings: [
           ...result.warnings,
           ...(shearResult?.warnings ?? []),
+          ...(hasWeakAxisShear
+            ? [
+                "RC shear verification uses the principal vY component; vZ from section rotation is reported and its effects are neglected in this MVP.",
+              ]
+            : []),
         ],
         assumptions: [
           ...result.assumptions,
@@ -123,6 +214,11 @@ function createRcActionVerifier({
             "rc-uls-uniaxial-bending",
           compressedEdge: model.analysisSettings.compressedEdge,
           sectionResult: result.toJSON(),
+          biaxial: isBiaxial,
+          vYEd: convertedVEd,
+          vZEd: convertedVZEd,
+          weakAxisShearVerified: !hasWeakAxisShear,
+          weakAxisShearNeglected: hasWeakAxisShear,
           shearResult: shearResult
             ? {
                 status: shearResult.status,
@@ -157,13 +253,20 @@ function createRcServiceabilityActionVerifier({
   });
 
   return {
-    verifySectionActions({ nEd, mEd, context }) {
+    verifySectionActions({ nEd, mEd, principalActions, context }) {
       const convertedNEd = resultToSectionUnits.force(nEd ?? 0);
-      const convertedMEd = resultToSectionUnits.moment(mEd ?? 0);
-
-      return serviceabilityVerification.verifySectionActions({
+      const convertedMEd = resultToSectionUnits.moment(
+        principalActions?.mY ?? mEd ?? 0,
+      );
+      const convertedMZEd = resultToSectionUnits.moment(
+        principalActions?.mZ ?? 0,
+      );
+      const hasWeakAxisMoment = hasSignificantAction(convertedMZEd, convertedMEd);
+      const result = serviceabilityVerification.verifySectionActions({
         nEd: convertedNEd,
         mEd: convertedMEd,
+        mxEd: -convertedMEd,
+        myEd: convertedMZEd,
         context: {
           ...context,
           section,
@@ -174,6 +277,25 @@ function createRcServiceabilityActionVerifier({
           solver,
         },
       });
+
+      return {
+        ...result,
+        warnings: [
+          ...(result.warnings ?? []),
+          ...(hasWeakAxisMoment
+            ? [
+                "RC SLE stress verification includes mZ from section rotation; indirect crack control uses only the primary mY component and neglects mZ effects.",
+              ]
+            : []),
+        ],
+        metadata: {
+          ...(result.metadata ?? {}),
+          mYEd: convertedMEd,
+          mZEd: convertedMZEd,
+          weakAxisServiceStressVerified: hasWeakAxisMoment,
+          weakAxisMomentNeglectedInCrackControl: hasWeakAxisMoment,
+        },
+      };
     },
   };
 }
@@ -418,7 +540,7 @@ export class ReinforcedConcreteBeamVerification {
       ],
       assumptions: [
         ...actionVerification.assumptions,
-        "Each FEM station is checked as an independent uniaxial RC section at the corresponding N-M pair.",
+        "Each FEM station is checked as an independent RC section; ULS bending and SLE stress checks use biaxial actions when present, while crack control remains based on the primary bending plane.",
       ],
       metadata: {
         code: this.code,

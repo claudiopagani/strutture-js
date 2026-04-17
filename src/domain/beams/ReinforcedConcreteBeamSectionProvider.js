@@ -1,3 +1,5 @@
+import { applySectionRotationToBeamProperties } from "./SectionRotation.js";
+
 const DEFAULT_UNITS = Object.freeze({ force: "N", length: "mm" });
 
 function assertPositive(value, label) {
@@ -78,10 +80,24 @@ export class ReinforcedConcreteBeamSectionProvider {
         area: this.section.concreteSection?.area ?? this.section.area,
         inertia: this.section.concreteSection?.[this.bendingInertiaAxis] ??
           this.section[this.bendingInertiaAxis],
+        inertiaY:
+          this.section.concreteSection?.inertiaY ?? this.section.inertiaY,
+        inertiaZ:
+          this.section.concreteSection?.inertiaZ ?? this.section.inertiaZ,
         shearArea:
           this.section.concreteSection?.[this.shearAreaAxis] ??
           this.section.concreteSection?.area ??
           this.section[this.shearAreaAxis] ??
+          this.section.area,
+        shearAreaY:
+          this.section.concreteSection?.shearAreaY ??
+          this.section.concreteSection?.area ??
+          this.section.shearAreaY ??
+          this.section.area,
+        shearAreaZ:
+          this.section.concreteSection?.shearAreaZ ??
+          this.section.concreteSection?.area ??
+          this.section.shearAreaZ ??
           this.section.area,
         source: "concrete-gross-section",
       };
@@ -94,10 +110,22 @@ export class ReinforcedConcreteBeamSectionProvider {
         state: "transformed",
         area: transformed.area,
         inertia: transformed[this.bendingInertiaAxis],
+        inertiaY: transformed.inertiaY,
+        inertiaZ: transformed.inertiaZ,
         shearArea:
           this.section.concreteSection?.[this.shearAreaAxis] ??
           this.section.concreteSection?.area ??
           transformed[this.shearAreaAxis] ??
+          transformed.area,
+        shearAreaY:
+          this.section.concreteSection?.shearAreaY ??
+          this.section.concreteSection?.area ??
+          transformed.shearAreaY ??
+          transformed.area,
+        shearAreaZ:
+          this.section.concreteSection?.shearAreaZ ??
+          this.section.concreteSection?.area ??
+          transformed.shearAreaZ ??
           transformed.area,
         source: "uncracked-transformed-section",
       };
@@ -119,7 +147,7 @@ export class ReinforcedConcreteBeamSectionProvider {
     assertPositive(resolved.inertia, `RC section ${this.bendingInertiaAxis}`);
     assertPositive(resolved.shearArea, `RC section ${this.shearAreaAxis} or area`);
 
-    return {
+    const properties = {
       axialRigidity: elasticModulus * resolved.area,
       flexuralRigidity: elasticModulus * resolved.inertia,
       shearRigidity:
@@ -146,6 +174,27 @@ export class ReinforcedConcreteBeamSectionProvider {
         cracked: false,
       },
     };
+
+    return applySectionRotationToBeamProperties({
+      properties,
+      sectionRotation: context.sectionRotation,
+      flexuralRigidityY:
+        Number.isFinite(resolved.inertiaY)
+          ? elasticModulus * resolved.inertiaY
+          : properties.flexuralRigidity,
+      flexuralRigidityZ:
+        Number.isFinite(resolved.inertiaZ)
+          ? elasticModulus * resolved.inertiaZ
+          : null,
+      shearRigidityY:
+        Number.isFinite(shearModulus) && Number.isFinite(resolved.shearAreaY)
+          ? shearModulus * resolved.shearAreaY
+          : null,
+      shearRigidityZ:
+        Number.isFinite(shearModulus) && Number.isFinite(resolved.shearAreaZ)
+          ? shearModulus * resolved.shearAreaZ
+          : null,
+    });
   }
 }
 

@@ -57,6 +57,14 @@ function resultEntries(resultMap = {}) {
   return Object.values(resultMap ?? {});
 }
 
+function firstAnalysisResult(analysisResult) {
+  return (
+    resultEntries(analysisResult.combinations)[0] ??
+    resultEntries(analysisResult.loadCases)[0] ??
+    null
+  );
+}
+
 function formatNumber(value, decimals = 4) {
   if (!Number.isFinite(value)) {
     return value == null ? "-" : String(value);
@@ -99,11 +107,15 @@ function markdownTable(headers, rows) {
 
 function summarizeResult(result) {
   const maxMoment = result.internalForces?.maxAbsBendingMoment;
+  const maxMomentY = result.internalForces?.maxAbsBendingMomentY;
+  const maxMomentZ = result.internalForces?.maxAbsBendingMomentZ;
   const maxShear = [result.internalForces?.maxShearForce, result.internalForces?.minShearForce]
     .filter(Boolean)
     .reduce((selected, sample) =>
       !selected || Math.abs(sample.v) > Math.abs(selected.v) ? sample : selected,
     null);
+  const maxShearY = result.internalForces?.maxAbsShearForceY;
+  const maxShearZ = result.internalForces?.maxAbsShearForceZ;
   const maxDeflection = result.displacements?.maxAbsVerticalDisplacement;
 
   return {
@@ -117,10 +129,34 @@ function summarizeResult(result) {
           station: maxMoment.station,
         }
       : null,
+    maxAbsBendingMomentY: maxMomentY
+      ? {
+          value: maxMomentY.mY,
+          station: maxMomentY.station,
+        }
+      : null,
+    maxAbsBendingMomentZ: maxMomentZ
+      ? {
+          value: maxMomentZ.mZ,
+          station: maxMomentZ.station,
+        }
+      : null,
     maxAbsShearForce: maxShear
       ? {
           value: maxShear.v,
           station: maxShear.station,
+        }
+      : null,
+    maxAbsShearForceY: maxShearY
+      ? {
+          value: maxShearY.vY,
+          station: maxShearY.station,
+        }
+      : null,
+    maxAbsShearForceZ: maxShearZ
+      ? {
+          value: maxShearZ.vZ,
+          station: maxShearZ.station,
         }
       : null,
     maxAbsVerticalDisplacement: maxDeflection
@@ -142,10 +178,101 @@ function stiffnessRow(result) {
     result.context?.combinationType ?? "-",
     formatNumber(result.sectionProperties?.axialRigidity),
     formatNumber(result.sectionProperties?.flexuralRigidity),
+    formatNumber(result.sectionProperties?.flexuralRigidityY),
+    formatNumber(result.sectionProperties?.flexuralRigidityZ),
     formatNumber(result.sectionProperties?.shearRigidity),
+    formatNumber(result.sectionProperties?.shearRigidityY),
+    formatNumber(result.sectionProperties?.shearRigidityZ),
     metadata.kmod ?? metadata.gamma ?? metadata.gamma1 ?? "-",
     metadata.kdef ?? metadata.finalStiffness ?? "-",
   ];
+}
+
+function sectionRotationDto(analysisResult, model) {
+  const reference = firstAnalysisResult(analysisResult);
+  const metadata = reference?.sectionProperties?.metadata ?? {};
+
+  return toPlain(
+    reference?.context?.sectionRotation ??
+      reference?.sectionRotation ??
+      metadata.sectionRotation ??
+      model?.beamInput?.sectionRotation ??
+      {},
+  );
+}
+
+function principalAxesDto(analysisResult) {
+  const reference = firstAnalysisResult(analysisResult);
+  const metadata = reference?.sectionProperties?.metadata ?? {};
+  const rotation =
+    metadata.principalAxes ??
+    metadata.sectionRotation ??
+    reference?.context?.sectionRotation ??
+    reference?.sectionRotation ??
+    {};
+
+  return toPlain(rotation);
+}
+
+function sectionRigidityDto(analysisResult) {
+  const reference = firstAnalysisResult(analysisResult);
+  const properties = reference?.sectionProperties ?? {};
+  const metadata = properties.metadata ?? {};
+
+  return toPlain({
+    sourceResultId: reference?.id ?? null,
+    axialRigidity: properties.axialRigidity ?? null,
+    flexuralRigidity: properties.flexuralRigidity ?? null,
+    flexuralRigidityY:
+      properties.flexuralRigidityY ?? metadata.flexuralRigidityY ?? null,
+    flexuralRigidityZ:
+      properties.flexuralRigidityZ ?? metadata.flexuralRigidityZ ?? null,
+    shearRigidity: properties.shearRigidity ?? null,
+    shearRigidityY:
+      properties.shearRigidityY ?? metadata.shearRigidityY ?? null,
+    shearRigidityZ:
+      properties.shearRigidityZ ?? metadata.shearRigidityZ ?? null,
+    verticalFlexuralRigiditySource:
+      metadata.verticalFlexuralRigiditySource ?? null,
+    verticalShearRigiditySource:
+      metadata.verticalShearRigiditySource ?? null,
+  });
+}
+
+function envelopeSummaryItem(item) {
+  if (!item) {
+    return null;
+  }
+
+  return {
+    resultId: item.resultId ?? null,
+    resultType: item.resultType ?? null,
+    limitState: item.limitState ?? null,
+    combinationType: item.combinationType ?? null,
+    quantity: item.quantity ?? null,
+    value: item.value ?? null,
+    station: item.sample?.station ?? null,
+    sample: toPlain(item.sample ?? null),
+  };
+}
+
+function principalEnvelopeGroup(envelope = {}) {
+  return {
+    maxAbsBendingMomentY: envelopeSummaryItem(envelope.maxAbsBendingMomentY),
+    maxAbsBendingMomentZ: envelopeSummaryItem(envelope.maxAbsBendingMomentZ),
+    maxAbsShearForceY: envelopeSummaryItem(envelope.maxAbsShearForceY),
+    maxAbsShearForceZ: envelopeSummaryItem(envelope.maxAbsShearForceZ),
+  };
+}
+
+function principalActionEnvelopeDto(envelopes = {}) {
+  return {
+    all: principalEnvelopeGroup(envelopes.all ?? {}),
+    loadCases: principalEnvelopeGroup(envelopes.loadCases ?? {}),
+    combinations: principalEnvelopeGroup(envelopes.combinations ?? {}),
+    uls: principalEnvelopeGroup(envelopes.uls ?? {}),
+    sle: principalEnvelopeGroup(envelopes.sle ?? {}),
+  };
 }
 
 function combinationRows(analysisResult) {
@@ -209,6 +336,66 @@ function reactionEnvelopeRow(label, item) {
     formatNumber(item.value),
     formatNumber(item.sample?.station),
   ];
+}
+
+function sectionRotationRows(report) {
+  const rotation = report.analysis?.sectionRotation ?? {};
+  const axes = report.analysis?.principalAxes ?? {};
+  const rigidity = report.analysis?.sectionRigidity ?? {};
+
+  return [
+    ["Alpha", formatNumber(rotation.alpha), "rad"],
+    [
+      "Alpha input",
+      rotation.inputAlpha == null
+        ? "-"
+        : `${formatNumber(rotation.inputAlpha)} ${rotation.inputUnits ?? rotation.units ?? ""}`.trim(),
+      "-",
+    ],
+    ["Convenzione", rotation.convention ?? axes.convention ?? "-", "-"],
+    ["Asse principale", rotation.primaryAxis ?? axes.primaryAxis ?? "-", "-"],
+    [
+      "Fonte EI verticale",
+      rigidity.verticalFlexuralRigiditySource ?? "-",
+      "-",
+    ],
+    [
+      "Fonte GA verticale",
+      rigidity.verticalShearRigiditySource ?? "-",
+      "-",
+    ],
+  ];
+}
+
+function principalActionEnvelopeRows(report) {
+  const envelopes = report.analysis?.principalActionEnvelopes ?? {};
+  const scopes = [
+    ["Tutti", envelopes.all],
+    ["Combinazioni", envelopes.combinations],
+    ["SLU", envelopes.uls],
+    ["SLE", envelopes.sle],
+  ];
+  const quantities = [
+    ["MY max assoluto", "maxAbsBendingMomentY"],
+    ["MZ max assoluto", "maxAbsBendingMomentZ"],
+    ["VY max assoluto", "maxAbsShearForceY"],
+    ["VZ max assoluto", "maxAbsShearForceZ"],
+  ];
+
+  return scopes.flatMap(([scope, group]) =>
+    quantities.map(([label, key]) => {
+      const item = group?.[key];
+
+      return [
+        scope,
+        label,
+        item?.resultId ?? "-",
+        item?.limitState ?? "-",
+        formatNumber(item?.value),
+        formatNumber(item?.station),
+      ];
+    }),
+  );
 }
 
 function verificationRows(verificationResult) {
@@ -357,6 +544,12 @@ export class BeamReportBuilder {
       verification ? [] : ["No structural verification result was provided."],
     );
     const assumptions = collectAssumptions(analysisResult, verification);
+    const sectionRotation = sectionRotationDto(analysisResult, model);
+    const principalAxes = principalAxesDto(analysisResult);
+    const sectionRigidity = sectionRigidityDto(analysisResult);
+    const principalActionEnvelopes = principalActionEnvelopeDto(
+      analysisResult.envelopes,
+    );
 
     return {
       schemaVersion: this.schemaVersion,
@@ -375,6 +568,10 @@ export class BeamReportBuilder {
         loadCases: loadCaseSummaries,
         combinations: combinationSummaries,
         envelopes: toPlain(analysisResult.envelopes),
+        sectionRotation,
+        principalAxes,
+        sectionRigidity,
+        principalActionEnvelopes,
         raw: toPlain(analysisResult),
       },
       verification,
@@ -383,6 +580,12 @@ export class BeamReportBuilder {
         utilizationRatio: verification?.utilizationRatio ?? null,
         checkId: verification?.metadata?.governingCheckId ?? governingCheck?.id ?? null,
         ulsMoment: toPlain(analysisResult.envelopes?.uls?.maxAbsBendingMoment),
+        ulsMomentY: toPlain(
+          analysisResult.envelopes?.uls?.maxAbsBendingMomentY,
+        ),
+        ulsMomentZ: toPlain(
+          analysisResult.envelopes?.uls?.maxAbsBendingMomentZ,
+        ),
         sleDeflection: toPlain(
           analysisResult.envelopes?.sle?.maxAbsVerticalDisplacement,
         ),
@@ -430,6 +633,13 @@ export class BeamReportBuilder {
       `* Lunghezza: ${formatNumber(geometry?.length)} ${report.units?.length ?? ""}`.trim(),
       `* Luce orizzontale: ${formatNumber(geometry?.horizontalSpan)} ${report.units?.length ?? ""}`.trim(),
       "",
+      "## Assi principali",
+      "",
+      markdownTable(
+        ["Parametro", "Valore", "Unita"],
+        sectionRotationRows(report),
+      ),
+      "",
       "## Vincoli",
       "",
       markdownTable(
@@ -462,7 +672,7 @@ export class BeamReportBuilder {
       "## Rigidezze adottate",
       "",
       markdownTable(
-        ["ID", "SL", "Tipo", "EA", "EI", "GA", "k/gamma", "finale/kdef"],
+        ["ID", "SL", "Tipo", "EA", "EI vert.", "EI Y", "EI Z", "GA vert.", "GA Y", "GA Z", "k/gamma", "finale/kdef"],
         stiffnessRows,
       ),
       "",
@@ -472,10 +682,21 @@ export class BeamReportBuilder {
         ["Grandezza", "Risultato", "SL", "Valore", "Stazione"],
         [
           envelopeRow("M max assoluto", ulsEnvelope.maxAbsBendingMoment),
+          envelopeRow("MY max assoluto", ulsEnvelope.maxAbsBendingMomentY),
+          envelopeRow("MZ max assoluto", ulsEnvelope.maxAbsBendingMomentZ),
           envelopeRow("V max", ulsEnvelope.maxShearForce),
           envelopeRow("V min", ulsEnvelope.minShearForce),
+          envelopeRow("VY max assoluto", ulsEnvelope.maxAbsShearForceY),
+          envelopeRow("VZ max assoluto", ulsEnvelope.maxAbsShearForceZ),
           envelopeRow("Freccia SLE max assoluta", sleEnvelope.maxAbsVerticalDisplacement),
         ],
+      ),
+      "",
+      "## Azioni principali",
+      "",
+      markdownTable(
+        ["Dominio", "Grandezza", "Risultato", "SL", "Valore", "Stazione"],
+        principalActionEnvelopeRows(report),
       ),
       "",
       "## Reazioni governanti",

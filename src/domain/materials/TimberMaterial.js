@@ -13,6 +13,8 @@ export class TimberMaterial extends BaseMaterial {
     fc0K = null,
     ft0K = null,
     fvK = null,
+    e0_05 = null,
+    g0_05 = null,
     units = null,
     ...baseProps
   }) {
@@ -35,6 +37,8 @@ export class TimberMaterial extends BaseMaterial {
     this.fc0K = unitResolver.stress(fc0K);
     this.ft0K = unitResolver.stress(ft0K);
     this.fvK = unitResolver.stress(fvK);
+    this.e0_05 = unitResolver.stress(e0_05);
+    this.g0_05 = unitResolver.stress(g0_05);
   }
 
   toJSON() {
@@ -50,6 +54,8 @@ export class TimberMaterial extends BaseMaterial {
       fc0K: this.fc0K,
       ft0K: this.ft0K,
       fvK: this.fvK,
+      e0_05: this.e0_05,
+      g0_05: this.g0_05,
     };
   }
 }

@@ -58,6 +58,14 @@ export function validateBeamReportDto(report) {
     requireObject(report.analysis.loadCases, "analysis.loadCases", errors);
     requireObject(report.analysis.combinations, "analysis.combinations", errors);
     requireObject(report.analysis.envelopes, "analysis.envelopes", errors);
+    requireObject(report.analysis.sectionRotation, "analysis.sectionRotation", errors);
+    requireObject(report.analysis.principalAxes, "analysis.principalAxes", errors);
+    requireObject(report.analysis.sectionRigidity, "analysis.sectionRigidity", errors);
+    requireObject(
+      report.analysis.principalActionEnvelopes,
+      "analysis.principalActionEnvelopes",
+      errors,
+    );
     requireObject(report.analysis.raw, "analysis.raw", errors);
   }
 

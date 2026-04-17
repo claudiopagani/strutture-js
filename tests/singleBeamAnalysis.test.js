@@ -113,6 +113,50 @@ test("vertical loads on an inclined beam use horizontal projection by default", 
   approx(loadCase.reactionByNode["beam-beam-node-6"].uy, 15, 1e-8);
 });
 
+test("section rotation projects vertical bending on principal section axes", () => {
+  const alpha = Math.PI / 6;
+  const result = new SingleBeamAnalysis().analyze(
+    createSimpleBeamInput({
+      sectionRotation: {
+        alpha: 30,
+        units: "deg",
+      },
+      discretization: {
+        elementCount: 4,
+      },
+    }),
+  );
+  const loadCase = result.loadCases.G1;
+  const midspan = loadCase.internalForces.samples.find(
+    (sample) => sample.station === 2,
+  );
+  const eiY = 14000;
+  const eiZ = 3500;
+  const eiVertical =
+    1 / (Math.cos(alpha) ** 2 / eiY + Math.sin(alpha) ** 2 / eiZ);
+  const midspanDisplacement = loadCase.displacements.samples.find(
+    (sample) => sample.station === 2,
+  );
+
+  approx(loadCase.reactionByNode["beam-beam-node-1"].uy, 4);
+  approx(loadCase.reactionByNode["beam-beam-node-5"].uy, 4);
+  approx(loadCase.sectionProperties.flexuralRigidityY, eiY);
+  approx(loadCase.sectionProperties.flexuralRigidityZ, eiZ);
+  approx(loadCase.sectionProperties.flexuralRigidity, eiVertical);
+  approx(midspan.m, 4);
+  approx(midspan.mY, 4 * Math.cos(alpha));
+  approx(midspan.mZ, 4 * Math.sin(alpha));
+  approx(midspanDisplacement.uy, (-5 * 2 * 4 ** 4) / (384 * eiVertical));
+  assert.ok(
+    result.warnings.some((warning) => warning.includes("2D FEM model")),
+  );
+  assert.ok(
+    loadCase.warnings.some((warning) => warning.includes("2D FEM model")),
+  );
+  approx(result.envelopes.loadCases.maxAbsBendingMomentY.value, 4 * Math.cos(alpha));
+  approx(result.envelopes.loadCases.maxAbsBendingMomentZ.value, 4 * Math.sin(alpha));
+});
+
 test("single beam analysis combines G1, G2 and multiple Qk load cases", () => {
   const result = new SingleBeamAnalysis().analyze(
     createSimpleBeamInput({
