@@ -1,274 +1,1200 @@
 # Classi strutturali
 
-Base code OOP in JavaScript per costruire una codebase condivisa dedicata al calcolo strutturale.
+Base OOP in JavaScript per costruire una codebase condivisa dedicata al calcolo strutturale.
 
-## Obiettivi
+Il progetto oggi non e piu solo una raccolta di classi: contiene un dominio riusabile, un layer unita esplicito, primitive FEM 2D, verifiche di sezione/trave e un registro di applicazioni verticali. Alcuni moduli sono gia implementati, altri sono parziali, altri sono scaffold intenzionali da completare.
 
-- organizzare il dominio strutturale in classi riusabili;
-- separare materiali, geometria, elementi, vincoli e carichi;
-- introdurre un livello architetturale stabile per ospitare applicazioni verticali di calcolo e verifica;
-- distinguere materiali nuovi e materiali esistenti;
-- includere un modello estendibile per la muratura esistente con coefficienti correttivi e di miglioramento in ottica NTC 2018;
-- preparare una base solida per futuri moduli di analisi, verifiche e normativa.
+## Stato attuale
+
+La suite automatica copre il comportamento numerico principale e i contratti applicativi:
+
+```bash
+npm test
+```
+
+Stato corrente dei moduli applicativi:
+
+| Modulo | Stato | Cosa fa oggi |
+| --- | --- | --- |
+| `single-beam-design` | MVP | Analisi FEM 2D di trave semplice, verifica opzionale e report JSON/Markdown. |
+| `steel-frames` | Parziale | Verifiche di aste in acciaio da risultati FEM gia disponibili; non e ancora un solver globale di telai. |
+| `masonry-ring-beams` | Scaffold | Modello e placeholder per cerchiature in muratura. |
+| `reinforced-concrete-sections` | Implementato | Analisi SLU/SLE di sezioni in c.a. a fibre. |
+| `timber-beams` | Parziale | Verifiche di travi in legno da risultati FEM gia disponibili. |
+| `timber-concrete-composite-beams` | Implementato | Verifica gamma-method di travi legno-calcestruzzo con connettori. |
+| `timber-xlam-composite-beams` | Implementato | Verifica gamma-method di travi lignee collaboranti con pannelli XLAM. |
+| `xlam-panels-out-of-plane` | Implementato | Verifica fuori piano di pannelli XLAM/CLT come strip 1D. |
+| `rc-cracked-deflection` | Parziale | Integrazione delle curvature fessurate su risultati FEM SLE. |
+| `masonry-out-of-plane` | Scaffold | Modello e placeholder per cinematismi fuori piano. |
+| `micropiles-broms` | Scaffold | Modello e placeholder per analisi Broms dei micropali. |
 
 ## Struttura
 
-- `src/core`: contratti comuni per applicazioni, codici normativi e risultati di calcolo/verifica;
-- `src/applications`: moduli verticali per singole applicazioni strutturali;
-- `src/config`: cataloghi e manifesti ad alto livello del package;
-- `src/domain/materials`: materiali generici, nuovi ed esistenti;
-- `src/domain/geometry`: nodi e sezioni, incluse geometrie parametriche e poligonali;
-- `src/domain/composite`: componenti e sezioni composte omogeneizzate;
-- `src/domain/catalogs`: registri e cataloghi estendibili per elementi e prodotti;
-- `src/domain/reinforcement`: armature discrete riusabili nelle sezioni;
-- `src/domain/connectors`: connettori meccanici e cataloghi produttore;
-- `src/domain/elements`: elementi strutturali, travi e sistemi di travi;
-- `src/domain/actions`: gerarchia delle azioni normative con durata del carico, coefficienti `psi` e coefficienti parziali;
-- `src/domain/slabs`: carichi di solaio, aggregatore immutabile e analisi SLU/SLE;
-- `src/domain/supports`: vincoli;
-- `src/domain/loads`: gerarchia astratta dei carichi per punto, linea, area e volume, con specializzazioni per nodi ed elementi;
-- `src/domain/analysis`: casi di carico e combinazioni astratte/specializzate;
-- `src/domain/model`: aggregatore del modello strutturale;
-- `src/norms/ntc2018`: preset normativi e factory dedicate a materiali e combinazioni.
+- `src/core`: contratti comuni per applicazioni, codici normativi e risultati di calcolo/verifica.
+- `src/applications`: moduli verticali con entrypoint, modelli, analisi/verifiche e manifest.
+- `src/config`: cataloghi e manifesti ad alto livello del package.
+- `src/domain/materials`: materiali generici, nuovi ed esistenti.
+- `src/domain/geometry`: nodi, sezioni parametriche, sezioni poligonali, profili acciaio e pannelli XLAM.
+- `src/domain/composite`: componenti e sezioni composte omogeneizzate.
+- `src/domain/reinforcement`: armature discrete riusabili nelle sezioni.
+- `src/domain/connectors`: connettori meccanici e cataloghi produttore.
+- `src/domain/beams`: provider di rigidezza, analisi trave singola, inviluppi e adattatori di verifica.
+- `src/domain/fem`: solutore FEM lineare 2D per telai/travi.
+- `src/domain/actions`, `src/domain/analysis`, `src/domain/loads`: azioni, casi, combinazioni e carichi.
+- `src/domain/slabs`: carichi di solaio e analisi SLU/SLE.
+- `src/norms/ntc2018`: preset, cataloghi e factory normative NTC 2018.
 
-## Architettura per applicazioni
+## Contratti Comuni
 
-La codebase ora e predisposta per crescere su due livelli:
+Le applicazioni restituiscono uno tra:
 
-- `domain`: entita condivise e primitive di calcolo riusabili trasversalmente;
-- `applications`: workflow applicativi completi, ciascuno con propri input, analisi/verifiche e manifest.
+- `CalculationResult`: risultato di analisi o workflow, con `status`, `outputs`, `warnings`, `assumptions`, `metadata`.
+- `VerificationResult`: risultato di verifica, con `checks`, `utilizationRatio`, `capacity`, `demand` e metodo `isVerified()`.
 
-Le applicazioni scaffoldate al momento sono:
+Gli stati piu usati sono:
 
-- `steel-frames`: calcolo di telai in acciaio e verifiche di aste;
-- `masonry-ring-beams`: calcolo e verifica di cerchiature in pareti murarie portanti;
-- `reinforced-concrete-sections`: calcolo e verifica di sezioni pressoinflesse in c.a.;
-- `timber-beams`: verifiche di travi in legno;
-- `timber-concrete-composite-beams`: verifiche di travi in legno con soletta collaborante;
-- `timber-xlam-composite-beams`: verifiche di travi lignee collaboranti con pannelli XLAM;
-- `xlam-panels-out-of-plane`: verifica fuori piano di pannelli XLAM impiegati come solai o coperture;
-- `rc-cracked-deflection`: inflessione di travi in c.a. con sezione fessurata;
-- `masonry-out-of-plane`: analisi di cinematismi fuori piano di pareti murarie;
-- `micropiles-broms`: calcolo dei micropali secondo la teoria di Broms.
+- `ok`: calcolo/verifica concluso e verificato.
+- `not-verified`: calcolo concluso ma almeno una verifica non passa.
+- `not-implemented`: modulo o ramo ancora placeholder.
 
-Ogni modulo contiene:
+## Layer Unita
 
-- un entrypoint applicativo con metodo `run()`;
-- un modello dati iniziale dedicato;
-- una prima classe di `analysis` o `checks` come estensione naturale futura;
-- metadati di maturita e capability pianificate, utili per CLI, UI o plugin futuri.
-
-## Nuove primitive di dominio
-
-La codebase ora include anche componenti condivise utili per futuri moduli di verifica:
-
-- sezioni geometriche `RectangularSection`, `CircularSection`, `TSection`, `PolygonSection`;
-- sezione `XlamPanelSection` per pannelli XLAM a strati con lamelle attive configurabili;
-- materiale `XlamMaterial` con parametri longitudinali, trasversali e rolling shear;
-- primitive generiche `CompositeSectionComponent` e `CompositeSection` per legno-calcestruzzo, acciaio-calcestruzzo e altre sezioni miste;
-- sezione `ReinforcedConcreteSection` costruita da una sezione in calcestruzzo e da armature posizionate;
-- grandezze geometriche di base gia calcolate nelle classi, come area, baricentro, momenti di inerzia e moduli elastici;
-- classe `ReinforcementBar` per armature discrete con diametro o area e classe di resistenza `B450A` / `B450C`;
-- classe `TecnariaConnector` con catalogo integrato `BASE` e `MAXI` per tavolato `0`, `2`, `4` cm.
-- classe `TimberDowelConnector` per unioni legno-legno con rigidezza `Kser/Ku` e resistenza tipo Johansen.
-- catalogo estendibile dei pannelli XLAM con `registerXlamPanelProduct`, `getXlamPanelProduct`, `listXlamPanelProducts`.
-
-## Travi In Acciaio
-
-Il workflow per travi semplici in acciaio include ora un MVP di sezione e stabilita:
-
-- profili da catalogo `HEA`, `HEB`, `HEM`, `IPE`, `UPN`;
-- materiali `S235`, `S275`, `S355`;
-- provider elastico coerente con le unita interne `N/mm` e conversione automatica verso le unita della trave;
-- classificazione locale della sezione per profili I/H e UPN in funzione dello stato `N-M` della stazione FEM ULS;
-- verifiche ULS da diagrammi FEM: flessione governata dalla classe (`Wpl` per classi 1-2, `Wel` per classe 3), taglio, sforzo normale, screening tensionale e interazione lineare assiale-flessione;
-- instabilita flesso-torsionale MVP: automatica per profili I/H doppiamente simmetrici, oppure con `Mcr` fornito dall'utente per profili come `UPN`;
-- instabilita di aste compresse secondo NTC 2018, con curve di instabilita, lunghezze efficaci `y/z` e default inferiti dai vincoli della trave semplice;
-- pressoflessione normativa `N + My` secondo Metodo B della Circolare, per profili I/H doppiamente simmetrici e sezioni di classe 1, 2 o 3;
-- verifica SLE di freccia verticale con limite default `L/250`;
-- report JSON/Markdown con checks e metadata.
-
-Il metodo e documentato in `docs/steel-beam-method.md`.
-Il dominio attuale della stabilita a pressoflessione e `N + My`: `Mz`, torsione e interazioni torsionali non sono considerate. Proprieta efficaci per sezioni di classe 4, interazione con `Mz`, torsione/interazioni torsionali e affinamenti LTB sofisticati restano estensioni future.
-
-## Travi Legno-Cls
-
-E stato aggiunto un primo modulo implementato per la verifica di travi in legno con soletta collaborante.
-
-- il modello applicativo e `TimberConcreteCompositeBeamModel`;
-- la verifica e `TimberConcreteCompositeBeamVerification`;
-- il metodo replica la procedura del foglio di calcolo fornito, basata sul coefficiente di efficacia `gamma`, sulla sezione efficace e sulle verifiche di legno, soletta, connettori e freccia.
-
-Il caso di riferimento del file Excel e coperto da test automatico, cosi da mantenere l'allineamento numerico anche nelle future evoluzioni del modulo.
-
-E stato aggiunto anche un modulo per travi lignee collaboranti con pannelli XLAM.
-
-- il modello applicativo e `TimberXlamCompositeBeamModel`;
-- la verifica e `TimberXlamCompositeBeamVerification`;
-- il metodo replica il foglio Excel fornito per lo stato `SLU-SLE`, con rigidezza efficace, distribuzione delle sollecitazioni, verifiche a flessione/taglio, unione legno-legno e deformabilita.
-
-E stato aggiunto anche un modulo per il caso di semplice pannello XLAM soggetto a flessione fuori piano.
-
-- il modello applicativo e `XlamOutOfPlanePanelModel`;
-- la verifica e `XlamOutOfPlanePanelVerification`;
-- il metodo segue l'impostazione 1D-plate del paper WCTE 2010 / CLTdesigner, con rigidezza flessionale, rigidezza tagliante, verifica a flessione, rolling shear e deformabilita.
-
-La struttura del dominio e stata impostata per poter riusare lo stesso `XlamPanelSection` sia come pannello standalone sia come componente di sistemi collaboranti con travi lignee o profilati metallici. Inoltre il registro prodotti XLAM e gia predisposto per futuri cataloghi dei produttori.
-
-## Modulo Sezioni RC
-
-Il modulo `reinforced-concrete-sections` e ora utilizzabile per un primo set di workflow di sezione in c.a. interamente in JavaScript, senza librerie numeriche esterne:
-
-- `uls-uniaxial-resistance`: momento resistente `MxRd` a dato sforzo normale `N`;
-- `uls-biaxial-domain`: dominio `Mx-My` a dato `N`;
-- `uls-uniaxial-domain`: dominio `M-N` per una lista assegnata di valori `N`;
-- `service-stress`: stato tensionale/deformativo per una terna `N-Mx-My`, con cls teso escluso.
-
-I blocchi principali esposti dal package sono:
-
-- `ReinforcedConcreteSection`: sezione in c.a. con geometria del cls e armature discrete;
-- `createLongitudinalReinforcementLayout`: generatore dichiarativo di armature longitudinali top/bottom per sezioni rettangolari e a T;
-- `ConcreteParabolaRectangleLaw`, `ConcreteNoTensionLaw`, `SteelElasticLaw`, `SteelElasticPerfectlyPlasticLaw`;
-- `IllinoisRootSolver`;
-- `SectionFiberDiscretizer`, `RCSectionStateIntegrator`, `RCUltimateSectionSolver`, `RCBiaxialDomainBuilder`, `RCUniaxialDomainBuilder`, `RCServiceStressSolver`;
-- `ReinforcedConcreteSectionModel` e `ReinforcedConcreteSectionApplication`.
-
-Per le travi in c.a. il workflow integrato include ora verifiche ULS `N-M`, taglio MVP, tensioni SLE, fessurazione indiretta e deformazioni fessurate da integrazione delle curvature.
-La descrizione del metodo SLE, del contratto dati e della validazione automatica e in `docs/reinforced-concrete-sle-method.md`.
-
-Struttura minima del modello applicativo:
+I principali costruttori richiedono un oggetto esplicito:
 
 ```js
-const model = new ReinforcedConcreteSectionModel({
-  id: "rc-demo",
-  units: { force: "N", length: "m" },
-  section,
-  analysisType: "uls-uniaxial-resistance",
-  materials: { concreteMaterial, reinforcementMaterial },
-  mesh: { targetFiberCount: 120 },
-  solver: { tolerance: 1e-6, maxIterations: 100 },
-  actions: { nEd: -800000, mEd: 1.5e5 },
-});
+const units = { force: "N", length: "mm" };
 ```
 
-Layer unita:
+Da `force` e `length` il package ricava automaticamente grandezze derivate: momento, carico lineare, tensione, modulo elastico, area, volume, inerzia e moduli resistenti.
 
-- i principali costruttori di materiali, geometrie, carichi, connettori e modelli applicativi richiedono un oggetto esplicito `units: { force, length }`;
-- dalle due unita base vengono ricavate automaticamente le grandezze derivate, ad esempio momento, carico lineare, tensione, modulo elastico, area, volume e inerzia;
-- i valori in input vengono convertiti nelle unita interne storiche del package, in generale `N` e `mm` per materiali, sezioni, armature, connettori e primitive di dominio;
-- `toJSON()` espone le unita interne tramite `units`, mentre `metadata.sourceUnitSystem` conserva le unita originali dichiarate dall'utente;
-- per portare codice legacy dentro il nuovo contratto basta dichiarare le unita che quel codice stava gia usando, ad esempio `{ force: "N", length: "mm" }`.
+Regola pratica:
 
-Esempio con input esplicito in `kN` e `m`:
+- dominio sezioni/materiali/connettori: usare spesso `{ force: "N", length: "mm" }`;
+- modelli di trave e input utente: sono accettati anche `{ force: "kN", length: "m" }`;
+- i valori vengono convertiti nelle unita interne storiche del modulo;
+- `toJSON().units` espone le unita interne;
+- `metadata.sourceUnitSystem` conserva le unita dichiarate dall'utente.
+
+I profili in acciaio hanno unita catalogo proprie (`N`, `m`) e vengono convertiti indipendentemente dalle unita usate dall'utente.
+
+## Moduli Applicativi
+
+### `single-beam-design`
+
+Stato: MVP.
+
+Input minimo:
+
+- `SingleBeamDesignModel` con `id`, `units`, `beamInput`.
+- `beamInput` deve contenere geometria, vincoli, carichi, combinazioni e una sorgente di rigidezza: `sectionProvider` oppure coppia `section` + `material`.
+- `verification` e opzionale; se presente puo essere una funzione o un verifier con `verify()` / `run()`.
+
+Output atteso:
+
+- `CalculationResult`.
+- `outputs.analysis`: risultato FEM della trave singola.
+- `outputs.verification`: risultato della verifica, se richiesta.
+- `outputs.report.json`: DTO validabile con `validateBeamReportDto`.
+- `outputs.report.markdown`: report testuale.
+
+Unita richieste:
+
+- obbligatorie in `beamInput.units`;
+- le forze, lunghezze, carichi e combinazioni seguono quelle unita;
+- sezioni/materiali possono avere unita diverse, purche dichiarate.
+
+Limiti del metodo:
+
+- modello FEM 2D lineare;
+- rotazioni di sezione gestite come proiezione delle azioni principali, non come torsione vera;
+- carichi distribuiti solo uniformi;
+- la verifica dipende dal verifier collegato.
+
+Esempio completo:
 
 ```js
-const model = new TimberConcreteCompositeBeamModel({
-  id: "gelfi-si",
-  units: { force: "kN", length: "m" },
-  span: 4.25,
-  slabSection: new RectangularSection({
-    width: 1.8,
-    height: 0.06,
+import {
+  RectangularSection,
+  SingleBeamDesignApplication,
+  SingleBeamDesignModel,
+  TimberBeamVerification,
+  createNTC2018TimberMaterial,
+} from "./src/index.js";
+
+const units = { force: "N", length: "mm" };
+const section = new RectangularSection({
+  width: 120,
+  height: 240,
+  units,
+});
+const material = createNTC2018TimberMaterial({
+  strengthClass: "C24",
+  serviceClass: 1,
+  units,
+});
+
+const model = new SingleBeamDesignModel({
+  id: "beam-report-01",
+  title: "Trave semplice in legno",
+  units,
+  section,
+  material,
+  beamInput: {
+    units,
+    geometry: {
+      start: { x: 0, y: 0 },
+      end: { x: 4000, y: 0 },
+    },
+    section,
+    material,
+    supports: {
+      start: "hinge",
+      end: "roller",
+    },
+    loads: [
+      {
+        id: "g1",
+        loadCaseId: "G1",
+        actionType: "G1",
+        type: "uniform",
+        value: -3,
+      },
+      {
+        id: "qk",
+        loadCaseId: "Qk",
+        actionType: "Qk",
+        type: "uniform",
+        value: -2,
+      },
+    ],
+    combinations: [
+      {
+        id: "uls",
+        limitState: "ULS",
+        factors: { G1: 1.3, Qk: 1.5 },
+      },
+      {
+        id: "sle",
+        limitState: "SLE",
+        factors: { G1: 1, Qk: 1 },
+      },
+    ],
+    discretization: { elementCount: 8 },
+  },
+  verification: {
+    verifier: new TimberBeamVerification({
+      deflectionLimitDenominator: 300,
+    }),
+    input: { section, material },
+  },
+});
+
+const result = new SingleBeamDesignApplication().run({ model });
+
+console.log(result.status);
+console.log(result.outputs.report.json.governing);
+console.log(result.outputs.report.markdown);
+```
+
+### `steel-frames`
+
+Stato: parziale.
+
+Input minimo:
+
+- `section`, `material` e `analysisResult` per verificare una o piu aste.
+- `analysisResult` puo arrivare da `SingleBeamAnalysis` o da un futuro solver globale, purche rispetti lo stesso contratto di risultati.
+
+Output atteso:
+
+- `VerificationResult` se gli input sono completi.
+- Checks tipici: classificazione sezione, flessione, taglio, sforzo normale, tensione elastica, LTB, instabilita a compressione, interazione `N + My`, freccia SLE.
+- `CalculationResult` placeholder se mancano gli input necessari.
+
+Unita richieste:
+
+- profili/materiali con unita dichiarate;
+- il risultato FEM espone `analysisResult.units`;
+- le proprieta catalogo dei profili sono convertite automaticamente.
+
+Limiti del metodo:
+
+- non esegue ancora analisi globale di telaio;
+- dominio principale `N + My`, con supporto parziale per componenti ruotate;
+- torsione e interazioni torsionali escluse;
+- sezioni di classe 4 bloccate finche non saranno disponibili proprieta efficaci.
+
+Esempio completo:
+
+```js
+import {
+  SingleBeamAnalysis,
+  SteelFrameApplication,
+  createNTC2018StructuralSteelMaterial,
+  createSteelBeamSectionProvider,
+  createSteelProfileSection,
+} from "./src/index.js";
+
+const units = { force: "kN", length: "m" };
+const section = createSteelProfileSection({
+  profileName: "IPE200",
+  units,
+});
+const material = createNTC2018StructuralSteelMaterial({
+  grade: "S275",
+  units,
+});
+const sectionProvider = createSteelBeamSectionProvider({
+  section,
+  material,
+});
+
+const analysisResult = new SingleBeamAnalysis().analyze({
+  id: "steel-member-01",
+  units,
+  geometry: {
+    start: { x: 0, y: 0 },
+    end: { x: 5, y: 0 },
+  },
+  sectionProvider,
+  analysisModel: "timoshenko",
+  supports: {
+    start: "hinge",
+    end: "roller",
+  },
+  loads: [
+    {
+      id: "g1",
+      loadCaseId: "G1",
+      actionType: "G1",
+      type: "uniform",
+      value: -4,
+    },
+  ],
+  combinations: [
+    {
+      id: "uls",
+      limitState: "ULS",
+      factors: { G1: 1.3 },
+    },
+    {
+      id: "sle",
+      limitState: "SLE",
+      factors: { G1: 1 },
+    },
+  ],
+  discretization: { elementCount: 8 },
+});
+
+const result = new SteelFrameApplication().run({
+  memberId: "steel-member-01",
+  section,
+  material,
+  analysisResult,
+  deflectionLimitRatio: 250,
+});
+
+console.log(result.status);
+console.log(result.utilizationRatio);
+console.log(result.checks.map((check) => check.id));
+```
+
+### `masonry-ring-beams`
+
+Stato: scaffold.
+
+Input minimo:
+
+- `MasonryRingBeamModel` con `id`.
+- Sono gia previsti campi `opening`, `wall`, `reinforcementScheme`, `loadPath`.
+
+Output atteso:
+
+- `CalculationResult` placeholder con `status: "not-implemented"`.
+- `outputs.verification` contiene un `VerificationResult` placeholder.
+
+Unita richieste:
+
+- non c'e ancora un contratto numerico vincolante;
+- per i futuri input usare SI esplicito e salvare le unita nei metadata o nei sotto-oggetti.
+
+Limiti del metodo:
+
+- nessun dimensionamento reale della cerchiatura;
+- nessuna redistribuzione dei carichi intorno all'apertura;
+- nessuna verifica acciaio-muratura implementata in questo modulo.
+
+Esempio completo:
+
+```js
+import {
+  MasonryRingBeamApplication,
+  MasonryRingBeamModel,
+} from "./src/index.js";
+
+const model = new MasonryRingBeamModel({
+  id: "ring-beam-01",
+  opening: {
+    id: "opening-01",
+    width: 1.2,
+    height: 2.1,
     units: { force: "kN", length: "m" },
+  },
+  wall: {
+    thickness: 0.3,
+    masonryTypology: "existing-stone",
+  },
+  reinforcementScheme: {
+    steelProfiles: ["HEA120"],
+  },
+  loadPath: {
+    verticalLoad: 80,
+  },
+});
+
+const result = new MasonryRingBeamApplication().run({ model });
+
+console.log(result.status); // "not-implemented"
+console.log(result.outputs.verification.status);
+```
+
+### `reinforced-concrete-sections`
+
+Stato: implementato.
+
+Input minimo:
+
+- `ReinforcedConcreteSectionModel` con `id`, `units`, `section`, `materials`, `actions`.
+- `section` e normalmente una `ReinforcedConcreteSection`.
+- `analysisType` seleziona il workflow.
+
+Output atteso:
+
+- `VerificationResult`.
+- Workflow oggi disponibili:
+  - `uls-uniaxial-resistance`;
+  - `uls-biaxial-domain`;
+  - `uls-uniaxial-domain`;
+  - `service-stress`.
+- `outputs` contiene resistenze, punti del dominio o tensioni SLE in base al workflow.
+
+Unita richieste:
+
+- obbligatorie nel modello;
+- unita interne del modulo: `N`, `mm`, `Nmm`, `MPa`;
+- le azioni `nEd`, `mEd`, `mxEd`, `myEd`, `nValues` vengono convertite.
+
+Limiti del metodo:
+
+- modello a fibre con griglia nel bounding box, non mesh adattiva;
+- crisi e duttilita non ancora classificate in modo completo;
+- dominio biaxiale campionato per angoli, senza raffinamento adattivo;
+- niente momento-curvatura o colonna modello.
+
+Esempio completo:
+
+```js
+import {
+  RectangularSection,
+  ReinforcedConcreteSection,
+  ReinforcedConcreteSectionApplication,
+  ReinforcedConcreteSectionModel,
+  ReinforcementBar,
+  createNTC2018ConcreteMaterial,
+  createNTC2018ReinforcementSteelMaterial,
+} from "./src/index.js";
+
+const units = { force: "N", length: "mm" };
+const concreteMaterial = createNTC2018ConcreteMaterial({
+  strengthClass: "C25/30",
+  units,
+});
+const reinforcementMaterial = createNTC2018ReinforcementSteelMaterial({
+  grade: "B450C",
+  units,
+});
+const section = new ReinforcedConcreteSection({
+  name: "RC 300x500",
+  concreteSection: new RectangularSection({
+    width: 300,
+    height: 500,
+    units,
+  }),
+  reinforcementBars: [
+    new ReinforcementBar({
+      id: "bottom-left",
+      diameter: 20,
+      grade: "B450C",
+      material: reinforcementMaterial,
+      y: 40,
+      z: 60,
+      units,
+    }),
+    new ReinforcementBar({
+      id: "bottom-right",
+      diameter: 20,
+      grade: "B450C",
+      material: reinforcementMaterial,
+      y: 40,
+      z: 240,
+      units,
+    }),
+    new ReinforcementBar({
+      id: "top-left",
+      diameter: 20,
+      grade: "B450C",
+      material: reinforcementMaterial,
+      y: 460,
+      z: 60,
+      units,
+    }),
+    new ReinforcementBar({
+      id: "top-right",
+      diameter: 20,
+      grade: "B450C",
+      material: reinforcementMaterial,
+      y: 460,
+      z: 240,
+      units,
+    }),
+  ],
+  concreteMaterial,
+  reinforcementMaterial,
+  referenceModularRatio: 15,
+  units,
+});
+
+const model = new ReinforcedConcreteSectionModel({
+  id: "rc-section-01",
+  section,
+  materials: {
+    concreteMaterial,
+    reinforcementMaterial,
+  },
+  analysisType: "uls-uniaxial-resistance",
+  mesh: { targetFiberCount: 120 },
+  solver: {
+    tolerance: 1e-6,
+    maxIterations: 100,
+  },
+  actions: {
+    nEd: -800000,
+    mEd: 1.5e8,
+  },
+  analysisSettings: {
+    compressedEdge: "top",
+  },
+  units,
+});
+
+const result = new ReinforcedConcreteSectionApplication().run({ model });
+
+console.log(result.status);
+console.log(result.outputs.analysisType);
+console.log(result.outputs.MxRd);
+```
+
+### `timber-beams`
+
+Stato: parziale.
+
+Input minimo:
+
+- `section`, `material`, `analysisResult`.
+- `analysisResult` deve contenere combinazioni o casi di carico con campioni di sollecitazione e freccia.
+
+Output atteso:
+
+- `VerificationResult` se gli input sono completi.
+- Checks tipici: flessione, taglio, stabilita flesso-torsionale, freccia istantanea/finale.
+- `CalculationResult` placeholder se mancano gli input.
+
+Unita richieste:
+
+- sezioni/materiali con unita esplicite;
+- `analysisResult.units` usate per convertire azioni e frecce;
+- il provider legno lavora internamente in `N` e `mm`.
+
+Limiti del metodo:
+
+- non genera da solo combinazioni o FEM globale;
+- verifica LTB semplificata per travi rettangolari;
+- richiede assunzioni esplicite se la trave e controventata lateralmente.
+
+Esempio completo:
+
+```js
+import {
+  RectangularSection,
+  SingleBeamAnalysis,
+  TimberBeamApplication,
+  createNTC2018BeamCombinations,
+  createNTC2018PermanentAction,
+  createNTC2018TimberMaterial,
+  createNTC2018VariableAction,
+  createTimberBeamSectionProvider,
+  getNTC2018TimberKmod,
+} from "./src/index.js";
+
+const sectionUnits = { force: "N", length: "mm" };
+const beamUnits = { force: "kN", length: "m" };
+const section = new RectangularSection({
+  width: 120,
+  height: 240,
+  units: sectionUnits,
+});
+const material = createNTC2018TimberMaterial({
+  strengthClass: "C24",
+  serviceClass: 1,
+  units: sectionUnits,
+});
+const loads = [
+  {
+    id: "g1",
+    loadCaseId: "G1",
+    value: -0.5,
+    action: createNTC2018PermanentAction({
+      id: "ACT-G1",
+      permanentClass: "G1",
+    }),
+  },
+  {
+    id: "qk",
+    loadCaseId: "Qk",
+    value: -1,
+    action: createNTC2018VariableAction({
+      id: "ACT-Q",
+      category: "B",
+    }),
+  },
+];
+const combinations = createNTC2018BeamCombinations({
+  loads,
+  types: ["ULS", "SLE_RARE"],
+  idPrefix: "timber-01",
+});
+const sectionProvider = createTimberBeamSectionProvider({
+  section,
+  material,
+  gammaM: 1.5,
+  kdef: 0.6,
+  kmodResolver: ({ loadDurationClass, serviceClass, materialType }) =>
+    getNTC2018TimberKmod({
+      materialType,
+      serviceClass,
+      loadDurationClass,
+    }),
+});
+
+const analysisResult = new SingleBeamAnalysis().analyze({
+  id: "timber-01",
+  units: beamUnits,
+  geometry: {
+    start: { x: 0, y: 0 },
+    end: { x: 4, y: 0 },
+  },
+  sectionProvider,
+  supports: {
+    start: "hinge",
+    end: "roller",
+  },
+  loads,
+  combinations,
+  discretization: { elementCount: 8 },
+});
+
+const result = new TimberBeamApplication().run({
+  model: { id: "timber-01", section, material, analysisResult },
+  section,
+  material,
+  analysisResult,
+  deflectionLimitRatio: 300,
+});
+
+console.log(result.status);
+console.log(result.utilizationRatio);
+```
+
+### `timber-concrete-composite-beams`
+
+Stato: implementato.
+
+Input minimo:
+
+- `TimberConcreteCompositeBeamModel` con `span`, `slabSection`, `timberSection`, materiali, connettore, interassi e carichi.
+- La verifica puo usare formule chiuse o, se presente `model.analysisResult`, domande da FEM.
+
+Output atteso:
+
+- `VerificationResult`.
+- `outputs` include coefficienti gamma, rigidezze efficaci, tensioni in legno/soletta, forza connettore, freccia e domanda governante.
+
+Unita richieste:
+
+- obbligatorie nel modello;
+- interne `N`, `mm`;
+- carichi lineari convertiti da `loads.ulsLineLoad`, `loads.sleRareLineLoad`, `loads.sleFrequentLineLoad`, `loads.sleQuasiPermanentLineLoad`.
+
+Limiti del metodo:
+
+- metodo gamma 1D;
+- connessione discretizzata tramite interasse equivalente;
+- componenti deboli da rotazione sezione sono riportate ma trascurate per la verifica 1D;
+- non considera fuoco, vibrazioni o comportamento non lineare della connessione.
+
+Esempio completo:
+
+```js
+import {
+  RectangularSection,
+  ReinforcementBar,
+  TimberConcreteCompositeBeamApplication,
+  TimberConcreteCompositeBeamModel,
+  createNTC2018ConcreteMaterial,
+  createNTC2018ReinforcementSteelMaterial,
+  createNTC2018TimberMaterial,
+  createTecnariaConnector,
+} from "./src/index.js";
+
+const units = { force: "N", length: "mm" };
+const timberMaterial = createNTC2018TimberMaterial({
+  strengthClass: "C24",
+  kmod: 0.8,
+  units,
+});
+const concreteMaterial = createNTC2018ConcreteMaterial({
+  strengthClass: "LC25/28",
+  units,
+});
+const reinforcementMaterial = createNTC2018ReinforcementSteelMaterial({
+  grade: "B450C",
+  units,
+});
+
+const model = new TimberConcreteCompositeBeamModel({
+  id: "timber-concrete-01",
+  span: 4250,
+  slabSection: new RectangularSection({
+    width: 1800,
+    height: 60,
+    units,
   }),
   timberSection: new RectangularSection({
-    width: 0.22,
-    height: 0.25,
-    units: { force: "kN", length: "m" },
+    width: 220,
+    height: 250,
+    units,
   }),
-  timberConcreteGap: 0.10,
-  reinforcementSpacing: 0.10,
-  connectorSpacing: 0.15,
+  timberConcreteGap: 100,
+  reinforcement: new ReinforcementBar({
+    diameter: 6,
+    grade: "B450C",
+    material: reinforcementMaterial,
+    units,
+  }),
+  reinforcementSpacing: 100,
+  timberMaterial,
+  concreteMaterial,
+  reinforcementMaterial,
+  connector: createTecnariaConnector({
+    type: "MAXI",
+    boardThickness: 0,
+    units,
+  }),
+  connectorSpacing: 150,
+  kdef: 0.6,
+  kmod: 0.8,
+  confidenceFactor: 1.35,
   loads: {
     ulsLineLoad: 15.966,
     sleRareLineLoad: 10.998,
   },
+  units,
 });
+
+const result = new TimberConcreteCompositeBeamApplication().run({ model });
+
+console.log(result.status);
+console.log(result.outputs.gammaUls);
+console.log(result.utilizationRatio);
 ```
 
-Il codice storico del modulo RC resta compatibile dichiarando esplicitamente le sue unita naturali:
+### `timber-xlam-composite-beams`
 
-- unita interne consigliate: `mm`, `N`, `Nmm`, `MPa`;
-- tensioni positive a trazione;
-- cls a trazione escluso nei workflow `service-stress` e nei solve SLU a fibre;
-- solve SLU basato su compatibilita delle deformazioni ed equilibrio assiale con metodo di Illinois.
+Stato: implementato.
 
-Esempio dedicato:
+Input minimo:
 
-```bash
-npm run example:rc-sections
+- `TimberXlamCompositeBeamModel` con `span`, `xlamSection`, `timberSection`, materiali, connettore e carichi.
+- La verifica puo usare formule chiuse o domande FEM in `model.analysisResult`.
+
+Output atteso:
+
+- `VerificationResult`.
+- `outputs` include `gamma1/gamma2`, `EJ` efficace, tensioni, rolling/shear, forza connettore, frecce breve/lungo termine.
+
+Unita richieste:
+
+- obbligatorie nel modello;
+- interne `N`, `mm`;
+- carichi lineari convertiti da `loads.ulsLineLoad`, `loads.slePermanentLineLoad`, `loads.sleVariableLineLoad`.
+
+Limiti del metodo:
+
+- gamma-method 1D;
+- pannello XLAM trattato come componente collaborante equivalente;
+- componenti deboli da rotazione sono riportate ma trascurate nella verifica 1D;
+- fuoco, vibrazioni e connessioni alternative sono ancora estensioni future.
+
+Esempio completo:
+
+```js
+import {
+  RectangularSection,
+  TimberDowelConnector,
+  TimberMaterial,
+  TimberXlamCompositeBeamApplication,
+  TimberXlamCompositeBeamModel,
+  XlamPanelSection,
+} from "./src/index.js";
+
+const units = { force: "N", length: "mm" };
+const xlamMaterial = new TimberMaterial({
+  name: "XLAM top panel",
+  strengthClass: "custom-xlam",
+  elasticModulus: 11600,
+  fmK: 24,
+  fvK: 2.7,
+  units,
+});
+const timberMaterial = new TimberMaterial({
+  name: "Glulam beam",
+  strengthClass: "custom-glulam",
+  elasticModulus: 12600,
+  fmK: 28,
+  fvK: 3.2,
+  units,
+});
+
+const model = new TimberXlamCompositeBeamModel({
+  id: "timber-xlam-01",
+  span: 9200,
+  xlamSection: new XlamPanelSection({
+    effectiveWidth: 600,
+    layerThicknesses: [0, 0, 30, 30, 30],
+    activeLayerIndexes: [1, 3],
+    units,
+  }),
+  timberSection: new RectangularSection({
+    width: 240,
+    height: 440,
+    units,
+  }),
+  xlamMaterial,
+  timberMaterial,
+  connector: new TimberDowelConnector({
+    diameter: 16,
+    timberDensityMean: 410,
+    timberDensityCharacteristicSection1: 380,
+    timberDensityCharacteristicSection2: 410,
+    ultimateTensileStrength: 360,
+    penetrationLength: 90,
+    spacing: 50,
+    gammaConnection: 1.5,
+    kmod: 0.9,
+    units,
+  }),
+  kmod: 0.9,
+  serviceClass: 2,
+  psi2: 0,
+  loads: {
+    ulsLineLoad: 17.134,
+    slePermanentLineLoad: 5.044,
+    sleVariableLineLoad: 6.24,
+  },
+  units,
+});
+
+const result = new TimberXlamCompositeBeamApplication().run({ model });
+
+console.log(result.status);
+console.log(result.outputs.ejEffUls);
+console.log(result.utilizationRatio);
 ```
 
-### Review Tecnica E Limiti Attuali
+### `xlam-panels-out-of-plane`
 
-Il modulo RC e ora coerente e usabile per i workflow implementati, ma ci sono alcuni limiti attuali da considerare esplicitamente:
+Stato: implementato.
 
-- il solve `uls-uniaxial-resistance` e `uls-biaxial-domain` usa un approccio a compatibilita delle deformazioni con controllo della deformazione ultima del cls sul bordo compresso; non e ancora presente una gestione piu completa e classificata dei diversi modi di crisi governati dall'acciaio;
-- il dominio `Mx-My` e costruito per campionamento dell'orientazione dell'asse neutro, quindi la qualita del contorno dipende da `angleCount`; non e ancora implementato un infittimento adattivo locale vicino a una direzione di domanda assegnata;
-- il dominio `M-N` e costruito su un intervallo assiale convenzionalmente limitato da `Nt,Rd = As fyd` e `Nc,Rd = 0.8 Ac fcd + As fyd`, risolvendo entrambi i segni di curvatura; valori `N` espliciti permettono anche di costruire un dominio di sezione non tagliato sul lato della compressione;
-- il solver `service-stress` usa Newton smorzato con Jacobiano numerico a differenze finite; e robusto sui casi coperti dai test, ma non e ancora stato raffinato con strategie avanzate di fallback o con una gestione dedicata di casi particolarmente degeneri;
-- nel caso di esercizio il cls teso e escluso, come richiesto, ma non sono ancora presenti opzioni piu evolute per tension stiffening, fessurazione progressiva o leggi costitutive SLE piu sofisticate;
-- la discretizzazione del cls e basata su griglia regolare nel bounding box con accettazione dei baricentri interni al contorno; per le sezioni ordinarie funziona bene, ma non e ancora ottimizzata con mesh adattive o discretizzazioni mirate nelle zone a maggiore gradiente di deformazione;
-- il codice storico puo ancora usare `mm`, `N`, `Nmm`, `MPa` senza dichiarare `units`, ma il package usa ora un layer dedicato di conversione automatica delle unita in input;
-- non sono ancora implementati momento-curvatura, colonna modello e post-processing di duttilita, che restano le estensioni naturali del nucleo gia realizzato.
+Input minimo:
 
-In sintesi, il modulo e adatto come motore frontend per analisi di sezione RC a fibre sui workflow oggi coperti, ma va ancora considerato come prima versione strutturata e non come motore normativo completo in tutti i casi limite.
+- `XlamOutOfPlanePanelModel` con `span`, `section`, `material`, `loads`, `units`.
+- `section` puo arrivare da `createXlamPanelSection` o da `XlamPanelSection`.
 
-## Strategia di crescita suggerita
+Output atteso:
 
-Per mantenere la codebase ordinata conviene seguire questa convenzione:
+- `VerificationResult`.
+- `outputs` include rigidezza flessionale, rigidezza tagliante, verifiche a flessione, rolling shear e deformabilita.
 
-- mettere in `src/domain` solo entita veramente condivise tra piu applicazioni;
-- spostare in `src/applications/<modulo>` la logica specifica del caso d'uso;
-- lasciare nei moduli normativi solo preset, coefficienti, tabelle e factory di codice;
-- far restituire a ogni applicazione un `CalculationResult` o `VerificationResult` uniforme;
-- usare `createDefaultApplicationRegistry()` come punto di accesso unico per registrare moduli, CLI, API o interfacce grafiche.
+Unita richieste:
 
-## Nota su NTC 2018
+- obbligatorie nel modello;
+- interne `N`, `mm`;
+- carichi lineari convertiti da `loads.ulsLineLoad`, `loads.sleLineLoad`, `loads.slePermanentLineLoad`, `loads.sleVariableLineLoad`.
 
-La classe `ExistingMasonryMaterial` non pretende di sostituire un motore normativo completo. In questa prima base:
+Limiti del metodo:
 
-- le proprieta meccaniche di partenza sono archiviate in `baseProperties`;
-- i coefficienti dello stato di fatto sono archiviati in `surveyFactors`;
-- i coefficienti degli interventi migliorativi sono archiviati in `improvementFactors`;
-- il prodotto dei coefficienti viene applicato alle proprieta base tramite `adjustedProperty()` e `adjustedProperties()`.
+- strip 1D fuori piano, non piastra 2D completa;
+- appoggio semplice e schemi base;
+- vibrazioni, fuoco, forature e appoggi continui sono estensioni future.
 
-Questo approccio rende semplice sostituire o specializzare in futuro la logica con tabelle, preset o formule piu aderenti ai casi previsti dalle NTC 2018.
+Esempio completo:
+
+```js
+import {
+  XlamMaterial,
+  XlamOutOfPlanePanelApplication,
+  XlamOutOfPlanePanelModel,
+  createXlamPanelSection,
+} from "./src/index.js";
+
+const units = { force: "N", length: "mm" };
+const section = createXlamPanelSection({
+  layerThicknesses: [40, 30, 40, 30, 40],
+  activeLayerIndexes: [0, 2, 4],
+  effectiveWidth: 1000,
+  units,
+});
+const material = new XlamMaterial({
+  name: "Generic CLT C24",
+  strengthClass: "custom-clt",
+  elasticModulus: 11000,
+  fmK: 24,
+  fvK: 4,
+  e0Mean: 11000,
+  e90Mean: 11000 / 30,
+  g0Mean: 690,
+  g90Mean: 69,
+  rollingShearStrength: 1.2,
+  units,
+});
+
+const model = new XlamOutOfPlanePanelModel({
+  id: "xlam-panel-01",
+  span: 4500,
+  section,
+  material,
+  serviceClass: 1,
+  kmod: 0.8,
+  gammaM: 1.45,
+  systemBoardCount: 4,
+  loads: {
+    ulsLineLoad: 8,
+    sleLineLoad: 5,
+    slePermanentLineLoad: 2.5,
+    sleVariableLineLoad: 2.5,
+  },
+  units,
+});
+
+const result = new XlamOutOfPlanePanelApplication().run({ model });
+
+console.log(result.status);
+console.log(result.outputs.bendingStiffness);
+console.log(result.checks.map((check) => check.id));
+```
+
+### `rc-cracked-deflection`
+
+Stato: parziale.
+
+Input minimo:
+
+- `analysisResult` FEM con combinazioni SLE;
+- `section`, `concreteMaterial`, `reinforcementMaterial`;
+- opzionale `serviceability.deflection` per creep e limiti.
+
+Output atteso:
+
+- `VerificationResult`.
+- `outputs.combinations` con frecce da integrazione delle curvature;
+- checks di deformazione e snellezza.
+
+Unita richieste:
+
+- coerenti tra `analysisResult.units` e sezione/materiali;
+- il calcolo converte verso `N`, `mm`.
+
+Limiti del metodo:
+
+- analisi di deformazione fessurata a partire da risultati FEM gia calcolati;
+- ritiro escluso intenzionalmente anche se richiesto, con warning;
+- non sostituisce ancora un workflow completo di lungo termine con storia di carico.
+
+Esempio completo:
+
+```js
+import {
+  CrackedSectionDeflectionAnalysis,
+  RectangularSection,
+  ReinforcedConcreteSection,
+  ReinforcementBar,
+  SingleBeamAnalysis,
+  createNTC2018ConcreteMaterial,
+  createNTC2018ReinforcementSteelMaterial,
+} from "./src/index.js";
+
+const units = { force: "N", length: "mm" };
+const concreteMaterial = createNTC2018ConcreteMaterial({
+  strengthClass: "C25/30",
+  units,
+});
+const reinforcementMaterial = createNTC2018ReinforcementSteelMaterial({
+  grade: "B450C",
+  units,
+});
+const section = new ReinforcedConcreteSection({
+  name: "RC beam section",
+  concreteSection: new RectangularSection({
+    width: 300,
+    height: 500,
+    units,
+  }),
+  reinforcementBars: [
+    new ReinforcementBar({
+      id: "bottom-1",
+      diameter: 20,
+      material: reinforcementMaterial,
+      y: 45,
+      z: 75,
+      units,
+    }),
+    new ReinforcementBar({
+      id: "bottom-2",
+      diameter: 20,
+      material: reinforcementMaterial,
+      y: 45,
+      z: 225,
+      units,
+    }),
+  ],
+  concreteMaterial,
+  reinforcementMaterial,
+  units,
+});
+
+const analysisResult = new SingleBeamAnalysis().analyze({
+  id: "rc-deflection-01",
+  units,
+  geometry: {
+    start: { x: 0, y: 0 },
+    end: { x: 5000, y: 0 },
+  },
+  section,
+  material: concreteMaterial,
+  supports: {
+    start: "hinge",
+    end: "roller",
+  },
+  loads: [
+    {
+      id: "g1",
+      loadCaseId: "G1",
+      actionType: "G1",
+      type: "uniform",
+      value: -8,
+    },
+  ],
+  combinations: [
+    {
+      id: "sle-quasi-permanent",
+      limitState: "SLE",
+      combinationType: "SLE_QUASI_PERMANENT",
+      factors: { G1: 1 },
+    },
+  ],
+  discretization: { elementCount: 10 },
+});
+
+const result = new CrackedSectionDeflectionAnalysis().analyze({
+  beamId: "rc-deflection-01",
+  analysisResult,
+  section,
+  concreteMaterial,
+  reinforcementMaterial,
+  serviceability: {
+    deflection: {
+      creepCoefficient: 2,
+    },
+  },
+});
+
+console.log(result.status);
+console.log(result.outputs.combinations);
+```
+
+### `masonry-out-of-plane`
+
+Stato: scaffold.
+
+Input minimo:
+
+- `MasonryOutOfPlaneModel` con `id`.
+- Campi gia predisposti: `wall`, `restraints`, `macroBlocks`, `actions`.
+
+Output atteso:
+
+- `CalculationResult` placeholder con `status: "not-implemented"`.
+- `outputs.analysis` contiene una analisi placeholder.
+
+Unita richieste:
+
+- non c'e ancora un contratto numerico vincolante;
+- usare SI esplicito nei sotto-oggetti per preparare la futura implementazione.
+
+Limiti del metodo:
+
+- nessun moltiplicatore di attivazione calcolato;
+- nessun template cinematico implementato;
+- nessun effetto catene/solai ancora modellato.
+
+Esempio completo:
+
+```js
+import {
+  MasonryOutOfPlaneApplication,
+  MasonryOutOfPlaneModel,
+} from "./src/index.js";
+
+const model = new MasonryOutOfPlaneModel({
+  id: "wall-oop-01",
+  wall: {
+    height: 3.2,
+    thickness: 0.32,
+    units: { force: "kN", length: "m" },
+  },
+  restraints: {
+    base: "hinged",
+    top: "free",
+  },
+  macroBlocks: [
+    {
+      id: "block-1",
+      mechanism: "vertical-bending",
+    },
+  ],
+  actions: {
+    seismicAcceleration: 0.18,
+  },
+});
+
+const result = new MasonryOutOfPlaneApplication().run({ model });
+
+console.log(result.status); // "not-implemented"
+console.log(result.outputs.analysis.status);
+```
+
+### `micropiles-broms`
+
+Stato: scaffold.
+
+Input minimo:
+
+- `MicropileBromsModel` con `id`.
+- Campi gia predisposti: `pile`, `soil`, `boundaryConditions`, `actions`.
+
+Output atteso:
+
+- `CalculationResult` placeholder con `status: "not-implemented"`.
+- `outputs.analysis` contiene una analisi placeholder.
+
+Unita richieste:
+
+- non c'e ancora un contratto numerico vincolante;
+- usare SI esplicito nei sotto-oggetti.
+
+Limiti del metodo:
+
+- nessun ramo Broms realmente implementato;
+- nessuna distinzione corta/lunga, testa libera/incastrata, terreno coesivo/incoerente;
+- nessuna verifica strutturale della sezione del micropalo.
+
+Esempio completo:
+
+```js
+import {
+  MicropileBromsApplication,
+  MicropileBromsModel,
+} from "./src/index.js";
+
+const model = new MicropileBromsModel({
+  id: "micropile-01",
+  pile: {
+    diameter: 0.18,
+    length: 8,
+    units: { force: "kN", length: "m" },
+  },
+  soil: {
+    type: "cohesive",
+    undrainedShearStrength: 60,
+  },
+  boundaryConditions: {
+    head: "free",
+  },
+  actions: {
+    horizontalLoad: 35,
+  },
+});
+
+const result = new MicropileBromsApplication().run({ model });
+
+console.log(result.status); // "not-implemented"
+console.log(result.outputs.analysis.status);
+```
 
 ## Preset NTC 2018 disponibili
 
-Il layer `src/norms/ntc2018` aggiunge una prima libreria di preset normativi:
+Il layer `src/norms/ntc2018` contiene:
 
-- calcestruzzo: classi da `C12/15` a `C50/60`, con calcolo di `fcd`, `fctm` ed `Ecm`;
-- acciaio per c.a.: preset `B450A` e `B450C`;
+- calcestruzzo: classi da `C12/15` a `C50/60`, con `fcd`, `fctm`, `Ecm`;
+- acciaio per c.a.: preset `B450A`, `B450C`;
 - acciaio da carpenteria: preset `S235`, `S275`, `S355`;
-- legno: gerarchia con `TimberMaterial`, `SolidTimberMaterial`, `GlulamTimberMaterial`, e preset iniziali NTC/EN per classi massicce `Cxx` e lamellari `GLxxh/GLxxc`;
-- muratura esistente: mapping del livello di conoscenza `LC1/LC2/LC3` al fattore di confidenza;
-- muratura esistente NTC 2018: tipologie tabellate della Circolare con parametri originali, stato di fatto e post-intervento, piu regole di incompatibilita tra coefficienti;
-- workflow muratura NTC 2018: helper per costruire lo stato dei coefficienti, gestire i toggle esclusivi e valutare i parametri meccanici a partire da uno stato UI-like;
-- profilati in acciaio: database integrato di sezioni `HEA`, `HEB`, `HEM`, `IPE`, `UPN` con classe dedicata `SteelProfileSection` e helper di lookup/catalogo;
-- combinazioni di carico: factory per `ULS` fondamentale e `SLE` rara, frequente e quasi permanente;
-- categorie variabili: catalogo `psi0`, `psi1`, `psi2` per categorie d'uso e azioni tipiche.
-- carichi di solaio NTC 2018: classi per carichi superficiali, stratiformi, lineari e pareti equivalenti, piu cataloghi integrati per pesi specifici e sovraccarichi d'uso.
-- azioni NTC 2018: gerarchia per permanenti, variabili, traffico, neve, vento, termiche, accidentali e sismiche, con durata del carico, coefficienti parziali e helper per `kmod` del legno.
+- legno: classi massicce `Cxx` e lamellari `GLxxh/GLxxc`;
+- muratura esistente: tipologie tabellate, livelli di conoscenza, fattori di confidenza e coefficienti migliorativi;
+- azioni NTC 2018: permanenti, variabili, traffico, neve, vento, termiche, accidentali, sismiche;
+- combinazioni di carico SLU/SLE;
+- cataloghi per carichi di solaio.
 
-Le assunzioni progettuali che dipendono dal caso specifico sono salvate nei `metadata` dei materiali e delle combinazioni, in modo da renderle esplicite e facilmente sostituibili.
+## Limiti Generali
 
-## Riferimenti normativi usati
+- La libreria non e ancora un software normativo completo.
+- I moduli `masonry-ring-beams`, `masonry-out-of-plane` e `micropiles-broms` sono placeholder dichiarati.
+- Il solver trave singola e 2D lineare.
+- Le verifiche acciaio non includono ancora torsione e proprieta efficaci per classe 4.
+- I workflow RC non includono ancora momento-curvatura, duttilita e colonna modello.
+- Le verifiche legno/XLAM sono solide per i casi coperti dai test, ma richiedono ancora campagne di validazione piu ampie.
 
-- Decreto Ministeriale 17 gennaio 2018, Norme Tecniche per le Costruzioni;
-- Circolare 21 gennaio 2019 n. 7 C.S.LL.PP. per i livelli di conoscenza e i fattori di confidenza sugli edifici esistenti.
-
-## Esempio
+## Esempi e Validazione
 
 ```bash
 npm run example
-```
-
-```bash
+npm run example:ntc2018
 npm run example:applications
+npm run example:rc-sections
+npm run example:beam-reports
+npm run validation
 ```
 
-```bash
-npm run example:rc-sections
-```
+Riferimenti metodologici gia presenti:
+
+- `docs/steel-beam-method.md`;
+- `docs/reinforced-concrete-sle-method.md`.
+
+## Strategia di crescita
+
+Per mantenere la codebase ordinata:
+
+- mettere in `src/domain` solo entita davvero riusabili tra piu applicazioni;
+- mettere in `src/applications/<modulo>` workflow, modelli e verifiche specifiche;
+- tenere in `src/norms/ntc2018` preset, coefficienti, cataloghi e factory normative;
+- far restituire a ogni applicazione un `CalculationResult` o `VerificationResult`;
+- usare `createDefaultApplicationRegistry()` come punto di accesso per CLI, UI, plugin o API.
