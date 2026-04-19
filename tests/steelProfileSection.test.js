@@ -26,6 +26,23 @@ test("creates a steel profile section from the integrated database", () => {
   approx(section.inertiaZ, 6038000);
   assert.equal(section.family, "IPE");
   assert.equal(section.massPerLength, 42.2);
+  assert.deepEqual(section.metadata.catalogUnitSystem, { force: "N", length: "m" });
+  assert.ok(section.convertedCatalogProperties.Wel_y > section.catalogProperties.Wel_y);
+});
+
+test("steel profile catalog values are converted independently from user units", () => {
+  const metricSection = createSteelProfileSection({
+    profileName: "IPE300",
+    units,
+  });
+  const internalSection = createSteelProfileSection({
+    profileName: "IPE300",
+    units: { force: "N", length: "mm" },
+  });
+
+  approx(internalSection.area, metricSection.area);
+  approx(internalSection.inertiaY, metricSection.inertiaY);
+  approx(internalSection.elasticSectionModulusY, metricSection.elasticSectionModulusY);
 });
 
 test("catalog helpers expose integrated families and profile lookup", () => {

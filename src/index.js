@@ -29,6 +29,7 @@ export { SteelProfileSection } from "./domain/geometry/SteelProfileSection.js";
 export { createSteelProfileSection } from "./domain/geometry/createSteelProfileSection.js";
 export {
   STEEL_PROFILE_FAMILIES,
+  STEEL_PROFILE_CATALOG_UNITS,
   STEEL_PROFILE_SECTION_DATABASE,
   STEEL_PROFILE_SECTION_NAMES,
   getSteelProfileSectionData,
@@ -147,6 +148,14 @@ export { StructuralApplication } from "./core/applications/StructuralApplication
 export { DesignCodeContext } from "./core/codes/DesignCodeContext.js";
 export { CalculationResult } from "./core/results/CalculationResult.js";
 export { VerificationResult } from "./core/results/VerificationResult.js";
+export {
+  assertPositive as assertPositiveCheckValue,
+  governingCheck,
+  isFinitePositive,
+  round,
+  uniqueStrings,
+  utilizationCheck,
+} from "./core/results/checkUtils.js";
 export { APPLICATION_CATALOG } from "./config/applicationCatalog.js";
 export {
   MasonryOutOfPlaneApplication,
@@ -192,6 +201,7 @@ export {
   verifySteelCompressionBuckling,
   verifySteelLateralTorsionalBuckling,
   BeamReportBuilder,
+  BeamReportMarkdownRenderer,
   createBeamReportArtifacts,
   TimberConcreteCompositeBeamApplication,
   TimberConcreteCompositeBeamModel,

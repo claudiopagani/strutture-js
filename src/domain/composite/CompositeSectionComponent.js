@@ -46,9 +46,11 @@ export class CompositeSectionComponent {
     this.centroidZ = resolvedCentroidZ;
     this.modularRatio = modularRatio;
     this.role = role;
+    this.units = unitResolver.targetUnitSystem;
     this.metadata = {
       ...metadata,
-      unitSystem: units ? unitResolver.unitSystem : metadata.unitSystem,
+      unitSystem: unitResolver.targetUnitSystem,
+      sourceUnitSystem: metadata.sourceUnitSystem ?? unitResolver.sourceUnitSystem,
     };
   }
 
@@ -78,6 +80,7 @@ export class CompositeSectionComponent {
       centroidZ: this.centroidZ,
       modularRatio: this.modularRatio,
       role: this.role,
+      units: { ...this.units },
       metadata: { ...this.metadata },
     };
   }

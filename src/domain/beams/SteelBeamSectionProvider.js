@@ -53,10 +53,19 @@ function catalogKeyForSectionModulus(axis) {
 
 function resolveSectionModulus(section, axis) {
   for (const key of catalogKeyForSectionModulus(axis)) {
-    const value = section.catalogProperties?.[key];
+    const value = section.convertedCatalogProperties?.[key];
 
-    if (Number.isFinite(value) && section.metadata?.unitSystem) {
-      return createUnitResolver(section.metadata.unitSystem, DEFAULT_UNITS).sectionModulus(value);
+    if (Number.isFinite(value)) {
+      return value;
+    }
+
+    const rawValue = section.catalogProperties?.[key];
+
+    if (Number.isFinite(rawValue) && section.metadata?.catalogUnitSystem) {
+      return createUnitResolver(
+        section.metadata.catalogUnitSystem,
+        DEFAULT_UNITS,
+      ).sectionModulus(rawValue);
     }
   }
 

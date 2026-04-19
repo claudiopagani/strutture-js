@@ -41,9 +41,11 @@ export class ShearConnector {
     this.kser = resolvedKser;
     this.ku = resolvedKu;
     this.fvrk = resolvedFvrk;
+    this.units = unitResolver.targetUnitSystem;
     this.metadata = {
       ...metadata,
-      unitSystem: units ? unitResolver.unitSystem : metadata.unitSystem,
+      unitSystem: unitResolver.targetUnitSystem,
+      sourceUnitSystem: metadata.sourceUnitSystem ?? unitResolver.sourceUnitSystem,
     };
   }
 
@@ -56,6 +58,7 @@ export class ShearConnector {
       kser: this.kser,
       ku: this.ku,
       fvrk: this.fvrk,
+      units: { ...this.units },
       metadata: { ...this.metadata },
     };
   }

@@ -28,23 +28,45 @@ function sectionResolver(section) {
 }
 
 function resolveCatalogInertia(section, key, fallback) {
-  const value = section?.catalogProperties?.[key];
+  const value = section?.convertedCatalogProperties?.[key];
 
-  if (Number.isFinite(value) && section?.metadata?.unitSystem) {
-    return sectionResolver(section).inertia(value);
+  if (Number.isFinite(value)) {
+    return value;
+  }
+
+  const rawValue = section?.catalogProperties?.[key];
+
+  if (Number.isFinite(rawValue) && section?.metadata?.catalogUnitSystem) {
+    return createUnitResolver(
+      section.metadata.catalogUnitSystem,
+      INTERNAL_UNITS,
+    ).inertia(rawValue);
   }
 
   return fallback;
 }
 
 function resolveWarpingConstant(section) {
-  const value = section?.catalogProperties?.Iw;
-
-  if (Number.isFinite(value) && section?.metadata?.unitSystem) {
-    return sectionResolver(section).convert(value, { lengthExponent: 6 });
+  if (Number.isFinite(section?.warpingConstant)) {
+    return section.warpingConstant;
   }
 
-  return section?.warpingConstant ?? null;
+  const value = section?.convertedCatalogProperties?.Iw;
+
+  if (Number.isFinite(value)) {
+    return value;
+  }
+
+  const rawValue = section?.catalogProperties?.Iw;
+
+  if (Number.isFinite(rawValue) && section?.metadata?.catalogUnitSystem) {
+    return createUnitResolver(
+      section.metadata.catalogUnitSystem,
+      INTERNAL_UNITS,
+    ).convert(rawValue, { lengthExponent: 6 });
+  }
+
+  return null;
 }
 
 function shearModulus(material) {

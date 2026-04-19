@@ -1,4 +1,10 @@
 import { VerificationResult } from "../../../core/results/VerificationResult.js";
+import {
+  governingCheck,
+  isFinitePositive,
+  round,
+  utilizationCheck as createUtilizationCheck,
+} from "../../../core/results/checkUtils.js";
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
 
 const DEFAULT_SECTION_UNITS = Object.freeze({ force: "N", length: "mm" });
@@ -7,46 +13,11 @@ const SUPPORTED_MODES = new Set([
   "with-transverse-reinforcement",
 ]);
 
-const round = (value, decimals = 6) =>
-  Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
-
-function isFinitePositive(value) {
-  return Number.isFinite(value) && value > 0;
-}
-
-function utilizationCheck({
-  id,
-  description,
-  demand,
-  capacity,
-  metadata = {},
-}) {
-  const utilizationRatio =
-    isFinitePositive(capacity) ? Math.abs(demand) / capacity : null;
-
-  return {
-    id,
-    description,
-    demand: round(Math.abs(demand)),
-    capacity: round(capacity),
-    utilizationRatio: round(utilizationRatio),
-    ok: Number.isFinite(utilizationRatio) && utilizationRatio <= 1,
-    metadata,
-  };
-}
-
-function governingCheck(checks) {
-  return checks.reduce((selected, check) => {
-    if (!Number.isFinite(check.utilizationRatio)) {
-      return selected;
-    }
-
-    if (!selected || check.utilizationRatio > selected.utilizationRatio) {
-      return check;
-    }
-
-    return selected;
-  }, null);
+function utilizationCheck(options) {
+  return createUtilizationCheck({
+    ...options,
+    strictCapacity: false,
+  });
 }
 
 function clamp(value, min, max) {

@@ -72,6 +72,7 @@ export class Load {
       name: this.name,
       type: this.type,
       dimension: this.dimension,
+      units: this.units ? { ...this.units } : null,
       actionId: this.action?.id ?? null,
       loadCaseId: this.loadCase?.id ?? null,
       targetId: this.target?.id ?? null,

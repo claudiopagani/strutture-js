@@ -27,6 +27,12 @@ export class PointLoad extends Load {
       my: unitResolver.moment(components.my ?? 0),
       mz: unitResolver.moment(components.mz ?? 0),
     };
+    this.units = unitResolver.targetUnitSystem;
+    this.metadata = {
+      ...this.metadata,
+      unitSystem: unitResolver.targetUnitSystem,
+      sourceUnitSystem: this.metadata.sourceUnitSystem ?? unitResolver.sourceUnitSystem,
+    };
   }
 
   forceResultant() {

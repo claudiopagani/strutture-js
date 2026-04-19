@@ -17,7 +17,15 @@ export class VerificationResult extends CalculationResult {
   }
 
   isVerified() {
-    return this.utilizationRatio !== null && this.utilizationRatio <= 1;
+    if (this.status !== "ok") {
+      return false;
+    }
+
+    if (this.checks.length > 0) {
+      return this.checks.every((check) => check.ok === true);
+    }
+
+    return this.utilizationRatio === null || this.utilizationRatio <= 1;
   }
 
   toJSON() {

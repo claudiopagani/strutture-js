@@ -29,6 +29,12 @@ export class AreaLoad extends Load {
     this.intensity = resolvedIntensity;
     this.areaOverride = area == null ? area : unitResolver.area(area);
     this.referenceSystem = referenceSystem;
+    this.units = unitResolver.targetUnitSystem;
+    this.metadata = {
+      ...this.metadata,
+      unitSystem: unitResolver.targetUnitSystem,
+      sourceUnitSystem: this.metadata.sourceUnitSystem ?? unitResolver.sourceUnitSystem,
+    };
   }
 
   resolvedArea() {

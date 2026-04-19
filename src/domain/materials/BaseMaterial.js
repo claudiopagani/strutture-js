@@ -32,9 +32,11 @@ export class BaseMaterial {
     this.shearModulus = unitResolver.stress(shearModulus);
     this.poissonRatio = poissonRatio;
     this.thermalExpansion = thermalExpansion;
+    this.units = unitResolver.targetUnitSystem;
     this.metadata = {
       ...metadata,
-      unitSystem: units ? unitResolver.unitSystem : metadata.unitSystem,
+      unitSystem: unitResolver.targetUnitSystem,
+      sourceUnitSystem: metadata.sourceUnitSystem ?? unitResolver.sourceUnitSystem,
     };
   }
 
@@ -59,6 +61,7 @@ export class BaseMaterial {
       shearModulus: this.shearModulus,
       poissonRatio: this.poissonRatio,
       thermalExpansion: this.thermalExpansion,
+      units: { ...this.units },
       metadata: { ...this.metadata },
     };
   }

@@ -1,4 +1,12 @@
 import { VerificationResult } from "../../../core/results/VerificationResult.js";
+import {
+  assertPositive,
+  governingCheck,
+  isFinitePositive,
+  round,
+  uniqueStrings,
+  utilizationCheck,
+} from "../../../core/results/checkUtils.js";
 import { BeamSectionActionVerifier } from "../../../domain/beams/BeamSectionActionVerifier.js";
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
 import {
@@ -10,19 +18,6 @@ import { verifySteelLateralTorsionalBuckling } from "./SteelLateralTorsionalBuck
 import { classifySteelSection } from "./SteelSectionClassification.js";
 
 const DEFAULT_SECTION_UNITS = Object.freeze({ force: "N", length: "mm" });
-
-const round = (value, decimals = 6) =>
-  Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
-
-function assertPositive(value, label) {
-  if (!Number.isFinite(value) || value <= 0) {
-    throw new Error(`${label} must be a positive number.`);
-  }
-}
-
-function isFinitePositive(value) {
-  return Number.isFinite(value) && value > 0;
-}
 
 function hasSignificantAction(value, tolerance = 1e-9) {
   return Number.isFinite(value) && Math.abs(value) > tolerance;
@@ -38,42 +33,6 @@ function designStrength(material, gammaM0) {
   }
 
   return null;
-}
-
-function utilizationCheck({
-  id,
-  description,
-  demand,
-  capacity,
-  metadata = {},
-}) {
-  assertPositive(capacity, `${id} capacity`);
-
-  const utilizationRatio = Math.abs(demand) / capacity;
-
-  return {
-    id,
-    description,
-    demand: round(Math.abs(demand)),
-    capacity: round(capacity),
-    utilizationRatio: round(utilizationRatio),
-    ok: utilizationRatio <= 1,
-    metadata,
-  };
-}
-
-function governingCheck(checks) {
-  return checks.reduce((selected, check) => {
-    if (!Number.isFinite(check.utilizationRatio)) {
-      return selected;
-    }
-
-    if (!selected || check.utilizationRatio > selected.utilizationRatio) {
-      return check;
-    }
-
-    return selected;
-  }, null);
 }
 
 function classificationPartById(classificationResult, id) {
@@ -140,10 +99,6 @@ function normalizeCombinationType(combinationType) {
   return String(combinationType ?? "").trim().toUpperCase().replaceAll("-", "_");
 }
 
-function uniqueStrings(values) {
-  return [...new Set(values.filter((value) => typeof value === "string" && value.length > 0))];
-}
-
 function steelSectionModulus(section, type = "elastic", axis = "Y") {
   const normalizedAxis = String(axis).toUpperCase();
   const keys =
@@ -156,13 +111,19 @@ function steelSectionModulus(section, type = "elastic", axis = "Y") {
         : ["Wel_y", "Wel_strong"];
 
   for (const key of keys) {
-    const value = section.catalogProperties?.[key];
+    const value = section.convertedCatalogProperties?.[key];
 
-    if (Number.isFinite(value) && section.metadata?.unitSystem) {
+    if (Number.isFinite(value)) {
+      return value;
+    }
+
+    const rawValue = section.catalogProperties?.[key];
+
+    if (Number.isFinite(rawValue) && section.metadata?.catalogUnitSystem) {
       return createUnitResolver(
-        section.metadata.unitSystem,
+        section.metadata.catalogUnitSystem,
         DEFAULT_SECTION_UNITS,
-      ).sectionModulus(value);
+      ).sectionModulus(rawValue);
     }
   }
 

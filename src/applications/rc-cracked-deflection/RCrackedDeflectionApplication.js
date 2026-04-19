@@ -12,7 +12,7 @@ export class RCrackedDeflectionApplication extends StructuralApplication {
       supportedCodes: ["NTC2018", "Eurocode 2"],
       tags: ["rc", "deflection", "cracking", "sls"],
       metadata: {
-        maturity: "scaffolded",
+        maturity: "partial",
         plannedCapabilities: [
           "effective inertia evaluation",
           "load history and quasi-permanent combinations",
@@ -28,7 +28,19 @@ export class RCrackedDeflectionApplication extends StructuralApplication {
       code: input.code ?? "NTC2018",
     }).analyze({
       beamId: input.model?.id ?? null,
+      analysisResult: input.analysisResult ?? input.model?.analysisResult ?? null,
+      section: input.section ?? input.model?.section ?? null,
+      concreteMaterial: input.concreteMaterial ?? input.model?.concreteMaterial,
+      reinforcementMaterial:
+        input.reinforcementMaterial ?? input.model?.reinforcementMaterial,
+      serviceability: input.serviceability ?? input.model?.serviceability ?? {},
+      mesh: input.mesh ?? input.model?.mesh ?? { targetFiberCount: 100 },
+      solver: input.solver ?? input.model?.solver ?? { tolerance: 1e-2, maxIterations: 50 },
     });
+
+    if (analysis.status !== "not-implemented") {
+      return analysis;
+    }
 
     return this.createPlaceholderResult({
       summary:

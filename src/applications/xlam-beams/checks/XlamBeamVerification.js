@@ -1,17 +1,14 @@
 import { VerificationResult } from "../../../core/results/VerificationResult.js";
+import {
+  assertPositive,
+  governingCheck,
+  round,
+  utilizationCheck,
+} from "../../../core/results/checkUtils.js";
 import { BeamSectionActionVerifier } from "../../../domain/beams/BeamSectionActionVerifier.js";
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
 
 const DEFAULT_SECTION_UNITS = Object.freeze({ force: "N", length: "mm" });
-
-const round = (value, decimals = 6) =>
-  Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
-
-function assertPositive(value, label) {
-  if (!Number.isFinite(value) || value <= 0) {
-    throw new Error(`${label} must be a positive number.`);
-  }
-}
 
 function hasSignificantAction(value, tolerance = 1e-12) {
   return Number.isFinite(value) && Math.abs(value) > tolerance;
@@ -25,42 +22,6 @@ function slabWeakAxisNeglectWarning({
   vZEdSectionUnits,
 }) {
   return `${systemLabel}: mZ/vZ from section rotation are reported and neglected in this 1D out-of-plane verification because the slab action provides high in-plane stiffness/resistance; checked governing components are mY/vY. mZ=${round(mZEd)}, vZ=${round(vZEd)}, mZSectionUnits=${round(mZEdSectionUnits)}, vZSectionUnits=${round(vZEdSectionUnits)}.`;
-}
-
-function utilizationCheck({
-  id,
-  description,
-  demand,
-  capacity,
-  metadata = {},
-}) {
-  assertPositive(capacity, `${id} capacity`);
-
-  const utilizationRatio = Math.abs(demand) / capacity;
-
-  return {
-    id,
-    description,
-    demand: round(Math.abs(demand)),
-    capacity: round(capacity),
-    utilizationRatio: round(utilizationRatio),
-    ok: utilizationRatio <= 1,
-    metadata,
-  };
-}
-
-function governingCheck(checks) {
-  return checks.reduce((selected, check) => {
-    if (!Number.isFinite(check.utilizationRatio)) {
-      return selected;
-    }
-
-    if (!selected || check.utilizationRatio > selected.utilizationRatio) {
-      return check;
-    }
-
-    return selected;
-  }, null);
 }
 
 function resultEntries(resultMap = {}) {

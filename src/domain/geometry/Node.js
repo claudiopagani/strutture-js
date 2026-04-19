@@ -24,9 +24,11 @@ export class Node {
     this.z = unitResolver.length(z);
     this.translationalDofs = [...translationalDofs];
     this.rotationalDofs = [...rotationalDofs];
+    this.units = unitResolver.targetUnitSystem;
     this.metadata = {
       ...metadata,
-      unitSystem: units ? unitResolver.unitSystem : metadata.unitSystem,
+      unitSystem: unitResolver.targetUnitSystem,
+      sourceUnitSystem: metadata.sourceUnitSystem ?? unitResolver.sourceUnitSystem,
     };
   }
 
@@ -47,6 +49,7 @@ export class Node {
       x: this.x,
       y: this.y,
       z: this.z,
+      units: { ...this.units },
       translationalDofs: [...this.translationalDofs],
       rotationalDofs: [...this.rotationalDofs],
       metadata: { ...this.metadata },

@@ -1,22 +1,16 @@
 import { VerificationResult } from "../../../core/results/VerificationResult.js";
+import {
+  assertPositive,
+  isFinitePositive,
+  round,
+  uniqueStrings,
+  utilizationCheck,
+} from "../../../core/results/checkUtils.js";
 import { BeamSectionActionVerifier } from "../../../domain/beams/BeamSectionActionVerifier.js";
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
 import { verifyTimberLateralTorsionalStability } from "./TimberLateralTorsionalStability.js";
 
 const DEFAULT_SECTION_UNITS = Object.freeze({ force: "N", length: "mm" });
-
-const round = (value, decimals = 6) =>
-  Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
-
-function assertPositive(value, label) {
-  if (!Number.isFinite(value) || value <= 0) {
-    throw new Error(`${label} must be a positive number.`);
-  }
-}
-
-function isFinitePositive(value) {
-  return Number.isFinite(value) && value > 0;
-}
 
 function normalizeLimitState(limitState) {
   return String(limitState ?? "").trim().toUpperCase();
@@ -26,38 +20,12 @@ function normalizeCombinationType(combinationType) {
   return String(combinationType ?? "").trim().toUpperCase().replaceAll("-", "_");
 }
 
-function uniqueStrings(values) {
-  return [...new Set(values.filter((value) => typeof value === "string" && value.length > 0))];
-}
-
 function designStrength(value, { kmod, gammaM }) {
   if (!Number.isFinite(value) || !Number.isFinite(kmod) || !Number.isFinite(gammaM)) {
     return null;
   }
 
   return (kmod * value) / gammaM;
-}
-
-function utilizationCheck({
-  id,
-  description,
-  demand,
-  capacity,
-  metadata = {},
-}) {
-  assertPositive(capacity, `${id} capacity`);
-
-  const utilizationRatio = Math.abs(demand) / capacity;
-
-  return {
-    id,
-    description,
-    demand: round(Math.abs(demand)),
-    capacity: round(capacity),
-    utilizationRatio: round(utilizationRatio),
-    ok: utilizationRatio <= 1,
-    metadata,
-  };
 }
 
 function ratioCheck({

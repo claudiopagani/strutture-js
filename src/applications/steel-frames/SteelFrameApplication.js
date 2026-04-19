@@ -12,7 +12,7 @@ export class SteelFrameApplication extends StructuralApplication {
       supportedCodes: ["NTC2018", "Eurocode"],
       tags: ["frames", "steel", "uls", "sls", "buckling"],
       metadata: {
-        maturity: "scaffolded",
+        maturity: "partial",
         plannedCapabilities: [
           "2D/3D frame analysis integration",
           "member resistance checks",
@@ -29,7 +29,20 @@ export class SteelFrameApplication extends StructuralApplication {
     }).verify({
       memberId: input.memberId ?? null,
       combinations: input.loadCombinations ?? [],
+      section: input.section ?? input.model?.section ?? null,
+      material: input.material ?? input.model?.material ?? null,
+      analysisResult: input.analysisResult ?? input.model?.analysisResult ?? null,
+      serviceability: input.serviceability,
+      classification: input.classification,
+      resistance: input.resistance,
+      stability: input.stability,
+      verificationStations: input.verificationStations,
+      deflectionLimitRatio: input.deflectionLimitRatio,
     });
+
+    if (verification.status !== "not-implemented") {
+      return verification;
+    }
 
     return this.createPlaceholderResult({
       summary:

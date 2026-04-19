@@ -40,6 +40,7 @@ export class CircularSection extends CrossSection {
         ...metadata,
         shape: "circular",
         unitSystem: INTERNAL_UNITS,
+        sourceUnitSystem: metadata.sourceUnitSystem ?? unitResolver.sourceUnitSystem,
       },
     });
 

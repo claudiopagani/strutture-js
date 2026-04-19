@@ -39,6 +39,12 @@ export class LineLoad extends Load {
     this.distribution = distribution;
     this.referenceSystem = referenceSystem;
     this.lengthOverride = resolvedLength;
+    this.units = unitResolver.targetUnitSystem;
+    this.metadata = {
+      ...this.metadata,
+      unitSystem: unitResolver.targetUnitSystem,
+      sourceUnitSystem: this.metadata.sourceUnitSystem ?? unitResolver.sourceUnitSystem,
+    };
   }
 
   averageIntensity() {

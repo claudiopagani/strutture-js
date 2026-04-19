@@ -48,9 +48,11 @@ export class ReinforcementBar {
     this.material = material;
     this.y = unitResolver.length(y);
     this.z = unitResolver.length(z);
+    this.units = unitResolver.targetUnitSystem;
     this.metadata = {
       ...metadata,
-      unitSystem: units ? unitResolver.unitSystem : metadata.unitSystem,
+      unitSystem: unitResolver.targetUnitSystem,
+      sourceUnitSystem: metadata.sourceUnitSystem ?? unitResolver.sourceUnitSystem,
     };
   }
 
@@ -80,6 +82,7 @@ export class ReinforcementBar {
       material: this.material?.toJSON ? this.material.toJSON() : this.material,
       y: this.y,
       z: this.z,
+      units: { ...this.units },
       metadata: { ...this.metadata },
     };
   }

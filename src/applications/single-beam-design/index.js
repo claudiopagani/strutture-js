@@ -5,4 +5,5 @@ export {
   validateBeamReportDto,
 } from "./dto/BeamReportDto.js";
 export { BeamReportBuilder } from "./reports/BeamReportBuilder.js";
+export { BeamReportMarkdownRenderer } from "./reports/BeamReportMarkdownRenderer.js";
 export { createBeamReportArtifacts } from "./reports/BeamReportArtifacts.js";

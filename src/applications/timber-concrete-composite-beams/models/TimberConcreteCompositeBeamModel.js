@@ -68,9 +68,11 @@ export class TimberConcreteCompositeBeamModel {
       sleQuasiPermanentLineLoad: unitResolver.lineLoad(loads.sleQuasiPermanentLineLoad),
     };
     this.deflectionLimitDenominator = deflectionLimitDenominator;
+    this.units = unitResolver.targetUnitSystem;
     this.metadata = {
       ...metadata,
-      unitSystem: units ? unitResolver.unitSystem : metadata.unitSystem,
+      unitSystem: unitResolver.targetUnitSystem,
+      sourceUnitSystem: metadata.sourceUnitSystem ?? unitResolver.sourceUnitSystem,
     };
   }
 

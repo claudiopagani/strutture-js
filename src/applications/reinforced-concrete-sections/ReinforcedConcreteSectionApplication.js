@@ -12,11 +12,10 @@ export class ReinforcedConcreteSectionApplication extends StructuralApplication 
       supportedCodes: ["NTC2018", "Eurocode 2"],
       tags: ["rc", "interaction-domain", "section-analysis", "uls"],
       metadata: {
-        maturity: "scaffolded",
+        maturity: "implemented",
         plannedCapabilities: [
-          "strain compatibility solver",
-          "M-N interaction diagrams",
-          "serviceability stress checks",
+          "adaptive domain refinement",
+          "moment-curvature workflow",
           "detailing validation hooks",
         ],
       },

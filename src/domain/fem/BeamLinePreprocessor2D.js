@@ -337,7 +337,8 @@ export class BeamLinePreprocessor2D {
       stations: sortedPoints,
       metadata: {
         ...metadata,
-        sourceUnits: unitResolver.unitSystem,
+        sourceUnits: unitResolver.sourceUnitSystem,
+        unitSystem: unitResolver.targetUnitSystem,
         generatedBy: "BeamLinePreprocessor2D",
       },
     };

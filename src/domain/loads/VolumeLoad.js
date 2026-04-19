@@ -29,6 +29,12 @@ export class VolumeLoad extends Load {
     this.intensity = resolvedIntensity;
     this.volumeOverride = volume == null ? volume : unitResolver.volume(volume);
     this.referenceSystem = referenceSystem;
+    this.units = unitResolver.targetUnitSystem;
+    this.metadata = {
+      ...this.metadata,
+      unitSystem: unitResolver.targetUnitSystem,
+      sourceUnitSystem: this.metadata.sourceUnitSystem ?? unitResolver.sourceUnitSystem,
+    };
   }
 
   resolvedVolume() {

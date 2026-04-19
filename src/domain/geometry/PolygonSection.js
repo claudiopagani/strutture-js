@@ -101,6 +101,7 @@ export class PolygonSection extends CrossSection {
         ...metadata,
         shape: "polygon",
         unitSystem: INTERNAL_UNITS,
+        sourceUnitSystem: metadata.sourceUnitSystem ?? unitResolver.sourceUnitSystem,
       },
     });
   }

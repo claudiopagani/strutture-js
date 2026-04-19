@@ -8,6 +8,7 @@ import {
   ReinforcedConcreteSectionModel,
   ReinforcementBar,
   RectangularSection,
+  SteelMaterial,
   TimberConcreteCompositeBeamApplication,
   TimberConcreteCompositeBeamModel,
   createNTC2018ConcreteMaterial,
@@ -173,6 +174,39 @@ test("layer load converts explicit SI units to slab internal units", () => {
   });
 
   approx(load.value, 1.28, 1e-9);
+});
+
+test("serializable domain objects expose internal and source unit systems", () => {
+  const sourceUnits = { force: "kN", length: "m" };
+  const material = new SteelMaterial({
+    name: "S355",
+    grade: "S355",
+    elasticModulus: 210000000,
+    fyk: 355000,
+    units: sourceUnits,
+  });
+  const section = new RectangularSection({
+    width: 0.3,
+    height: 0.5,
+    units: sourceUnits,
+  });
+  const rebar = new ReinforcementBar({
+    diameter: 0.016,
+    y: 0.04,
+    z: 0.05,
+    units: sourceUnits,
+  });
+  const cloned = material.clone();
+
+  assert.deepEqual(material.toJSON().units, legacyUnits);
+  assert.deepEqual(material.metadata.unitSystem, legacyUnits);
+  assert.deepEqual(material.metadata.sourceUnitSystem, sourceUnits);
+  assert.deepEqual(cloned.toJSON().units, legacyUnits);
+  assert.deepEqual(cloned.metadata.sourceUnitSystem, sourceUnits);
+  assert.deepEqual(section.toJSON().units, legacyUnits);
+  assert.deepEqual(section.metadata.sourceUnitSystem, sourceUnits);
+  assert.deepEqual(rebar.toJSON().units, legacyUnits);
+  assert.deepEqual(rebar.metadata.sourceUnitSystem, sourceUnits);
 });
 
 test("reinforced concrete workflow preserves results with explicit N/m inputs", () => {

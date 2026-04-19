@@ -41,6 +41,7 @@ export { SingleBeamDesignModel } from "./single-beam-design/index.js";
 export { BEAM_REPORT_SCHEMA_VERSION } from "./single-beam-design/index.js";
 export { validateBeamReportDto } from "./single-beam-design/index.js";
 export { BeamReportBuilder } from "./single-beam-design/index.js";
+export { BeamReportMarkdownRenderer } from "./single-beam-design/index.js";
 export { createBeamReportArtifacts } from "./single-beam-design/index.js";
 export { SteelFrameApplication } from "./steel-frames/index.js";
 export { classifySteelSection } from "./steel-frames/index.js";

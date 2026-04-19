@@ -63,6 +63,8 @@ export function createUnitResolver(
   if (source == null) {
     return {
       unitSystem: target,
+      sourceUnitSystem: null,
+      targetUnitSystem: target,
       convert: (value) => value,
       length: (value) => value,
       area: (value) => value,
@@ -103,6 +105,8 @@ export function createUnitResolver(
 
   return {
     unitSystem: source,
+    sourceUnitSystem: source,
+    targetUnitSystem: target,
     convert,
     length: (value) => convert(value, { lengthExponent: 1 }),
     area: (value) => convert(value, { lengthExponent: 2 }),

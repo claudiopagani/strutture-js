@@ -153,9 +153,11 @@ const model = new ReinforcedConcreteSectionModel({
 
 Layer unita:
 
-- il package accetta ora un oggetto opzionale `units: { force, length }` nei principali costruttori di materiali, geometrie, carichi, connettori e modelli applicativi;
+- i principali costruttori di materiali, geometrie, carichi, connettori e modelli applicativi richiedono un oggetto esplicito `units: { force, length }`;
 - dalle due unita base vengono ricavate automaticamente le grandezze derivate, ad esempio momento, carico lineare, tensione, modulo elastico, area, volume e inerzia;
-- quando `units` non e specificato, il comportamento legacy resta invariato per compatibilita con il codice esistente e con i test storici.
+- i valori in input vengono convertiti nelle unita interne storiche del package, in generale `N` e `mm` per materiali, sezioni, armature, connettori e primitive di dominio;
+- `toJSON()` espone le unita interne tramite `units`, mentre `metadata.sourceUnitSystem` conserva le unita originali dichiarate dall'utente;
+- per portare codice legacy dentro il nuovo contratto basta dichiarare le unita che quel codice stava gia usando, ad esempio `{ force: "N", length: "mm" }`.
 
 Esempio con input esplicito in `kN` e `m`:
 
@@ -184,7 +186,7 @@ const model = new TimberConcreteCompositeBeamModel({
 });
 ```
 
-Se `units` non viene dichiarato, resta comunque disponibile la compatibilita legacy per il codice storico del modulo RC:
+Il codice storico del modulo RC resta compatibile dichiarando esplicitamente le sue unita naturali:
 
 - unita interne consigliate: `mm`, `N`, `Nmm`, `MPa`;
 - tensioni positive a trazione;

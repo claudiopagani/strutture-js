@@ -10,7 +10,7 @@ export const APPLICATION_CATALOG = [
     id: "steel-frames",
     name: "Steel Frames",
     domain: "steel",
-    maturity: "scaffolded",
+    maturity: "partial",
     primaryFocus: "Analysis and checks of steel frames and members.",
   },
   {
@@ -24,14 +24,14 @@ export const APPLICATION_CATALOG = [
     id: "reinforced-concrete-sections",
     name: "RC Sections",
     domain: "reinforced-concrete",
-    maturity: "scaffolded",
+    maturity: "implemented",
     primaryFocus: "Section analysis for axial force and bending.",
   },
   {
     id: "timber-beams",
     name: "Timber Beams",
     domain: "timber",
-    maturity: "scaffolded",
+    maturity: "partial",
     primaryFocus: "Verification of timber beams in resistance and serviceability.",
   },
   {
@@ -59,7 +59,7 @@ export const APPLICATION_CATALOG = [
     id: "rc-cracked-deflection",
     name: "RC Cracked Deflection",
     domain: "reinforced-concrete",
-    maturity: "scaffolded",
+    maturity: "partial",
     primaryFocus: "Deflection analysis of cracked RC beams.",
   },
   {

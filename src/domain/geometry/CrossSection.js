@@ -59,9 +59,11 @@ export class CrossSection {
     this.width = unitResolver.length(width);
     this.outlinePoints = outlinePoints.map((point) =>
       convertPointCoordinates(point, unitResolver, ["y", "z"]));
+    this.units = unitResolver.targetUnitSystem;
     this.metadata = {
       ...metadata,
-      unitSystem: units ? unitResolver.unitSystem : metadata.unitSystem,
+      unitSystem: unitResolver.targetUnitSystem,
+      sourceUnitSystem: metadata.sourceUnitSystem ?? unitResolver.sourceUnitSystem,
     };
   }
 
@@ -85,6 +87,7 @@ export class CrossSection {
       height: this.height,
       width: this.width,
       outlinePoints: this.outlinePoints.map((point) => ({ ...point })),
+      units: { ...this.units },
       metadata: { ...this.metadata },
     };
   }

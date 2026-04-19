@@ -11,7 +11,7 @@ export class TimberBeamApplication extends StructuralApplication {
       supportedCodes: ["NTC2018", "Eurocode 5"],
       tags: ["timber", "beam", "kmod", "serviceability"],
       metadata: {
-        maturity: "scaffolded",
+        maturity: "partial",
         plannedCapabilities: [
           "solid and glulam timber checks",
           "instantaneous and final deflection",
@@ -27,7 +27,18 @@ export class TimberBeamApplication extends StructuralApplication {
       code: input.code ?? "NTC2018",
     }).verify({
       beamId: input.model?.id ?? null,
+      section: input.section ?? input.model?.section ?? null,
+      material: input.material ?? input.model?.material ?? null,
+      analysisResult: input.analysisResult ?? input.model?.analysisResult ?? null,
+      serviceability: input.serviceability,
+      stability: input.stability,
+      verificationStations: input.verificationStations,
+      deflectionLimitRatio: input.deflectionLimitRatio,
     });
+
+    if (verification.status !== "not-implemented") {
+      return verification;
+    }
 
     return this.createPlaceholderResult({
       summary:

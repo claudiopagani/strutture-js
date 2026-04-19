@@ -52,6 +52,7 @@ export class RectangularSection extends CrossSection {
         ...metadata,
         shape: "rectangular",
         unitSystem: INTERNAL_UNITS,
+        sourceUnitSystem: metadata.sourceUnitSystem ?? unitResolver.sourceUnitSystem,
       },
     });
   }

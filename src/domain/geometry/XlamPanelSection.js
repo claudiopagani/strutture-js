@@ -95,6 +95,7 @@ export class XlamPanelSection extends CrossSection {
         layerThicknesses: [...resolvedLayerThicknesses],
         activeLayerIndexes: [...activeLayerIndexes],
         unitSystem: INTERNAL_UNITS,
+        sourceUnitSystem: metadata.sourceUnitSystem ?? unitResolver.sourceUnitSystem,
       },
     });
 

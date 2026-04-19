@@ -91,6 +91,7 @@ export class TSection extends CrossSection {
         ...metadata,
         shape: "t-section",
         unitSystem: INTERNAL_UNITS,
+        sourceUnitSystem: metadata.sourceUnitSystem ?? unitResolver.sourceUnitSystem,
       },
     });
 

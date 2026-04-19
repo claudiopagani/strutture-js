@@ -1,5 +1,10 @@
 import sectionDatabase from "../../data/section_database.json" with { type: "json" };
 
+export const STEEL_PROFILE_CATALOG_UNITS = Object.freeze({
+  force: "N",
+  length: "m",
+});
+
 export const STEEL_PROFILE_SECTION_DATABASE = Object.freeze(sectionDatabase);
 
 export const STEEL_PROFILE_SECTION_NAMES = Object.freeze(

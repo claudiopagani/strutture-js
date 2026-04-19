@@ -21,6 +21,8 @@ export {
   createNTC2018TimberMaterial,
 } from "./materials/createNTC2018Material.js";
 
+export { NTC2018ExistingMasonryMaterial } from "./materials/NTC2018ExistingMasonryMaterial.js";
+
 export {
   applyNTC2018ExistingMasonryMaltaBuonaUpdate,
   applyNTC2018ExistingMasonryModifierToggle,
@@ -78,6 +80,8 @@ export {
   createNTC2018SLECombination,
   createNTC2018ULSFundamentalCombination,
 } from "./loads/createNTC2018LoadCombination.js";
+
+export { NTC2018SlabLoadAnalysis } from "./loads/NTC2018SlabLoadAnalysis.js";
 
 export {
   createNTC2018BeamCombinations,
