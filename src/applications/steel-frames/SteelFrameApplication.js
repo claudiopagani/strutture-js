@@ -1,5 +1,16 @@
 import { StructuralApplication } from "../../core/applications/StructuralApplication.js";
+import { CalculationResult } from "../../core/results/CalculationResult.js";
 import { SteelMemberVerification } from "./checks/SteelMemberVerification.js";
+import { SteelRingFramePushoverAnalysis } from "./analysis/SteelRingFramePushoverAnalysis.js";
+import { SteelRingFramePushoverModel } from "./models/SteelRingFramePushoverModel.js";
+
+function isRingFramePushoverInput(input = {}) {
+  return (
+    input.model instanceof SteelRingFramePushoverModel ||
+    input.analysisType === "steel-ring-frame-pushover" ||
+    input.model?.metadata?.analysisType === "steel-ring-frame-pushover"
+  );
+}
 
 export class SteelFrameApplication extends StructuralApplication {
   constructor() {
@@ -7,10 +18,10 @@ export class SteelFrameApplication extends StructuralApplication {
       id: "steel-frames",
       name: "Steel Frames",
       description:
-        "Global analysis and code checks for structural steel frames and members.",
+        "Global analysis and code checks for structural steel frames, members and standalone ring-frame pushover workflows.",
       domain: "steel",
       supportedCodes: ["NTC2018", "Eurocode"],
-      tags: ["frames", "steel", "uls", "sls", "buckling"],
+      tags: ["frames", "steel", "uls", "sls", "buckling", "pushover"],
       metadata: {
         maturity: "partial",
         plannedCapabilities: [
@@ -18,12 +29,32 @@ export class SteelFrameApplication extends StructuralApplication {
           "member resistance checks",
           "stability and buckling verifications",
           "connection-level verification hooks",
+          "standalone pushover curves for steel ring frames around openings",
         ],
       },
     });
   }
 
   run(input = {}) {
+    if (isRingFramePushoverInput(input)) {
+      const result = new SteelRingFramePushoverAnalysis().analyze({
+        model: input.model ?? input,
+      });
+
+      return new CalculationResult({
+        applicationId: this.id,
+        status: result.status,
+        summary: result.summary,
+        outputs: result.outputs,
+        warnings: result.warnings,
+        assumptions: result.assumptions,
+        metadata: {
+          domain: this.domain,
+          ...result.metadata,
+        },
+      });
+    }
+
     const verification = new SteelMemberVerification({
       code: input.code ?? "NTC2018",
     }).verify({

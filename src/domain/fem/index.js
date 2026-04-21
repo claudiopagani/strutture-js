@@ -7,3 +7,4 @@ export {
 } from "./elements/index.js";
 export { FemAssembler2D } from "./FemAssembler2D.js";
 export { LinearStaticSolver2D } from "./LinearStaticSolver2D.js";
+export { DisplacementControlNonlinearStaticSolver2D } from "./nonlinear/index.js";

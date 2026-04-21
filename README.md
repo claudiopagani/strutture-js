@@ -17,7 +17,7 @@ Stato corrente dei moduli applicativi:
 | Modulo | Stato | Cosa fa oggi |
 | --- | --- | --- |
 | `single-beam-design` | MVP | Analisi FEM 2D di trave semplice, verifica opzionale e report JSON/Markdown. |
-| `steel-frames` | Parziale | Verifiche di aste in acciaio da risultati FEM gia disponibili; non e ancora un solver globale di telai. |
+| `steel-frames` | Parziale | Verifiche di aste in acciaio da risultati FEM e pushover standalone di cerchiature metalliche rettangolari a 4 aste con cerniere plastiche concentrate. |
 | `masonry-piers` | Parziale | Verifica verticale NTC 2018 di maschi murari e idealizzazione 2D a telaio equivalente con tratti rigidi incorporati tramite trasformazione matriciale. |
 | `masonry-ring-beams` | Scaffold | Modello e placeholder per cerchiature in muratura. |
 | `reinforced-concrete-sections` | Implementato | Analisi SLU/SLE di sezioni in c.a. a fibre. |
@@ -203,25 +203,51 @@ Stato: parziale.
 
 Input minimo:
 
-- `section`, `material` e `analysisResult` per verificare una o piu aste.
-- `analysisResult` puo arrivare da `SingleBeamAnalysis` o da un futuro solver globale, purche rispetti lo stesso contratto di risultati.
+- workflow 1, verifica membro:
+  - `section`, `material` e `analysisResult` per verificare una o piu aste;
+  - `analysisResult` puo arrivare da `SingleBeamAnalysis` o da un futuro solver globale, purche rispetti lo stesso contratto di risultati.
+- workflow 2, pushover standalone di cerchiatura:
+  - `SteelRingFramePushoverModel` con `id`, `units`, `geometry`, `memberSections`, `material`, `baseCondition`, `loading` e `solver`;
+  - `geometry` richiede almeno `b` e `h` del varco;
+  - `baseCondition` supporta:
+    - `fixed-base`;
+    - `pinned-base-with-bottom-beam`;
+    - `pinned-base-without-bottom-beam`;
+  - le sezioni dei membri possono essere dichiarate tramite profili commerciali del database integrato, ad esempio `IPE200`, `HEA120`.
 
 Output atteso:
 
-- `VerificationResult` se gli input sono completi.
+- per la verifica membro: `VerificationResult` se gli input sono completi.
 - Checks tipici: classificazione sezione, flessione, taglio, sforzo normale, tensione elastica, LTB, instabilita a compressione, interazione `N + My`, freccia SLE.
-- `CalculationResult` placeholder se mancano gli input necessari.
+- per il pushover standalone: `CalculationResult` con:
+  - `outputs.frameIdealization`;
+  - `outputs.control`;
+  - `outputs.capacityCurve`;
+  - `outputs.hingeEvents`;
+  - `outputs.finalState`.
+- `CalculationResult` placeholder se mancano gli input necessari per il ramo richiesto.
 
 Unita richieste:
 
-- profili/materiali con unita dichiarate;
-- il risultato FEM espone `analysisResult.units`;
-- le proprieta catalogo dei profili sono convertite automaticamente.
+- nella verifica membro:
+  - profili/materiali con unita dichiarate;
+  - il risultato FEM espone `analysisResult.units`;
+  - le proprieta catalogo dei profili sono convertite automaticamente.
+- nel pushover standalone:
+  - il modello puo essere dichiarato anche in `kN` e `m`;
+  - sezioni e materiali possono restare nelle unita storiche `N` e `mm`;
+  - il builder del telaio lavora nello snapshot FEM in `kN` e `m`, convertendo automaticamente rigidezze e momenti plastici;
+  - il controllo indiretto di spostamento usa il solver generico `DisplacementControlNonlinearStaticSolver2D` del layer FEM non lineare.
 
 Limiti del metodo:
 
-- non esegue ancora analisi globale di telaio;
-- dominio principale `N + My`, con supporto parziale per componenti ruotate;
+- non esegue ancora una analisi globale generica di telai in acciaio; oggi copre verifiche di asta e un pushover standalone molto mirato di cerchiatura rettangolare a 4 aste;
+- il pushover usa un modello piano 2D Euler-Bernoulli con 3 DOF nodali per nodo, plasticita concentrata alle estremita ed assenza di non linearita geometrica;
+- il pattern di carico laterale del pushover e fissato, con ripartizione `50/50` sui due nodi superiori e controllo di un solo DOF orizzontale al livello dell'architrave;
+- il solver pushover usa il sistema aumentato `[Kt -Fext; c^T 0]`, quindi puo proseguire naturalmente oltre il primo meccanismo finche il target di spostamento e maggiore e la risposta resta numericamente determinabile;
+- nel caso della cerchiatura rettangolare oggi la curva di capacita restituisce sia il ramo ascendente sia il plateau post-meccanismo a forza orizzontale costante quando il modello elastico-perfettamente-plastico ha esaurito la capacita;
+- non sono ancora incluse non linearita geometriche, incrudimento, degrado ciclico o criteri avanzati di prosecuzione per meccanismi multipli;
+- dominio principale di verifica membro `N + My`, con supporto parziale per componenti ruotate;
 - torsione e interazioni torsionali escluse;
 - sezioni di classe 4 bloccate finche non saranno disponibili proprieta efficaci.
 
@@ -298,6 +324,45 @@ const result = new SteelFrameApplication().run({
 console.log(result.status);
 console.log(result.utilizationRatio);
 console.log(result.checks.map((check) => check.id));
+```
+
+Esempio pushover standalone della cerchiatura:
+
+```js
+import {
+  SteelFrameApplication,
+  SteelRingFramePushoverModel,
+} from "./src/index.js";
+
+const model = new SteelRingFramePushoverModel({
+  id: "ring-frame-01",
+  units: { force: "kN", length: "m" },
+  geometry: {
+    b: 0.9,
+    h: 2.1,
+  },
+  memberSections: {
+    columns: "IPE200",
+    topBeam: "IPE200",
+    bottomBeam: "IPE200",
+  },
+  material: "S275",
+  baseCondition: "pinned-base-with-bottom-beam",
+  solver: {
+    controlIncrement: 0.002,
+    maxDisplacement: 0.08,
+    tolerance: 1e-2,
+    maxIterations: 60,
+    maxSteps: 60,
+  },
+});
+
+const result = new SteelFrameApplication().run({ model });
+
+console.log(result.status);
+console.log(result.outputs.capacityCurve.points.at(-1));
+console.log(result.outputs.hingeEvents);
+console.log(result.outputs.finalState.termination);
 ```
 
 ### `masonry-piers`
@@ -1252,7 +1317,7 @@ Il layer `src/norms/ntc2018` contiene:
 
 - La libreria non e ancora un software normativo completo.
 - I moduli `masonry-ring-beams`, `masonry-out-of-plane` e `micropiles-broms` restano placeholder dichiarati; `masonry-piers` e invece operativo per la verifica verticale e per la costruzione dello schema 2D equivalente del singolo maschio.
-- Il solver trave singola e 2D lineare.
+- Il workflow `single-beam-design` resta oggi un solver 2D lineare; il layer FEM contiene anche un primo solver statico non lineare a controllo indiretto di spostamento, usato dal pushover delle cerchiature metalliche.
 - Le verifiche acciaio non includono ancora torsione e proprieta efficaci per classe 4.
 - I workflow RC non includono ancora momento-curvatura, duttilita e colonna modello.
 - Le verifiche legno/XLAM sono solide per i casi coperti dai test, ma richiedono ancora campagne di validazione piu ampie.

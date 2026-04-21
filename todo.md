@@ -61,24 +61,47 @@ Architettura proposta del modulo `steel-frames` per il pushover della cerchiatur
 
 Nota architetturale:
 
-* per il primo MVP tengo l'intera plasticita concentrata dentro `src/applications/steel-frames`, cosi non contaminamo subito il core FEM lineare;
-* se il workflow si stabilizza, il passo successivo sara estrarre le primitive non lineari riusabili in `src/domain/fem/nonlinear`.
+* il primo MVP era nato con l'intera plasticita concentrata dentro `src/applications/steel-frames`, per non contaminare subito il core FEM lineare;
+* passo successivo completato: il controllo indiretto di spostamento e stato estratto in `src/domain/fem/nonlinear`, lasciando nel modulo acciaio solo il modello di plasticita concentrata e l'assembler delle forze interne del telaio.
+
+Stato implementazione, 2026-04-21:
+
+* completato il nuovo workflow `steel-ring-frame-pushover` dentro `steel-frames`, con modello dedicato, builder FEM 2D, elemento con cerniere plastiche concentrate e orchestratore applicativo;
+* completati i tre scenari confermati:
+  * piedritti incastrati a terra;
+  * piedritti incernierati a terra con traverso inferiore;
+  * piedritti incernierati a terra senza traverso inferiore;
+* completata la plasticita concentrata alle 8 estremita candidabili, senza nodi aggiuntivi e senza contaminare il core FEM lineare;
+* completata la traduzione in JS del ciclo incrementale-iterativo di controllo di spostamento ispirato a Jirasek, poi rifattorizzata nel layer FEM generico `src/domain/fem/nonlinear`;
+* completata la prosecuzione naturale oltre il primo meccanismo per il caso elastico-perfettamente-plastico: se lo spostamento target e maggiore, la curva di capacita prosegue a plateau con forza costante senza bisogno di una regola esterna sul diagramma;
+* completati test automatici per:
+  * builder e scenari di base;
+  * capping del momento plastico nell'elemento con cerniere concentrate;
+  * solver FEM generico a controllo di spostamento su una molla perfettamente plastica con plateau post-snervamento;
+  * esecuzione end-to-end del pushover standalone tramite `SteelFrameApplication`.
 
 Todo operativo:
 
-* definire il contratto dati del `Model` con geometria del varco, profili, materiale, vincoli, forza laterale di riferimento, DOF di controllo e parametri numerici del pushover;
-* definire il builder del telaio 2D con nodi, connettivita, proprieta di sezione e mapping dei DOF globali;
-* introdurre una formulazione di estremita plastiche concentrate per elementi Euler-Bernoulli 2D, con rilascio rotazionale e vettore equivalente dei momenti plastici;
-* implementare il calcolo delle forze interne globali e di estremita richiesto dal ciclo iterativo `Fint = internalForces(d)`;
-* tradurre il solver di Jirasek in JS in forma riusabile, con passo incrementale, iterazioni correttive, tolleranza, `itemax`, controllo di convergenza e aggiornamento dello stato plastico;
-* calcolare ad ogni passo il taglio alla base come risultante delle reazioni orizzontali ai vincoli inferiori;
-* produrre un esempio eseguibile con dati dummy realistici, profili commerciali del database e output della curva di capacita;
-* coprire il modulo con test numerici minimi: elasticita iniziale, attivazione prima cerniera, plateau plastico locale, curva monotona e regressione del solver;
-* aggiornare `README.md` a fine implementazione con stato modulo, ipotesi meccaniche, input, output e limiti del metodo.
+* completato il contratto dati del `Model` con geometria del varco, profili, materiale, vincoli, forza laterale di riferimento, DOF di controllo e parametri numerici del pushover;
+* completato il builder del telaio 2D con nodi, connettivita, proprieta di sezione e mapping dei DOF globali;
+* completata la formulazione di estremita plastiche concentrate per elementi Euler-Bernoulli 2D, con rilascio rotazionale per condensazione locale e momento plastico costante;
+* completato il calcolo delle forze interne globali e di estremita richiesto dal ciclo iterativo `Fint = internalForces(d)`;
+* completata la traduzione del solver di Jirasek in JS in forma riusabile, con passo incrementale, iterazioni correttive, tolleranza, `itemax`, controllo di convergenza e aggiornamento dello stato plastico;
+* completata l'estrazione del controllo indiretto di spostamento nel layer FEM generico `src/domain/fem/nonlinear/DisplacementControlNonlinearStaticSolver2D.js`;
+* completato il calcolo del taglio alla base come risultante delle reazioni orizzontali ai vincoli inferiori;
+* completato un esempio eseguibile con dati dummy realistici, profili commerciali del database e output della curva di capacita, incapsulato nei test end-to-end del modulo;
+* completata la copertura con test numerici minimi: elasticita iniziale, attivazione cerniere, curva monotona e regressione del solver;
+* completato l'aggiornamento di `README.md` a fine implementazione con stato modulo, ipotesi meccaniche, input, output e limiti del metodo.
+
+Backlog breve del cantiere:
+
+* valutare l'estrazione delle primitive non lineari in `src/domain/fem/nonlinear` se il workflow si stabilizza su piu applicazioni;
+* introdurre, in un secondo passo, adattivita del passo di spostamento, criteri di arresto piu raffinati e gestione piu robusta di meccanismi multipli o modi nulli concorrenti;
+* preparare il futuro modulo orchestratore `masonry-wall-openings`, che riusera il pushover standalone della cerchiatura insieme ai moduli murari.
 
 Pausa operativa concordata:
 
-* prima di scrivere codice per il pushover della cerchiatura, eseguire commit e push del solo cantiere `masonry-piers` gia implementato.
+* chiusa: prima di scrivere codice per il pushover della cerchiatura, e stato eseguito commit e push del solo cantiere `masonry-piers` gia implementato.
 
 ## Cantiere attivo: maschio murario per carichi verticali NTC 2018
 
@@ -263,6 +286,7 @@ Componenti principali:
 * `DofRegistry`;
 * `FemAssembler2D`;
 * `LinearStaticSolver2D`;
+* `DisplacementControlNonlinearStaticSolver2D`;
 * `BeamLinePreprocessor2D`;
 * elemento frame 2D Euler-Bernoulli;
 * elemento frame 2D Timoshenko.
@@ -277,6 +301,7 @@ Capacita presenti:
 * carichi distribuiti uniformi su elemento;
 * discretizzazione in punti notevoli;
 * reazioni, spostamenti, forze interne e campionamento `N`, `V`, `M`;
+* analisi statica non lineare a controllo indiretto di spostamento tramite sistema aumentato, riusabile per workflow con stato interno dell'elemento;
 * confronti con formule classiche di trave.
 
 Principi da mantenere:
@@ -291,6 +316,7 @@ Da fare in futuro:
 * release di estremita tramite condensazione statica;
 * multipoint constraints tramite trasformazione cinematica;
 * spostamenti imposti piu ricchi;
+* solver non lineari aggiuntivi: load control, arc-length e strategie con line search;
 * strategie non lineari separate: load stepping, Newton-Raphson, line search, controllo di spostamento, commit/rollback dello stato.
 
 ### 3. Modulo trave singola
