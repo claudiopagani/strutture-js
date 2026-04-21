@@ -269,7 +269,7 @@ export function createNTC2018ExistingMasonryMaterial({
       modifierSelections,
       surveyFactors,
       improvementFactors,
-      units,
+      units: INTERNAL_UNITS,
       metadata: sharedMetadata,
       ...rest,
     });

@@ -32,7 +32,7 @@ export const NTC2018_EXISTING_MASONRY_TYPOLOGIES = [
       tau0: [0.018, 0.032],
       E: [690.0, 1050.0],
       G: [230.0, 350.0],
-      w: [19.0],
+      w: [0.000019],
     },
     multipliers: {
       maltaBuona: 1.5,
@@ -54,7 +54,7 @@ export const NTC2018_EXISTING_MASONRY_TYPOLOGIES = [
       tau0: [0.035, 0.051],
       E: [1020.0, 1440.0],
       G: [340.0, 480.0],
-      w: [20.0],
+      w: [0.00002],
     },
     multipliers: {
       maltaBuona: 1.4,
@@ -74,7 +74,7 @@ export const NTC2018_EXISTING_MASONRY_TYPOLOGIES = [
       tau0: [0.056, 0.074],
       E: [1500.0, 1980.0],
       G: [500.0, 660.0],
-      w: [21.0],
+      w: [0.000021],
     },
     multipliers: {
       maltaBuona: 1.3,
@@ -94,7 +94,7 @@ export const NTC2018_EXISTING_MASONRY_TYPOLOGIES = [
       tau0: [0.028, 0.042],
       E: [900.0, 1260.0],
       G: [300.0, 420.0],
-      w: [13.0, 16.0],
+      w: [0.000013, 0.000016],
     },
     multipliers: {
       maltaBuona: 1.5,
@@ -117,7 +117,7 @@ export const NTC2018_EXISTING_MASONRY_TYPOLOGIES = [
       fv0: [0.10, 0.19],
       E: [1200.0, 1620.0],
       G: [400.0, 500.0],
-      w: [13.0, 16.0],
+      w: [0.000013, 0.000016],
     },
     multipliers: {
       maltaBuona: 1.6,
@@ -137,7 +137,7 @@ export const NTC2018_EXISTING_MASONRY_TYPOLOGIES = [
       fv0: [0.18, 0.28],
       E: [2400.0, 3300.0],
       G: [800.0, 1100.0],
-      w: [22.0],
+      w: [0.000022],
     },
     multipliers: {
       maltaBuona: 1.2,
@@ -158,7 +158,7 @@ export const NTC2018_EXISTING_MASONRY_TYPOLOGIES = [
       fv0: [0.13, 0.27],
       E: [1200.0, 1800.0],
       G: [400.0, 600.0],
-      w: [18.0],
+      w: [0.000018],
     },
     multipliers: {
       maltaBuona: 1.0,
@@ -178,7 +178,7 @@ export const NTC2018_EXISTING_MASONRY_TYPOLOGIES = [
       fv0: [0.20, 0.36],
       E: [3500.0, 5600.0],
       G: [875.0, 1400.0],
-      w: [15.0],
+      w: [0.000015],
     },
     multipliers: {
       maltaBuona: 1.2,

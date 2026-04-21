@@ -3,6 +3,7 @@ export { DofRegistry } from "./DofRegistry.js";
 export {
   FrameElement2DEulerBernoulli,
   FrameElement2DTimoshenko,
+  FrameElement2DTimoshenkoRigidOffsets,
 } from "./elements/index.js";
 export { FemAssembler2D } from "./FemAssembler2D.js";
 export { LinearStaticSolver2D } from "./LinearStaticSolver2D.js";

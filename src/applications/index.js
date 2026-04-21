@@ -1,5 +1,6 @@
 import { ApplicationRegistry } from "../core/applications/ApplicationRegistry.js";
 import { MasonryOutOfPlaneApplication } from "./masonry-out-of-plane/index.js";
+import { MasonryPierApplication } from "./masonry-piers/index.js";
 import { MasonryRingBeamApplication } from "./masonry-ring-beams/index.js";
 import { MicropileBromsApplication } from "./micropiles-broms/index.js";
 import { RCrackedDeflectionApplication } from "./rc-cracked-deflection/index.js";
@@ -14,6 +15,10 @@ import { XlamOutOfPlanePanelApplication } from "./xlam-panels-out-of-plane/index
 export { MasonryOutOfPlaneApplication } from "./masonry-out-of-plane/index.js";
 export { MasonryOutOfPlaneKinematicAnalysis } from "./masonry-out-of-plane/index.js";
 export { MasonryOutOfPlaneModel } from "./masonry-out-of-plane/index.js";
+export { MasonryPierApplication } from "./masonry-piers/index.js";
+export { MasonryPierEquivalentFrameBuilder } from "./masonry-piers/index.js";
+export { MasonryPierModel } from "./masonry-piers/index.js";
+export { MasonryPierVerticalVerification } from "./masonry-piers/index.js";
 export { MasonryRingBeamApplication } from "./masonry-ring-beams/index.js";
 export { MasonryRingBeamModel } from "./masonry-ring-beams/index.js";
 export { MasonryRingBeamVerification } from "./masonry-ring-beams/index.js";
@@ -82,6 +87,7 @@ export function createDefaultApplicationRegistry() {
   return new ApplicationRegistry([
     new SingleBeamDesignApplication(),
     new SteelFrameApplication(),
+    new MasonryPierApplication(),
     new MasonryRingBeamApplication(),
     new ReinforcedConcreteSectionApplication(),
     new TimberBeamApplication(),

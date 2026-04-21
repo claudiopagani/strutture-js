@@ -25,6 +25,8 @@ import "./femCore2D.test.js";
 import "./femBeamValidation.test.js";
 import "./frameElement2DEulerBernoulli.test.js";
 import "./frameElement2DTimoshenko.test.js";
+import "./frameElement2DTimoshenkoRigidOffsets.test.js";
+import "./masonryPierVerticalVerification.test.js";
 import "./reinforcedConcreteSectionApplication.test.js";
 import "./reinforcedConcreteSectionBiaxialApplication.test.js";
 import "./reinforcedConcreteSectionServiceApplication.test.js";

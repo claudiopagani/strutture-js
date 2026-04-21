@@ -21,6 +21,14 @@ export const APPLICATION_CATALOG = [
     primaryFocus: "Sizing and verification of cerchiature in masonry walls.",
   },
   {
+    id: "masonry-piers",
+    name: "Masonry Piers",
+    domain: "masonry",
+    maturity: "partial",
+    primaryFocus:
+      "Vertical verification of masonry piers and equivalent-frame 2D idealization with rigid end zones.",
+  },
+  {
     id: "reinforced-concrete-sections",
     name: "RC Sections",
     domain: "reinforced-concrete",

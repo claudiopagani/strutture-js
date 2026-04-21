@@ -112,6 +112,7 @@ export {
   FemAssembler2D,
   FrameElement2DEulerBernoulli,
   FrameElement2DTimoshenko,
+  FrameElement2DTimoshenkoRigidOffsets,
   LinearStaticSolver2D,
 } from "./domain/fem/index.js";
 export { DenseLinearSolver } from "./domain/math/index.js";
@@ -161,6 +162,10 @@ export {
   MasonryOutOfPlaneApplication,
   MasonryOutOfPlaneKinematicAnalysis,
   MasonryOutOfPlaneModel,
+  MasonryPierApplication,
+  MasonryPierEquivalentFrameBuilder,
+  MasonryPierModel,
+  MasonryPierVerticalVerification,
   MasonryRingBeamApplication,
   MasonryRingBeamModel,
   MasonryRingBeamVerification,

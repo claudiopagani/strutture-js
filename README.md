@@ -18,6 +18,7 @@ Stato corrente dei moduli applicativi:
 | --- | --- | --- |
 | `single-beam-design` | MVP | Analisi FEM 2D di trave semplice, verifica opzionale e report JSON/Markdown. |
 | `steel-frames` | Parziale | Verifiche di aste in acciaio da risultati FEM gia disponibili; non e ancora un solver globale di telai. |
+| `masonry-piers` | Parziale | Verifica verticale NTC 2018 di maschi murari e idealizzazione 2D a telaio equivalente con tratti rigidi incorporati tramite trasformazione matriciale. |
 | `masonry-ring-beams` | Scaffold | Modello e placeholder per cerchiature in muratura. |
 | `reinforced-concrete-sections` | Implementato | Analisi SLU/SLE di sezioni in c.a. a fibre. |
 | `timber-beams` | Parziale | Verifiche di travi in legno da risultati FEM gia disponibili. |
@@ -297,6 +298,89 @@ const result = new SteelFrameApplication().run({
 console.log(result.status);
 console.log(result.utilizationRatio);
 console.log(result.checks.map((check) => check.id));
+```
+
+### `masonry-piers`
+
+Stato: parziale.
+
+Input minimo:
+
+- `MasonryPierModel` con `id`, `units`, `geometry`, `material`, `actions`, `design`.
+- `geometry` richiede almeno `height`, `length`, `thickness`.
+- `material` puo essere un materiale murario custom oppure una istanza `NTC2018ExistingMasonryMaterial`.
+- `actions` accetta `axialForce` e, opzionalmente, `outOfPlaneVerticalLoadEccentricity`, `inPlaneVerticalLoadEccentricity`, `outOfPlaneMoment`, `inPlaneMoment`.
+- `design.gammaM` e richiesto esplicitamente per la verifica verticale; `confidenceFactor` puo arrivare dal materiale o essere forzato nel modello.
+- `idealization.rigidEndZoneBottom` e `idealization.rigidEndZoneTop` sono opzionali e servono per la schematizzazione 2D futura nel telaio equivalente.
+
+Output atteso:
+
+- `VerificationResult`.
+- `outputs.geometry`, `outputs.material`, `outputs.eccentricities`, `outputs.stability` e `outputs.actions` riportano tutte le grandezze derivate usate nella verifica.
+- `outputs.equivalentFrameIdealization` contiene uno snapshot serializzabile del modello 2D equivalente con i due nodi fisici del maschio, un elemento Timoshenko con rigid offsets incorporati e il vincolo di base.
+
+Unita richieste:
+
+- obbligatorie nel modello;
+- la verifica verticale lavora internamente in `N`, `mm`, `Nmm`, `N/mm2`;
+- lo snapshot del modello equivalente 2D usa unita FEM `kN`, `m`.
+
+Limiti del metodo:
+
+- la verifica verticale usa il metodo semplificato con coefficienti `Phi` tabellati per l'ipotesi di articolazione, interpolati linearmente senza estrapolazione di default;
+- non e ancora un solver globale di pareti a telaio equivalente;
+- non comprende ancora verifiche a taglio, flessione nel piano del maschio come elemento dissipativo o interazione a livello parete;
+- la verifica verticale del modulo resta analitica e usa azioni note; l'idealizzazione FEM e pensata come base riusabile per il futuro assemblaggio del telaio equivalente di parete.
+
+Esempio completo:
+
+```js
+import {
+  MasonryPierApplication,
+  MasonryPierModel,
+  createNTC2018ExistingMasonryMaterial,
+} from "./src/index.js";
+
+const units = { force: "N", length: "mm" };
+const material = createNTC2018ExistingMasonryMaterial({
+  masonryTypologyId: 1,
+  knowledgeLevel: "LC2",
+  units,
+  modifierSelections: {
+    maltaBuona: { selected: true, value: 1.5 },
+    iniezioniMisceleLeganti: { selected: true },
+  },
+});
+
+const model = new MasonryPierModel({
+  id: "pier-01",
+  units,
+  geometry: {
+    height: 3000,
+    length: 1000,
+    thickness: 300,
+  },
+  material,
+  actions: {
+    axialForce: 200000,
+    outOfPlaneVerticalLoadEccentricity: 10,
+    outOfPlaneMoment: 2500000,
+    inPlaneMoment: 16666666.67,
+  },
+  design: {
+    gammaM: 2,
+  },
+  idealization: {
+    rigidEndZoneBottom: 200,
+    rigidEndZoneTop: 300,
+  },
+});
+
+const result = new MasonryPierApplication().run({ model });
+
+console.log(result.status);
+console.log(result.outputs.stability.phi1);
+console.log(result.outputs.equivalentFrameIdealization.elements[0].deformableLength);
 ```
 
 ### `masonry-ring-beams`
@@ -1167,7 +1251,7 @@ Il layer `src/norms/ntc2018` contiene:
 ## Limiti Generali
 
 - La libreria non e ancora un software normativo completo.
-- I moduli `masonry-ring-beams`, `masonry-out-of-plane` e `micropiles-broms` sono placeholder dichiarati.
+- I moduli `masonry-ring-beams`, `masonry-out-of-plane` e `micropiles-broms` restano placeholder dichiarati; `masonry-piers` e invece operativo per la verifica verticale e per la costruzione dello schema 2D equivalente del singolo maschio.
 - Il solver trave singola e 2D lineare.
 - Le verifiche acciaio non includono ancora torsione e proprieta efficaci per classe 4.
 - I workflow RC non includono ancora momento-curvatura, duttilita e colonna modello.

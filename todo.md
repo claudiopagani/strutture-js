@@ -11,6 +11,110 @@ Obiettivo generale:
 * mantenere ogni risultato serializzabile in JSON, cosi da poterlo usare senza attrito in report, CLI, API e futuro frontend React;
 * produrre report tecnici in due forme: JSON completo per macchine/interfacce e Markdown leggibile per revisione e consegna.
 
+## Cantiere attivo: cerchiatura metallica standalone con curva di capacita laterale
+
+Obiettivo del cantiere:
+
+* introdurre un modulo dedicato alla capacita laterale di una cerchiatura metallica calcolata da sola, prima dell'integrazione nel futuro modulo pareti murarie;
+* modellare un telaio piano a 4 aste composto da 2 piedritti verticali, 1 traverso inferiore e 1 architrave, con varco interno di base `b` e altezza `h`;
+* usare profili commerciali in acciaio da carpenteria gia presenti nel database integrato del package;
+* eseguire una analisi statica non lineare monotona tipo pushover con controllo di spostamento orizzontale al livello dell'architrave;
+* costruire la curva di capacita `Vb - dctrl` della cerchiatura, con rigidezza iniziale, sequenza di plasticizzazione e meccanismo ultimo.
+
+Strategia di implementazione proposta:
+
+* creare un modulo applicativo JS dedicato, separando il modello dati della cerchiatura dal solutore non lineare;
+* riusare il core FEM 2D esistente come base per DOF, assemblaggio, elementi di trave Euler-Bernoulli e solver lineare tangente;
+* introdurre un elemento o wrapper non lineare con plasticita concentrata alle estremita, basata su cerniere elastiche-perfettamente-plastiche a momento costante;
+* tradurre in JS il flusso incrementale-iterativo di Jirasek fornito in MATLAB, adattandolo al nostro sistema globale di DOF e al controllo di uno spostamento orizzontale;
+* estrarre ad ogni passo lo spostamento di controllo, il moltiplicatore di carico, il taglio totale alla base e lo stato delle cerniere per produrre output, test e report leggibili.
+
+Scelte progettuali confermate:
+
+* collocazione del modulo: il workflow resta dentro `steel-frames`; il futuro modulo orchestratore che usera questa analisi insieme alla muratura si chiamera `masonry-wall-openings`;
+* scenari di vincolo / geometria da supportare nel primo dominio applicativo:
+  * piedritti incastrati a terra, con o senza traverso inferiore non influente ai fini della risposta laterale;
+  * piedritti incernierati a terra con traverso inferiore attivo, che entra in gioco con la sua rigidezza flessionale;
+  * piedritti incernierati a terra senza traverso inferiore;
+* definizione del DOF di controllo: un solo DOF orizzontale nodale al livello dell'architrave;
+* distribuzione della forza orizzontale di pushover: forza totale ripartita `50/50` sui due nodi superiori;
+* regola di formazione delle cerniere: tutte le 8 estremita delle 4 aste sono candidabili a plasticizzazione.
+
+Architettura proposta del modulo `steel-frames` per il pushover della cerchiatura:
+
+* `src/applications/steel-frames/models/SteelRingFramePushoverModel.js`
+  * modello dati del problema: varco `b/h`, profili dei membri, materiale, scenario di base, presenza del traverso inferiore, pattern di carico, DOF di controllo e parametri numerici;
+* `src/applications/steel-frames/analysis/SteelRingFrame2DBuilder.js`
+  * builder geometrico/FEM che genera nodi, connettivita, sezioni, profili commerciali e mapping dei DOF globali per i tre scenari;
+* `src/applications/steel-frames/analysis/SteelPlasticHingeState.js`
+  * stato incrementale delle cerniere: elastiche o plastiche, momento plastico disponibile, verso di attivazione, cronologia di formazione;
+* `src/applications/steel-frames/analysis/SteelPlasticHingeFrameElement2D.js`
+  * wrapper non lineare dell'elemento Euler-Bernoulli che restituisce matrice tangente, forze interne d'estremita e vettore equivalente dei momenti plastici quando una cerniera e attiva;
+* `src/applications/steel-frames/analysis/SteelRingFrameInternalForces.js`
+  * assemblaggio di `Fint(d)` a partire dagli spostamenti globali e dallo stato plastico corrente degli elementi;
+* `src/applications/steel-frames/analysis/SteelDisplacementControlPushoverSolver2D.js`
+  * traduzione del ciclo incrementale-iterativo di Jirasek in JS, con controllo di spostamento, aggiornamento del parametro di carico `mu`, ricostruzione della rigidezza tangente e rilevamento delle nuove cerniere;
+* `src/applications/steel-frames/analysis/SteelRingFramePushoverAnalysis.js`
+  * orchestratore dell'analisi: costruzione del modello, esecuzione del solver, raccolta curva di capacita, eventi plastici e criteri di arresto;
+* `src/applications/steel-frames/SteelFrameApplication.js`
+  * ingresso applicativo unificato: il modulo `steel-frames` continuera a gestire sia le verifiche membro gia esistenti sia il nuovo workflow pushover della cerchiatura.
+
+Nota architetturale:
+
+* per il primo MVP tengo l'intera plasticita concentrata dentro `src/applications/steel-frames`, cosi non contaminamo subito il core FEM lineare;
+* se il workflow si stabilizza, il passo successivo sara estrarre le primitive non lineari riusabili in `src/domain/fem/nonlinear`.
+
+Todo operativo:
+
+* definire il contratto dati del `Model` con geometria del varco, profili, materiale, vincoli, forza laterale di riferimento, DOF di controllo e parametri numerici del pushover;
+* definire il builder del telaio 2D con nodi, connettivita, proprieta di sezione e mapping dei DOF globali;
+* introdurre una formulazione di estremita plastiche concentrate per elementi Euler-Bernoulli 2D, con rilascio rotazionale e vettore equivalente dei momenti plastici;
+* implementare il calcolo delle forze interne globali e di estremita richiesto dal ciclo iterativo `Fint = internalForces(d)`;
+* tradurre il solver di Jirasek in JS in forma riusabile, con passo incrementale, iterazioni correttive, tolleranza, `itemax`, controllo di convergenza e aggiornamento dello stato plastico;
+* calcolare ad ogni passo il taglio alla base come risultante delle reazioni orizzontali ai vincoli inferiori;
+* produrre un esempio eseguibile con dati dummy realistici, profili commerciali del database e output della curva di capacita;
+* coprire il modulo con test numerici minimi: elasticita iniziale, attivazione prima cerniera, plateau plastico locale, curva monotona e regressione del solver;
+* aggiornare `README.md` a fine implementazione con stato modulo, ipotesi meccaniche, input, output e limiti del metodo.
+
+Pausa operativa concordata:
+
+* prima di scrivere codice per il pushover della cerchiatura, eseguire commit e push del solo cantiere `masonry-piers` gia implementato.
+
+## Cantiere attivo: maschio murario per carichi verticali NTC 2018
+
+Obiettivo del cantiere:
+
+* introdurre un modulo dedicato al maschio murario verificato per carichi verticali secondo NTC 2018 e Circolare 2019;
+* mantenere separati il motore di verifica normativa e la schematizzazione 2D del maschio come asta verticale riusabile nel futuro telaio equivalente;
+* supportare materiali murari custom e materiali tabellati NTC 2018 con fattore di confidenza e coefficienti correttivi di stato di fatto / consolidamento gia presenti nel package;
+* gestire carico normale, peso proprio, eccentricita fuori piano, eccentricita nel piano e momento flettente nel piano della parete;
+* prevedere eventuali tratti rigidi di estremita tramite trasformazione locale `Q^T K Q`, evitando sia elementi fittizi molto rigidi sia nodi interni aggiuntivi.
+
+Strategia di implementazione proposta:
+
+* creare un nuovo modulo applicativo dedicato, con `Model`, `Verification` e `Application` coerenti con il resto della codebase;
+* implementare la verifica verticale del maschio con azioni note, senza imporre una risoluzione FEM quando non necessaria;
+* aggiungere un builder di idealizzazione 2D che produca i due nodi fisici del maschio, un elemento Timoshenko con offset rigidi incorporati e vincolo di base incastrato;
+* mantenere il solver FEM 2D lineare esistente, evitando estensioni MPC non necessarie per questo workflow.
+
+Scelte progettuali predefinite, salvo diversa indicazione:
+
+* nome modulo: `masonry-piers`;
+* primo scope: verifica a compressione / pressoflessione da azioni note, non ancora un solver globale di parete a telaio equivalente;
+* schema statico verticale: base sempre incastrata, testa libera come default per la verifica standalone, ma idealizzazione 2D parametrica per usi futuri;
+* materiale: accetto sia `MasonryMaterial` / `ExistingMasonryMaterial` custom sia `NTC2018ExistingMasonryMaterial` da tipologia tabellata;
+* coefficienti `Phi`: uso interpolazione lineare sulla tabella normativa, senza estrapolazioni;
+* quando i limiti geometrici / tabellari non consentono la verifica, restituisco `not-verified` con warning espliciti invece di forzare valori fuori tabella.
+
+Todo operativo:
+
+* definire il contratto dati del `MasonryPierModel` con geometria, materiale, azioni, eccentricita e tratti rigidi;
+* implementare il motore `MasonryPierVerticalVerification` con grandezze derivate, controlli preliminari e verifiche di resistenza;
+* introdurre un elemento FEM 2D con offset rigidi condensati via trasformazione locale `Q^T K Q`;
+* creare un builder di idealizzazione equivalente 2D del maschio con un solo elemento Timoshenko deformabile e tratti rigidi incorporati matricialmente;
+* esportare il modulo dal package, registrarlo nell application registry e coprirlo con test automatici;
+* aggiornare `README.md` con stato modulo, input attesi, esempio d uso e limiti del metodo.
+
 ## Principio architetturale principale
 
 Il contratto del modulo trave singola e:
@@ -183,7 +287,7 @@ Principi da mantenere:
 
 Da fare in futuro:
 
-* offset rigidi;
+* offset rigidi: completati in MVP per l'elemento frame 2D Timoshenko tramite trasformazione locale `Q^T K Q`; resta da generalizzare ad altre famiglie e carichi di elemento piu ricchi;
 * release di estremita tramite condensazione statica;
 * multipoint constraints tramite trasformazione cinematica;
 * spostamenti imposti piu ricchi;
