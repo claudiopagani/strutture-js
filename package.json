@@ -11,6 +11,8 @@
     "example:applications": "node examples/application-registry.js",
     "example:rc-sections": "node examples/rc-sections.js",
     "example:rc-sections:1000": "node examples/rc-sections-1000.js",
+    "example:rc-deflection-report:simple-span": "node examples/write-rc-deflection-report-simple-span.js",
+    "example:rc-deflection-report:fixed-fixed": "node examples/write-rc-deflection-report-fixed-fixed.js",
     "example:beam-reports": "node examples/beam-reports.js",
     "example:beam-reports:write": "node examples/write-beam-reports.js",
     "validation": "node validation/run-validation.js"
