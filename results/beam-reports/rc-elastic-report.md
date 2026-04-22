@@ -10,6 +10,17 @@ Analisi elastica non fessurata con rigidezza trasformata e prima verifica ULS di
 * Lunghezza: 5 m
 * Luce orizzontale: 5 m
 
+## Assi principali
+
+| Parametro | Valore | Unita |
+| --- | --- | --- |
+| Alpha | 0 | rad |
+| Alpha input | - | - |
+| Convenzione | roof-slope | - |
+| Asse principale | principalY | - |
+| Fonte EI verticale | flexuralRigidity-principal-y | - |
+| Fonte GA verticale | shearRigidity-principal-y | - |
+
 ## Vincoli
 
 | ID | Nodo | Stazione | Tipo | ux | uy | rz |
@@ -35,21 +46,46 @@ Analisi elastica non fessurata con rigidezza trasformata e prima verifica ULS di
 
 ## Rigidezze adottate
 
-| ID | SL | Tipo | EA | EI | GA | k/gamma | finale/kdef |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| rc-elastic-report-ULS-LIVE | ULS | ULS_STR_GEO | 4985293.7829 | 108918.2513 | 1967250 | - | - |
-| rc-elastic-report-SLE_RARE-LIVE | SLE | SLE_RARE | 4985293.7829 | 108918.2513 | 1967250 | - | - |
-| rc-elastic-report-SLE_FREQUENT-LIVE | SLE | SLE_FREQUENT | 4985293.7829 | 108918.2513 | 1967250 | - | - |
-| rc-elastic-report-SLE_QUASI_PERMANENT-all | SLE | SLE_QUASI_PERMANENT | 4985293.7829 | 108918.2513 | 1967250 | - | - |
+| ID | SL | Tipo | EA | EI vert. | EI Y | EI Z | GA vert. | GA Y | GA Z | k/gamma | finale/kdef |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| rc-elastic-report-ULS-LIVE | ULS | ULS_STR_GEO | 4985293.7829 | 108918.2513 | 108918.2513 | 38049.4378 | 1967250 | 1967250 | 1967250 | - | - |
+| rc-elastic-report-SLE_RARE-LIVE | SLE | SLE_RARE | 4985293.7829 | 108918.2513 | 108918.2513 | 38049.4378 | 1967250 | 1967250 | 1967250 | - | - |
+| rc-elastic-report-SLE_FREQUENT-LIVE | SLE | SLE_FREQUENT | 4985293.7829 | 108918.2513 | 108918.2513 | 38049.4378 | 1967250 | 1967250 | 1967250 | - | - |
+| rc-elastic-report-SLE_QUASI_PERMANENT-all | SLE | SLE_QUASI_PERMANENT | 4985293.7829 | 108918.2513 | 108918.2513 | 38049.4378 | 1967250 | 1967250 | 1967250 | - | - |
 
 ## Inviluppi governanti
 
 | Grandezza | Risultato | SL | Valore | Stazione |
 | --- | --- | --- | --- | --- |
 | M max assoluto | rc-elastic-report-ULS-LIVE | ULS | 55.9375 | 2.5 |
+| MY max assoluto | rc-elastic-report-ULS-LIVE | ULS | 55.9375 | 2.5 |
+| MZ max assoluto | rc-elastic-report-ULS-LIVE | ULS | 0 | 0 |
 | V max | rc-elastic-report-ULS-LIVE | ULS | 44.75 | 0 |
 | V min | rc-elastic-report-ULS-LIVE | ULS | -44.75 | 5 |
+| VY max assoluto | rc-elastic-report-ULS-LIVE | ULS | 44.75 | 0 |
+| VZ max assoluto | rc-elastic-report-ULS-LIVE | ULS | 0 | 0 |
 | Freccia SLE max assoluta | rc-elastic-report-SLE_RARE-LIVE | SLE | 0.001 | 2.5 |
+
+## Azioni principali
+
+| Dominio | Grandezza | Risultato | SL | Valore | Stazione |
+| --- | --- | --- | --- | --- | --- |
+| Tutti | MY max assoluto | rc-elastic-report-ULS-LIVE | ULS | 55.9375 | 2.5 |
+| Tutti | MZ max assoluto | G1 | - | 0 | 0 |
+| Tutti | VY max assoluto | rc-elastic-report-ULS-LIVE | ULS | 44.75 | 0 |
+| Tutti | VZ max assoluto | G1 | - | 0 | 0 |
+| Combinazioni | MY max assoluto | rc-elastic-report-ULS-LIVE | ULS | 55.9375 | 2.5 |
+| Combinazioni | MZ max assoluto | rc-elastic-report-ULS-LIVE | ULS | 0 | 0 |
+| Combinazioni | VY max assoluto | rc-elastic-report-ULS-LIVE | ULS | 44.75 | 0 |
+| Combinazioni | VZ max assoluto | rc-elastic-report-ULS-LIVE | ULS | 0 | 0 |
+| SLU | MY max assoluto | rc-elastic-report-ULS-LIVE | ULS | 55.9375 | 2.5 |
+| SLU | MZ max assoluto | rc-elastic-report-ULS-LIVE | ULS | 0 | 0 |
+| SLU | VY max assoluto | rc-elastic-report-ULS-LIVE | ULS | 44.75 | 0 |
+| SLU | VZ max assoluto | rc-elastic-report-ULS-LIVE | ULS | 0 | 0 |
+| SLE | MY max assoluto | rc-elastic-report-SLE_RARE-LIVE | SLE | 40.625 | 2.5 |
+| SLE | MZ max assoluto | rc-elastic-report-SLE_RARE-LIVE | SLE | 0 | 0 |
+| SLE | VY max assoluto | rc-elastic-report-SLE_RARE-LIVE | SLE | 32.5 | 5 |
+| SLE | VZ max assoluto | rc-elastic-report-SLE_RARE-LIVE | SLE | 0 | 0 |
 
 ## Reazioni governanti
 
@@ -80,11 +116,27 @@ Analisi elastica non fessurata con rigidezza trasformata e prima verifica ULS di
 | rc-uls-uniaxial-bending | resultType | combination |
 | rc-uls-uniaxial-bending | station | 2.5 |
 | rc-uls-uniaxial-bending | limitState | ULS |
+| rc-uls-uniaxial-bending | stationSource | critical |
+| rc-uls-uniaxial-bending | stationRole | critical-bending |
+| rc-uls-uniaxial-bending | stationSelectionMode | all |
+| rc-uls-uniaxial-bending | isRequestedStation | false |
+| rc-uls-uniaxial-bending | isUserStation | false |
+| rc-uls-uniaxial-bending | isGridStation | false |
+| rc-uls-uniaxial-bending | isCriticalStation | true |
+| rc-uls-uniaxial-bending | stationTolerance | 0 |
 | rc-uls-uniaxial-bending | compressedEdge | top |
 | rc-shear-resistance | resultId | rc-elastic-report-ULS-LIVE |
 | rc-shear-resistance | resultType | combination |
 | rc-shear-resistance | station | 0 |
 | rc-shear-resistance | limitState | ULS |
+| rc-shear-resistance | stationSource | critical |
+| rc-shear-resistance | stationRole | support+critical-shear |
+| rc-shear-resistance | stationSelectionMode | all |
+| rc-shear-resistance | isRequestedStation | false |
+| rc-shear-resistance | isUserStation | false |
+| rc-shear-resistance | isGridStation | false |
+| rc-shear-resistance | isCriticalStation | true |
+| rc-shear-resistance | stationTolerance | 0 |
 | rc-shear-resistance | method | ntc2018-4.1.2.3.5.2 |
 | rc-shear-resistance | selectedMechanism | with-transverse-reinforcement |
 | rc-shear-resistance | vRdWithTransverseReinforcement | 265529.9244 |
@@ -109,26 +161,56 @@ Analisi elastica non fessurata con rigidezza trasformata e prima verifica ULS di
 | rc-sle-concrete-stress | resultType | combination |
 | rc-sle-concrete-stress | station | 2.5 |
 | rc-sle-concrete-stress | limitState | SLE |
+| rc-sle-concrete-stress | stationSource | critical |
+| rc-sle-concrete-stress | stationRole | critical-bending |
+| rc-sle-concrete-stress | stationSelectionMode | all |
+| rc-sle-concrete-stress | isRequestedStation | false |
+| rc-sle-concrete-stress | isUserStation | false |
+| rc-sle-concrete-stress | isGridStation | false |
+| rc-sle-concrete-stress | isCriticalStation | true |
+| rc-sle-concrete-stress | stationTolerance | 0 |
 | rc-sle-concrete-stress | method | ntc2018-4.1.2.2.5.1-characteristic |
 | rc-sle-concrete-stress | combinationType | SLE_RARE |
 | rc-sle-concrete-stress | limitFactor | 0.6 |
 | rc-sle-concrete-stress | fck | 25 |
 | rc-sle-concrete-stress | sigmaCMax | 3.4244 |
 | rc-sle-concrete-stress | modularRatio | 15 |
+| rc-sle-concrete-stress | mxEd | -40625000 |
+| rc-sle-concrete-stress | myEd | 0 |
+| rc-sle-concrete-stress | biaxialStress | false |
 | rc-sle-steel-stress | resultId | rc-elastic-report-SLE_RARE-LIVE |
 | rc-sle-steel-stress | resultType | combination |
 | rc-sle-steel-stress | station | 2.5 |
 | rc-sle-steel-stress | limitState | SLE |
+| rc-sle-steel-stress | stationSource | critical |
+| rc-sle-steel-stress | stationRole | critical-bending |
+| rc-sle-steel-stress | stationSelectionMode | all |
+| rc-sle-steel-stress | isRequestedStation | false |
+| rc-sle-steel-stress | isUserStation | false |
+| rc-sle-steel-stress | isGridStation | false |
+| rc-sle-steel-stress | isCriticalStation | true |
+| rc-sle-steel-stress | stationTolerance | 0 |
 | rc-sle-steel-stress | method | ntc2018-4.1.2.2.5.2-characteristic |
 | rc-sle-steel-stress | combinationType | SLE_RARE |
 | rc-sle-steel-stress | limitFactor | 0.8 |
 | rc-sle-steel-stress | fyk | 450 |
 | rc-sle-steel-stress | sigmaSMax | 159.8141 |
 | rc-sle-steel-stress | modularRatio | 15 |
+| rc-sle-steel-stress | mxEd | -40625000 |
+| rc-sle-steel-stress | myEd | 0 |
+| rc-sle-steel-stress | biaxialStress | false |
 | rc-sle-crack-bar-diameter | resultId | rc-elastic-report-SLE_QUASI_PERMANENT-all |
 | rc-sle-crack-bar-diameter | resultType | combination |
 | rc-sle-crack-bar-diameter | station | 0.5 |
 | rc-sle-crack-bar-diameter | limitState | SLE |
+| rc-sle-crack-bar-diameter | stationSource | fem-sample |
+| rc-sle-crack-bar-diameter | stationRole | fem-sample |
+| rc-sle-crack-bar-diameter | stationSelectionMode | all |
+| rc-sle-crack-bar-diameter | isRequestedStation | false |
+| rc-sle-crack-bar-diameter | isUserStation | false |
+| rc-sle-crack-bar-diameter | isGridStation | false |
+| rc-sle-crack-bar-diameter | isCriticalStation | false |
+| rc-sle-crack-bar-diameter | stationTolerance | 0 |
 | rc-sle-crack-bar-diameter | method | circolare-ntc2018-c4.1.ii |
 | rc-sle-crack-bar-diameter | combinationType | SLE_QUASI_PERMANENT |
 | rc-sle-crack-bar-diameter | environment | ordinary |
@@ -139,10 +221,22 @@ Analisi elastica non fessurata con rigidezza trasformata e prima verifica ULS di
 | rc-sle-crack-bar-diameter | sigmaS | 42.0434 |
 | rc-sle-crack-bar-diameter | diameter | 20 |
 | rc-sle-crack-bar-diameter | diameterLimit | 32 |
+| rc-sle-crack-bar-diameter | momentBasis | primary-moment-only |
+| rc-sle-crack-bar-diameter | mEd | 10687500 |
+| rc-sle-crack-bar-diameter | weakAxisMomentNeglected | false |
+| rc-sle-crack-bar-diameter | neglectedMyEd | 0 |
 | rc-sle-crack-bar-spacing | resultId | rc-elastic-report-SLE_FREQUENT-LIVE |
 | rc-sle-crack-bar-spacing | resultType | combination |
 | rc-sle-crack-bar-spacing | station | 0.5 |
 | rc-sle-crack-bar-spacing | limitState | SLE |
+| rc-sle-crack-bar-spacing | stationSource | fem-sample |
+| rc-sle-crack-bar-spacing | stationRole | fem-sample |
+| rc-sle-crack-bar-spacing | stationSelectionMode | all |
+| rc-sle-crack-bar-spacing | isRequestedStation | false |
+| rc-sle-crack-bar-spacing | isUserStation | false |
+| rc-sle-crack-bar-spacing | isGridStation | false |
+| rc-sle-crack-bar-spacing | isCriticalStation | false |
+| rc-sle-crack-bar-spacing | stationTolerance | 0 |
 | rc-sle-crack-bar-spacing | method | circolare-ntc2018-c4.1.iii |
 | rc-sle-crack-bar-spacing | combinationType | SLE_FREQUENT |
 | rc-sle-crack-bar-spacing | environment | ordinary |
@@ -154,6 +248,10 @@ Analisi elastica non fessurata con rigidezza trasformata e prima verifica ULS di
 | rc-sle-crack-bar-spacing | spacing | 200 |
 | rc-sle-crack-bar-spacing | spacingLimit | 300 |
 | rc-sle-crack-bar-spacing | rowTolerance | 50 |
+| rc-sle-crack-bar-spacing | momentBasis | primary-moment-only |
+| rc-sle-crack-bar-spacing | mEd | 11812500 |
+| rc-sle-crack-bar-spacing | weakAxisMomentNeglected | false |
+| rc-sle-crack-bar-spacing | neglectedMyEd | 0 |
 | rc-sle-deflection-curvature | resultId | rc-elastic-report-SLE_RARE-LIVE |
 | rc-sle-deflection-curvature | resultType | combination |
 | rc-sle-deflection-curvature | limitState | SLE |
@@ -197,4 +295,4 @@ Analisi elastica non fessurata con rigidezza trasformata e prima verifica ULS di
 * Curvatures are integrated numerically along FEM service-combination stations.
 * Concrete tension is excluded in cracked service-section states.
 * Long-term quasi-permanent curvature uses phi = 2; shrinkage curvature is excluded.
-* Each FEM station is checked as an independent uniaxial RC section at the corresponding N-M pair.
+* Each FEM station is checked as an independent RC section; ULS bending and SLE stress checks use biaxial actions when present, while crack control remains based on the primary bending plane.

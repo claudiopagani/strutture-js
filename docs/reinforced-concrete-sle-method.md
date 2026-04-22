@@ -69,6 +69,12 @@ Il solve di sezione usa:
 * equilibrio su `N`, `Mx`, `My` tramite `RCServiceStressSolver`;
 * fallback automatici di curvatura iniziale per migliorare la convergenza con momento positivo o negativo.
 
+Anche il workflow `service-stress` standalone della sezione usa lo stesso `metodo n`:
+
+* modulo del calcestruzzo equivalente `Ec,eq = Es / n`;
+* `n = 15` di default, salvo override esplicito;
+* stessi segni di momento del modulo SLE.
+
 Limiti implementati:
 
 * calcestruzzo in combinazione rara/caratteristica: `sigma_c <= 0.60 fck`;
@@ -150,7 +156,8 @@ Valori default:
 La viscosita entra tramite modulo efficace:
 
 ```txt
-Ec,eff = Ec / (1 + phi)
+n_eff = n * (1 + phi)
+Ec,eff = Es / n_eff
 ```
 
 L'integrazione delle curvature e trapezoidale. Per travi con due appoggi verticali viene applicata una correzione lineare per imporre freccia nulla agli appoggi estremi.

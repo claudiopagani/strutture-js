@@ -29,7 +29,8 @@ test("RC cracked deflection analysis integrates SLE curvatures with default cree
     result.outputs.combinations.some(
       (combination) =>
         combination.combinationType === "SLE_QUASI_PERMANENT" &&
-        combination.creepCoefficient === 2,
+        combination.creepCoefficient === 2 &&
+        combination.baseModularRatio === 15,
     ),
   );
 });

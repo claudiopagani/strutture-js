@@ -5,6 +5,10 @@ import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
 import { RCServiceStressSolver } from "../../reinforced-concrete-sections/analysis/RCServiceStressSolver.js";
 import { SectionFiberDiscretizer } from "../../reinforced-concrete-sections/analysis/SectionFiberDiscretizer.js";
 import { solveServiceStressWithFallbacks } from "../../reinforced-concrete-sections/analysis/solveServiceStressWithFallbacks.js";
+import {
+  DEFAULT_RC_SLE_MODULAR_RATIO,
+  resolveRcSleModularRatio,
+} from "../../reinforced-concrete-sections/serviceabilityDefaults.js";
 
 const DEFAULT_SECTION_UNITS = Object.freeze({ force: "N", length: "mm" });
 const SLENDERNESS_LIMITS = Object.freeze({
@@ -230,6 +234,11 @@ export class CrackedSectionDeflectionAnalysis {
       serviceability.deflection?.creepCoefficient ??
       serviceability.creepCoefficient ??
       2;
+    const baseModularRatio = resolveRcSleModularRatio(
+      serviceability.deflection?.modularRatio,
+      serviceability.modularRatio,
+      DEFAULT_RC_SLE_MODULAR_RATIO,
+    );
     const includeShrinkage =
       serviceability.deflection?.includeShrinkage ??
       serviceability.includeShrinkage ??
@@ -243,8 +252,9 @@ export class CrackedSectionDeflectionAnalysis {
     const warnings = [];
     const assumptions = [
       "Curvatures are integrated numerically along FEM service-combination stations.",
+      `Cracked RC service sections use the modular-ratio method with base n = ${baseModularRatio}.`,
       "Concrete tension is excluded in cracked service-section states.",
-      `Long-term quasi-permanent curvature uses phi = ${phi}; shrinkage curvature is excluded.`,
+      `Long-term quasi-permanent curvature increases the effective modular ratio through phi = ${phi}; shrinkage curvature is excluded.`,
     ];
 
     if (!isFinitePositive(es) || !isFinitePositive(ec)) {
@@ -295,9 +305,9 @@ export class CrackedSectionDeflectionAnalysis {
 
       const combinationType = result.context?.combinationType ?? null;
       const creepCoefficient = isQuasiPermanent(combinationType) ? phi : 0;
-      const effectiveConcreteModulus = ec / (1 + creepCoefficient);
-      const modularRatio = es / effectiveConcreteModulus;
-      const gross = transformedGrossInertiaY({ section, modularRatio });
+      const effectiveModularRatio = baseModularRatio * (1 + creepCoefficient);
+      const effectiveConcreteModulus = es / effectiveModularRatio;
+      const gross = transformedGrossInertiaY({ section, modularRatio: effectiveModularRatio });
       const concreteLaw = new ConcreteNoTensionLaw({
         ecm: effectiveConcreteModulus,
       });
@@ -393,7 +403,8 @@ export class CrackedSectionDeflectionAnalysis {
               combinationType,
               station: round(governing.station),
               creepCoefficient,
-              modularRatio: round(modularRatio),
+              baseModularRatio: round(baseModularRatio),
+              modularRatio: round(effectiveModularRatio),
               limitRatio,
               maxAbsDeflection: round(Math.abs(governing.deflection)),
               span: round(span),
@@ -407,8 +418,9 @@ export class CrackedSectionDeflectionAnalysis {
         resultId: result.id,
         combinationType,
         creepCoefficient,
+        baseModularRatio: round(baseModularRatio),
         effectiveConcreteModulus: round(effectiveConcreteModulus),
-        modularRatio: round(modularRatio),
+        modularRatio: round(effectiveModularRatio),
         limitRatio,
         span: round(span),
         deflectionLimit: round(limit),

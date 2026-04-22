@@ -100,5 +100,8 @@ test("reinforced concrete section application returns a service stress workflow 
   assert.equal(result.applicationId, "reinforced-concrete-sections");
   assert.equal(result.outputs.analysisType, "service-stress");
   assert.ok(result.outputs.iterations >= 0);
+  assert.equal(result.outputs.modularRatio, 15);
   assert.equal(result.outputs.concrete.maxTension, null);
+  assert.equal(result.outputs.steel.maxTension.y, 50);
+  assert.equal(result.outputs.steel.maxCompression.y, 450);
 });

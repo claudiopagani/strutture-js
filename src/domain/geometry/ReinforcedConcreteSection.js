@@ -101,6 +101,7 @@ export class ReinforcedConcreteSection extends CrossSection {
     this.concreteMaterial = concreteMaterial;
     this.reinforcementMaterial = reinforcementMaterial;
     this.transformedSection = transformed;
+    this.referenceModularRatio = referenceModularRatio;
   }
 
   totalReinforcementArea() {
@@ -197,6 +198,7 @@ export class ReinforcedConcreteSection extends CrossSection {
         this.concreteMaterial?.toJSON?.() ?? this.concreteMaterial,
       reinforcementMaterial:
         this.reinforcementMaterial?.toJSON?.() ?? this.reinforcementMaterial,
+      referenceModularRatio: this.referenceModularRatio,
       transformedSection: this.transformedSection.toJSON(),
     };
   }

@@ -10,6 +10,17 @@ Trave lignea collaborante con pannello XLAM e connessioni legno-legno.
 * Lunghezza: 9200 mm
 * Luce orizzontale: 9200 mm
 
+## Assi principali
+
+| Parametro | Valore | Unita |
+| --- | --- | --- |
+| Alpha | 0 | rad |
+| Alpha input | - | - |
+| Convenzione | roof-slope | - |
+| Asse principale | principalY | - |
+| Fonte EI verticale | flexuralRigidity-principal-y | - |
+| Fonte GA verticale | shearRigidity-principal-y | - |
+
 ## Vincoli
 
 | ID | Nodo | Stazione | Tipo | ux | uy | rz |
@@ -34,20 +45,45 @@ Trave lignea collaborante con pannello XLAM e connessioni legno-legno.
 
 ## Rigidezze adottate
 
-| ID | SL | Tipo | EA | EI | GA | k/gamma | finale/kdef |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| timber-xlam-report-ULS-LIVE | ULS | ULS_STR_GEO | 1539360000 | 33474754705799.137 | 96210000 | 0.9 | 0.8 |
-| timber-xlam-report-SLE_RARE-LIVE | SLE | SLE_RARE | 1539360000 | 34372706906201.082 | 96210000 | 0.9 | 0.8 |
-| timber-xlam-report-SLE_FINAL-LIVE | SLE | SLE_FINAL | 855200000 | 19665121834337.41 | 96210000 | 0.9 | 0.8 |
+| ID | SL | Tipo | EA | EI vert. | EI Y | EI Z | GA vert. | GA Y | GA Z | k/gamma | finale/kdef |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| timber-xlam-report-ULS-LIVE | ULS | ULS_STR_GEO | 1539360000 | 33474754705799.137 | 33474754705799.137 | 12650688000000 | 96210000 | 96210000 | 96210000 | 0.9 | 0.8 |
+| timber-xlam-report-SLE_RARE-LIVE | SLE | SLE_RARE | 1539360000 | 34372706906201.082 | 34372706906201.082 | 12650688000000 | 96210000 | 96210000 | 96210000 | 0.9 | 0.8 |
+| timber-xlam-report-SLE_FINAL-LIVE | SLE | SLE_FINAL | 855200000 | 19665121834337.41 | 19665121834337.41 | 7028160000000 | 96210000 | 96210000 | 96210000 | 0.9 | 0.8 |
 
 ## Inviluppi governanti
 
 | Grandezza | Risultato | SL | Valore | Stazione |
 | --- | --- | --- | --- | --- |
 | M max assoluto | timber-xlam-report-ULS-LIVE | ULS | 168403976 | 4600 |
+| MY max assoluto | timber-xlam-report-ULS-LIVE | ULS | 168403976 | 4600 |
+| MZ max assoluto | timber-xlam-report-ULS-LIVE | ULS | 0 | 0 |
 | V max | timber-xlam-report-ULS-LIVE | ULS | 73219.12 | 0 |
 | V min | timber-xlam-report-ULS-LIVE | ULS | -73219.12 | 9200 |
+| VY max assoluto | timber-xlam-report-ULS-LIVE | ULS | 73219.12 | 9200 |
+| VZ max assoluto | timber-xlam-report-ULS-LIVE | ULS | 0 | 0 |
 | Freccia SLE max assoluta | timber-xlam-report-SLE_FINAL-LIVE | SLE | 54.7659 | 4600 |
+
+## Azioni principali
+
+| Dominio | Grandezza | Risultato | SL | Valore | Stazione |
+| --- | --- | --- | --- | --- | --- |
+| Tutti | MY max assoluto | timber-xlam-report-ULS-LIVE | ULS | 168403976 | 4600 |
+| Tutti | MZ max assoluto | G1 | - | 0 | 0 |
+| Tutti | VY max assoluto | timber-xlam-report-ULS-LIVE | ULS | 73219.12 | 9200 |
+| Tutti | VZ max assoluto | G1 | - | 0 | 0 |
+| Combinazioni | MY max assoluto | timber-xlam-report-ULS-LIVE | ULS | 168403976 | 4600 |
+| Combinazioni | MZ max assoluto | timber-xlam-report-ULS-LIVE | ULS | 0 | 0 |
+| Combinazioni | VY max assoluto | timber-xlam-report-ULS-LIVE | ULS | 73219.12 | 9200 |
+| Combinazioni | VZ max assoluto | timber-xlam-report-ULS-LIVE | ULS | 0 | 0 |
+| SLU | MY max assoluto | timber-xlam-report-ULS-LIVE | ULS | 168403976 | 4600 |
+| SLU | MZ max assoluto | timber-xlam-report-ULS-LIVE | ULS | 0 | 0 |
+| SLU | VY max assoluto | timber-xlam-report-ULS-LIVE | ULS | 73219.12 | 9200 |
+| SLU | VZ max assoluto | timber-xlam-report-ULS-LIVE | ULS | 0 | 0 |
+| SLE | MY max assoluto | timber-xlam-report-SLE_RARE-LIVE | SLE | 119384720 | 4600 |
+| SLE | MZ max assoluto | timber-xlam-report-SLE_RARE-LIVE | SLE | 0 | 0 |
+| SLE | VY max assoluto | timber-xlam-report-SLE_RARE-LIVE | SLE | 51906.4 | 9200 |
+| SLE | VZ max assoluto | timber-xlam-report-SLE_RARE-LIVE | SLE | 0 | 0 |
 
 ## Reazioni governanti
 
@@ -79,58 +115,156 @@ Trave lignea collaborante con pannello XLAM e connessioni legno-legno.
 | xlam-min-stress | resultType | combination |
 | xlam-min-stress | station | 4600 |
 | xlam-min-stress | limitState | ULS |
+| xlam-min-stress | stationSource | critical |
+| xlam-min-stress | stationRole | critical-bending |
+| xlam-min-stress | stationSelectionMode | all |
+| xlam-min-stress | isRequestedStation | false |
+| xlam-min-stress | isUserStation | false |
+| xlam-min-stress | isGridStation | false |
+| xlam-min-stress | isCriticalStation | true |
+| xlam-min-stress | stationTolerance | 0.0001 |
 | xlam-min-stress | method | timber-xlam-gamma-method-section-actions |
 | xlam-min-stress | gamma1Uls | 0.7843 |
 | xlam-min-stress | gamma2Uls | 0.3634 |
 | xlam-min-stress | ejEffUls | 33474754705799.137 |
+| xlam-min-stress | mZEd | 0 |
+| xlam-min-stress | vZEd | 0 |
+| xlam-min-stress | mZEdSectionUnits | 0 |
+| xlam-min-stress | vZEdSectionUnits | 0 |
+| xlam-min-stress | weakAxisComponentsNeglected | false |
+| xlam-min-stress | weakAxisNeglectReason | - |
 | xlam-max-stress | resultId | timber-xlam-report-ULS-LIVE |
 | xlam-max-stress | resultType | combination |
 | xlam-max-stress | station | 4600 |
 | xlam-max-stress | limitState | ULS |
+| xlam-max-stress | stationSource | critical |
+| xlam-max-stress | stationRole | critical-bending |
+| xlam-max-stress | stationSelectionMode | all |
+| xlam-max-stress | isRequestedStation | false |
+| xlam-max-stress | isUserStation | false |
+| xlam-max-stress | isGridStation | false |
+| xlam-max-stress | isCriticalStation | true |
+| xlam-max-stress | stationTolerance | 0.0001 |
 | xlam-max-stress | method | timber-xlam-gamma-method-section-actions |
 | xlam-max-stress | gamma1Uls | 0.7843 |
 | xlam-max-stress | gamma2Uls | 0.3634 |
 | xlam-max-stress | ejEffUls | 33474754705799.137 |
+| xlam-max-stress | mZEd | 0 |
+| xlam-max-stress | vZEd | 0 |
+| xlam-max-stress | mZEdSectionUnits | 0 |
+| xlam-max-stress | vZEdSectionUnits | 0 |
+| xlam-max-stress | weakAxisComponentsNeglected | false |
+| xlam-max-stress | weakAxisNeglectReason | - |
 | timber-min-stress | resultId | timber-xlam-report-ULS-LIVE |
 | timber-min-stress | resultType | combination |
 | timber-min-stress | station | 4600 |
 | timber-min-stress | limitState | ULS |
+| timber-min-stress | stationSource | critical |
+| timber-min-stress | stationRole | critical-bending |
+| timber-min-stress | stationSelectionMode | all |
+| timber-min-stress | isRequestedStation | false |
+| timber-min-stress | isUserStation | false |
+| timber-min-stress | isGridStation | false |
+| timber-min-stress | isCriticalStation | true |
+| timber-min-stress | stationTolerance | 0.0001 |
 | timber-min-stress | method | timber-xlam-gamma-method-section-actions |
 | timber-min-stress | gamma1Uls | 0.7843 |
 | timber-min-stress | gamma2Uls | 0.3634 |
 | timber-min-stress | ejEffUls | 33474754705799.137 |
+| timber-min-stress | mZEd | 0 |
+| timber-min-stress | vZEd | 0 |
+| timber-min-stress | mZEdSectionUnits | 0 |
+| timber-min-stress | vZEdSectionUnits | 0 |
+| timber-min-stress | weakAxisComponentsNeglected | false |
+| timber-min-stress | weakAxisNeglectReason | - |
 | timber-max-stress | resultId | timber-xlam-report-ULS-LIVE |
 | timber-max-stress | resultType | combination |
 | timber-max-stress | station | 4600 |
 | timber-max-stress | limitState | ULS |
+| timber-max-stress | stationSource | critical |
+| timber-max-stress | stationRole | critical-bending |
+| timber-max-stress | stationSelectionMode | all |
+| timber-max-stress | isRequestedStation | false |
+| timber-max-stress | isUserStation | false |
+| timber-max-stress | isGridStation | false |
+| timber-max-stress | isCriticalStation | true |
+| timber-max-stress | stationTolerance | 0.0001 |
 | timber-max-stress | method | timber-xlam-gamma-method-section-actions |
 | timber-max-stress | gamma1Uls | 0.7843 |
 | timber-max-stress | gamma2Uls | 0.3634 |
 | timber-max-stress | ejEffUls | 33474754705799.137 |
+| timber-max-stress | mZEd | 0 |
+| timber-max-stress | vZEd | 0 |
+| timber-max-stress | mZEdSectionUnits | 0 |
+| timber-max-stress | vZEdSectionUnits | 0 |
+| timber-max-stress | weakAxisComponentsNeglected | false |
+| timber-max-stress | weakAxisNeglectReason | - |
 | xlam-shear | resultId | timber-xlam-report-ULS-LIVE |
 | xlam-shear | resultType | combination |
 | xlam-shear | station | 0 |
 | xlam-shear | limitState | ULS |
+| xlam-shear | stationSource | critical |
+| xlam-shear | stationRole | support+critical-shear |
+| xlam-shear | stationSelectionMode | all |
+| xlam-shear | isRequestedStation | false |
+| xlam-shear | isUserStation | false |
+| xlam-shear | isGridStation | false |
+| xlam-shear | isCriticalStation | true |
+| xlam-shear | stationTolerance | 0.0001 |
 | xlam-shear | method | timber-xlam-gamma-method-section-actions |
 | xlam-shear | gamma1Uls | 0.7843 |
 | xlam-shear | gamma2Uls | 0.3634 |
 | xlam-shear | ejEffUls | 33474754705799.137 |
+| xlam-shear | mZEd | 0 |
+| xlam-shear | vZEd | 0 |
+| xlam-shear | mZEdSectionUnits | 0 |
+| xlam-shear | vZEdSectionUnits | 0 |
+| xlam-shear | weakAxisComponentsNeglected | false |
+| xlam-shear | weakAxisNeglectReason | - |
 | timber-shear | resultId | timber-xlam-report-ULS-LIVE |
 | timber-shear | resultType | combination |
 | timber-shear | station | 0 |
 | timber-shear | limitState | ULS |
+| timber-shear | stationSource | critical |
+| timber-shear | stationRole | support+critical-shear |
+| timber-shear | stationSelectionMode | all |
+| timber-shear | isRequestedStation | false |
+| timber-shear | isUserStation | false |
+| timber-shear | isGridStation | false |
+| timber-shear | isCriticalStation | true |
+| timber-shear | stationTolerance | 0.0001 |
 | timber-shear | method | timber-xlam-gamma-method-section-actions |
 | timber-shear | gamma1Uls | 0.7843 |
 | timber-shear | gamma2Uls | 0.3634 |
 | timber-shear | ejEffUls | 33474754705799.137 |
+| timber-shear | mZEd | 0 |
+| timber-shear | vZEd | 0 |
+| timber-shear | mZEdSectionUnits | 0 |
+| timber-shear | vZEdSectionUnits | 0 |
+| timber-shear | weakAxisComponentsNeglected | false |
+| timber-shear | weakAxisNeglectReason | - |
 | connector | resultId | timber-xlam-report-ULS-LIVE |
 | connector | resultType | combination |
 | connector | station | 0 |
 | connector | limitState | ULS |
+| connector | stationSource | critical |
+| connector | stationRole | support+critical-shear |
+| connector | stationSelectionMode | all |
+| connector | isRequestedStation | false |
+| connector | isUserStation | false |
+| connector | isGridStation | false |
+| connector | isCriticalStation | true |
+| connector | stationTolerance | 0.0001 |
 | connector | method | timber-xlam-gamma-method-section-actions |
 | connector | gamma1Uls | 0.7843 |
 | connector | gamma2Uls | 0.3634 |
 | connector | ejEffUls | 33474754705799.137 |
+| connector | mZEd | 0 |
+| connector | vZEd | 0 |
+| connector | mZEdSectionUnits | 0 |
+| connector | vZEdSectionUnits | 0 |
+| connector | weakAxisComponentsNeglected | false |
+| connector | weakAxisNeglectReason | - |
 
 ## Esito
 

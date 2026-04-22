@@ -4,11 +4,15 @@ import { SteelElasticLaw } from "../../../domain/constitutive-laws/SteelElasticL
 import { RCServiceStressSolver } from "../analysis/RCServiceStressSolver.js";
 import { SectionFiberDiscretizer } from "../analysis/SectionFiberDiscretizer.js";
 import { solveServiceStressWithFallbacks } from "../analysis/solveServiceStressWithFallbacks.js";
+import {
+  DEFAULT_RC_SLE_MODULAR_RATIO,
+  resolveRcSleModularRatio,
+} from "../serviceabilityDefaults.js";
 
 const DEFAULT_SERVICEABILITY_OPTIONS = Object.freeze({
   environment: "ordinary",
   reinforcementSensitivity: "low",
-  modularRatio: 15,
+  modularRatio: DEFAULT_RC_SLE_MODULAR_RATIO,
   rowTolerance: 50,
   creepCoefficient: 2,
   includeShrinkage: false,
@@ -225,18 +229,27 @@ function resolveServiceabilityOptions(options = {}) {
     options.cracking?.reinforcementSensitivity ??
     options.reinforcementSensitivity ??
     DEFAULT_SERVICEABILITY_OPTIONS.reinforcementSensitivity;
+  serviceability.modularRatio = resolveRcSleModularRatio(
+    options.cracking?.modularRatio,
+    options.deflection?.modularRatio,
+    options.modularRatio,
+  );
 
   return serviceability;
 }
 
 function resolveStressActions({ nEd, mEd, mxEd, myEd }) {
-  const primaryMoment = Number.isFinite(mEd) ? mEd : 0;
-  const stressMxEd = Number.isFinite(mxEd) ? mxEd : -primaryMoment;
-  const stressMyEd = Number.isFinite(myEd) ? myEd : 0;
+  const userMxEd = Number.isFinite(mxEd) ? mxEd : Number.isFinite(mEd) ? mEd : 0;
+  const userMyEd = Number.isFinite(myEd) ? myEd : 0;
+  const primaryMoment = Number.isFinite(mEd) ? mEd : userMxEd;
+  const stressMxEd = -userMxEd;
+  const stressMyEd = -userMyEd;
 
   return {
     nEd,
     primaryMoment,
+    userMxEd,
+    userMyEd,
     stressMxEd,
     stressMyEd,
     biaxialStress: hasSignificantAction(stressMyEd, stressMxEd),
@@ -602,8 +615,8 @@ export class ReinforcedConcreteServiceabilityVerification {
             fck: round(concreteMaterial.fck),
             sigmaCMax: round(concreteCompression),
             modularRatio: options.modularRatio,
-            mxEd: round(stressActions.stressMxEd),
-            myEd: round(stressActions.stressMyEd),
+            mxEd: round(stressActions.userMxEd),
+            myEd: round(stressActions.userMyEd),
             biaxialStress: stressActions.biaxialStress,
           },
         }),
@@ -624,8 +637,8 @@ export class ReinforcedConcreteServiceabilityVerification {
             fyk: round(reinforcementMaterial.fyk),
             sigmaSMax: round(steelStress),
             modularRatio: options.modularRatio,
-            mxEd: round(stressActions.stressMxEd),
-            myEd: round(stressActions.stressMyEd),
+            mxEd: round(stressActions.userMxEd),
+            myEd: round(stressActions.userMyEd),
             biaxialStress: stressActions.biaxialStress,
           },
         }),
@@ -729,7 +742,7 @@ export class ReinforcedConcreteServiceabilityVerification {
                 momentBasis: "primary-moment-only",
                 mEd: round(stressActions.primaryMoment),
                 weakAxisMomentNeglected: stressActions.biaxialStress,
-                neglectedMyEd: round(stressActions.stressMyEd),
+                neglectedMyEd: round(stressActions.userMyEd),
               },
             }),
           );
@@ -758,7 +771,7 @@ export class ReinforcedConcreteServiceabilityVerification {
                 momentBasis: "primary-moment-only",
                 mEd: round(stressActions.primaryMoment),
                 weakAxisMomentNeglected: stressActions.biaxialStress,
-                neglectedMyEd: round(stressActions.stressMyEd),
+                neglectedMyEd: round(stressActions.userMyEd),
               },
             }),
           );
@@ -808,8 +821,8 @@ export class ReinforcedConcreteServiceabilityVerification {
       outputs: {
         nEd: round(nEd),
         mEd: round(stressActions.primaryMoment),
-        mxEd: round(stressActions.stressMxEd),
-        myEd: round(stressActions.stressMyEd),
+        mxEd: round(stressActions.userMxEd),
+        myEd: round(stressActions.userMyEd),
         biaxialStress: stressActions.biaxialStress,
         crackControlMomentEd: round(stressActions.primaryMoment),
         combinationType,
@@ -843,8 +856,8 @@ export class ReinforcedConcreteServiceabilityVerification {
         governingCheckId: governing?.id ?? null,
         combinationType,
         mEd: round(stressActions.primaryMoment),
-        mxEd: round(stressActions.stressMxEd),
-        myEd: round(stressActions.stressMyEd),
+        mxEd: round(stressActions.userMxEd),
+        myEd: round(stressActions.userMyEd),
         biaxialStress: stressActions.biaxialStress,
         crackControlMomentBasis: "primary-moment-only",
         weakAxisMomentNeglectedInCrackControl: stressActions.biaxialStress,
@@ -871,7 +884,7 @@ export class ReinforcedConcreteServiceabilityVerification {
     const primaryMoment =
       actions.mEd ??
       actions.m ??
-      (Number.isFinite(actions.mxEd) ? -actions.mxEd : 0);
+      (Number.isFinite(actions.mxEd) ? actions.mxEd : 0);
     const result = this.verifySectionActions({
       nEd: actions.nEd ?? actions.n ?? 0,
       mEd: primaryMoment,

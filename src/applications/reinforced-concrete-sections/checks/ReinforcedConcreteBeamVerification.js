@@ -265,7 +265,7 @@ function createRcServiceabilityActionVerifier({
       const result = serviceabilityVerification.verifySectionActions({
         nEd: convertedNEd,
         mEd: convertedMEd,
-        mxEd: -convertedMEd,
+        mxEd: convertedMEd,
         myEd: convertedMZEd,
         context: {
           ...context,

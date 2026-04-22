@@ -9,9 +9,21 @@ import { RCServiceStressSolver } from "../analysis/RCServiceStressSolver.js";
 import { SectionFiberDiscretizer } from "../analysis/SectionFiberDiscretizer.js";
 import { RCUniaxialDomainBuilder } from "../analysis/RCUniaxialDomainBuilder.js";
 import { RCUltimateSectionSolver } from "../analysis/RCUltimateSectionSolver.js";
+import { resolveRcSleModularRatio } from "../serviceabilityDefaults.js";
 
 const round = (value, decimals = 6) =>
   Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
+
+function resolveServiceStressSolverActions(actions = {}) {
+  const userMxEd = actions?.mxEd ?? actions?.mEd ?? 0;
+  const userMyEd = actions?.myEd ?? 0;
+
+  return {
+    nEd: actions?.nEd ?? actions?.axialForce,
+    mxEd: -userMxEd,
+    myEd: -userMyEd,
+  };
+}
 
 function resolveReferencePoint(section, referencePoint = null) {
   const type = referencePoint?.type ?? "concrete-centroid";
@@ -66,17 +78,20 @@ function resolveServiceConcreteLaw(model, section) {
     return model.constitutiveModels.concreteLaw;
   }
 
-  const concreteMaterial =
-    model.materials?.concreteMaterial ?? section.concreteMaterial;
+  const reinforcementMaterial =
+    model.materials?.reinforcementMaterial ?? section.reinforcementMaterial;
+  const modularRatio = resolveRcSleModularRatio(
+    model.analysisSettings?.modularRatio,
+  );
 
-  if (!concreteMaterial?.elasticModulus) {
+  if (!reinforcementMaterial?.elasticModulus) {
     throw new Error(
-      "ReinforcedConcreteSectionVerification requires a concrete material with elasticModulus for service-stress.",
+      "ReinforcedConcreteSectionVerification requires a reinforcement material with elasticModulus for service-stress.",
     );
   }
 
   return new ConcreteNoTensionLaw({
-    ecm: concreteMaterial.elasticModulus,
+    ecm: reinforcementMaterial.elasticModulus / modularRatio,
     compressionCap: model.analysisSettings?.compressionCap ?? null,
   });
 }
@@ -133,6 +148,9 @@ export class ReinforcedConcreteSectionVerification {
       if (model.analysisType === "service-stress") {
         const section = model.section;
         const targetFiberCount = model.mesh?.targetFiberCount ?? 100;
+        const modularRatio = resolveRcSleModularRatio(
+          model.analysisSettings?.modularRatio,
+        );
         const referencePoint = resolveReferencePoint(section, model.referencePoint);
         const concreteLaw = resolveServiceConcreteLaw(model, section);
         const steelLaw = resolveServiceSteelLaw(model, section);
@@ -150,7 +168,7 @@ export class ReinforcedConcreteSectionVerification {
           concreteFibers: mesh.fibers,
           concreteLaw,
           steelLaw,
-          actions: model.actions,
+          actions: resolveServiceStressSolverActions(model.actions),
           referencePoint,
           initialGuess: model.solver?.initialGuess ?? {},
         });
@@ -167,6 +185,7 @@ export class ReinforcedConcreteSectionVerification {
             mxEd: round(model.actions?.mxEd ?? model.actions?.mEd ?? 0, 6),
             myEd: round(model.actions?.myEd ?? 0, 6),
             fiberCount: mesh.generatedCount,
+            modularRatio: round(modularRatio, 6),
             referencePoint: {
               y: round(referencePoint.y, 6),
               z: round(referencePoint.z, 6),
@@ -225,7 +244,7 @@ export class ReinforcedConcreteSectionVerification {
             ? []
             : ["The service stress equilibrium iteration did not converge within the configured limits."],
           assumptions: [
-            "Concrete fibers in tension are excluded from the service-state equilibrium.",
+            `Service-stress equilibrium uses the RC modular-ratio method with n = ${round(modularRatio, 6)} and concrete tension excluded.`,
             "Default service steel response is linear elastic unless a different constitutive law is passed in.",
           ],
           metadata: {
@@ -233,6 +252,7 @@ export class ReinforcedConcreteSectionVerification {
             sectionId: model.id,
             analysisType: model.analysisType,
             solverMethod: "damped-newton-finite-difference",
+            modularRatio: round(modularRatio, 6),
             ...this.metadata,
           },
         });

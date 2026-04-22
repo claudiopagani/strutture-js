@@ -315,7 +315,7 @@ test("RC serviceability stress check can include biaxial moment while crack cont
   const result = new ReinforcedConcreteServiceabilityVerification().verifySectionActions({
     nEd: 0,
     mEd: 1e7,
-    mxEd: -1e7,
+    mxEd: 1e7,
     myEd: 1e6,
     context: {
       section,
@@ -339,6 +339,67 @@ test("RC serviceability stress check can include biaxial moment while crack cont
       warning.includes("weak-axis service moment component"),
     ),
   );
+});
+
+test("RC serviceability uses the same sign convention for explicit mxEd and scalar mEd", () => {
+  const { section, concreteMaterial, reinforcementMaterial } =
+    createGroupedServiceabilityFixture();
+  const verifier = new ReinforcedConcreteServiceabilityVerification();
+  const fromScalarMoment = verifier.verify({
+    section,
+    concreteMaterial,
+    reinforcementMaterial,
+    actions: {
+      nEd: 0,
+      mEd: 4e7,
+    },
+    combinationType: "SLE_FREQUENT",
+  });
+  const fromExplicitMoment = verifier.verifySectionActions({
+    nEd: 0,
+    mxEd: 4e7,
+    context: {
+      section,
+      concreteMaterial,
+      reinforcementMaterial,
+      combinationType: "SLE_FREQUENT",
+    },
+  });
+
+  assert.equal(fromExplicitMoment.status, "ok");
+  assert.equal(fromExplicitMoment.outputs.crackControlGroupId, "bottom-main");
+  assert.deepEqual(
+    fromExplicitMoment.outputs.tensileBars.map((bar) => bar.id),
+    fromScalarMoment.outputs.tensileBars.map((bar) => bar.id),
+  );
+  assert.equal(
+    fromExplicitMoment.outputs.tensileBars.every((bar) => bar.stress > 0),
+    true,
+  );
+});
+
+test("RC serviceability biaxial moments keep the expected tension/compression corners", () => {
+  const { section, concreteMaterial, reinforcementMaterial } =
+    createServiceabilityFixture();
+  const result = new ReinforcedConcreteServiceabilityVerification().verifySectionActions({
+    nEd: -4e5,
+    mxEd: 6e7,
+    myEd: 2e7,
+    context: {
+      section,
+      concreteMaterial,
+      reinforcementMaterial,
+      combinationType: "SLE_RARE",
+    },
+  });
+
+  const tensileIds = result.outputs.tensileBars.map((bar) => bar.id);
+
+  assert.equal(result.status, "ok");
+  assert.ok(tensileIds.includes("bottom-left"));
+  assert.ok(tensileIds.includes("bottom-right"));
+  assert.equal(result.outputs.mxEd, 6e7);
+  assert.equal(result.outputs.myEd, 2e7);
 });
 
 test("RC serviceability requires explicit crack-control groups for generic sections", () => {

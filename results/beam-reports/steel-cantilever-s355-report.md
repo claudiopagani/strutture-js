@@ -10,6 +10,17 @@ Mensola con carico puntuale in estremita e verifiche di sezione e stabilita N+My
 * Lunghezza: 3 m
 * Luce orizzontale: 3 m
 
+## Assi principali
+
+| Parametro | Valore | Unita |
+| --- | --- | --- |
+| Alpha | 0 | rad |
+| Alpha input | - | - |
+| Convenzione | roof-slope | - |
+| Asse principale | principalY | - |
+| Fonte EI verticale | flexuralRigidity-principal-y | - |
+| Fonte GA verticale | shearRigidity-principal-y | - |
+
 ## Vincoli
 
 | ID | Nodo | Stazione | Tipo | ux | uy | rz |
@@ -32,19 +43,44 @@ Mensola con carico puntuale in estremita e verifiche di sezione e stabilita N+My
 
 ## Rigidezze adottate
 
-| ID | SL | Tipo | EA | EI | GA | k/gamma | finale/kdef |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| steel-cantilever-s355-report-ULS-LIVE | ULS | ULS_STR_GEO | 1130430 | 7753.2 | 323076.9231 | - | - |
-| steel-cantilever-s355-report-SLE_RARE-LIVE | SLE | SLE_RARE | 1130430 | 7753.2 | 323076.9231 | - | - |
+| ID | SL | Tipo | EA | EI vert. | EI Y | EI Z | GA vert. | GA Y | GA Z | k/gamma | finale/kdef |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| steel-cantilever-s355-report-ULS-LIVE | ULS | ULS_STR_GEO | 1130430 | 7753.2 | 7753.2 | 2805.6 | 323076.9231 | 323076.9231 | 146030.7692 | - | - |
+| steel-cantilever-s355-report-SLE_RARE-LIVE | SLE | SLE_RARE | 1130430 | 7753.2 | 7753.2 | 2805.6 | 323076.9231 | 323076.9231 | 146030.7692 | - | - |
 
 ## Inviluppi governanti
 
 | Grandezza | Risultato | SL | Valore | Stazione |
 | --- | --- | --- | --- | --- |
 | M max assoluto | steel-cantilever-s355-report-ULS-LIVE | ULS | 35.775 | 0 |
+| MY max assoluto | steel-cantilever-s355-report-ULS-LIVE | ULS | 35.775 | 0 |
+| MZ max assoluto | steel-cantilever-s355-report-ULS-LIVE | ULS | 0 | 0 |
 | V max | steel-cantilever-s355-report-ULS-LIVE | ULS | 14.85 | 0 |
 | V min | steel-cantilever-s355-report-ULS-LIVE | ULS | 9 | 3 |
+| VY max assoluto | steel-cantilever-s355-report-ULS-LIVE | ULS | 14.85 | 0 |
+| VZ max assoluto | steel-cantilever-s355-report-ULS-LIVE | ULS | 0 | 0 |
 | Freccia SLE max assoluta | steel-cantilever-s355-report-SLE_RARE-LIVE | SLE | 0.009 | 3 |
+
+## Azioni principali
+
+| Dominio | Grandezza | Risultato | SL | Valore | Stazione |
+| --- | --- | --- | --- | --- | --- |
+| Tutti | MY max assoluto | steel-cantilever-s355-report-ULS-LIVE | ULS | 35.775 | 0 |
+| Tutti | MZ max assoluto | G1 | - | 0 | 0 |
+| Tutti | VY max assoluto | steel-cantilever-s355-report-ULS-LIVE | ULS | 14.85 | 0 |
+| Tutti | VZ max assoluto | G1 | - | 0 | 0 |
+| Combinazioni | MY max assoluto | steel-cantilever-s355-report-ULS-LIVE | ULS | 35.775 | 0 |
+| Combinazioni | MZ max assoluto | steel-cantilever-s355-report-ULS-LIVE | ULS | 0 | 0 |
+| Combinazioni | VY max assoluto | steel-cantilever-s355-report-ULS-LIVE | ULS | 14.85 | 0 |
+| Combinazioni | VZ max assoluto | steel-cantilever-s355-report-ULS-LIVE | ULS | 0 | 0 |
+| SLU | MY max assoluto | steel-cantilever-s355-report-ULS-LIVE | ULS | 35.775 | 0 |
+| SLU | MZ max assoluto | steel-cantilever-s355-report-ULS-LIVE | ULS | 0 | 0 |
+| SLU | VY max assoluto | steel-cantilever-s355-report-ULS-LIVE | ULS | 14.85 | 0 |
+| SLU | VZ max assoluto | steel-cantilever-s355-report-ULS-LIVE | ULS | 0 | 0 |
+| SLE | MY max assoluto | steel-cantilever-s355-report-SLE_RARE-LIVE | SLE | 24.75 | 0 |
+| SLE | MZ max assoluto | steel-cantilever-s355-report-SLE_RARE-LIVE | SLE | 0 | 0 |
+| SLE | VY max assoluto | steel-cantilever-s355-report-SLE_RARE-LIVE | SLE | 10.5 | 0 |
+| SLE | VZ max assoluto | steel-cantilever-s355-report-SLE_RARE-LIVE | SLE | 0 | 0 |
 
 ## Reazioni governanti
 
@@ -59,8 +95,8 @@ Mensola con carico puntuale in estremita e verifiche di sezione e stabilita N+My
 | ID | Descrizione | Domanda | Capacita | Utilizzo | OK |
 | --- | --- | --- | --- | --- | --- |
 | steel-section-classification | Local steel section classification for the current N-M state | 2 | 3 | 0 | si |
-| steel-bending | Plastic bending resistance verification governed by section class | 35.775 | 145.214 | 0.246 | si |
-| steel-shear | Shear resistance verification | 14.85 | 780.8085 | 0.019 | si |
+| steel-bending | Biaxial bending resistance verification governed by section class | 35.775 | 145.214 | 0.246 | si |
+| steel-shear | Biaxial shear resistance verification | 14.85 | 780.8085 | 0.019 | si |
 | steel-axial | Axial resistance verification | 0 | 1819.9923 | 0 | si |
 | steel-elastic-stress | Normal-plus-shear stress screening with selected section modulus | 83.5424 | 338.1 | 0.247 | si |
 | steel-axial-bending-interaction | Linear axial-bending interaction | 0.2464 | 1 | 0.246 | si |
@@ -77,6 +113,14 @@ Mensola con carico puntuale in estremita e verifiche di sezione e stabilita N+My
 | steel-section-classification | resultType | combination |
 | steel-section-classification | station | 0 |
 | steel-section-classification | limitState | ULS |
+| steel-section-classification | stationSource | critical |
+| steel-section-classification | stationRole | support+critical-bending+critical-shear |
+| steel-section-classification | stationSelectionMode | all |
+| steel-section-classification | isRequestedStation | false |
+| steel-section-classification | isUserStation | false |
+| steel-section-classification | isGridStation | false |
+| steel-section-classification | isCriticalStation | true |
+| steel-section-classification | stationTolerance | 0 |
 | steel-section-classification | method | ntc2018-en1993-section-classification-mvp |
 | steel-section-classification | sectionClass | 2 |
 | steel-section-classification | profileName | HEA200 |
@@ -86,8 +130,10 @@ Mensola con carico puntuale in estremita e verifiche di sezione e stabilita N+My
 | steel-section-classification | axialCompressionForce | 0 |
 | steel-section-classification | nEd | 0 |
 | steel-section-classification | mEd | -35.775 |
+| steel-section-classification | mzEd | 0 |
 | steel-section-classification | nEdSectionUnits | 0 |
 | steel-section-classification | mEdSectionUnits | -35775000 |
+| steel-section-classification | mzEdSectionUnits | 0 |
 | steel-section-classification | classificationSeverity | 0.6914 |
 | steel-section-classification | flangeClass | 2 |
 | steel-section-classification | webClass | 1 |
@@ -99,37 +145,90 @@ Mensola con carico puntuale in estremita e verifiche di sezione e stabilita N+My
 | steel-bending | resultType | combination |
 | steel-bending | station | 0 |
 | steel-bending | limitState | ULS |
+| steel-bending | stationSource | critical |
+| steel-bending | stationRole | support+critical-bending+critical-shear |
+| steel-bending | stationSelectionMode | all |
+| steel-bending | isRequestedStation | false |
+| steel-bending | isUserStation | false |
+| steel-bending | isGridStation | false |
+| steel-bending | isCriticalStation | true |
+| steel-bending | stationTolerance | 0 |
 | steel-bending | fyd | 338.1 |
 | steel-bending | gammaM0 | 1.05 |
 | steel-bending | sectionClass | 2 |
 | steel-bending | resistanceBasis | plastic |
+| steel-bending | resistanceBasisZ | plastic |
+| steel-bending | actionBasis | principal-actions |
+| steel-bending | mYEd | -35.775 |
+| steel-bending | mZEd | 0 |
 | steel-bending | selectedSectionModulus | 429500 |
+| steel-bending | selectedSectionModulusZ | 203800 |
 | steel-bending | elasticSectionModulus | 388600 |
+| steel-bending | elasticSectionModulusZ | 133600 |
 | steel-bending | plasticSectionModulus | 429500 |
+| steel-bending | plasticSectionModulusZ | 203800 |
 | steel-bending | elasticMomentResistance | 131385660 |
 | steel-bending | plasticMomentResistance | 145213950 |
+| steel-bending | bendingCapacityY | 145.214 |
+| steel-bending | bendingCapacityZ | 68.9048 |
+| steel-bending | utilizationRatioY | 0.2464 |
+| steel-bending | utilizationRatioZ | 0 |
 | steel-shear | resultId | steel-cantilever-s355-report-ULS-LIVE |
 | steel-shear | resultType | combination |
 | steel-shear | station | 0 |
 | steel-shear | limitState | ULS |
+| steel-shear | stationSource | critical |
+| steel-shear | stationRole | support+critical-bending+critical-shear |
+| steel-shear | stationSelectionMode | all |
+| steel-shear | isRequestedStation | false |
+| steel-shear | isUserStation | false |
+| steel-shear | isGridStation | false |
+| steel-shear | isCriticalStation | true |
+| steel-shear | stationTolerance | 0 |
 | steel-shear | fyd | 338.1 |
 | steel-shear | shearArea | 4000 |
+| steel-shear | shearAreaY | 4000 |
+| steel-shear | shearAreaZ | 1808 |
+| steel-shear | vYEd | 14.85 |
+| steel-shear | vZEd | 0 |
+| steel-shear | shearCapacityY | 780.8085 |
+| steel-shear | shearCapacityZ | 352.9254 |
+| steel-shear | utilizationRatioY | 0.019 |
+| steel-shear | utilizationRatioZ | 0 |
 | steel-axial | resultId | steel-cantilever-s355-report-ULS-LIVE |
 | steel-axial | resultType | combination |
 | steel-axial | station | 0 |
 | steel-axial | limitState | ULS |
+| steel-axial | stationSource | critical |
+| steel-axial | stationRole | support+critical-bending+critical-shear |
+| steel-axial | stationSelectionMode | all |
+| steel-axial | isRequestedStation | false |
+| steel-axial | isUserStation | false |
+| steel-axial | isGridStation | false |
+| steel-axial | isCriticalStation | true |
+| steel-axial | stationTolerance | 0 |
 | steel-axial | fyd | 338.1 |
 | steel-axial | area | 5383 |
 | steel-elastic-stress | resultId | steel-cantilever-s355-report-ULS-LIVE |
 | steel-elastic-stress | resultType | combination |
 | steel-elastic-stress | station | 0 |
 | steel-elastic-stress | limitState | ULS |
+| steel-elastic-stress | stationSource | critical |
+| steel-elastic-stress | stationRole | support+critical-bending+critical-shear |
+| steel-elastic-stress | stationSelectionMode | all |
+| steel-elastic-stress | isRequestedStation | false |
+| steel-elastic-stress | isUserStation | false |
+| steel-elastic-stress | isGridStation | false |
+| steel-elastic-stress | isCriticalStation | true |
+| steel-elastic-stress | stationTolerance | 0 |
 | steel-elastic-stress | method | selected-modulus-von-mises-section-stress-screening |
 | steel-elastic-stress | fyd | 338.1 |
 | steel-elastic-stress | axialStress | 0 |
 | steel-elastic-stress | bendingStress | 83.2945 |
+| steel-elastic-stress | bendingStressZ | 0 |
 | steel-elastic-stress | maxNormalStress | 83.2945 |
 | steel-elastic-stress | shearStress | 3.7125 |
+| steel-elastic-stress | shearStressZ | 0 |
 | steel-elastic-stress | equivalentStress | 83.5424 |
 | steel-elastic-stress | area | 5383 |
 | steel-elastic-stress | resistanceBasis | plastic |
@@ -140,6 +239,14 @@ Mensola con carico puntuale in estremita e verifiche di sezione e stabilita N+My
 | steel-axial-bending-interaction | resultType | combination |
 | steel-axial-bending-interaction | station | 0 |
 | steel-axial-bending-interaction | limitState | ULS |
+| steel-axial-bending-interaction | stationSource | critical |
+| steel-axial-bending-interaction | stationRole | support+critical-bending+critical-shear |
+| steel-axial-bending-interaction | stationSelectionMode | all |
+| steel-axial-bending-interaction | isRequestedStation | false |
+| steel-axial-bending-interaction | isUserStation | false |
+| steel-axial-bending-interaction | isGridStation | false |
+| steel-axial-bending-interaction | isCriticalStation | true |
+| steel-axial-bending-interaction | stationTolerance | 0 |
 | steel-axial-bending-interaction | axialUtilizationRatio | 0 |
 | steel-axial-bending-interaction | bendingUtilizationRatio | 0.2464 |
 | steel-lateral-torsional-buckling | method | ntc2018-en1993-lateral-torsional-buckling-mvp |
@@ -173,7 +280,9 @@ Mensola con carico puntuale in estremita e verifiche di sezione e stabilita N+My
 | steel-lateral-torsional-buckling | unbracedLength | 3 |
 | steel-lateral-torsional-buckling | unbracedLengthSectionUnits | 3000 |
 | steel-lateral-torsional-buckling | mEd | -35.775 |
+| steel-lateral-torsional-buckling | mzEd | 0 |
 | steel-lateral-torsional-buckling | mEdSectionUnits | -35775000 |
+| steel-lateral-torsional-buckling | mzEdSectionUnits | 0 |
 | steel-lateral-torsional-buckling | nEdSectionUnits | 0 |
 | steel-lateral-torsional-buckling | resistanceBasis | plastic |
 | steel-lateral-torsional-buckling | criticalMomentSectionUnits | 180000000 |
@@ -213,6 +322,7 @@ Mensola con carico puntuale in estremita e verifiche di sezione e stabilita N+My
 | steel-compression-buckling | nEd | 0 |
 | steel-compression-buckling | nEdSectionUnits | 0 |
 | steel-compression-buckling | mEd | -35.775 |
+| steel-compression-buckling | mzEd | 0 |
 | steel-compression-buckling | mEdSectionUnits | -35775000 |
 | steel-compression-buckling | lengthInferenceSource | inferred-cantilever-fixed-free |
 | steel-compression-buckling | axisYResistanceSectionUnits | 1146895.4797 |
@@ -251,13 +361,16 @@ Mensola con carico puntuale in estremita e verifiche di sezione e stabilita N+My
 | steel-beam-column-interaction-n-my | nEd | 0 |
 | steel-beam-column-interaction-n-my | nEdSectionUnits | 0 |
 | steel-beam-column-interaction-n-my | myEd | -35.775 |
+| steel-beam-column-interaction-n-my | mzEd | 0 |
 | steel-beam-column-interaction-n-my | myEdSectionUnits | -35775000 |
+| steel-beam-column-interaction-n-my | mzEdSectionUnits | 0 |
 | steel-beam-column-interaction-n-my | lengthY | 3 |
 | steel-beam-column-interaction-n-my | lengthZ | 3 |
 | steel-beam-column-interaction-n-my | effectiveLengthY | 6 |
 | steel-beam-column-interaction-n-my | effectiveLengthZ | 6 |
 | steel-beam-column-interaction-n-my | lengthInferenceSource | inferred-cantilever-fixed-free |
 | steel-beam-column-interaction-n-my | resistanceBasis | plastic |
+| steel-beam-column-interaction-n-my | resistanceBasisZ | plastic |
 | steel-beam-column-interaction-n-my | chiLTSource | ltb-verification |
 | steel-beam-column-interaction-n-my | segmentId | ltb-full-span |
 | steel-beam-column-interaction-n-my | unbracedLength | 3 |
@@ -284,7 +397,7 @@ Mensola con carico puntuale in estremita e verifiche di sezione e stabilita N+My
 ## Warning
 
 * Section classification is included for I/H and UPN profiles, but effective class-4 section properties are not implemented yet.
-* Current steel member stability domain is N+My only: Mz, torsion and torsional interactions are not considered.
+* Steel member stability excludes torsion and torsional interactions; N+My+Mz is available only for supported doubly symmetric I/H profiles.
 
 ## Assunzioni
 
@@ -293,5 +406,5 @@ Mensola con carico puntuale in estremita e verifiche di sezione e stabilita N+My
 * Axial force is treated as compression by absolute value for section classification unless a different convention is configured.
 * Lateral-torsional buckling is checked on ULS FEM bending maxima for declared unbraced segments; automatic Mcr is limited to doubly symmetric I/H profiles.
 * Compression buckling uses NTC 2018 flexural buckling reductions about y and z; effective lengths default from the simple-beam supports and can be overridden.
-* N+My stability interaction uses Circolare NTC 2018 Method B in the current domain: Mz, torsion and torsional interactions are excluded.
+* Steel beam-column stability interaction uses Circolare NTC 2018 Method B; Mz is included for supported doubly symmetric I/H profiles, while torsion and torsional interactions are excluded.
 * SLE vertical deflection limit defaults to L/250 unless overridden.
