@@ -1,6 +1,7 @@
 import { ApplicationRegistry } from "../core/applications/ApplicationRegistry.js";
 import { MasonryOutOfPlaneApplication } from "./masonry-out-of-plane/index.js";
 import { MasonryPierApplication } from "./masonry-piers/index.js";
+import { MasonryWallOpeningsApplication } from "./masonry-wall-openings/index.js";
 import { MasonryRingBeamApplication } from "./masonry-ring-beams/index.js";
 import { MicropileBromsApplication } from "./micropiles-broms/index.js";
 import { RCrackedDeflectionApplication } from "./rc-cracked-deflection/index.js";
@@ -19,6 +20,23 @@ export { MasonryPierApplication } from "./masonry-piers/index.js";
 export { MasonryPierEquivalentFrameBuilder } from "./masonry-piers/index.js";
 export { MasonryPierModel } from "./masonry-piers/index.js";
 export { MasonryPierVerticalVerification } from "./masonry-piers/index.js";
+export { MasonryWallOpeningsApplication } from "./masonry-wall-openings/index.js";
+export { AlignmentSeismicAggregatedAnalysis } from "./masonry-wall-openings/index.js";
+export { AlignmentStateComparisonAnalysis } from "./masonry-wall-openings/index.js";
+export { AlignmentStaticAnalysis } from "./masonry-wall-openings/index.js";
+export { MasonryEquivalentFrameBuilder } from "./masonry-wall-openings/index.js";
+export { ALIGNMENT_STATE_COMPARISON_REPORT_SCHEMA_VERSION } from "./masonry-wall-openings/index.js";
+export { AlignmentStateComparisonReportBuilder } from "./masonry-wall-openings/index.js";
+export { AlignmentStateComparisonMarkdownRenderer } from "./masonry-wall-openings/index.js";
+export { createAlignmentStateComparisonReportArtifacts } from "./masonry-wall-openings/index.js";
+export { bilinearizeCapacityCurve } from "./masonry-wall-openings/index.js";
+export { resolveAlignmentMechanicalState } from "./masonry-wall-openings/index.js";
+export { resolveMasonryStageMaterial } from "./masonry-wall-openings/index.js";
+export { MasonryWallOpeningsModel } from "./masonry-wall-openings/index.js";
+export { MasonryWallPierModel } from "./masonry-wall-openings/index.js";
+export { MasonryWallSpandrelModel } from "./masonry-wall-openings/index.js";
+export { extractEquivalentFrameMembers } from "./masonry-wall-openings/index.js";
+export { sanitizeAlignmentOpenings } from "./masonry-wall-openings/index.js";
 export { MasonryRingBeamApplication } from "./masonry-ring-beams/index.js";
 export { MasonryRingBeamModel } from "./masonry-ring-beams/index.js";
 export { MasonryRingBeamVerification } from "./masonry-ring-beams/index.js";
@@ -94,6 +112,7 @@ export function createDefaultApplicationRegistry() {
     new SingleBeamDesignApplication(),
     new SteelFrameApplication(),
     new MasonryPierApplication(),
+    new MasonryWallOpeningsApplication(),
     new MasonryRingBeamApplication(),
     new ReinforcedConcreteSectionApplication(),
     new TimberBeamApplication(),

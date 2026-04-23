@@ -17,11 +17,12 @@ test("default application registry exposes all scaffolded structural application
   const registry = createDefaultApplicationRegistry();
 
   assert.ok(registry instanceof ApplicationRegistry);
-  assert.equal(registry.list().length, 12);
-  assert.equal(APPLICATION_CATALOG.length, 12);
+  assert.equal(registry.list().length, 13);
+  assert.equal(APPLICATION_CATALOG.length, 13);
   assert.ok(registry.has("single-beam-design"));
   assert.ok(registry.has("steel-frames"));
   assert.ok(registry.has("masonry-piers"));
+  assert.ok(registry.has("masonry-wall-openings"));
   assert.ok(registry.has("micropiles-broms"));
   assert.ok(registry.has("timber-concrete-composite-beams"));
   assert.ok(registry.has("timber-xlam-composite-beams"));

@@ -29,6 +29,14 @@ export const APPLICATION_CATALOG = [
       "Vertical verification of masonry piers and equivalent-frame 2D idealization with rigid end zones.",
   },
   {
+    id: "masonry-wall-openings",
+    name: "Masonry Wall Openings",
+    domain: "masonry",
+    maturity: "partial",
+    primaryFocus:
+      "Geometry sanitization, equivalent-frame extraction, static vertical analysis, aggregated seismic capacity curves, ante/post comparison workflows and reporting for masonry wall alignments with openings.",
+  },
+  {
     id: "reinforced-concrete-sections",
     name: "RC Sections",
     domain: "reinforced-concrete",
