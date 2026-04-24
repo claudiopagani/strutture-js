@@ -3,6 +3,17 @@ import { DenseLinearSolver } from "../../../domain/math/DenseLinearSolver.js";
 import { MasonryEquivalentFramePushoverInternalForces } from "./MasonryEquivalentFramePushoverInternalForces.js";
 
 function cloneContributorState(state = null) {
+  if (state?.kind === "steel-ring-frame") {
+    return {
+      kind: "steel-ring-frame",
+      hingeState: {
+        start: state?.hingeState?.start ?? null,
+        end: state?.hingeState?.end ?? null,
+        history: [...(state?.hingeState?.history ?? [])],
+      },
+    };
+  }
+
   return {
     failed: Boolean(state?.failed),
     hingeState: {
@@ -25,11 +36,19 @@ function cloneContributorStates(statesByElementId = {}) {
 
 function countActiveHinges(statesByElementId = {}) {
   return Object.values(statesByElementId).reduce(
-    (sum, state) =>
-      sum +
-      Number(state?.hingeState?.start != null) +
-      Number(state?.hingeState?.end != null) +
-      Number(state?.hingeState?.shear != null),
+    (sum, state) => {
+      const shearHingeCount =
+        state?.kind === "steel-ring-frame"
+          ? 0
+          : Number(state?.hingeState?.shear != null);
+
+      return (
+        sum +
+        Number(state?.hingeState?.start != null) +
+        Number(state?.hingeState?.end != null) +
+        shearHingeCount
+      );
+    },
     0,
   );
 }
@@ -51,6 +70,10 @@ function pierBaseShearsById(responses = []) {
   const result = {};
 
   for (const response of responses) {
+    if (!response?.pierId) {
+      continue;
+    }
+
     result[response.pierId] = response.baseShear ?? 0;
   }
 
@@ -61,6 +84,10 @@ function pierHingeCountsById(responses = []) {
   const result = {};
 
   for (const response of responses) {
+    if (!response?.pierId) {
+      continue;
+    }
+
     result[response.pierId] = response.hingeCount ?? 0;
   }
 

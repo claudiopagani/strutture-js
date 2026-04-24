@@ -354,6 +354,9 @@ function normalizeDirectHingeEvent(event, fromFem) {
     position: event.position ?? null,
     sign: event.sign ?? null,
     elementId: event.elementId ?? null,
+    sourceRingFrameId: event.sourceRingFrameId ?? null,
+    sourceOpeningId: event.sourceOpeningId ?? null,
+    role: event.role ?? null,
     capacityKind,
     plasticCapacity,
     plasticMoment: capacityKind === "moment" ? plasticCapacity : null,
@@ -517,6 +520,7 @@ export class AlignmentEquivalentFramePushoverAnalysis {
     const topRotation = normalizeTopRotation(
       options.topRotation ?? DEFAULT_TOP_ROTATION,
     );
+    const includeSpandrels = Boolean(options.includeSpandrels);
     const frame = this.frameBuilder.build({
       alignment,
       stage,
@@ -535,6 +539,7 @@ export class AlignmentEquivalentFramePushoverAnalysis {
       options: {
         ...options,
         topRotation,
+        includeSpandrels: false,
       },
       sanitizedOpenings,
       extractedMembers,
@@ -548,11 +553,20 @@ export class AlignmentEquivalentFramePushoverAnalysis {
     const ringFrameContributions = (aggregatedResult.outputs?.ringFrames ?? [])
       .filter((contributor) => (contributor.curvePoints ?? []).length > 1)
       .map((contributor) => normalizeRingFrameContribution(contributor));
+    const explicitRingFrameCount = frame.snapshot.metadata?.ringFrameCount ?? 0;
+    const femRingFrameContributions =
+      explicitRingFrameCount > 0 ? [] : ringFrameContributions;
+    const activeRingFrameCount =
+      explicitRingFrameCount > 0
+        ? explicitRingFrameCount
+        : femRingFrameContributions.length;
     const warnings = [];
     const assumptions = [
       "The whole-alignment non-linear FEM workflow solves each masonry pier directly on the global equivalent frame, with a diaphragm master node tying the top ux DOFs through equal-DOF constraints.",
       "Each masonry pier is represented through a unified macroelement with concentrated end plastic hinges and an internal perfectly plastic shear mechanism, so flexural and shear-governed responses stay in the same non-linear state model.",
-      "Spandrels are still excluded from the masonry frame and available steel ring-frame pushover curves are added directly as already non-linear contributors.",
+      includeSpandrels
+        ? "Explicit masonry spandrels are included as linear elastic Timoshenko elements in the global frame; their non-linear limit states are intentionally deferred while declared steel ring frames are solved as explicit plastic-hinge frame elements."
+        : "Masonry spandrels are excluded unless includeSpandrels is enabled; declared steel ring frames are solved explicitly in the global FEM model, with legacy aggregated steel curves used only when no explicit ring frame is assembled.",
     ];
     const toFem = createUnitResolver(alignment.units, FEM_UNITS);
     const fromFem = createUnitResolver(FEM_UNITS, alignment.units);
@@ -668,7 +682,7 @@ export class AlignmentEquivalentFramePushoverAnalysis {
             contributorType: "pier",
             curvePoints: pier.curvePoints,
           }))),
-      ...ringFrameContributions,
+      ...femRingFrameContributions,
     ];
 
     if (activeContributors.length === 0 || aggregatedCurvePoints.length === 0) {
@@ -708,7 +722,7 @@ export class AlignmentEquivalentFramePushoverAnalysis {
           topRotation,
           contributorCount: activeContributors.length,
           activePierCount: activePierResults.length,
-          activeRingFrameCount: ringFrameContributions.length,
+          activeRingFrameCount,
           directMasonryPierCount: directPierResults.length,
         },
       });
@@ -729,13 +743,15 @@ export class AlignmentEquivalentFramePushoverAnalysis {
       ...performanceSummaryFromBilinearization(femBilinearization, femCurvePoints),
       contributorCount: activeContributors.length,
       activePierCount: activePierResults.length,
-      activeRingFrameCount: ringFrameContributions.length,
+      activeRingFrameCount,
       directMasonryPierCount: directPierResults.length,
       hingeCount: round(
-        activePierResults.reduce(
-          (sum, result) => sum + (result.performanceSummary?.hingeCount ?? 0),
-          0,
-        ),
+        directMasonryAvailable
+          ? directSolverResult.points.at(-1)?.hingeCount
+          : activePierResults.reduce(
+              (sum, result) => sum + (result.performanceSummary?.hingeCount ?? 0),
+              0,
+            ),
       ),
     };
     const metricDeltas = [
@@ -811,6 +827,7 @@ export class AlignmentEquivalentFramePushoverAnalysis {
             Boolean(frame.snapshot.metadata?.diaphragmControlNodeId),
           controlNodeId: frame.snapshot.metadata?.diaphragmControlNodeId ?? null,
           topNodeIds: frame.snapshot.metadata?.topNodeIds ?? [],
+          diaphragmNodeIds: frame.snapshot.metadata?.diaphragmNodeIds ?? [],
         },
         aggregated: {
           performanceSummary: aggregatedPerformanceSummary,
@@ -852,6 +869,7 @@ export class AlignmentEquivalentFramePushoverAnalysis {
                           elementId,
                           {
                             failed: Boolean(state?.failed),
+                            kind: state?.kind ?? "masonry-pier",
                             hingeState: {
                               start: state?.hingeState?.start ?? null,
                               end: state?.hingeState?.end ?? null,
@@ -884,7 +902,14 @@ export class AlignmentEquivalentFramePushoverAnalysis {
             finalState: pier.finalState,
             reading: pier.reading,
           })),
-          ringFrames: ringFrameContributions,
+          ringFrameModel:
+            explicitRingFrameCount > 0
+              ? "explicit-global-frame"
+              : "aggregated-steel-pushover",
+          ringFrames:
+            explicitRingFrameCount > 0
+              ? frame.ringFrameFrames ?? []
+              : femRingFrameContributions,
           hingeEvents,
         },
         comparison: {
@@ -915,7 +940,8 @@ export class AlignmentEquivalentFramePushoverAnalysis {
         controlPointCount,
         contributorCount: activeContributors.length,
         activePierCount: activePierResults.length,
-        activeRingFrameCount: ringFrameContributions.length,
+        activeRingFrameCount,
+        explicitRingFrameCount,
         directMasonryPierCount: directPierResults.length,
         fallbackPierCount: normalizedFallbackPierResults.length,
         generatedCurvePointCount: femCurvePoints.length,

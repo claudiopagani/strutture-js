@@ -116,6 +116,12 @@ export class SteelRingFramePushoverAnalysis {
         modelId: resolvedModel.id,
         baseCondition: resolvedModel.baseCondition,
         includeBottomBeam: resolvedModel.includeBottomBeam,
+        memberOrientations: Object.fromEntries(
+          Object.entries(resolvedModel.memberOrientations).map(([key, value]) => [
+            key,
+            { ...value },
+          ]),
+        ),
       },
     };
   }

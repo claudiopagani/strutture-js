@@ -176,12 +176,163 @@ function normalizeProfiles({ memberSections = {}, units }) {
   };
 }
 
+function profileFamily(section) {
+  return String(section?.family ?? section?.profileName ?? "")
+    .trim()
+    .toUpperCase();
+}
+
+function normalizeOrientationAlias(value) {
+  const normalized = String(value ?? "")
+    .trim()
+    .toLowerCase();
+
+  if (
+    [
+      "weak",
+      "minor",
+      "z",
+      "inertiaz",
+      "weak-axis",
+      "weak-axis-in-plane",
+      "asse-debole",
+      "asse-debole-nel-piano",
+      "rotated-90",
+      "rotate-90",
+      "90",
+      "upn-open-side-up",
+      "open-side-up",
+      "web-up",
+      "lato-senza-labbri-up",
+      "lato-senza-labbri-verso-alto",
+    ].includes(normalized)
+  ) {
+    return "z";
+  }
+
+  return "y";
+}
+
+function normalizeMemberOrientationInput(input, fallback = {}) {
+  if (input == null) {
+    return fallback;
+  }
+
+  if (typeof input === "string") {
+    const axis = normalizeOrientationAlias(input);
+
+    return {
+      ...fallback,
+      axis,
+      label: axis === "z" ? "weak-axis-in-plane" : "strong-axis-in-plane",
+      rotationDegrees: axis === "z" ? 90 : 0,
+      mounting:
+        input.toLowerCase().includes("open-side-up") ||
+        input.toLowerCase().includes("web-up") ||
+        input.toLowerCase().includes("labbri")
+          ? "open-side-up"
+          : fallback.mounting ?? null,
+      source: "explicit",
+    };
+  }
+
+  const explicitAxis =
+    input.axis ??
+    input.inPlaneAxis ??
+    input.bendingAxis ??
+    input.bendingInertiaAxis ??
+    null;
+  const rotation =
+    input.rotationDegrees ??
+    input.rotation ??
+    input.localAxisRotation ??
+    null;
+  const axis =
+    explicitAxis != null
+      ? normalizeOrientationAlias(explicitAxis)
+      : Number.isFinite(Number(rotation)) &&
+          Math.abs(Number(rotation) % 180) === 90
+        ? "z"
+        : fallback.axis ?? "y";
+
+  return {
+    ...fallback,
+    axis,
+    label:
+      input.label ??
+      input.orientation ??
+      (axis === "z" ? "weak-axis-in-plane" : "strong-axis-in-plane"),
+    rotationDegrees:
+      Number.isFinite(Number(rotation))
+        ? Number(rotation)
+        : input.rotate90
+          ? 90
+          : axis === "z"
+            ? 90
+            : 0,
+    mounting:
+      input.mounting ??
+      input.openSide ??
+      input.webSide ??
+      fallback.mounting ??
+      null,
+    source: "explicit",
+  };
+}
+
+function defaultMemberOrientation(memberKey, section) {
+  const family = profileFamily(section);
+
+  if (memberKey === "bottomBeam" && family.startsWith("UPN")) {
+    return {
+      axis: "z",
+      label: "upn-open-side-up",
+      rotationDegrees: 90,
+      mounting: "open-side-up",
+      source: "default-upn-bottom-beam",
+    };
+  }
+
+  return {
+    axis: "y",
+    label: "strong-axis-in-plane",
+    rotationDegrees: 0,
+    mounting: null,
+    source: "default-strong-axis",
+  };
+}
+
+function normalizeMemberOrientations({ memberOrientations = {}, memberSections }) {
+  const input = memberOrientations ?? {};
+  const columnInput = input.columns ?? input.column ?? input.piers ?? null;
+
+  return {
+    leftColumn: normalizeMemberOrientationInput(
+      input.leftColumn ?? columnInput,
+      defaultMemberOrientation("leftColumn", memberSections.leftColumn),
+    ),
+    rightColumn: normalizeMemberOrientationInput(
+      input.rightColumn ?? columnInput,
+      defaultMemberOrientation("rightColumn", memberSections.rightColumn),
+    ),
+    topBeam: normalizeMemberOrientationInput(
+      input.topBeam ?? input.architrave,
+      defaultMemberOrientation("topBeam", memberSections.topBeam),
+    ),
+    bottomBeam: normalizeMemberOrientationInput(
+      input.bottomBeam ?? input.bottomChord,
+      defaultMemberOrientation("bottomBeam", memberSections.bottomBeam),
+    ),
+  };
+}
+
 export class SteelRingFramePushoverModel {
   constructor({
     id,
     units = null,
     geometry = {},
     memberSections = {},
+    memberOrientations = {},
     material = null,
     baseCondition = DEFAULT_BASE_CONDITION,
     includeBottomBeam = null,
@@ -225,6 +376,10 @@ export class SteelRingFramePushoverModel {
     this.memberSections = normalizeProfiles({
       memberSections,
       units,
+    });
+    this.memberOrientations = normalizeMemberOrientations({
+      memberOrientations,
+      memberSections: this.memberSections,
     });
     this.loading = {
       referenceHorizontalForce: unitResolver.force(
@@ -302,6 +457,12 @@ export class SteelRingFramePushoverModel {
         Object.entries(this.memberSections).map(([key, section]) => [
           key,
           section?.toJSON?.() ?? section,
+        ]),
+      ),
+      memberOrientations: Object.fromEntries(
+        Object.entries(this.memberOrientations).map(([key, orientation]) => [
+          key,
+          { ...orientation },
         ]),
       ),
       loading: { ...this.loading },

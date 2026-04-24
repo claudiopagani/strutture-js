@@ -74,7 +74,12 @@ export class SteelRingFrame2DBuilder {
         endNode: topLeftNode,
         section: resolvedModel.memberSections.leftColumn,
         material: resolvedModel.material,
-        metadata: { role: "left-column", sourceModelId: resolvedModel.id },
+        sectionOrientation: resolvedModel.memberOrientations.leftColumn,
+        metadata: {
+          role: "left-column",
+          sourceModelId: resolvedModel.id,
+          sectionOrientation: { ...resolvedModel.memberOrientations.leftColumn },
+        },
       }),
       new SteelPlasticHingeFrameElement2D({
         id: `${resolvedModel.id}-right-column`,
@@ -82,7 +87,12 @@ export class SteelRingFrame2DBuilder {
         endNode: topRightNode,
         section: resolvedModel.memberSections.rightColumn,
         material: resolvedModel.material,
-        metadata: { role: "right-column", sourceModelId: resolvedModel.id },
+        sectionOrientation: resolvedModel.memberOrientations.rightColumn,
+        metadata: {
+          role: "right-column",
+          sourceModelId: resolvedModel.id,
+          sectionOrientation: { ...resolvedModel.memberOrientations.rightColumn },
+        },
       }),
       new SteelPlasticHingeFrameElement2D({
         id: `${resolvedModel.id}-top-beam`,
@@ -90,7 +100,12 @@ export class SteelRingFrame2DBuilder {
         endNode: topRightNode,
         section: resolvedModel.memberSections.topBeam,
         material: resolvedModel.material,
-        metadata: { role: "top-beam", sourceModelId: resolvedModel.id },
+        sectionOrientation: resolvedModel.memberOrientations.topBeam,
+        metadata: {
+          role: "top-beam",
+          sourceModelId: resolvedModel.id,
+          sectionOrientation: { ...resolvedModel.memberOrientations.topBeam },
+        },
       }),
     ];
 
@@ -102,7 +117,12 @@ export class SteelRingFrame2DBuilder {
           endNode: bottomRightNode,
           section: resolvedModel.memberSections.bottomBeam,
           material: resolvedModel.material,
-          metadata: { role: "bottom-beam", sourceModelId: resolvedModel.id },
+          sectionOrientation: resolvedModel.memberOrientations.bottomBeam,
+          metadata: {
+            role: "bottom-beam",
+            sourceModelId: resolvedModel.id,
+            sectionOrientation: { ...resolvedModel.memberOrientations.bottomBeam },
+          },
         }),
       );
     }
@@ -168,6 +188,12 @@ export class SteelRingFrame2DBuilder {
           sourceModelId: resolvedModel.id,
           baseCondition: resolvedModel.baseCondition,
           includeBottomBeam: resolvedModel.includeBottomBeam,
+          memberOrientations: Object.fromEntries(
+            Object.entries(resolvedModel.memberOrientations).map(([key, value]) => [
+              key,
+              { ...value },
+            ]),
+          ),
           controlNodeId: controlNode.id,
           controlDof: resolvedModel.loading.controlDof,
           referenceHorizontalForce,

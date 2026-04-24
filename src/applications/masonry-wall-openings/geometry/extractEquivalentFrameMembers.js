@@ -4,6 +4,7 @@ import { MasonryWallSpandrelModel } from "../models/MasonryWallSpandrelModel.js"
 import { sanitizeAlignmentOpenings } from "./sanitizeAlignmentOpenings.js";
 
 const EPS = 1e-9;
+const DOLCE_INCLINATION_RADIANS = Math.PI / 6;
 
 function uniqueSorted(values = []) {
   return [...new Set(values.filter(Number.isFinite))].sort((left, right) => left - right);
@@ -32,6 +33,111 @@ function resolvePierReduction(openings, boundaryKey, boundaryValue) {
     .filter((value) => Number.isFinite(value) && value > 0);
 
   return reductions.length > 0 ? Math.max(...reductions) : 0;
+}
+
+function resolvePierAxisX({ xStart, length, leftReduction = 0, rightReduction = 0 }) {
+  const effectiveLength = Math.max(0, length - leftReduction - rightReduction);
+
+  return xStart + leftReduction + effectiveLength / 2;
+}
+
+function adjacentOpeningInfluences({ openings, xStart, xEnd, axisX, height }) {
+  const tangent = Math.tan(DOLCE_INCLINATION_RADIANS);
+
+  return openings
+    .map((opening) => {
+      const leftAdjacent = sameCoordinate(opening.x + opening.width, xStart);
+      const rightAdjacent = sameCoordinate(opening.x, xEnd);
+
+      if (!leftAdjacent && !rightAdjacent) {
+        return null;
+      }
+
+      const edgeX = leftAdjacent ? xStart : xEnd;
+      const horizontalDistance = Math.abs(axisX - edgeX);
+      const yStart = opening.y - horizontalDistance * tangent;
+      const yEnd = opening.y + opening.height + horizontalDistance * tangent;
+
+      return {
+        openingId: opening.id,
+        side: leftAdjacent ? "left" : "right",
+        horizontalDistance,
+        rawYStart: yStart,
+        rawYEnd: yEnd,
+        yStart: Math.max(0, Math.min(height, yStart)),
+        yEnd: Math.max(0, Math.min(height, yEnd)),
+      };
+    })
+    .filter(Boolean);
+}
+
+function resolveDolceDeformableZone({
+  openings,
+  xStart,
+  xEnd,
+  length,
+  height,
+  leftReduction = 0,
+  rightReduction = 0,
+}) {
+  const axisX = resolvePierAxisX({
+    xStart,
+    length,
+    leftReduction,
+    rightReduction,
+  });
+  const influences = adjacentOpeningInfluences({
+    openings,
+    xStart,
+    xEnd,
+    axisX,
+    height,
+  });
+
+  if (influences.length === 0) {
+    return {
+      axisX,
+      deformableHeight: height,
+      rigidBottomLength: 0,
+      rigidTopLength: 0,
+      metadata: {
+        dolceMethod: {
+          applied: false,
+          inclinationDegrees: 30,
+          adjacentOpeningIds: [],
+          influences: [],
+        },
+      },
+    };
+  }
+
+  const yStart = Math.max(
+    0,
+    Math.min(...influences.map((influence) => influence.rawYStart)),
+  );
+  const yEnd = Math.min(
+    height,
+    Math.max(...influences.map((influence) => influence.rawYEnd)),
+  );
+  const deformableHeight = Math.max(EPS, yEnd - yStart);
+
+  return {
+    axisX,
+    deformableHeight,
+    rigidBottomLength: yStart,
+    rigidTopLength: Math.max(0, height - yEnd),
+    metadata: {
+      dolceMethod: {
+        applied: true,
+        inclinationDegrees: 30,
+        axisX,
+        yStart,
+        yEnd,
+        adjacentOpeningIds: influences.map((influence) => influence.openingId),
+        influences,
+      },
+    },
+  };
 }
 
 function resolveSharedMaterial(walls) {
@@ -98,6 +204,15 @@ function buildPiers({ alignment, sanitizedOpenings }) {
       const leftReduction = resolvePierReduction(wallOpenings, "left", xStart);
       const rightReduction = resolvePierReduction(wallOpenings, "right", xEnd);
       const effectiveLength = Math.max(0, length - leftReduction - rightReduction);
+      const dolceZone = resolveDolceDeformableZone({
+        openings: wallOpenings,
+        xStart,
+        xEnd,
+        length,
+        height: wall.height,
+        leftReduction,
+        rightReduction,
+      });
 
       if (effectiveLength <= EPS) {
         warnings.push(
@@ -119,9 +234,9 @@ function buildPiers({ alignment, sanitizedOpenings }) {
           material: wall.material,
           tributaryVerticalLoad: 0,
           tributaryLoadByWall: {},
-          deformableHeight: wall.height,
-          rigidBottomLength: 0,
-          rigidTopLength: 0,
+          deformableHeight: dolceZone.deformableHeight,
+          rigidBottomLength: dolceZone.rigidBottomLength,
+          rigidTopLength: dolceZone.rigidTopLength,
           topBoundaryMode: "not-resolved",
           mechanics: {},
           capacity: {},
@@ -135,6 +250,7 @@ function buildPiers({ alignment, sanitizedOpenings }) {
             openingIdsRight: wallOpenings
               .filter((opening) => sameCoordinate(opening.x, xEnd))
               .map((opening) => opening.id),
+            ...dolceZone.metadata,
           },
         }),
       );
@@ -265,7 +381,7 @@ export function extractEquivalentFrameMembers({
     spandrels: spandrelResult.spandrels,
     warnings: uniqueStrings([...pierResult.warnings, ...spandrelResult.warnings]),
     assumptions: [
-      "In this first release, piers are extracted as wall-bounded full-height vertical strips whose x-interval is not occupied by sanitized opening projections.",
+      "Piers are extracted as wall-bounded vertical strips whose x-interval is not occupied by sanitized opening projections; their deformable height is resolved with the Dolce 30-degree construction when adjacent openings exist.",
       "Spandrels are extracted as the masonry band directly above each sanitized opening, capped by the next overlapping opening above or by the local wall top.",
     ],
     metadata: {

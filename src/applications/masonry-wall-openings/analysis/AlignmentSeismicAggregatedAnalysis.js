@@ -1,5 +1,7 @@
 import { CalculationResult } from "../../../core/results/CalculationResult.js";
 import { round, uniqueStrings } from "../../../core/results/checkUtils.js";
+import { FrameElement2DTimoshenkoRigidOffsets } from "../../../domain/fem/index.js";
+import { DenseLinearSolver } from "../../../domain/math/DenseLinearSolver.js";
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
 import { SteelRingFramePushoverAnalysis } from "../../steel-frames/analysis/SteelRingFramePushoverAnalysis.js";
 import { extractEquivalentFrameMembers } from "../geometry/extractEquivalentFrameMembers.js";
@@ -137,6 +139,81 @@ function resolvePierElasticStiffness({
   const inertia = (pier.thickness * length ** 3) / 12;
   const bendingStiffnessFactor = topRotation === "fixed" ? 12 : 3;
   const components = [];
+
+  if (
+    Number.isFinite(elasticModulus) &&
+    elasticModulus > EPS &&
+    Number.isFinite(shearModulus) &&
+    shearModulus > EPS
+  ) {
+    const element = new FrameElement2DTimoshenkoRigidOffsets({
+      id: `${pier.id}-elastic-stiffness-probe`,
+      startNode: { id: `${pier.id}-elastic-base`, x: 0, y: 0 },
+      endNode: { id: `${pier.id}-elastic-top`, x: 0, y: pier.height },
+      axialRigidity: elasticModulus * area,
+      flexuralRigidity: elasticModulus * inertia,
+      shearRigidity: shearModulus * area,
+      shearCorrectionFactor: SHEAR_CORRECTION_FACTOR,
+      rigidStartOffset: pier.rigidBottomLength ?? 0,
+      rigidEndOffset: pier.rigidTopLength ?? 0,
+    });
+    const stiffnessMatrix = element.globalStiffness();
+    const prescribedDofs = new Map([
+      [0, 0],
+      [1, 0],
+      [2, 0],
+      [3, 1],
+    ]);
+
+    if (topRotation === "fixed") {
+      prescribedDofs.set(5, 0);
+    }
+
+    const unknownDofs = [3, 4, 5].filter((dof) => !prescribedDofs.has(dof));
+    const prescribedEntries = [...prescribedDofs.entries()];
+    const fullDisplacements = new Array(6).fill(0);
+
+    for (const [dof, value] of prescribedEntries) {
+      fullDisplacements[dof] = value;
+    }
+
+    if (unknownDofs.length > 0) {
+      const reducedStiffness = unknownDofs.map((rowDof) =>
+        unknownDofs.map((columnDof) => stiffnessMatrix[rowDof][columnDof]),
+      );
+      const reducedLoad = unknownDofs.map((rowDof) =>
+        -prescribedEntries.reduce(
+          (sum, [columnDof, value]) =>
+            sum + stiffnessMatrix[rowDof][columnDof] * value,
+          0,
+        ),
+      );
+      const solution = new DenseLinearSolver().solve(
+        reducedStiffness,
+        reducedLoad,
+      );
+
+      unknownDofs.forEach((dof, index) => {
+        fullDisplacements[dof] = solution[index];
+      });
+    }
+
+    const forceVector = stiffnessMatrix.map((row) =>
+      row.reduce(
+        (sum, value, index) => sum + value * fullDisplacements[index],
+        0,
+      ),
+    );
+    const stiffness = Math.abs(forceVector[3]);
+
+    if (Number.isFinite(stiffness) && stiffness > EPS) {
+      return stiffness;
+    }
+
+    warnings.push(
+      `Pier ${pier.id} could not resolve a positive condensed FEM elastic stiffness; the lateral stiffness uses the closed-form available components only.`,
+    );
+  }
 
   if (Number.isFinite(elasticModulus) && elasticModulus > EPS) {
     const bendingStiffness =
@@ -564,6 +641,48 @@ function resolveRingFrameSections(ringFrame = {}) {
   };
 }
 
+function resolveRingFrameMemberOrientations(ringFrame = {}) {
+  const orientations =
+    ringFrame.memberOrientations ??
+    ringFrame.memberOrientation ??
+    ringFrame.sectionOrientations ??
+    ringFrame.sectionOrientation ??
+    ringFrame.orientations ??
+    ringFrame.orientation ??
+    {};
+
+  if (typeof orientations === "string") {
+    return { columns: orientations, topBeam: orientations, bottomBeam: orientations };
+  }
+
+  return {
+    ...orientations,
+    columns:
+      orientations.columns ??
+      orientations.column ??
+      ringFrame.columnOrientation ??
+      ringFrame.columnsOrientation,
+    leftColumn:
+      orientations.leftColumn ??
+      orientations.leftPier ??
+      ringFrame.leftColumnOrientation,
+    rightColumn:
+      orientations.rightColumn ??
+      orientations.rightPier ??
+      ringFrame.rightColumnOrientation,
+    topBeam:
+      orientations.topBeam ??
+      orientations.architrave ??
+      ringFrame.topBeamOrientation ??
+      ringFrame.architraveOrientation,
+    bottomBeam:
+      orientations.bottomBeam ??
+      orientations.bottomChord ??
+      ringFrame.bottomBeamOrientation ??
+      ringFrame.bottomChordOrientation,
+  };
+}
+
 function buildRingFrameContribution({
   alignment,
   opening,
@@ -625,6 +744,7 @@ function buildRingFrameContribution({
           height: toSteelUnits.length(opening.height),
         },
         memberSections,
+        memberOrientations: resolveRingFrameMemberOrientations(ringFrame),
         material:
           ringFrame.material ??
           ringFrame.materialGrade ??
@@ -684,6 +804,10 @@ function buildRingFrameContribution({
         analysisType: result.metadata?.analysisType ?? "steel-ring-frame-pushover",
         baseCondition: result.metadata?.baseCondition ?? null,
         includeBottomBeam: result.metadata?.includeBottomBeam ?? null,
+        memberOrientations:
+          result.metadata?.memberOrientations ??
+          result.outputs?.frameIdealization?.metadata?.memberOrientations ??
+          null,
       },
     };
   } catch (error) {

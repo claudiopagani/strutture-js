@@ -3,6 +3,7 @@ import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
 
 const FEM_UNITS = Object.freeze({ force: "kN", length: "m" });
 const EPS = 1e-9;
+const NUMERICAL_RESIDUAL_STIFFNESS_RATIO = 1e-9;
 
 const PLASTIC_GENERALIZED_DOF_DEFINITIONS = Object.freeze({
   start: Object.freeze({
@@ -76,6 +77,10 @@ function subtractMatrices(left, right) {
   );
 }
 
+function scalarMatrix(scalar, matrix) {
+  return matrix.map((row) => row.map((value) => scalar * value));
+}
+
 function addVectors(left, right) {
   return left.map((value, index) => value + right[index]);
 }
@@ -131,7 +136,30 @@ function activeHingeCount(state = null) {
   );
 }
 
+function cloneSteelHingeState(state = null) {
+  const hingeState = state?.hingeState ?? state;
+
+  return {
+    start: hingeState?.start ?? null,
+    end: hingeState?.end ?? null,
+    history: [...(hingeState?.history ?? [])],
+  };
+}
+
+function activeSteelHingeCount(state = null) {
+  const hingeState = state?.hingeState ?? state;
+
+  return Number(hingeState?.start != null) + Number(hingeState?.end != null);
+}
+
 function cloneContributorState(state = null) {
+  if (state?.kind === "steel-ring-frame") {
+    return {
+      kind: "steel-ring-frame",
+      hingeState: cloneSteelHingeState(state),
+    };
+  }
+
   return {
     failed: Boolean(state?.failed),
     hingeState: cloneHingeState(state?.hingeState),
@@ -312,6 +340,41 @@ function baseShearFromGlobalEndForces(frame, element, globalEndForces) {
   return baseUxIndex >= 0 ? Math.abs(globalEndForces[baseUxIndex] ?? 0) : 0;
 }
 
+function assembleElementResponse({ frame, element, localEndForces, tangentLocalStiffness }) {
+  const transformation = element.transformationMatrix();
+  const tangentGlobalStiffness = multiplyMatrices(
+    transpose(transformation),
+    multiplyMatrices(tangentLocalStiffness, transformation),
+  );
+  const globalEndForces = multiplyMatrixVector(
+    transpose(transformation),
+    localEndForces,
+  );
+  const dofIds = element.getDofIds(frame.dofRegistry);
+  const indices = dofIds.map((dofId) => frame.dofRegistry.getIndex(dofId));
+  const internalForceVector = createZeroVector(frame.dofRegistry.size());
+  const tangentStiffnessMatrix = createZeroMatrix(frame.dofRegistry.size());
+
+  for (let localRow = 0; localRow < indices.length; localRow += 1) {
+    const globalRow = indices[localRow];
+
+    internalForceVector[globalRow] += globalEndForces[localRow];
+
+    for (let localColumn = 0; localColumn < indices.length; localColumn += 1) {
+      const globalColumn = indices[localColumn];
+
+      tangentStiffnessMatrix[globalRow][globalColumn] +=
+        tangentGlobalStiffness[localRow][localColumn];
+    }
+  }
+
+  return {
+    internalForceVector,
+    tangentStiffnessMatrix,
+    globalEndForces,
+  };
+}
+
 export function createMasonryEquivalentFrameContributorDefinition({
   alignment,
   pier,
@@ -379,10 +442,28 @@ function evaluateContributor({
       ...cloneContributorState(previous),
       failed: true,
     };
+    const localDisplacements = element.localDisplacements(
+      displacements,
+      frame.dofRegistry,
+    );
+    const residualLocalStiffness = scalarMatrix(
+      NUMERICAL_RESIDUAL_STIFFNESS_RATIO,
+      element.localStiffness(),
+    );
+    const residualLocalEndForces = multiplyMatrixVector(
+      residualLocalStiffness,
+      localDisplacements,
+    );
+    const assembled = assembleElementResponse({
+      frame,
+      element,
+      localEndForces: residualLocalEndForces,
+      tangentLocalStiffness: residualLocalStiffness,
+    });
 
     return {
-      internalForceVector: createZeroVector(frame.dofRegistry.size()),
-      tangentStiffnessMatrix: createZeroMatrix(frame.dofRegistry.size()),
+      internalForceVector: assembled.internalForceVector,
+      tangentStiffnessMatrix: assembled.tangentStiffnessMatrix,
       state: nextState,
       events:
         previous.failed
@@ -444,32 +525,12 @@ function evaluateContributor({
     trialHingeState = updatedState;
   }
 
-  const transformation = element.transformationMatrix();
-  const tangentGlobalStiffness = multiplyMatrices(
-    transpose(transformation),
-    multiplyMatrices(response.tangentLocalStiffness, transformation),
-  );
-  const globalEndForces = multiplyMatrixVector(
-    transpose(transformation),
-    response.localEndForces,
-  );
-  const dofIds = element.getDofIds(frame.dofRegistry);
-  const indices = dofIds.map((dofId) => frame.dofRegistry.getIndex(dofId));
-  const internalForceVector = createZeroVector(frame.dofRegistry.size());
-  const tangentStiffnessMatrix = createZeroMatrix(frame.dofRegistry.size());
-
-  for (let localRow = 0; localRow < indices.length; localRow += 1) {
-    const globalRow = indices[localRow];
-
-    internalForceVector[globalRow] += globalEndForces[localRow];
-
-    for (let localColumn = 0; localColumn < indices.length; localColumn += 1) {
-      const globalColumn = indices[localColumn];
-
-      tangentStiffnessMatrix[globalRow][globalColumn] +=
-        tangentGlobalStiffness[localRow][localColumn];
-    }
-  }
+  const assembled = assembleElementResponse({
+    frame,
+    element,
+    localEndForces: response.localEndForces,
+    tangentLocalStiffness: response.tangentLocalStiffness,
+  });
 
   const nextState = {
     failed: false,
@@ -477,8 +538,8 @@ function evaluateContributor({
   };
 
   return {
-    internalForceVector,
-    tangentStiffnessMatrix,
+    internalForceVector: assembled.internalForceVector,
+    tangentStiffnessMatrix: assembled.tangentStiffnessMatrix,
     state: nextState,
     events: activationDelta(previous.hingeState, trialHingeState).map((event) => ({
       ...event,
@@ -497,13 +558,132 @@ function evaluateContributor({
       wallId: contributor.wallId,
       governingMode: contributor.governingMode,
       mechanismModel: "equivalent-frame-hinges-and-shear-plateau",
-      baseShear: baseShearFromGlobalEndForces(frame, element, globalEndForces),
+      baseShear: baseShearFromGlobalEndForces(
+        frame,
+        element,
+        assembled.globalEndForces,
+      ),
       failed: false,
       hingeCount: activeHingeCount(trialHingeState),
       hingeState: cloneHingeState(trialHingeState),
       localEndForces: [...response.localEndForces],
-      globalEndForces: [...globalEndForces],
+      globalEndForces: [...assembled.globalEndForces],
       plasticGeneralizedDisplacements: [...response.plasticGeneralizedDisplacements],
+    },
+  };
+}
+
+function isElasticFrameElement(element) {
+  return String(element?.metadata?.role ?? "")
+    .trim()
+    .toLowerCase() === "spandrel";
+}
+
+function isSteelPlasticHingeFrameElement(element) {
+  return (
+    element?.type === "steel-frame-2d-plastic-hinge" &&
+    typeof element.evaluate === "function"
+  );
+}
+
+function evaluateElasticElement({ frame, element, displacements }) {
+  const localDisplacements = element.localDisplacements(
+    displacements,
+    frame.dofRegistry,
+  );
+  const localStiffness = element.localStiffness();
+  const localEndForces = multiplyMatrixVector(localStiffness, localDisplacements);
+  const assembled = assembleElementResponse({
+    frame,
+    element,
+    localEndForces,
+    tangentLocalStiffness: localStiffness,
+  });
+
+  return {
+    internalForceVector: assembled.internalForceVector,
+    tangentStiffnessMatrix: assembled.tangentStiffnessMatrix,
+    state: null,
+    events: [],
+    response: {
+      elementId: element.id,
+      elementRole: element.metadata?.role ?? "elastic",
+      sourceSpandrelId: element.metadata?.sourceSpandrelId ?? null,
+      mechanismModel: "linear-elastic",
+      failed: false,
+      hingeCount: 0,
+      localEndForces: [...localEndForces],
+      globalEndForces: [...assembled.globalEndForces],
+    },
+  };
+}
+
+function evaluateSteelElement({
+  frame,
+  element,
+  displacements,
+  state = null,
+  yieldTolerance = 1e-9,
+}) {
+  const previousState = cloneSteelHingeState(state);
+  const response = element.evaluate({
+    globalDisplacements: displacements,
+    dofRegistry: frame.dofRegistry,
+    hingeState: previousState,
+    yieldTolerance,
+  });
+  const dofIds = element.getDofIds(frame.dofRegistry);
+  const indices = dofIds.map((dofId) => frame.dofRegistry.getIndex(dofId));
+  const internalForceVector = createZeroVector(frame.dofRegistry.size());
+  const tangentStiffnessMatrix = createZeroMatrix(frame.dofRegistry.size());
+
+  for (let localRow = 0; localRow < indices.length; localRow += 1) {
+    const globalRow = indices[localRow];
+
+    internalForceVector[globalRow] += response.globalEndForces[localRow];
+
+    for (let localColumn = 0; localColumn < indices.length; localColumn += 1) {
+      const globalColumn = indices[localColumn];
+
+      tangentStiffnessMatrix[globalRow][globalColumn] +=
+        response.tangentGlobalStiffness[localRow][localColumn];
+    }
+  }
+
+  const nextHingeState = response.hingeState?.toJSON?.() ?? cloneSteelHingeState(
+    response.hingeState,
+  );
+
+  return {
+    internalForceVector,
+    tangentStiffnessMatrix,
+    state: {
+      kind: "steel-ring-frame",
+      hingeState: nextHingeState,
+    },
+    events: response.newActivations.map((event) => ({
+      ...event,
+      type: "plastic-hinge-activation",
+      elementId: element.id,
+      role: element.metadata?.role ?? null,
+      sourceRingFrameId: element.metadata?.sourceRingFrameId ?? null,
+      sourceOpeningId: element.metadata?.sourceOpeningId ?? null,
+      capacityKind: "moment",
+      plasticCapacity: element.plasticMomentCapacity(event.position),
+      plasticMoment: element.plasticMomentCapacity(event.position),
+    })),
+    response: {
+      elementId: element.id,
+      elementRole: element.metadata?.role ?? "steel-ring-frame",
+      sourceRingFrameId: element.metadata?.sourceRingFrameId ?? null,
+      sourceOpeningId: element.metadata?.sourceOpeningId ?? null,
+      mechanismModel: "steel-frame-plastic-hinges",
+      failed: false,
+      hingeCount: activeSteelHingeCount(nextHingeState),
+      hingeState: cloneSteelHingeState(nextHingeState),
+      localEndForces: [...response.localEndForces],
+      globalEndForces: [...response.globalEndForces],
+      plasticRotations: [...response.plasticRotations],
     },
   };
 }
@@ -546,20 +726,40 @@ export class MasonryEquivalentFramePushoverInternalForces {
     for (const element of resolvedFrame.elements ?? []) {
       const contributor = this.contributorsByElementId[element.id];
 
-      if (!contributor) {
+      if (
+        !contributor &&
+        !isElasticFrameElement(element) &&
+        !isSteelPlasticHingeFrameElement(element)
+      ) {
         continue;
       }
 
-      const evaluation = evaluateContributor({
-        frame: resolvedFrame,
-        element,
-        displacements,
-        contributor,
-        state: state?.[element.id],
-        yieldTolerance,
-      });
+      const evaluation = contributor
+        ? evaluateContributor({
+            frame: resolvedFrame,
+            element,
+            displacements,
+            contributor,
+            state: state?.[element.id],
+            yieldTolerance,
+          })
+        : isSteelPlasticHingeFrameElement(element)
+          ? evaluateSteelElement({
+              frame: resolvedFrame,
+              element,
+              displacements,
+              state: state?.[element.id],
+              yieldTolerance,
+            })
+          : evaluateElasticElement({
+              frame: resolvedFrame,
+              element,
+              displacements,
+            });
 
-      updatedStates[element.id] = evaluation.state;
+      if (evaluation.state != null) {
+        updatedStates[element.id] = evaluation.state;
+      }
       events.push(...evaluation.events);
       responses.push(evaluation.response);
 

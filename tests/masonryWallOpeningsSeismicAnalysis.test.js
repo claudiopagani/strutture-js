@@ -134,7 +134,10 @@ test("aggregated seismic analysis adds the steel ring-frame pushover contributio
           memberSections: {
             columns: "IPE200",
             topBeam: "IPE200",
+            bottomBeam: "UPN200",
           },
+          includeBottomBeam: true,
+          topBeamOrientation: "weak-axis-in-plane",
           materialGrade: "S275",
           solver: {
             maxDisplacement: 0.02,
@@ -155,6 +158,14 @@ test("aggregated seismic analysis adds the steel ring-frame pushover contributio
 
   assert.equal(ringFrameResult.outputs.ringFrames.length, 1);
   assert.equal(ringFrameResult.outputs.ringFrames[0].status, "ok");
+  assert.equal(
+    ringFrameResult.outputs.ringFrames[0].metadata.memberOrientations.topBeam.axis,
+    "z",
+  );
+  assert.equal(
+    ringFrameResult.outputs.ringFrames[0].metadata.memberOrientations.bottomBeam.label,
+    "upn-open-side-up",
+  );
   assert.ok(
     ringFrameResult.outputs.capacityCurve.maxBaseShear >
       masonryOnlyResult.outputs.capacityCurve.maxBaseShear,

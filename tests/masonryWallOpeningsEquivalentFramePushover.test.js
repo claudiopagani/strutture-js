@@ -11,6 +11,7 @@ const units = { force: "N", length: "m" };
 
 function createEquivalentFramePushoverAlignment(
   id = "alignment-equivalent-frame-pushover",
+  openingOverrides = {},
 ) {
   return new MasonryWallOpeningsModel({
     id,
@@ -42,6 +43,7 @@ function createEquivalentFramePushoverAlignment(
         y: 1,
         width: 1,
         height: 1,
+        ...openingOverrides,
       },
     ],
   });
@@ -148,6 +150,108 @@ test("masonry wall openings application exposes equivalent-frame-pushover as a s
   assert.equal(result.outputs.equivalentFrame.metadata.frameType, "pier-only");
   assert.equal(result.outputs.fem.piers.length, 2);
   assert.ok(result.outputs.fem.capacityCurve.points.length > 20);
+});
+
+test("equivalent-frame pushover with explicit linear spandrels is bounded by free and fixed pier-head cases", () => {
+  const alignment = createEquivalentFramePushoverAlignment(
+    "alignment-equivalent-frame-pushover-spandrels",
+  );
+  const analysis = new AlignmentEquivalentFramePushoverAnalysis();
+  const freeTopResult = analysis.analyze({
+    alignment,
+    options: {
+      topRotation: "free",
+      controlPointCount: 80,
+    },
+  });
+  const spandrelResult = analysis.analyze({
+    alignment,
+    options: {
+      topRotation: "free",
+      includeSpandrels: true,
+      controlPointCount: 80,
+    },
+  });
+  const fixedTopResult = analysis.analyze({
+    alignment,
+    options: {
+      topRotation: "fixed",
+      controlPointCount: 80,
+    },
+  });
+  const freeSummary = freeTopResult.outputs.fem.performanceSummary;
+  const spandrelSummary = spandrelResult.outputs.fem.performanceSummary;
+  const fixedSummary = fixedTopResult.outputs.fem.performanceSummary;
+
+  assert.equal(spandrelResult.status, "ok");
+  assert.equal(spandrelResult.outputs.equivalentFrame.metadata.frameType, "pier-spandrel");
+  assert.equal(spandrelResult.outputs.equivalentFrame.metadata.spandrelCount, 1);
+  assert.ok(freeSummary.ks < spandrelSummary.ks);
+  assert.ok(spandrelSummary.ks < fixedSummary.ks);
+  assert.ok(freeSummary.Vy < spandrelSummary.Vy);
+  assert.ok(spandrelSummary.Vy <= fixedSummary.Vy * 1.001);
+  assert.ok(
+    !spandrelResult.warnings.some((warning) =>
+      warning.includes("singular") || warning.includes("ill-conditioned"),
+    ),
+  );
+});
+
+test("equivalent-frame pushover solves declared steel ring frames in the explicit global model", () => {
+  const analysis = new AlignmentEquivalentFramePushoverAnalysis();
+  const masonryOnlyResult = analysis.analyze({
+    alignment: createEquivalentFramePushoverAlignment(
+      "alignment-equivalent-frame-pushover-ring-baseline",
+    ),
+    options: {
+      topRotation: "free",
+      controlPointCount: 80,
+    },
+  });
+  const ringFrameResult = analysis.analyze({
+    alignment: createEquivalentFramePushoverAlignment(
+      "alignment-equivalent-frame-pushover-ring",
+      {
+        ringFrame: {
+          memberSections: {
+            columns: "IPE200",
+            topBeam: "IPE200",
+          },
+          material: "S275",
+          baseCondition: "fixed-base",
+        },
+      },
+    ),
+    options: {
+      topRotation: "free",
+      controlPointCount: 80,
+    },
+  });
+  const steelStates = Object.values(
+    ringFrameResult.outputs.fem.masonryFrame.finalState.hingeStatesByElementId,
+  ).filter((state) => state.kind === "steel-ring-frame");
+
+  assert.equal(ringFrameResult.status, "ok");
+  assert.equal(
+    ringFrameResult.outputs.equivalentFrame.metadata.frameType,
+    "pier-ring-frame",
+  );
+  assert.equal(ringFrameResult.outputs.equivalentFrame.metadata.ringFrameCount, 1);
+  assert.equal(ringFrameResult.outputs.fem.ringFrameModel, "explicit-global-frame");
+  assert.equal(ringFrameResult.outputs.fem.ringFrames.length, 1);
+  assert.equal(ringFrameResult.outputs.fem.performanceSummary.activeRingFrameCount, 1);
+  assert.equal(ringFrameResult.outputs.fem.performanceSummary.contributorCount, 1);
+  assert.equal(ringFrameResult.metadata.explicitRingFrameCount, 1);
+  assert.equal(steelStates.length, 3);
+  assert.ok(
+    ringFrameResult.outputs.controlModel.diaphragmNodeIds.includes(
+      "alignment-equivalent-frame-pushover-ring-ring-frame-window-a-tl",
+    ),
+  );
+  assert.ok(
+    ringFrameResult.outputs.fem.performanceSummary.ks >
+      masonryOnlyResult.outputs.fem.performanceSummary.ks,
+  );
 });
 
 test("equivalent-frame pushover keeps shear-governed masonry piers on the direct global frame path", () => {

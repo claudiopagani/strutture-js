@@ -230,12 +230,18 @@ export class MasonryWallOpeningsApplication extends StructuralApplication {
         applicationId: this.id,
         status: "ok",
         summary:
-          "Pier-only equivalent-frame FEM model assembled for the masonry wall alignment, ready for the first linear validation steps with topRotation free or fixed.",
+          frame.snapshot.metadata.ringFrameCount > 0
+            ? "Equivalent-frame FEM model assembled for the masonry wall alignment with explicit steel ring frames tied to the diaphragm when requested."
+            : frame.snapshot.metadata.frameType === "pier-spandrel"
+              ? "Equivalent-frame FEM model assembled for the masonry wall alignment with explicit linear elastic spandrels."
+              : "Pier-only equivalent-frame FEM model assembled for the masonry wall alignment, ready for the first linear validation steps with topRotation free or fixed.",
         outputs: {
           stage: frame.stage,
           topRotation: frame.topRotation,
           equivalentFrame: frame.snapshot,
           piers: frame.pierFrames,
+          spandrels: frame.spandrelFrames,
+          ringFrames: frame.ringFrameFrames,
         },
         warnings: frame.warnings,
         assumptions: frame.assumptions,
@@ -245,6 +251,8 @@ export class MasonryWallOpeningsApplication extends StructuralApplication {
           stage: frame.stage,
           topRotation: frame.topRotation,
           pierCount: frame.pierFrames.length,
+          spandrelCount: frame.spandrelFrames.length,
+          ringFrameCount: frame.ringFrameFrames.length,
         },
       });
     }

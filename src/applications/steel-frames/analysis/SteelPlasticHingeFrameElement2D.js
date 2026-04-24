@@ -100,6 +100,51 @@ function plasticGeneralizedForce(position, sign, plasticMoment) {
   return factor * plasticMoment;
 }
 
+function normalizeSectionOrientation(sectionOrientation = {}) {
+  const orientation = sectionOrientation ?? {};
+  const rawAxis =
+    typeof orientation === "string"
+      ? orientation
+      : orientation.axis ??
+        orientation.inPlaneAxis ??
+        orientation.bendingAxis ??
+        "y";
+  const axis = String(rawAxis)
+    .trim()
+    .toLowerCase();
+  const resolvedAxis =
+    ["z", "weak", "minor", "weak-axis", "minor-axis", "asse-debole"].includes(axis)
+      ? "z"
+      : "y";
+
+  return {
+    axis: resolvedAxis,
+    label:
+      orientation.label ??
+      (resolvedAxis === "z" ? "weak-axis-in-plane" : "strong-axis-in-plane"),
+    rotationDegrees:
+      Number.isFinite(orientation.rotationDegrees)
+        ? orientation.rotationDegrees
+        : resolvedAxis === "z"
+          ? 90
+          : 0,
+    mounting:
+      orientation.mounting ??
+      orientation.openSide ??
+      orientation.webSide ??
+      null,
+    inertiaProperty: resolvedAxis === "z" ? "inertiaZ" : "inertiaY",
+    elasticSectionModulusProperty:
+      resolvedAxis === "z"
+        ? "elasticSectionModulusZ"
+        : "elasticSectionModulusY",
+    plasticSectionModulusProperty:
+      resolvedAxis === "z"
+        ? "plasticSectionModulusZ"
+        : "plasticSectionModulusY",
+  };
+}
+
 export class SteelPlasticHingeFrameElement2D {
   constructor({
     id,
@@ -107,6 +152,7 @@ export class SteelPlasticHingeFrameElement2D {
     endNode,
     section,
     material,
+    sectionOrientation = null,
     axialRigidity = null,
     flexuralRigidity = null,
     plasticMomentStart = null,
@@ -125,6 +171,7 @@ export class SteelPlasticHingeFrameElement2D {
     this.section = section;
     this.material = material;
     this.analysisUnits = startNode?.units ?? DEFAULT_FEM_UNITS;
+    this.sectionOrientation = normalizeSectionOrientation(sectionOrientation);
     this.metadata = { ...metadata };
     this.axialRigidity = axialRigidity ?? this.defaultAxialRigidity();
     this.flexuralRigidity = flexuralRigidity ?? this.defaultFlexuralRigidity();
@@ -136,6 +183,7 @@ export class SteelPlasticHingeFrameElement2D {
       material,
       axialRigidity: this.axialRigidity,
       flexuralRigidity: this.flexuralRigidity,
+      bendingInertiaAxis: this.sectionOrientation.inertiaProperty,
       metadata,
     });
     this.plasticMomentStart =
@@ -148,11 +196,12 @@ export class SteelPlasticHingeFrameElement2D {
   }
 
   defaultPlasticMomentCapacity() {
-    const sectionModulus = this.section?.plasticSectionModulusY;
+    const property = this.sectionOrientation.plasticSectionModulusProperty;
+    const sectionModulus = this.section?.[property];
     const designStrength = this.material?.fyd ?? this.material?.fyk;
     const resolver = createUnitResolver(SECTION_UNITS, this.analysisUnits);
 
-    assertPositive(sectionModulus, "section plasticSectionModulusY");
+    assertPositive(sectionModulus, `section ${property}`);
     assertPositive(designStrength, "material fyd");
 
     return resolver.moment(sectionModulus * designStrength);
@@ -171,11 +220,12 @@ export class SteelPlasticHingeFrameElement2D {
 
   defaultFlexuralRigidity() {
     const elasticModulus = this.material?.elasticModulus;
-    const inertia = this.section?.inertiaY;
+    const property = this.sectionOrientation.inertiaProperty;
+    const inertia = this.section?.[property];
     const resolver = createUnitResolver(SECTION_UNITS, this.analysisUnits);
 
     assertPositive(elasticModulus, "material elasticModulus");
-    assertPositive(inertia, "section inertiaY");
+    assertPositive(inertia, `section ${property}`);
 
     return resolver.convert(elasticModulus * inertia, {
       forceExponent: 1,
@@ -390,6 +440,10 @@ export class SteelPlasticHingeFrameElement2D {
       flexuralRigidity: this.flexuralRigidity,
       plasticMomentStart: this.plasticMomentStart,
       plasticMomentEnd: this.plasticMomentEnd,
+      sectionOrientation: { ...this.sectionOrientation },
+      bendingInertiaAxis: this.sectionOrientation.inertiaProperty,
+      plasticSectionModulusAxis:
+        this.sectionOrientation.plasticSectionModulusProperty,
       material: this.material?.toJSON?.() ?? this.material,
       section: this.section?.toJSON?.() ?? this.section,
       metadata: { ...this.metadata },

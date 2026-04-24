@@ -7,11 +7,14 @@ import { Node } from "../../../domain/geometry/Node.js";
 import { Support } from "../../../domain/supports/Support.js";
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
 import { MasonryPierModel } from "../../masonry-piers/models/MasonryPierModel.js";
+import { SteelRingFrame2DBuilder } from "../../steel-frames/analysis/SteelRingFrame2DBuilder.js";
 import { extractEquivalentFrameMembers } from "../geometry/extractEquivalentFrameMembers.js";
 import { sanitizeAlignmentOpenings } from "../geometry/sanitizeAlignmentOpenings.js";
 import { resolveAlignmentMechanicalState } from "../materials/resolveAlignmentMechanicalState.js";
+import { resolveMasonryMaterialProperty } from "../materials/resolveMasonryMaterialProperty.js";
 
 const FEM_UNITS = Object.freeze({ force: "kN", length: "m" });
+const SHEAR_CORRECTION_FACTOR = 5 / 6;
 const EPS = 1e-9;
 
 function normalizeTopRotation(value = "free") {
@@ -68,6 +71,10 @@ function average(values = []) {
   return finiteValues.reduce((sum, value) => sum + value, 0) / finiteValues.length;
 }
 
+function sameCoordinate(left, right) {
+  return Math.abs(left - right) <= EPS;
+}
+
 function createDiaphragmControlNode({ alignment, topNodes = [] }) {
   return new Node({
     id: `${alignment.id}-diaphragm-control`,
@@ -110,6 +117,12 @@ function buildPierFrameMember({ alignment, pier, topRotation }) {
   });
   const rigidities = pierModel.resolvedEquivalentFrameRigidities();
   const toFem = createUnitResolver(pierModel.units, FEM_UNITS);
+  const femEffectiveLength = toFem.length(pierModel.geometry.length);
+  const femDeformableHeight = toFem.length(pierModel.deformableHeight());
+  const femRigidBottomLength = toFem.length(
+    pierModel.idealization.rigidEndZoneBottom,
+  );
+  const femRigidTopLength = toFem.length(pierModel.idealization.rigidEndZoneTop);
   const baseNode = new Node({
     id: `${pier.id}-base`,
     x: pierModel.geometry.baseX,
@@ -143,16 +156,16 @@ function buildPierFrameMember({ alignment, pier, topRotation }) {
     }),
     shearRigidity: toFem.force(rigidities.shearRigidity),
     shearCorrectionFactor: rigidities.shearCorrectionFactor,
-    rigidStartOffset: toFem.length(pier.rigidBottomLength),
-    rigidEndOffset: toFem.length(pier.rigidTopLength),
+    rigidStartOffset: femRigidBottomLength,
+    rigidEndOffset: femRigidTopLength,
     metadata: {
       role: "pier",
       sourcePierId: pier.id,
       wallId: pier.wallId,
       alignmentId: pier.alignmentId,
       topBoundaryMode: topRotation,
-      deformableHeight: toFem.length(pier.deformableHeight),
-      effectiveLength: toFem.length(effectiveLength),
+      deformableHeight: femDeformableHeight,
+      effectiveLength: femEffectiveLength,
     },
   });
   const supports = [
@@ -196,12 +209,410 @@ function buildPierFrameMember({ alignment, pier, topRotation }) {
       baseNodeId: baseNode.id,
       topNodeId: topNode.id,
       elementId: element.id,
-      effectiveLength: toFem.length(effectiveLength),
-      deformableHeight: toFem.length(pier.deformableHeight),
-      rigidBottomLength: toFem.length(pier.rigidBottomLength),
-      rigidTopLength: toFem.length(pier.rigidTopLength),
+      effectiveLength: femEffectiveLength,
+      deformableHeight: femDeformableHeight,
+      rigidBottomLength: femRigidBottomLength,
+      rigidTopLength: femRigidTopLength,
     },
   };
+}
+
+function resolveSpandrelRigidities({ alignment, spandrel, warnings }) {
+  const elasticModulus = resolveMasonryMaterialProperty({
+    material: spandrel.material,
+    aliases: ["E", "elasticModulus"],
+    targetUnits: alignment.units,
+  });
+  const shearModulus = resolveMasonryMaterialProperty({
+    material: spandrel.material,
+    aliases: ["G", "shearModulus"],
+    targetUnits: alignment.units,
+  });
+  const area = spandrel.height * spandrel.thickness;
+  const inertia = (spandrel.thickness * spandrel.height ** 3) / 12;
+
+  if (!Number.isFinite(elasticModulus) || elasticModulus <= EPS) {
+    warnings.push(
+      `Spandrel ${spandrel.id} could not resolve a finite masonry elastic modulus and was skipped in the equivalent-frame assembly.`,
+    );
+    return null;
+  }
+
+  if (!Number.isFinite(shearModulus) || shearModulus <= EPS) {
+    warnings.push(
+      `Spandrel ${spandrel.id} could not resolve a finite masonry shear modulus and was skipped in the equivalent-frame assembly.`,
+    );
+    return null;
+  }
+
+  return {
+    axialRigidity: elasticModulus * area,
+    flexuralRigidity: elasticModulus * inertia,
+    shearRigidity: shearModulus * area,
+    shearCorrectionFactor: SHEAR_CORRECTION_FACTOR,
+  };
+}
+
+function findAdjacentPierFrame({ pierFrames, spandrel, side }) {
+  if (side === "left") {
+    return pierFrames.find((frame) =>
+      sameCoordinate(frame.pier.metadata?.xEnd, spandrel.xStart),
+    );
+  }
+
+  return pierFrames.find((frame) => sameCoordinate(frame.pier.x, spandrel.xEnd));
+}
+
+function findFrameNode(frame, nodeId) {
+  return frame.nodes.find((node) => node.id === nodeId) ?? null;
+}
+
+function buildSpandrelFrameMember({ alignment, spandrel, pierFrames, warnings }) {
+  const leftPierFrame = findAdjacentPierFrame({
+    pierFrames,
+    spandrel,
+    side: "left",
+  });
+  const rightPierFrame = findAdjacentPierFrame({
+    pierFrames,
+    spandrel,
+    side: "right",
+  });
+
+  if (!leftPierFrame || !rightPierFrame) {
+    warnings.push(
+      `Spandrel ${spandrel.id} could not find both adjacent pier top nodes and was skipped in the equivalent-frame assembly.`,
+    );
+    return null;
+  }
+
+  const startNode = findFrameNode(leftPierFrame, leftPierFrame.snapshot.topNodeId);
+  const endNode = findFrameNode(rightPierFrame, rightPierFrame.snapshot.topNodeId);
+
+  if (!startNode || !endNode) {
+    warnings.push(
+      `Spandrel ${spandrel.id} could not resolve both adjacent pier top nodes and was skipped in the equivalent-frame assembly.`,
+    );
+    return null;
+  }
+
+  const toFem = createUnitResolver(alignment.units, FEM_UNITS);
+  const physicalLength = endNode.x - startNode.x;
+  const rigidLeftLength = Math.max(0, spandrel.xStart - startNode.x);
+  const rigidRightLength = Math.max(0, endNode.x - spandrel.xEnd);
+  const deformableAxisY =
+    Number.isFinite(spandrel.metadata?.yStart)
+      ? spandrel.metadata.yStart + spandrel.height / 2
+      : startNode.y;
+  const referenceStartNode = {
+    id: `${spandrel.id}-deformable-start`,
+    x: toFem.length(spandrel.xStart),
+    y: toFem.length(deformableAxisY),
+  };
+  const referenceEndNode = {
+    id: `${spandrel.id}-deformable-end`,
+    x: toFem.length(spandrel.xEnd),
+    y: toFem.length(deformableAxisY),
+  };
+  const deformableLength = referenceEndNode.x - referenceStartNode.x;
+
+  if (
+    physicalLength <= EPS ||
+    deformableLength <= EPS ||
+    Math.abs(deformableLength - spandrel.deformableLength) > 1e-6
+  ) {
+    warnings.push(
+      `Spandrel ${spandrel.id} could not be assembled with a positive deformable length matching the underlying opening and was skipped.`,
+    );
+    return null;
+  }
+
+  const rigidities = resolveSpandrelRigidities({
+    alignment,
+    spandrel,
+    warnings,
+  });
+
+  if (!rigidities) {
+    return null;
+  }
+
+  const element = new FrameElement2DTimoshenkoRigidOffsets({
+    id: `${spandrel.id}-element`,
+    startNode,
+    endNode,
+    axialRigidity: toFem.force(rigidities.axialRigidity),
+    flexuralRigidity: toFem.convert(rigidities.flexuralRigidity, {
+      forceExponent: 1,
+      lengthExponent: 2,
+    }),
+    shearRigidity: toFem.force(rigidities.shearRigidity),
+    shearCorrectionFactor: rigidities.shearCorrectionFactor,
+    rigidStartOffset: toFem.length(rigidLeftLength),
+    rigidEndOffset: toFem.length(rigidRightLength),
+    referenceStartNode,
+    referenceEndNode,
+    metadata: {
+      role: "spandrel",
+      sourceSpandrelId: spandrel.id,
+      referenceOpeningId: spandrel.metadata?.referenceOpeningId ?? null,
+      sourceWallIds: [...spandrel.sourceWallIds],
+      alignmentId: spandrel.alignmentId,
+      deformableLength: toFem.length(spandrel.deformableLength),
+      deformableAxisY: toFem.length(deformableAxisY),
+      sectionHeight: toFem.length(spandrel.height),
+      thickness: toFem.length(spandrel.thickness),
+    },
+  });
+
+  return {
+    spandrel,
+    element,
+    snapshot: {
+      id: spandrel.id,
+      sourceWallIds: [...spandrel.sourceWallIds],
+      referenceOpeningId: spandrel.metadata?.referenceOpeningId ?? null,
+      startNodeId: startNode.id,
+      endNodeId: endNode.id,
+      elementId: element.id,
+      xStart: toFem.length(spandrel.xStart),
+      xEnd: toFem.length(spandrel.xEnd),
+      deformableLength: toFem.length(spandrel.deformableLength),
+      rigidLeftLength: toFem.length(rigidLeftLength),
+      rigidRightLength: toFem.length(rigidRightLength),
+      deformableAxisY: toFem.length(deformableAxisY),
+      height: toFem.length(spandrel.height),
+      thickness: toFem.length(spandrel.thickness),
+    },
+  };
+}
+
+function resolveRingFrameCount(ringFrame) {
+  const candidates = [
+    ringFrame?.frameCount,
+    ringFrame?.parallelFrameCount,
+    ringFrame?.framesInThickness,
+    ringFrame?.parallelFrames,
+    ringFrame?.count,
+  ];
+  const declared = candidates.find((value) => Number.isFinite(Number(value)));
+
+  return Math.max(1, Math.round(Number(declared ?? 1)));
+}
+
+function resolveRingFrameSections(ringFrame = {}) {
+  if (ringFrame.memberSections) {
+    return ringFrame.memberSections;
+  }
+
+  const defaultProfile =
+    ringFrame.profileName ??
+    ringFrame.profile ??
+    ringFrame.sectionProfileName ??
+    ringFrame.columnProfileName ??
+    ringFrame.topBeamProfileName ??
+    null;
+  const columns =
+    ringFrame.columns ?? ringFrame.column ?? ringFrame.columnProfileName ?? defaultProfile;
+  const topBeam =
+    ringFrame.topBeam ??
+    ringFrame.architrave ??
+    ringFrame.topBeamProfileName ??
+    defaultProfile;
+  const bottomBeam =
+    ringFrame.bottomBeam ??
+    ringFrame.bottomChord ??
+    ringFrame.bottomBeamProfileName ??
+    topBeam;
+
+  if (!columns || !topBeam) {
+    return null;
+  }
+
+  return {
+    leftColumn: ringFrame.leftColumn ?? columns,
+    rightColumn: ringFrame.rightColumn ?? columns,
+    topBeam,
+    bottomBeam,
+  };
+}
+
+function resolveRingFrameMemberOrientations(ringFrame = {}) {
+  const orientations =
+    ringFrame.memberOrientations ??
+    ringFrame.memberOrientation ??
+    ringFrame.sectionOrientations ??
+    ringFrame.sectionOrientation ??
+    ringFrame.orientations ??
+    ringFrame.orientation ??
+    {};
+
+  if (typeof orientations === "string") {
+    return { columns: orientations, topBeam: orientations, bottomBeam: orientations };
+  }
+
+  return {
+    ...orientations,
+    columns:
+      orientations.columns ??
+      orientations.column ??
+      ringFrame.columnOrientation ??
+      ringFrame.columnsOrientation,
+    leftColumn:
+      orientations.leftColumn ??
+      orientations.leftPier ??
+      ringFrame.leftColumnOrientation,
+    rightColumn:
+      orientations.rightColumn ??
+      orientations.rightPier ??
+      ringFrame.rightColumnOrientation,
+    topBeam:
+      orientations.topBeam ??
+      orientations.architrave ??
+      ringFrame.topBeamOrientation ??
+      ringFrame.architraveOrientation,
+    bottomBeam:
+      orientations.bottomBeam ??
+      orientations.bottomChord ??
+      ringFrame.bottomBeamOrientation ??
+      ringFrame.bottomChordOrientation,
+  };
+}
+
+function scaleRingFrameElement(element, factor) {
+  if (!Number.isFinite(factor) || factor <= 1) {
+    return;
+  }
+
+  element.axialRigidity *= factor;
+  element.flexuralRigidity *= factor;
+  element.plasticMomentStart *= factor;
+  element.plasticMomentEnd *= factor;
+
+  if (element.elasticElement) {
+    element.elasticElement.axialRigidity = element.axialRigidity;
+    element.elasticElement.flexuralRigidity = element.flexuralRigidity;
+  }
+}
+
+function buildRingFrameMembers({ alignment, openings = [], warnings }) {
+  const ringFrameBuilder = new SteelRingFrame2DBuilder();
+
+  return openings
+    .map((opening) => {
+      const ringFrame = opening.ringFrame;
+
+      if (!ringFrame) {
+        return null;
+      }
+
+      const memberSections = resolveRingFrameSections(ringFrame);
+      const frameCount = resolveRingFrameCount(ringFrame);
+
+      if (!memberSections) {
+        warnings.push(
+          `Opening ${opening.id} has a ringFrame definition but no member sections/profile names, so the steel ring frame was skipped in the equivalent-frame FEM assembly.`,
+        );
+        return null;
+      }
+
+      const modelId = `${alignment.id}-ring-frame-${opening.id}`;
+
+      try {
+        const frame = ringFrameBuilder.build({
+          model: {
+            id: modelId,
+            units: alignment.units,
+            geometry: {
+              clearWidth: opening.width,
+              clearHeight: opening.height,
+              originX: opening.x,
+              originY: opening.y,
+          },
+          memberSections,
+          memberOrientations: resolveRingFrameMemberOrientations(ringFrame),
+          material:
+            ringFrame.material ??
+              ringFrame.materialGrade ??
+              ringFrame.grade ??
+              "S275",
+            baseCondition:
+              ringFrame.baseCondition ??
+              (ringFrame.includeBottomBeam
+                ? "pinned-base-with-bottom-beam"
+                : "fixed-base"),
+            includeBottomBeam: ringFrame.includeBottomBeam,
+            loading: {
+              controlNode: ringFrame.controlNode ?? "top-left",
+              referenceHorizontalForce:
+                ringFrame.referenceHorizontalForce ??
+                ringFrame.horizontalForce ??
+                ringFrame.Fh ??
+                1,
+            },
+          },
+        });
+        const topNodes = frame.nodes.filter((node) =>
+          ["top-left", "top-right"].includes(node.metadata?.role),
+        );
+
+        frame.nodes.forEach((node) => {
+          node.metadata = {
+            ...node.metadata,
+            sourceOpeningId: opening.id,
+            sourceRingFrameId: modelId,
+            ringFrameCount: frameCount,
+          };
+        });
+        frame.elements.forEach((element) => {
+          scaleRingFrameElement(element, frameCount);
+          element.metadata = {
+            ...element.metadata,
+            sourceOpeningId: opening.id,
+            sourceRingFrameId: modelId,
+            ringFrameCount: frameCount,
+            equivalentParallelFrames: frameCount,
+          };
+        });
+        frame.supports.forEach((support) => {
+          support.metadata = {
+            ...support.metadata,
+            sourceOpeningId: opening.id,
+            sourceRingFrameId: modelId,
+            ringFrameCount: frameCount,
+          };
+        });
+
+        return {
+          opening,
+          frameCount,
+          nodes: frame.nodes,
+          elements: frame.elements,
+          supports: frame.supports,
+          topNodes,
+          snapshot: {
+            id: modelId,
+            openingId: opening.id,
+            frameCount,
+            equivalentParallelFrames: frameCount,
+            topNodeIds: topNodes.map((node) => node.id),
+            nodeIds: frame.nodes.map((node) => node.id),
+            elementIds: frame.elements.map((element) => element.id),
+            supportIds: frame.supports.map((support) => support.id),
+            baseCondition: frame.snapshot.metadata.baseCondition,
+            includeBottomBeam: frame.snapshot.metadata.includeBottomBeam,
+          },
+          assumptions: frame.assumptions,
+          warnings: frame.warnings,
+        };
+      } catch (error) {
+        warnings.push(
+          `Opening ${opening.id} steel ring frame could not be assembled in the equivalent-frame FEM model: ${error.message}`,
+        );
+        return null;
+      }
+    })
+    .filter(Boolean);
 }
 
 export class MasonryEquivalentFrameBuilder {
@@ -221,12 +632,15 @@ export class MasonryEquivalentFrameBuilder {
     const topRotation = normalizeTopRotation(options.topRotation ?? "free");
     const includeSpandrels = Boolean(options.includeSpandrels);
     const includeDiaphragm = Boolean(options.includeDiaphragm);
+    const includeRingFrames = options.includeRingFrames !== false;
     const assumptions = [
-      includeDiaphragm
-        ? "The first wall-level FEM builder assembles one vertical 2D Timoshenko element with rigid end offsets for each extracted masonry pier, without spandrels and with an optional top diaphragm master node that ties only the ux DOF of the pier heads."
-        : "The first wall-level FEM builder assembles one vertical 2D Timoshenko element with rigid end offsets for each extracted masonry pier, without spandrels or diaphragm coupling between top nodes.",
+      includeSpandrels
+        ? "The wall-level FEM builder assembles one vertical 2D Timoshenko element with rigid end offsets for each extracted masonry pier and one linear elastic Timoshenko element for each assemblable masonry spandrel."
+        : includeDiaphragm
+          ? "The wall-level FEM builder assembles one vertical 2D Timoshenko element with rigid end offsets for each extracted masonry pier, without spandrels and with an optional top diaphragm master node that ties only the ux DOF of the pier heads."
+          : "The wall-level FEM builder assembles one vertical 2D Timoshenko element with rigid end offsets for each extracted masonry pier, without spandrels or diaphragm coupling between top nodes.",
       "Each pier keeps a fully fixed base; the requested topRotation option is represented only through the rotational restraint at the corresponding top node.",
-      "The resulting frame is intended as the first validation scaffold for pier-only wall alignments before introducing explicit spandrels, diaphragms and non-linear global pushover control.",
+      "The resulting frame is intended as the validation scaffold for wall alignments before introducing non-linear masonry spandrel mechanisms.",
     ];
     const mechanicalState =
       resolvedAlignmentState ??
@@ -236,12 +650,6 @@ export class MasonryEquivalentFrameBuilder {
         options: options.materialResolution ?? options,
       });
     const resolvedAlignment = mechanicalState.alignment;
-
-    if (includeSpandrels) {
-      warnings.push(
-        "Explicit spandrels are not yet assembled in the equivalent-frame builder; the current release keeps a pier-only frame and uses topRotation to represent the upper boundary condition.",
-      );
-    }
 
     const resolvedSanitizedOpenings =
       sanitizedOpenings ??
@@ -253,7 +661,7 @@ export class MasonryEquivalentFrameBuilder {
         sanitizedOpenings: resolvedSanitizedOpenings,
       });
 
-    if (extracted.spandrels.length > 0) {
+    if (!includeSpandrels && extracted.spandrels.length > 0) {
       warnings.push(
         `The equivalent-frame builder found ${extracted.spandrels.length} spandrel candidate(s), but they are intentionally ignored in this first pier-only FEM milestone.`,
       );
@@ -266,21 +674,59 @@ export class MasonryEquivalentFrameBuilder {
         topRotation,
       }),
     );
+    const spandrelFrames = includeSpandrels
+      ? extracted.spandrels
+          .map((spandrel) =>
+            buildSpandrelFrameMember({
+              alignment: resolvedAlignment,
+              spandrel,
+              pierFrames,
+              warnings,
+            }),
+          )
+          .filter(Boolean)
+      : [];
+    const ringFrameFrames = includeRingFrames
+      ? buildRingFrameMembers({
+          alignment: resolvedAlignment,
+          openings: resolvedSanitizedOpenings,
+          warnings,
+        })
+      : [];
+
+    if (
+      !includeRingFrames &&
+      resolvedSanitizedOpenings.some((opening) => opening.ringFrame)
+    ) {
+      warnings.push(
+        "The equivalent-frame builder found ringFrame definitions, but includeRingFrames is disabled and they were skipped in the FEM assembly.",
+      );
+    }
+
     const nodes = pierFrames.flatMap((frame) => frame.nodes);
-    const elements = pierFrames.map((frame) => frame.element);
-    const supports = pierFrames.flatMap((frame) => frame.supports);
+    nodes.push(...ringFrameFrames.flatMap((frame) => frame.nodes));
+    const elements = [
+      ...pierFrames.map((frame) => frame.element),
+      ...spandrelFrames.map((frame) => frame.element),
+      ...ringFrameFrames.flatMap((frame) => frame.elements),
+    ];
+    const supports = [
+      ...pierFrames.flatMap((frame) => frame.supports),
+      ...ringFrameFrames.flatMap((frame) => frame.supports),
+    ];
     const constraints = [];
     const loads = [];
     let diaphragmControlNode = null;
+    const pierTopNodes = pierFrames
+      .map((frame) => frame.nodes.find((node) => node.id === frame.snapshot.topNodeId))
+      .filter(Boolean);
+    const ringFrameTopNodes = ringFrameFrames.flatMap((frame) => frame.topNodes);
+    const diaphragmNodes = [...pierTopNodes, ...ringFrameTopNodes];
 
-    if (includeDiaphragm && pierFrames.length > 0) {
-      const topNodes = pierFrames
-        .map((frame) => frame.nodes.find((node) => node.id === frame.snapshot.topNodeId))
-        .filter(Boolean);
-
+    if (includeDiaphragm && diaphragmNodes.length > 0) {
       diaphragmControlNode = createDiaphragmControlNode({
         alignment: resolvedAlignment,
-        topNodes,
+        topNodes: diaphragmNodes,
       });
       nodes.push(diaphragmControlNode);
       supports.push(
@@ -295,7 +741,7 @@ export class MasonryEquivalentFrameBuilder {
         }),
       );
       constraints.push(
-        ...topNodes.map((node, index) => ({
+        ...diaphragmNodes.map((node, index) => ({
           id: `${resolvedAlignment.id}-diaphragm-ux-link-${index + 1}`,
           type: "equal-dof",
           masterNodeId: diaphragmControlNode.id,
@@ -310,10 +756,30 @@ export class MasonryEquivalentFrameBuilder {
         })),
       );
       assumptions.push(
-        "When includeDiaphragm is enabled, the builder creates a master diaphragm control node and ties the horizontal ux DOF of each pier top node to that master through equal-DOF constraints; vertical translations and rotations remain local.",
+        "When includeDiaphragm is enabled, the builder creates a master diaphragm control node and ties the horizontal ux DOF of each pier top node and steel ring-frame top node to that master through equal-DOF constraints; vertical translations and rotations remain local.",
       );
     }
 
+    if (spandrelFrames.length > 0) {
+      assumptions.push(
+        "Each explicit spandrel connects the top nodes of the two adjacent piers; the deformable portion is the opening width, while the distances from pier axes to opening edges are represented as rigid end offsets.",
+      );
+    }
+
+    if (ringFrameFrames.length > 0) {
+      assumptions.push(
+        "Each steel ring frame declared on an opening is assembled into the global FEM model with its own jamb and architrave elements; multiple identical parallel frames are condensed into one equivalent steel frame by scaling stiffness and plastic moments.",
+      );
+    }
+
+    const frameType =
+      ringFrameFrames.length > 0
+        ? spandrelFrames.length > 0
+          ? "pier-spandrel-ring-frame"
+          : "pier-ring-frame"
+        : spandrelFrames.length > 0
+          ? "pier-spandrel"
+          : "pier-only";
     const dofRegistry = new DofRegistry();
 
     dofRegistry.registerNodes(nodes);
@@ -334,6 +800,8 @@ export class MasonryEquivalentFrameBuilder {
         loads,
       },
       pierFrames: pierFrames.map((frame) => frame.snapshot),
+      spandrelFrames: spandrelFrames.map((frame) => frame.snapshot),
+      ringFrameFrames: ringFrameFrames.map((frame) => frame.snapshot),
       dofRegistry,
       snapshot: {
         id: `${resolvedAlignment.id}-equivalent-frame`,
@@ -343,17 +811,31 @@ export class MasonryEquivalentFrameBuilder {
           sourceAlignmentId: resolvedAlignment.id,
           stage,
           topRotation,
-          includeSpandrels: false,
+          includeSpandrels,
+          includeRingFrames,
           includeDiaphragm,
-          frameType: "pier-only",
+          frameType,
           pierCount: pierFrames.length,
-          ignoredSpandrelCount: extracted.spandrels.length,
+          spandrelCount: spandrelFrames.length,
+          ringFrameCount: ringFrameFrames.length,
+          ringFramePhysicalCount: ringFrameFrames.reduce(
+            (sum, frame) => sum + (frame.snapshot.frameCount ?? 1),
+            0,
+          ),
+          ringFrameOpeningCount: new Set(
+            ringFrameFrames.map((frame) => frame.snapshot.openingId),
+          ).size,
+          ignoredSpandrelCount: extracted.spandrels.length - spandrelFrames.length,
           topNodeIds: pierFrames.map((frame) => frame.snapshot.topNodeId),
+          pierTopNodeIds: pierTopNodes.map((node) => node.id),
+          ringFrameTopNodeIds: ringFrameTopNodes.map((node) => node.id),
+          diaphragmNodeIds: diaphragmNodes.map((node) => node.id),
           diaphragmControlNodeId: diaphragmControlNode?.id ?? null,
         },
       },
       warnings: [
         ...warnings,
+        ...ringFrameFrames.flatMap((frame) => frame.warnings ?? []),
         ...mechanicalState.warnings,
         ...extracted.warnings,
       ],

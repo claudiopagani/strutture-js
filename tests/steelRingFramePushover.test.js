@@ -46,6 +46,60 @@ test("steel ring frame builder resolves fixed-base portal without bottom beam", 
   );
 });
 
+test("steel ring frame builder applies default and explicit member orientations", () => {
+  const defaultModel = new SteelRingFramePushoverModel({
+    id: "ring-orientation-default",
+    units: userUnits,
+    geometry: {
+      b: 0.9,
+      h: 2.1,
+    },
+    memberSections: {
+      columns: "HEA200",
+      topBeam: "HEA200",
+      bottomBeam: "UPN200",
+    },
+    baseCondition: "pinned-base-with-bottom-beam",
+  });
+  const defaultFrame = new SteelRingFrame2DBuilder().build({ model: defaultModel });
+  const defaultTopBeam = defaultFrame.elements.find(
+    (element) => element.metadata.role === "top-beam",
+  );
+  const defaultBottomBeam = defaultFrame.elements.find(
+    (element) => element.metadata.role === "bottom-beam",
+  );
+  const weakTopModel = new SteelRingFramePushoverModel({
+    id: "ring-orientation-weak-top",
+    units: userUnits,
+    geometry: {
+      b: 0.9,
+      h: 2.1,
+    },
+    memberSections: {
+      columns: "HEA200",
+      topBeam: "HEA200",
+      bottomBeam: "UPN200",
+    },
+    memberOrientations: {
+      topBeam: "weak-axis-in-plane",
+    },
+    baseCondition: "pinned-base-with-bottom-beam",
+  });
+  const weakTopFrame = new SteelRingFrame2DBuilder().build({ model: weakTopModel });
+  const weakTopBeam = weakTopFrame.elements.find(
+    (element) => element.metadata.role === "top-beam",
+  );
+
+  assert.equal(defaultTopBeam.sectionOrientation.axis, "y");
+  assert.equal(defaultTopBeam.sectionOrientation.label, "strong-axis-in-plane");
+  assert.equal(defaultBottomBeam.sectionOrientation.axis, "z");
+  assert.equal(defaultBottomBeam.sectionOrientation.label, "upn-open-side-up");
+  assert.equal(defaultBottomBeam.sectionOrientation.mounting, "open-side-up");
+  assert.equal(weakTopBeam.sectionOrientation.axis, "z");
+  assert.ok(weakTopBeam.flexuralRigidity < defaultTopBeam.flexuralRigidity);
+  assert.ok(weakTopBeam.plasticMomentStart < defaultTopBeam.plasticMomentStart);
+});
+
 test("plastic hinge frame element caps the yielded end moment at the plastic capacity", () => {
   const startNode = new Node({ id: "A", x: 0, y: 0, units: internalUnits });
   const endNode = new Node({ id: "B", x: 1000, y: 0, units: internalUnits });

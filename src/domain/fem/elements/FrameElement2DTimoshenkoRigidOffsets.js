@@ -18,6 +18,26 @@ function assertPositive(value, label) {
   }
 }
 
+function cloneReferenceNode(node, label) {
+  if (node == null) {
+    return null;
+  }
+
+  assertNode(node, label);
+
+  if (!Number.isFinite(node.x) || !Number.isFinite(node.y)) {
+    throw new Error(
+      `FrameElement2DTimoshenkoRigidOffsets requires finite ${label} reference-node coordinates.`,
+    );
+  }
+
+  return {
+    id: node.id,
+    x: node.x,
+    y: node.y,
+  };
+}
+
 function transpose(matrix) {
   return matrix[0].map((_, column) => matrix.map((row) => row[column]));
 }
@@ -79,6 +99,8 @@ export class FrameElement2DTimoshenkoRigidOffsets {
     shearCorrectionFactor = null,
     rigidStartOffset = 0,
     rigidEndOffset = 0,
+    referenceStartNode = null,
+    referenceEndNode = null,
     metadata = {},
   }) {
     if (!id) {
@@ -105,7 +127,21 @@ export class FrameElement2DTimoshenkoRigidOffsets {
     this.shearCorrectionFactor = shearCorrectionFactor;
     this.rigidStartOffset = rigidStartOffset;
     this.rigidEndOffset = rigidEndOffset;
+    this._explicitReferenceStartNode = cloneReferenceNode(
+      referenceStartNode,
+      "start",
+    );
+    this._explicitReferenceEndNode = cloneReferenceNode(referenceEndNode, "end");
     this.metadata = { ...metadata };
+
+    if (
+      (this._explicitReferenceStartNode == null) !==
+      (this._explicitReferenceEndNode == null)
+    ) {
+      throw new Error(
+        "FrameElement2DTimoshenkoRigidOffsets requires both referenceStartNode and referenceEndNode when using explicit reference nodes.",
+      );
+    }
   }
 
   geometry() {
@@ -133,18 +169,17 @@ export class FrameElement2DTimoshenkoRigidOffsets {
   }
 
   deformableLength() {
-    const length = this.physicalLength();
-    const deformableLength = length - this.rigidStartOffset - this.rigidEndOffset;
-
-    assertPositive(
-      deformableLength,
-      "deformable element length after rigid end offsets",
-    );
-
-    return deformableLength;
+    return this.referenceDirectionCosines().length;
   }
 
   referenceNodes() {
+    if (this._explicitReferenceStartNode && this._explicitReferenceEndNode) {
+      return {
+        start: { ...this._explicitReferenceStartNode },
+        end: { ...this._explicitReferenceEndNode },
+      };
+    }
+
     const { c, s } = this.directionCosines();
 
     return {
@@ -158,6 +193,32 @@ export class FrameElement2DTimoshenkoRigidOffsets {
         x: this.endNode.x - this.rigidEndOffset * c,
         y: this.endNode.y - this.rigidEndOffset * s,
       },
+    };
+  }
+
+  referenceDirectionCosines() {
+    const nodes = this.referenceNodes();
+    const dx = nodes.end.x - nodes.start.x;
+    const dy = nodes.end.y - nodes.start.y;
+    const length = Math.sqrt(dx ** 2 + dy ** 2);
+
+    assertPositive(length, "deformable element length after rigid end offsets");
+
+    return {
+      length,
+      c: dx / length,
+      s: dy / length,
+    };
+  }
+
+  rigidOffsetVector(node, referenceNode) {
+    const { c, s } = this.referenceDirectionCosines();
+    const dx = referenceNode.x - node.x;
+    const dy = referenceNode.y - node.y;
+
+    return {
+      x: c * dx + s * dy,
+      y: -s * dx + c * dy,
     };
   }
 
@@ -188,12 +249,16 @@ export class FrameElement2DTimoshenkoRigidOffsets {
   }
 
   kinematicTransformationMatrix() {
+    const nodes = this.referenceNodes();
+    const startOffset = this.rigidOffsetVector(this.startNode, nodes.start);
+    const endOffset = this.rigidOffsetVector(this.endNode, nodes.end);
+
     return [
-      [1, 0, 0, 0, 0, 0],
-      [0, 1, this.rigidStartOffset, 0, 0, 0],
+      [1, 0, -startOffset.y, 0, 0, 0],
+      [0, 1, startOffset.x, 0, 0, 0],
       [0, 0, 1, 0, 0, 0],
-      [0, 0, 0, 1, 0, 0],
-      [0, 0, 0, 0, 1, -this.rigidEndOffset],
+      [0, 0, 0, 1, 0, -endOffset.y],
+      [0, 0, 0, 0, 1, endOffset.x],
       [0, 0, 0, 0, 0, 1],
     ];
   }
@@ -299,6 +364,10 @@ export class FrameElement2DTimoshenkoRigidOffsets {
   }
 
   toJSON() {
+    const nodes = this.referenceNodes();
+    const startOffset = this.rigidOffsetVector(this.startNode, nodes.start);
+    const endOffset = this.rigidOffsetVector(this.endNode, nodes.end);
+
     return {
       id: this.id,
       type: this.type,
@@ -308,6 +377,10 @@ export class FrameElement2DTimoshenkoRigidOffsets {
       deformableLength: this.deformableLength(),
       rigidStartOffset: this.rigidStartOffset,
       rigidEndOffset: this.rigidEndOffset,
+      referenceStartNode: { ...nodes.start },
+      referenceEndNode: { ...nodes.end },
+      rigidStartOffsetVector: { ...startOffset },
+      rigidEndOffsetVector: { ...endOffset },
       axialRigidity: this.axialRigidity,
       flexuralRigidity: this.flexuralRigidity,
       bendingInertiaAxis: this.bendingInertiaAxis,

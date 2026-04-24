@@ -631,6 +631,9 @@ Per le fasce:
 
 - la parte deformabile e la larghezza dell'apertura sottostante;
 - il resto e composto da tratti rigidi.
+- i nodi estremi della fascia nel telaio equivalente devono coincidere con le teste dei maschi adiacenti;
+- l'asse della parte deformabile della fascia deve essere collocato nel baricentro della fascia muraria sopra l'apertura;
+- i tratti rigidi tra teste dei maschi e parte deformabile baricentrica devono essere modellati tramite condensazione statica / offset rigidi 2D, non come elementi deformabili aggiuntivi.
 
 Dal punto di vista FEM:
 
@@ -1255,10 +1258,11 @@ Modalita iniziali:
 - casi senza fasce e top rotation `free`;
 - casi senza fasce e top rotation `fixed`;
 - caso con fasce esplicite: rigidezza e resistenza tra i due casi limite;
+- il metodo sismico aggregato resta limitato ai maschi e alle cerchiature; le fasce non entrano nel metodo aggregato e sono considerate solo nel FEM esplicito;
 - riduzione della larghezza del maschio in presenza di cerchiatura coerente con la larghezza del profilo nel piano;
 - cerchiature multiple nello spessore: equivalenza con un unico telaio avente proprieta moltiplicate per il numero di telai;
 - orientazione del profilo della cerchiatura nel piano resistente: caso asse forte e caso asse debole;
-- vincolo di diaframma sui nodi sommitali: curva di capacita ottenuta trascinando un unico punto di controllo globale;
+- vincolo di diaframma sui nodi sommitali dei maschi, delle fasce e delle cerchiature: curva di capacita ottenuta trascinando un unico punto di controllo globale;
 - maschio governato da taglio: plateau di resistenza quasi costante fino a `du` e poi caduta a resistenza nulla;
 - maschio governato da flessione: attivazione coerente delle cerniere di estremita e capacita ultima coerente con la `theta_u` flessionale;
 - collasso post-`du`: eventuale residuo numerico interno consentito solo per stabilita del solver, ma output utente riportato come resistenza nulla;
@@ -1284,12 +1288,16 @@ Modalita iniziali:
 7. Implementare analisi sismica minima aggregata:
    - contributi dei maschi
    - contributi delle cerchiature
-   - fasce opzionali
+   - esclusione esplicita delle fasce dal metodo aggregato
 8. Implementare bilinearizzazione della curva di capacita.
 9. Implementare builder del telaio equivalente lineare.
-10. Implementare modellazione esplicita delle fasce nel telaio equivalente.
+10. Implementare modellazione esplicita delle fasce nel telaio equivalente:
+   - nodi coincidenti con le teste dei maschi
+   - asse deformabile baricentrico della fascia
+   - tratti rigidi con condensazione statica / offset rigidi 2D
 11. Implementare pushover FEM opzionale dell'allineamento.
-12. Validare il FEM non lineare contro il metodo aggregato minimo.
+12. Inserire le cerchiature nel telaio FEM esplicito e vincolare i loro nodi sommitali al diaframma di piano.
+13. Validare il FEM non lineare contro il metodo aggregato minimo e contro casi input MATLAB forniti successivamente.
 
 ## Criteri di accettazione della pianificazione
 
@@ -1302,10 +1310,25 @@ Questo piano e accettabile se risultano condivisi i seguenti punti:
 - l'input del motore e il solo allineamento;
 - il metodo sismico minimo ufficiale e la somma dei contributi dei singoli maschi e delle singole cerchiature;
 - il modello FEM non lineare globale e opzionale e subordinato alla qualita dei risultati;
-- le fasce sono opzionali nella sismica e inizialmente elastiche lineari di Timoshenko muraria pura;
+- le fasce sono escluse dal metodo sismico aggregato e sono opzionali solo nel FEM esplicito; inizialmente sono elastiche lineari di Timoshenko muraria pura;
 - la statica verticale trascura le fasce e si concentra su maschi, architravi e cerchiature;
 - la bilinearizzazione finale deve restituire `ks`, `Vy`, `du`;
 - il warning sulle mazzette residue inferiori a `50 cm` resta non bloccante.
+
+## Decisioni operative aggiornate
+
+- Completato: metodo Dolce sui maschi, con calcolo della parte deformabile e dei tratti rigidi terminali verticali.
+- Completato: fasce elastiche lineari nel telaio FEM esplicito, con nodi esterni coincidenti con le teste dei maschi adiacenti.
+- Completato: parte deformabile delle fasce posta sulla quota baricentrica della fascia sopra l'apertura; tratti rigidi rappresentati tramite offset rigidi 2D / condensazione statica dell'elemento.
+- Completato: cerchiature inserite nel FEM esplicito dell'allineamento tramite il modulo `steel-frames`.
+- Completato: i nodi sommitali delle cerchiature vengono collegati al diaframma di piano insieme alle teste dei maschi.
+- Completato: le cerchiature dichiarate come piu telai paralleli nello spessore vengono condensate in un unico telaio equivalente con rigidezze e momenti plastici scalati.
+- Completato: nel pushover FEM globale le cerchiature esplicite contribuiscono tramite elementi acciaio a cerniere plastiche, evitando il doppio conteggio della curva aggregata dell'acciaio.
+- Completato: orientazione forte/debole dei profili di cerchiatura, con default asse forte nel piano per piedritti e architrave e default UPN del traverso inferiore ruotato con lato senza labbri verso l'alto.
+- Completato: override utente dell'orientazione per singolo membro della cerchiatura (`leftColumn`, `rightColumn`, `topBeam`, `bottomBeam`) tramite asse forte/debole o rotazione locale a 90 gradi.
+- Il metodo sismico aggregato resta maschi piu eventuali cerchiature gia modellate come contributi indipendenti; le fasce non entrano nel metodo aggregato.
+- Rimane da fare: validazione esterna contro l'applicazione MATLAB quando saranno disponibili i file di input campione.
+- Rimane da fare dopo la validazione esterna: introdurre e calibrare la non linearita delle fasce.
 
 ## Decisione FEM non lineare dei maschi
 

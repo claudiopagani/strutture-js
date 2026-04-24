@@ -87,3 +87,33 @@ test("rigid base offset preserves the physical lever arm while shortening the de
   approx(Math.abs(result.reactionByNode.A.uy), loadAbs);
   approx(Math.abs(result.reactionByNode.A.rz), loadAbs * 3);
 });
+
+test("rigid-offset timoshenko element supports an eccentric deformable reference axis", () => {
+  const startNode = createNode("A", 0, 1);
+  const endNode = createNode("B", 3, 1);
+  const element = new FrameElement2DTimoshenkoRigidOffsets({
+    id: "eccentric-spandrel",
+    startNode,
+    endNode,
+    axialRigidity: 1e6,
+    flexuralRigidity: 1000,
+    shearRigidity: 100,
+    shearCorrectionFactor: 1,
+    rigidStartOffset: 1,
+    rigidEndOffset: 1,
+    referenceStartNode: { id: "A-ref", x: 1, y: 0.5 },
+    referenceEndNode: { id: "B-ref", x: 2, y: 0.5 },
+  });
+  const snapshot = element.toJSON();
+
+  approx(element.physicalLength(), 3);
+  approx(element.deformableLength(), 1);
+  approx(snapshot.referenceStartNode.x, 1);
+  approx(snapshot.referenceStartNode.y, 0.5);
+  approx(snapshot.referenceEndNode.x, 2);
+  approx(snapshot.referenceEndNode.y, 0.5);
+  approx(snapshot.rigidStartOffsetVector.x, 1);
+  approx(snapshot.rigidStartOffsetVector.y, -0.5);
+  approx(snapshot.rigidEndOffsetVector.x, -1);
+  approx(snapshot.rigidEndOffsetVector.y, -0.5);
+});

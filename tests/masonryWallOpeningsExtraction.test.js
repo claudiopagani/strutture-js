@@ -47,6 +47,9 @@ test("extractEquivalentFrameMembers returns two piers and one spandrel for a sin
   approx(extraction.piers[0].x, 0);
   approx(extraction.piers[0].length, 1.2);
   approx(extraction.piers[0].height, 3);
+  approx(extraction.piers[0].rigidBottomLength, 0.6535898384862245);
+  approx(extraction.piers[0].deformableHeight, 1.692820323027551);
+  approx(extraction.piers[0].rigidTopLength, 0.6535898384862245);
   approx(extraction.piers[1].x, 2.6);
   approx(extraction.piers[1].length, 2.4);
   approx(extraction.spandrels[0].xStart, 1.2);
