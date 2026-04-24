@@ -1,0 +1,884 @@
+{
+  "schemaVersion": "masonry-wall-openings-pier-capacity-comparison-report/v1",
+  "applicationId": "masonry-wall-openings",
+  "id": "alignment-single-pier-capacity-alignment-single-pier-capacity-pier-1-capacity-comparison-report",
+  "title": "Confronto curva di capacita alignment-single-pier-capacity-pier-1",
+  "description": "Report sintetico di confronto tra curva di capacita aggregata del maschio e pushover FEM non lineare del corrispondente macroelemento.",
+  "units": {
+    "force": "N",
+    "length": "m"
+  },
+  "model": {
+    "id": "alignment-single-pier-capacity",
+    "label": "Maschio singolo flessionale",
+    "wallCount": 1,
+    "openingCount": 0
+  },
+  "pier": {
+    "id": "alignment-single-pier-capacity-pier-1",
+    "wallId": "wall-a",
+    "topRotation": "free",
+    "governingFamily": "flexural",
+    "governingMode": "rocking-toe-crushing",
+    "mechanics": {
+      "flexural": {
+        "V": 5017.499608,
+        "MRd": 15052.498824,
+        "compressionRatio": 0.011778
+      },
+      "bedJointSliding": {
+        "V": null,
+        "compressedLength": null,
+        "eccentricity": null
+      },
+      "diagonalCracking": {
+        "V": 149147.980208,
+        "aspectFactor": 1.5
+      }
+    }
+  },
+  "aggregated": {
+    "performance": {
+      "ks": 7552447.552448,
+      "Vy": 5017.499608,
+      "du": 0.03,
+      "yieldDisplacement": 0.000664,
+      "peakBaseShear": 5017.499608,
+      "governingFamily": "flexural",
+      "governingMode": "rocking-toe-crushing"
+    },
+    "capacityCurve": {
+      "units": {
+        "displacement": "m",
+        "baseShear": "N"
+      },
+      "points": [
+        {
+          "id": "alignment-single-pier-capacity-pier-1-origin",
+          "displacement": 0,
+          "baseShear": 0
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-yield",
+          "displacement": 0.000664,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-ultimate",
+          "displacement": 0.03,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-failure",
+          "displacement": 0.030001,
+          "baseShear": 0
+        }
+      ]
+    }
+  },
+  "fem": {
+    "performance": {
+      "ks": 7552447.552,
+      "Vy": 5015.684245,
+      "du": 0.03,
+      "yieldDisplacement": 0.000664,
+      "peakBaseShear": 5017.499608,
+      "hingeCount": 1,
+      "mechanismModel": "equivalent-frame-flexural-hinges"
+    },
+    "capacityCurve": {
+      "units": {
+        "displacement": "m",
+        "baseShear": "N"
+      },
+      "points": [
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-1",
+          "displacement": 0,
+          "baseShear": 0
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-2",
+          "displacement": 0.00025,
+          "baseShear": 1888.111888
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-3",
+          "displacement": 0.0005,
+          "baseShear": 3776.223776
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-4",
+          "displacement": 0.00075,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-5",
+          "displacement": 0.001,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-6",
+          "displacement": 0.00125,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-7",
+          "displacement": 0.0015,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-8",
+          "displacement": 0.00175,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-9",
+          "displacement": 0.002,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-10",
+          "displacement": 0.00225,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-11",
+          "displacement": 0.0025,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-12",
+          "displacement": 0.00275,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-13",
+          "displacement": 0.003,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-14",
+          "displacement": 0.00325,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-15",
+          "displacement": 0.0035,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-16",
+          "displacement": 0.00375,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-17",
+          "displacement": 0.004,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-18",
+          "displacement": 0.00425,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-19",
+          "displacement": 0.0045,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-20",
+          "displacement": 0.00475,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-21",
+          "displacement": 0.005,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-22",
+          "displacement": 0.00525,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-23",
+          "displacement": 0.0055,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-24",
+          "displacement": 0.00575,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-25",
+          "displacement": 0.006,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-26",
+          "displacement": 0.00625,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-27",
+          "displacement": 0.0065,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-28",
+          "displacement": 0.00675,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-29",
+          "displacement": 0.007,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-30",
+          "displacement": 0.00725,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-31",
+          "displacement": 0.0075,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-32",
+          "displacement": 0.00775,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-33",
+          "displacement": 0.008,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-34",
+          "displacement": 0.00825,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-35",
+          "displacement": 0.0085,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-36",
+          "displacement": 0.00875,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-37",
+          "displacement": 0.009,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-38",
+          "displacement": 0.00925,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-39",
+          "displacement": 0.0095,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-40",
+          "displacement": 0.00975,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-41",
+          "displacement": 0.01,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-42",
+          "displacement": 0.01025,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-43",
+          "displacement": 0.0105,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-44",
+          "displacement": 0.01075,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-45",
+          "displacement": 0.011,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-46",
+          "displacement": 0.01125,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-47",
+          "displacement": 0.0115,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-48",
+          "displacement": 0.01175,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-49",
+          "displacement": 0.012,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-50",
+          "displacement": 0.01225,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-51",
+          "displacement": 0.0125,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-52",
+          "displacement": 0.01275,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-53",
+          "displacement": 0.013,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-54",
+          "displacement": 0.01325,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-55",
+          "displacement": 0.0135,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-56",
+          "displacement": 0.01375,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-57",
+          "displacement": 0.014,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-58",
+          "displacement": 0.01425,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-59",
+          "displacement": 0.0145,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-60",
+          "displacement": 0.01475,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-61",
+          "displacement": 0.015,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-62",
+          "displacement": 0.01525,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-63",
+          "displacement": 0.0155,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-64",
+          "displacement": 0.01575,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-65",
+          "displacement": 0.016,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-66",
+          "displacement": 0.01625,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-67",
+          "displacement": 0.0165,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-68",
+          "displacement": 0.01675,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-69",
+          "displacement": 0.017,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-70",
+          "displacement": 0.01725,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-71",
+          "displacement": 0.0175,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-72",
+          "displacement": 0.01775,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-73",
+          "displacement": 0.018,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-74",
+          "displacement": 0.01825,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-75",
+          "displacement": 0.0185,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-76",
+          "displacement": 0.01875,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-77",
+          "displacement": 0.019,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-78",
+          "displacement": 0.01925,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-79",
+          "displacement": 0.0195,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-80",
+          "displacement": 0.01975,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-81",
+          "displacement": 0.02,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-82",
+          "displacement": 0.02025,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-83",
+          "displacement": 0.0205,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-84",
+          "displacement": 0.02075,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-85",
+          "displacement": 0.021,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-86",
+          "displacement": 0.02125,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-87",
+          "displacement": 0.0215,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-88",
+          "displacement": 0.02175,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-89",
+          "displacement": 0.022,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-90",
+          "displacement": 0.02225,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-91",
+          "displacement": 0.0225,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-92",
+          "displacement": 0.02275,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-93",
+          "displacement": 0.023,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-94",
+          "displacement": 0.02325,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-95",
+          "displacement": 0.0235,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-96",
+          "displacement": 0.02375,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-97",
+          "displacement": 0.024,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-98",
+          "displacement": 0.02425,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-99",
+          "displacement": 0.0245,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-100",
+          "displacement": 0.02475,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-101",
+          "displacement": 0.025,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-102",
+          "displacement": 0.02525,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-103",
+          "displacement": 0.0255,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-104",
+          "displacement": 0.02575,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-105",
+          "displacement": 0.026,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-106",
+          "displacement": 0.02625,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-107",
+          "displacement": 0.0265,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-108",
+          "displacement": 0.02675,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-109",
+          "displacement": 0.027,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-110",
+          "displacement": 0.02725,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-111",
+          "displacement": 0.0275,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-112",
+          "displacement": 0.02775,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-113",
+          "displacement": 0.028,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-114",
+          "displacement": 0.02825,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-115",
+          "displacement": 0.0285,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-116",
+          "displacement": 0.02875,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-117",
+          "displacement": 0.029,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-118",
+          "displacement": 0.02925,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-119",
+          "displacement": 0.0295,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-120",
+          "displacement": 0.02975,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-point-121",
+          "displacement": 0.03,
+          "baseShear": 5017.499608
+        },
+        {
+          "id": "alignment-single-pier-capacity-pier-1-fem-failure",
+          "displacement": 0.030001,
+          "baseShear": 0
+        }
+      ]
+    },
+    "hingeEvents": [
+      {
+        "id": "hinge-event-1",
+        "type": "plastic-hinge-activation",
+        "position": "start",
+        "sign": "positive",
+        "elementId": "alignment-single-pier-capacity-pier-1-element",
+        "plasticMoment": 15052.498824
+      }
+    ],
+    "finalState": {
+      "loadFactor": 1,
+      "termination": {
+        "reason": "target-displacement-reached",
+        "step": 120,
+        "iteration": 2
+      },
+      "hingeState": {
+        "start": "positive",
+        "end": null,
+        "history": [
+          {
+            "type": "plastic-hinge-activation",
+            "position": "start",
+            "sign": "positive",
+            "elementId": "alignment-single-pier-capacity-pier-1-element",
+            "plasticMoment": 15.052498824,
+            "trialMoment": 16.993006993006993
+          }
+        ]
+      }
+    }
+  },
+  "comparison": {
+    "metrics": [
+      {
+        "id": "ks",
+        "label": "Rigidezza iniziale ks",
+        "aggregatedValue": 7552447.552448,
+        "femValue": 7552447.552,
+        "delta": -0.000448,
+        "variationPercent": 0
+      },
+      {
+        "id": "Vy",
+        "label": "Taglio equivalente Vy",
+        "aggregatedValue": 5017.499608,
+        "femValue": 5015.684245,
+        "delta": -1.815363,
+        "variationPercent": -0.036181
+      },
+      {
+        "id": "peakBaseShear",
+        "label": "Taglio massimo Vmax",
+        "aggregatedValue": 5017.499608,
+        "femValue": 5017.499608,
+        "delta": 0,
+        "variationPercent": 0
+      },
+      {
+        "id": "du",
+        "label": "Spostamento ultimo du",
+        "aggregatedValue": 0.03,
+        "femValue": 0.03,
+        "delta": 0,
+        "variationPercent": 0.000667
+      }
+    ],
+    "sampledCurvePoints": [
+      {
+        "id": "sample-1",
+        "displacement": 0,
+        "aggregatedBaseShear": 0,
+        "femBaseShear": 0,
+        "delta": 0,
+        "variationPercent": null
+      },
+      {
+        "id": "sample-2",
+        "displacement": 0.000664,
+        "aggregatedBaseShear": 5017.499608,
+        "femBaseShear": 4590.500722,
+        "delta": -426.998886,
+        "variationPercent": -8.510193
+      },
+      {
+        "id": "sample-3",
+        "displacement": 0.004286,
+        "aggregatedBaseShear": 5017.499608,
+        "femBaseShear": 5017.499608,
+        "delta": 0,
+        "variationPercent": 0
+      },
+      {
+        "id": "sample-4",
+        "displacement": 0.008571,
+        "aggregatedBaseShear": 5017.499608,
+        "femBaseShear": 5017.499608,
+        "delta": 0,
+        "variationPercent": 0
+      },
+      {
+        "id": "sample-5",
+        "displacement": 0.012857,
+        "aggregatedBaseShear": 5017.499608,
+        "femBaseShear": 5017.499608,
+        "delta": 0,
+        "variationPercent": 0
+      },
+      {
+        "id": "sample-6",
+        "displacement": 0.017143,
+        "aggregatedBaseShear": 5017.499608,
+        "femBaseShear": 5017.499608,
+        "delta": 0,
+        "variationPercent": 0
+      },
+      {
+        "id": "sample-7",
+        "displacement": 0.021429,
+        "aggregatedBaseShear": 5017.499608,
+        "femBaseShear": 5017.499608,
+        "delta": 0,
+        "variationPercent": 0
+      },
+      {
+        "id": "sample-8",
+        "displacement": 0.025714,
+        "aggregatedBaseShear": 5017.499608,
+        "femBaseShear": 5017.499608,
+        "delta": 0,
+        "variationPercent": 0
+      },
+      {
+        "id": "sample-9",
+        "displacement": 0.03,
+        "aggregatedBaseShear": 5017.499608,
+        "femBaseShear": 5017.499608,
+        "delta": 0,
+        "variationPercent": 0
+      }
+    ]
+  },
+  "reading": {
+    "outcome": "consistent",
+    "headline": "Il pushover FEM del maschio riproduce la curva aggregata con scarti contenuti su rigidezza, resistenza e deformabilita.",
+    "governingMetricId": "aligned-response",
+    "messages": [
+      "Scarto rigidezza ks: 0%.",
+      "Scarto resistenza Vy: -0.036181%.",
+      "Scarto deformabilita du: 0.000667%."
+    ]
+  },
+  "warnings": [
+    "Material wall-a resolved design properties through the fallback source directProperties."
+  ],
+  "assumptions": [
+    "The first seismic release follows the official minimum method described in todo.md: the global capacity curve is the sum of the individual pier and ring-frame contributions at a common top-displacement axis.",
+    "Pier axial forces are taken from the static vertical analysis in seismic combination: base reaction for flexural capacity and drift, mid-height compression for shear capacity.",
+    "Each masonry pier is represented by an elastic-perfectly-plastic contribution up to its drift-based ultimate displacement, followed by a drop to zero resistance.",
+    "The first mechanical-state resolver distinguishes state-of-fact and design by selecting stage-specific masonry property sets when available, while preserving the original wall geometry and load definition.",
+    "If no dedicated stage-specific property set exists, the resolver falls back to the best available base or direct masonry properties and traces that fallback in warnings.",
+    "Pier tributary top loads follow the requested width rule: gross pier width plus half of each adjacent opening only when that opening is not intercepted by a ring frame.",
+    "The masonry band above each opening is transferred to adjacent masonry piers when no ring frame is present, and to ring-frame jambs when the opening is framed in steel.",
+    "Lintel beam analysis is optional and does not alter the global equilibrium roll-up; only the transferred masonry-band load is added to pier axial forces in the current release.",
+    "In this first release, piers are extracted as wall-bounded full-height vertical strips whose x-interval is not occupied by sanitized opening projections.",
+    "Spandrels are extracted as the masonry band directly above each sanitized opening, capped by the next overlapping opening above or by the local wall top.",
+    "The non-linear displacement-control solver uses the augmented equilibrium system [Kt -Fext; c^T 0], so it can continue through singular tangents when the control equation regularizes the mechanism.",
+    "The displacement-control step length is currently constant; no adaptive step-size strategy or line search is applied yet.",
+    "Flexural-governed piers are compared through an equivalent-frame pushover with concentrated end plastic hinges; shear-governed piers are compared through a single-DOF non-linear lateral mechanism calibrated on the same ks, Vy and du.",
+    "The single-pier pushover uses the same MRd and du reference already adopted by the aggregated method, so the comparison isolates the consistency of the FEM force-displacement evolution."
+  ],
+  "metadata": {
+    "resultStatus": "ok",
+    "comparisonType": "masonry-pier-capacity-curve",
+    "generatedBy": "MasonryPierCapacityCurveComparisonReportBuilder"
+  }
+}

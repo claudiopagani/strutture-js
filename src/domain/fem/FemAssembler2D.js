@@ -152,6 +152,14 @@ function registerReferencedNodes(dofRegistry, { nodes, elements, supports, loads
     if (constraint?.node) {
       dofRegistry.registerNode(constraint.node);
     }
+
+    if (constraint?.masterNode) {
+      dofRegistry.registerNode(constraint.masterNode);
+    }
+
+    if (constraint?.slaveNode) {
+      dofRegistry.registerNode(constraint.slaveNode);
+    }
   }
 }
 

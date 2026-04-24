@@ -1,0 +1,226 @@
+{
+  "id": "masonry-pier-capacity-comparison-axial-commitment-scenarios",
+  "title": "Confronto maschio singolo a tre livelli di impegno normale",
+  "units": {
+    "force": "N",
+    "length": "m"
+  },
+  "scenarios": [
+    {
+      "id": "alignment-p-005",
+      "label": "Maschio p=0.05",
+      "p": 0.05,
+      "expectedFamily": "flexural",
+      "expectedMode": "rocking-toe-crushing",
+      "status": "ok",
+      "actualFamily": "flexural",
+      "actualMode": "rocking-toe-crushing",
+      "reading": {
+        "outcome": "consistent",
+        "headline": "Il pushover FEM del maschio riproduce la curva aggregata con scarti contenuti su rigidezza, resistenza e deformabilita.",
+        "governingMetricId": "aligned-response",
+        "messages": [
+          "Scarto rigidezza ks: 0%.",
+          "Scarto resistenza Vy: -0.014071%.",
+          "Scarto deformabilita du: 0.000667%."
+        ]
+      },
+      "aggregated": {
+        "ks": 7552447.552448,
+        "Vy": 20329.411765,
+        "du": 0.03,
+        "yieldDisplacement": 0.002692,
+        "peakBaseShear": 20329.411765,
+        "governingFamily": "flexural",
+        "governingMode": "rocking-toe-crushing"
+      },
+      "fem": {
+        "ks": 7552447.552531,
+        "Vy": 20326.551189,
+        "du": 0.03,
+        "yieldDisplacement": 0.002691,
+        "peakBaseShear": 20329.411765,
+        "hingeCount": 1,
+        "mechanismModel": "equivalent-frame-flexural-hinges"
+      },
+      "metrics": [
+        {
+          "id": "ks",
+          "label": "Rigidezza iniziale ks",
+          "aggregatedValue": 7552447.552448,
+          "femValue": 7552447.552531,
+          "delta": 0.000083,
+          "variationPercent": 0
+        },
+        {
+          "id": "Vy",
+          "label": "Taglio equivalente Vy",
+          "aggregatedValue": 20329.411765,
+          "femValue": 20326.551189,
+          "delta": -2.860576,
+          "variationPercent": -0.014071
+        },
+        {
+          "id": "peakBaseShear",
+          "label": "Taglio massimo Vmax",
+          "aggregatedValue": 20329.411765,
+          "femValue": 20329.411765,
+          "delta": 0,
+          "variationPercent": 0
+        },
+        {
+          "id": "du",
+          "label": "Spostamento ultimo du",
+          "aggregatedValue": 0.03,
+          "femValue": 0.03,
+          "delta": 0,
+          "variationPercent": 0.000667
+        }
+      ]
+    },
+    {
+      "id": "alignment-p-035",
+      "label": "Maschio p=0.35",
+      "p": 0.35,
+      "expectedFamily": "shear",
+      "expectedMode": "diagonal-cracking",
+      "status": "ok",
+      "actualFamily": "shear",
+      "actualMode": "diagonal-cracking",
+      "reading": {
+        "outcome": "consistent",
+        "headline": "Il pushover FEM del maschio riproduce la curva aggregata con scarti contenuti su rigidezza, resistenza e deformabilita.",
+        "governingMetricId": "aligned-response",
+        "messages": [
+          "Scarto rigidezza ks: 0%.",
+          "Scarto resistenza Vy: -0.006815%.",
+          "Scarto deformabilita du: 0.001111%."
+        ]
+      },
+      "aggregated": {
+        "ks": 7552447.552448,
+        "Vy": 60668.278367,
+        "du": 0.018,
+        "yieldDisplacement": 0.008033,
+        "peakBaseShear": 60668.278367,
+        "governingFamily": "shear",
+        "governingMode": "diagonal-cracking"
+      },
+      "fem": {
+        "ks": 7552447.552532,
+        "Vy": 60664.143678,
+        "du": 0.018,
+        "yieldDisplacement": 0.008032,
+        "peakBaseShear": 60668.278367,
+        "hingeCount": 0,
+        "mechanismModel": "single-dof-shear-plateau"
+      },
+      "metrics": [
+        {
+          "id": "ks",
+          "label": "Rigidezza iniziale ks",
+          "aggregatedValue": 7552447.552448,
+          "femValue": 7552447.552532,
+          "delta": 0.000084,
+          "variationPercent": 0
+        },
+        {
+          "id": "Vy",
+          "label": "Taglio equivalente Vy",
+          "aggregatedValue": 60668.278367,
+          "femValue": 60664.143678,
+          "delta": -4.134689,
+          "variationPercent": -0.006815
+        },
+        {
+          "id": "peakBaseShear",
+          "label": "Taglio massimo Vmax",
+          "aggregatedValue": 60668.278367,
+          "femValue": 60668.278367,
+          "delta": 0,
+          "variationPercent": 0
+        },
+        {
+          "id": "du",
+          "label": "Spostamento ultimo du",
+          "aggregatedValue": 0.018,
+          "femValue": 0.018,
+          "delta": 0,
+          "variationPercent": 0.001111
+        }
+      ]
+    },
+    {
+      "id": "alignment-p-060",
+      "label": "Maschio p=0.60",
+      "p": 0.6,
+      "expectedFamily": "flexural",
+      "expectedMode": "rocking-toe-crushing",
+      "status": "ok",
+      "actualFamily": "flexural",
+      "actualMode": "rocking-toe-crushing",
+      "reading": {
+        "outcome": "consistent",
+        "headline": "Il pushover FEM del maschio riproduce la curva aggregata con scarti contenuti su rigidezza, resistenza e deformabilita.",
+        "governingMetricId": "aligned-response",
+        "messages": [
+          "Scarto rigidezza ks: -0.002231%.",
+          "Scarto resistenza Vy: -0.006198%.",
+          "Scarto deformabilita du: 0.001333%."
+        ]
+      },
+      "aggregated": {
+        "ks": 7552447.552448,
+        "Vy": 76235.294118,
+        "du": 0.015,
+        "yieldDisplacement": 0.010094,
+        "peakBaseShear": 76235.294118,
+        "governingFamily": "flexural",
+        "governingMode": "rocking-toe-crushing"
+      },
+      "fem": {
+        "ks": 7552279.053358,
+        "Vy": 76230.568808,
+        "du": 0.015,
+        "yieldDisplacement": 0.010094,
+        "peakBaseShear": 76235.294118,
+        "hingeCount": 1,
+        "mechanismModel": "equivalent-frame-flexural-hinges"
+      },
+      "metrics": [
+        {
+          "id": "ks",
+          "label": "Rigidezza iniziale ks",
+          "aggregatedValue": 7552447.552448,
+          "femValue": 7552279.053358,
+          "delta": -168.49909,
+          "variationPercent": -0.002231
+        },
+        {
+          "id": "Vy",
+          "label": "Taglio equivalente Vy",
+          "aggregatedValue": 76235.294118,
+          "femValue": 76230.568808,
+          "delta": -4.72531,
+          "variationPercent": -0.006198
+        },
+        {
+          "id": "peakBaseShear",
+          "label": "Taglio massimo Vmax",
+          "aggregatedValue": 76235.294118,
+          "femValue": 76235.294118,
+          "delta": 0,
+          "variationPercent": 0
+        },
+        {
+          "id": "du",
+          "label": "Spostamento ultimo du",
+          "aggregatedValue": 0.015,
+          "femValue": 0.015,
+          "delta": 0,
+          "variationPercent": 0.001333
+        }
+      ]
+    }
+  ]
+}

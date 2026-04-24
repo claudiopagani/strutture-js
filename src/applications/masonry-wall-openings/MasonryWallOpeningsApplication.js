@@ -1,5 +1,6 @@
 import { CalculationResult } from "../../core/results/CalculationResult.js";
 import { StructuralApplication } from "../../core/applications/StructuralApplication.js";
+import { AlignmentEquivalentFramePushoverAnalysis } from "./analysis/AlignmentEquivalentFramePushoverAnalysis.js";
 import { AlignmentSeismicAggregatedAnalysis } from "./analysis/AlignmentSeismicAggregatedAnalysis.js";
 import { AlignmentStateComparisonAnalysis } from "./analysis/AlignmentStateComparisonAnalysis.js";
 import { AlignmentStaticAnalysis } from "./analysis/AlignmentStaticAnalysis.js";
@@ -39,6 +40,7 @@ export class MasonryWallOpeningsApplication extends StructuralApplication {
           "pier and spandrel extraction",
           "static tributary-load analysis",
           "aggregated seismic capacity curves",
+          "equivalent-frame non-linear global pushover",
           "ante/post comparison reporting",
           "equivalent-frame FEM assembly",
         ],
@@ -152,6 +154,37 @@ export class MasonryWallOpeningsApplication extends StructuralApplication {
             alignment: model,
             sanitizedOpenings: sanitization.openings,
           }),
+      });
+    }
+
+    if (mode === "equivalent-frame-pushover") {
+      const pushoverResult = new AlignmentEquivalentFramePushoverAnalysis().analyze({
+        alignment: model,
+        stage: input.stage ?? "design",
+        options: input.options ?? input.frameOptions ?? input.seismicOptions ?? {},
+        sanitizedOpenings: sanitization.openings,
+        extractedMembers:
+          extraction ??
+          extractEquivalentFrameMembers({
+            alignment: model,
+            sanitizedOpenings: sanitization.openings,
+          }),
+      });
+
+      return new CalculationResult({
+        applicationId: pushoverResult.applicationId,
+        status: pushoverResult.status,
+        summary: pushoverResult.summary,
+        outputs: {
+          ...pushoverResult.outputs,
+        },
+        warnings: [...pushoverResult.warnings],
+        assumptions: [...pushoverResult.assumptions],
+        metadata: {
+          ...pushoverResult.metadata,
+          domain: this.domain,
+          mode,
+        },
       });
     }
 

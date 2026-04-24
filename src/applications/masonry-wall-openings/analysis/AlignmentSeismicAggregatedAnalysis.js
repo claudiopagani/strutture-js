@@ -297,6 +297,7 @@ function buildPierContribution({
   pier,
   staticPier,
   topRotation,
+  shearDriftCapacity = DEFAULT_DRIFT_SHEAR,
   warnings,
 }) {
   if (!staticPier) {
@@ -409,7 +410,7 @@ function buildPierContribution({
           thickness: pier.thickness,
           length,
         })
-      : DEFAULT_DRIFT_SHEAR;
+      : shearDriftCapacity;
 
   if (!Number.isFinite(driftCapacity) || driftCapacity <= EPS) {
     warnings.push(
@@ -751,6 +752,10 @@ export class AlignmentSeismicAggregatedAnalysis {
     const topRotation = normalizeTopRotation(
       options.topRotation ?? DEFAULT_TOP_ROTATION,
     );
+    const shearDriftCapacity = Number.isFinite(options.shearDriftCapacity)
+      && options.shearDriftCapacity > EPS
+      ? options.shearDriftCapacity
+      : DEFAULT_DRIFT_SHEAR;
     const mechanicalState =
       resolvedAlignmentState ??
       resolveAlignmentMechanicalState({
@@ -798,6 +803,7 @@ export class AlignmentSeismicAggregatedAnalysis {
           pier,
           staticPier: staticPiersById[pier.id],
           topRotation,
+          shearDriftCapacity,
           warnings,
         }),
       )

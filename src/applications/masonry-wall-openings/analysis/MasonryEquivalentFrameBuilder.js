@@ -43,7 +43,7 @@ function serializeFrame(nodes, elements, supports, constraints = [], loads = [])
     nodes: nodes.map((node) => node.toJSON()),
     elements: elements.map((element) => element.toJSON()),
     supports: supports.map((support) => support.toJSON()),
-    constraints: [...constraints],
+    constraints: constraints.map((constraint) => ({ ...constraint })),
     loads: [...loads],
   };
 }
@@ -56,6 +56,29 @@ function resolvePierCenterX(pier) {
   const leftReduction = pier.metadata?.leftReduction ?? 0;
 
   return pier.x + leftReduction + effectiveLength / 2;
+}
+
+function average(values = []) {
+  const finiteValues = values.filter(Number.isFinite);
+
+  if (finiteValues.length === 0) {
+    return 0;
+  }
+
+  return finiteValues.reduce((sum, value) => sum + value, 0) / finiteValues.length;
+}
+
+function createDiaphragmControlNode({ alignment, topNodes = [] }) {
+  return new Node({
+    id: `${alignment.id}-diaphragm-control`,
+    x: average(topNodes.map((node) => node.x)),
+    y: Math.max(...topNodes.map((node) => node.y)),
+    units: alignment.units,
+    metadata: {
+      role: "diaphragm-control",
+      sourceAlignmentId: alignment.id,
+    },
+  });
 }
 
 function buildPierFrameMember({ alignment, pier, topRotation }) {
@@ -195,13 +218,16 @@ export class MasonryEquivalentFrameBuilder {
     }
 
     const warnings = [];
+    const topRotation = normalizeTopRotation(options.topRotation ?? "free");
+    const includeSpandrels = Boolean(options.includeSpandrels);
+    const includeDiaphragm = Boolean(options.includeDiaphragm);
     const assumptions = [
-      "The first wall-level FEM builder assembles one vertical 2D Timoshenko element with rigid end offsets for each extracted masonry pier, without spandrels or diaphragm coupling between top nodes.",
+      includeDiaphragm
+        ? "The first wall-level FEM builder assembles one vertical 2D Timoshenko element with rigid end offsets for each extracted masonry pier, without spandrels and with an optional top diaphragm master node that ties only the ux DOF of the pier heads."
+        : "The first wall-level FEM builder assembles one vertical 2D Timoshenko element with rigid end offsets for each extracted masonry pier, without spandrels or diaphragm coupling between top nodes.",
       "Each pier keeps a fully fixed base; the requested topRotation option is represented only through the rotational restraint at the corresponding top node.",
       "The resulting frame is intended as the first validation scaffold for pier-only wall alignments before introducing explicit spandrels, diaphragms and non-linear global pushover control.",
     ];
-    const topRotation = normalizeTopRotation(options.topRotation ?? "free");
-    const includeSpandrels = Boolean(options.includeSpandrels);
     const mechanicalState =
       resolvedAlignmentState ??
       resolveAlignmentMechanicalState({
@@ -245,6 +271,49 @@ export class MasonryEquivalentFrameBuilder {
     const supports = pierFrames.flatMap((frame) => frame.supports);
     const constraints = [];
     const loads = [];
+    let diaphragmControlNode = null;
+
+    if (includeDiaphragm && pierFrames.length > 0) {
+      const topNodes = pierFrames
+        .map((frame) => frame.nodes.find((node) => node.id === frame.snapshot.topNodeId))
+        .filter(Boolean);
+
+      diaphragmControlNode = createDiaphragmControlNode({
+        alignment: resolvedAlignment,
+        topNodes,
+      });
+      nodes.push(diaphragmControlNode);
+      supports.push(
+        new Support({
+          id: `${resolvedAlignment.id}-diaphragm-guide`,
+          node: diaphragmControlNode,
+          restraints: { uy: true, rz: true },
+          metadata: {
+            role: "diaphragm-guide",
+            sourceAlignmentId: resolvedAlignment.id,
+          },
+        }),
+      );
+      constraints.push(
+        ...topNodes.map((node, index) => ({
+          id: `${resolvedAlignment.id}-diaphragm-ux-link-${index + 1}`,
+          type: "equal-dof",
+          masterNodeId: diaphragmControlNode.id,
+          slaveNodeId: node.id,
+          dof: "ux",
+          scale: 1,
+          offset: 0,
+          metadata: {
+            role: "top-diaphragm-ux",
+            sourceAlignmentId: resolvedAlignment.id,
+          },
+        })),
+      );
+      assumptions.push(
+        "When includeDiaphragm is enabled, the builder creates a master diaphragm control node and ties the horizontal ux DOF of each pier top node to that master through equal-DOF constraints; vertical translations and rotations remain local.",
+      );
+    }
+
     const dofRegistry = new DofRegistry();
 
     dofRegistry.registerNodes(nodes);
@@ -275,10 +344,12 @@ export class MasonryEquivalentFrameBuilder {
           stage,
           topRotation,
           includeSpandrels: false,
+          includeDiaphragm,
           frameType: "pier-only",
           pierCount: pierFrames.length,
           ignoredSpandrelCount: extracted.spandrels.length,
           topNodeIds: pierFrames.map((frame) => frame.snapshot.topNodeId),
+          diaphragmControlNodeId: diaphragmControlNode?.id ?? null,
         },
       },
       warnings: [

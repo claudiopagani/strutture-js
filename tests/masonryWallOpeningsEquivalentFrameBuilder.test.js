@@ -109,3 +109,24 @@ test("masonry wall openings application exposes equivalent-frame-linear as a suc
   assert.equal(result.outputs.equivalentFrame.elements.length, 2);
   assert.equal(result.outputs.piers.length, 2);
 });
+
+test("equivalent frame builder can assemble a diaphragm master node with equal-DOF top constraints", () => {
+  const alignment = createEquivalentFrameAlignment("alignment-equivalent-frame-diaphragm");
+  const frame = new MasonryEquivalentFrameBuilder().build({
+    alignment,
+    options: {
+      topRotation: "free",
+      includeDiaphragm: true,
+    },
+  });
+
+  assert.equal(
+    frame.snapshot.metadata.diaphragmControlNodeId,
+    "alignment-equivalent-frame-diaphragm-diaphragm-control",
+  );
+  assert.equal(frame.snapshot.constraints.length, 2);
+  assert.ok(frame.snapshot.constraints.every((constraint) => constraint.type === "equal-dof"));
+  assert.ok(
+    frame.snapshot.supports.some((support) => support.id.endsWith("diaphragm-guide")),
+  );
+});

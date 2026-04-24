@@ -180,3 +180,86 @@ test("linear static solver rejects conflicting displacement constraints", () => 
     /conflicting constraints/i,
   );
 });
+
+test("linear static solver condenses equal-DOF diaphragm constraints onto a master control DOF", () => {
+  const nodeA = createNode("A");
+  const nodeB = createNode("B", 1);
+  const nodeC = createNode("C", 2);
+  const nodeM = createNode("M", 1.5);
+  const elementAB = createAxialSpringElement({
+    id: "spring-AB",
+    startNode: nodeA,
+    endNode: nodeB,
+    stiffness: 100,
+  });
+  const elementAC = createAxialSpringElement({
+    id: "spring-AC",
+    startNode: nodeA,
+    endNode: nodeC,
+    stiffness: 200,
+  });
+  const supports = [
+    new Support({
+      id: "fixed-A",
+      node: nodeA,
+      restraints: { ux: true, uy: true, rz: true },
+    }),
+    new Support({
+      id: "guide-B",
+      node: nodeB,
+      restraints: { uy: true, rz: true },
+    }),
+    new Support({
+      id: "guide-C",
+      node: nodeC,
+      restraints: { uy: true, rz: true },
+    }),
+    new Support({
+      id: "guide-M",
+      node: nodeM,
+      restraints: { uy: true, rz: true },
+    }),
+  ];
+  const nodalLoads = [
+    new NodalLoad({
+      node: nodeB,
+      components: { fx: 30 },
+      units,
+    }),
+    new NodalLoad({
+      node: nodeC,
+      components: { fx: 60 },
+      units,
+    }),
+  ];
+  const result = new LinearStaticSolver2D().solve({
+    nodes: [nodeA, nodeB, nodeC, nodeM],
+    elements: [elementAB, elementAC],
+    supports,
+    nodalLoads,
+    constraints: [
+      {
+        id: "diaphragm-B",
+        type: "equal-dof",
+        masterNode: nodeM,
+        slaveNode: nodeB,
+        dof: "ux",
+      },
+      {
+        id: "diaphragm-C",
+        type: "equal-dof",
+        masterNode: nodeM,
+        slaveNode: nodeC,
+        dof: "ux",
+      },
+    ],
+  });
+
+  approx(result.displacementByNode.M.ux, 0.3);
+  approx(result.displacementByNode.B.ux, 0.3);
+  approx(result.displacementByNode.C.ux, 0.3);
+  approx(result.reactionByNode.A.ux, -90);
+  assert.deepEqual(result.freeDofIds, ["M.ux"]);
+  assert.ok(result.constrainedDofIds.includes("B.ux"));
+  assert.ok(result.constrainedDofIds.includes("C.ux"));
+});

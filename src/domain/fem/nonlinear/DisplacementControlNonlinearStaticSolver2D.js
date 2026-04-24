@@ -1,25 +1,8 @@
 import { DenseLinearSolver } from "../../math/DenseLinearSolver.js";
+import { KinematicConstraintReducer2D } from "../KinematicConstraintReducer2D.js";
 
 function createZeroVector(size) {
   return new Array(size).fill(0);
-}
-
-function extractSubmatrix(matrix, rowIndices, columnIndices) {
-  return rowIndices.map((row) => columnIndices.map((column) => matrix[row][column]));
-}
-
-function extractSubvector(vector, indices) {
-  return indices.map((index) => vector[index]);
-}
-
-function setSubvector(target, indices, values) {
-  const next = [...target];
-
-  for (let index = 0; index < indices.length; index += 1) {
-    next[indices[index]] = values[index];
-  }
-
-  return next;
 }
 
 function addVectors(left, right) {
@@ -100,35 +83,6 @@ function detectRelevantLocalDofIndices(
   return indices.length > 0 ? indices : Array.from({ length: size }, (_, index) => index);
 }
 
-function restrainedDofIndices(model) {
-  const indices = new Set();
-
-  for (const support of model.supports ?? []) {
-    for (const dof of model.dofRegistry.dofsPerNode ?? []) {
-      if (!support.isRestrained(dof)) {
-        continue;
-      }
-
-      indices.add(model.dofRegistry.getIndex(support.node, dof));
-    }
-  }
-
-  return [...indices].sort((left, right) => left - right);
-}
-
-function freeDofIndices(model) {
-  const restrained = new Set(restrainedDofIndices(model));
-  const free = [];
-
-  for (let index = 0; index < model.dofRegistry.size(); index += 1) {
-    if (!restrained.has(index)) {
-      free.push(index);
-    }
-  }
-
-  return free;
-}
-
 function defaultCloneState(state) {
   if (state == null) {
     return state;
@@ -198,8 +152,10 @@ function basePoint({
 export class DisplacementControlNonlinearStaticSolver2D {
   constructor({
     linearSolver = new DenseLinearSolver(),
+    constraintReducer = new KinematicConstraintReducer2D(),
   } = {}) {
     this.linearSolver = linearSolver;
+    this.constraintReducer = constraintReducer;
   }
 
   solve({
@@ -254,12 +210,15 @@ export class DisplacementControlNonlinearStaticSolver2D {
       );
     }
 
-    const freeIndices = freeDofIndices(model);
-    const restrainedIndices = restrainedDofIndices(model);
-    const freeLoadVector = extractSubvector(model.referenceLoadVector, freeIndices);
-    const freeControlVector = extractSubvector(model.controlVector, freeIndices);
-    let displacements = createZeroVector(fullSize);
-    let freeDisplacements = extractSubvector(displacements, freeIndices);
+    const reduction = this.constraintReducer.build({
+      dofRegistry: model.dofRegistry,
+      supports: model.supports ?? [],
+      constraints: model.constraints ?? [],
+    });
+    const reducedLoadVector = reduction.reduceVector(model.referenceLoadVector);
+    const reducedControlVector = reduction.reduceVector(model.controlVector);
+    let reducedDisplacements = createZeroVector(reduction.reducedSize());
+    let displacements = reduction.expandReducedVector(reducedDisplacements);
     let loadFactor = 0;
     let state = cloneState(initialState);
     let finalEvaluation = null;
@@ -286,8 +245,10 @@ export class DisplacementControlNonlinearStaticSolver2D {
           controlDisplacement: 0,
           state,
           evaluation: null,
-          freeIndices,
-          restrainedIndices,
+          freeIndices: [...reduction.reducedDofIds],
+          restrainedIndices: [...reduction.constrainedDofIds],
+          reducedDisplacements,
+          kinematicReduction: reduction.toJSON(),
         }) ?? {}),
       },
     ];
@@ -298,7 +259,7 @@ export class DisplacementControlNonlinearStaticSolver2D {
     };
 
     for (let step = 1; step <= maxSteps; step += 1) {
-      let deltaDisplacements = createZeroVector(freeIndices.length);
+      let deltaDisplacements = createZeroVector(reduction.reducedSize());
       let deltaLoadFactor = 0;
       let trialState = cloneState(state);
       let committedStepState = null;
@@ -309,11 +270,12 @@ export class DisplacementControlNonlinearStaticSolver2D {
 
       for (let iteration = 1; iteration <= maxIterations; iteration += 1) {
         stepIterationCount = iteration;
-        const trialFullDisplacements = setSubvector(
-          displacements,
-          freeIndices,
-          addVectors(freeDisplacements, deltaDisplacements),
+        const trialReducedDisplacements = addVectors(
+          reducedDisplacements,
+          deltaDisplacements,
         );
+        const trialFullDisplacements =
+          reduction.expandReducedVector(trialReducedDisplacements);
         const evaluation = normalizeEvaluation(
           evaluatorFunction({
             model,
@@ -323,23 +285,20 @@ export class DisplacementControlNonlinearStaticSolver2D {
           }),
           trialState,
         );
-        const tangentFree = extractSubmatrix(
+        const tangentFree = reduction.reduceStiffnessMatrix(
           evaluation.tangentStiffnessMatrix,
-          freeIndices,
-          freeIndices,
         );
-        const internalFree = extractSubvector(
+        const internalFree = reduction.reduceVector(
           evaluation.internalForceVector,
-          freeIndices,
         );
         const residual = subtractVectors(
-          scalarVector(loadFactor + deltaLoadFactor, freeLoadVector),
+          scalarVector(loadFactor + deltaLoadFactor, reducedLoadVector),
           internalFree,
         );
         const residualNorm = norm(residual);
         const controlGap =
           controlDisplacementIncrement -
-          dot(freeControlVector, deltaDisplacements);
+          dot(reducedControlVector, deltaDisplacements);
 
         trialState = cloneState(evaluation.state);
         stepEvents.push(
@@ -367,38 +326,33 @@ export class DisplacementControlNonlinearStaticSolver2D {
         try {
           const activeLocalIndices = detectRelevantLocalDofIndices(
             tangentFree,
-            freeLoadVector,
-            freeControlVector,
+            reducedLoadVector,
+            reducedControlVector,
             residual,
           );
-          const reducedTangent = extractSubmatrix(
-            tangentFree,
-            activeLocalIndices,
-            activeLocalIndices,
+          const reducedTangent = activeLocalIndices.map((row) =>
+            activeLocalIndices.map((column) => tangentFree[row][column]),
           );
-          const reducedLoadVector = extractSubvector(
-            freeLoadVector,
-            activeLocalIndices,
+          const reducedLoadSubvector = activeLocalIndices.map(
+            (index) => reducedLoadVector[index],
           );
-          const reducedControlVector = extractSubvector(
-            freeControlVector,
-            activeLocalIndices,
+          const reducedControlSubvector = activeLocalIndices.map(
+            (index) => reducedControlVector[index],
           );
-          const reducedResidual = extractSubvector(
-            residual,
-            activeLocalIndices,
+          const reducedResidual = activeLocalIndices.map(
+            (index) => residual[index],
           );
           const augmentedMatrix = buildAugmentedMatrix(
             reducedTangent,
-            reducedLoadVector,
-            reducedControlVector,
+            reducedLoadSubvector,
+            reducedControlSubvector,
           );
           const augmentedCorrection = this.linearSolver.solve(augmentedMatrix, [
             ...reducedResidual,
             controlGap,
           ]);
           const displacementCorrection = scatterLocalCorrection(
-            freeIndices.length,
+            reduction.reducedSize(),
             activeLocalIndices,
             augmentedCorrection.slice(0, activeLocalIndices.length),
           );
@@ -440,11 +394,12 @@ export class DisplacementControlNonlinearStaticSolver2D {
       }
 
       if (!committedStepState) {
-        const committedFullDisplacements = setSubvector(
-          displacements,
-          freeIndices,
-          addVectors(freeDisplacements, deltaDisplacements),
+        const committedReducedDisplacements = addVectors(
+          reducedDisplacements,
+          deltaDisplacements,
         );
+        const committedFullDisplacements =
+          reduction.expandReducedVector(committedReducedDisplacements);
 
         committedStepState = {
           fullDisplacements: committedFullDisplacements,
@@ -461,7 +416,7 @@ export class DisplacementControlNonlinearStaticSolver2D {
       }
 
       displacements = [...committedStepState.fullDisplacements];
-      freeDisplacements = extractSubvector(displacements, freeIndices);
+      reducedDisplacements = addVectors(reducedDisplacements, deltaDisplacements);
       loadFactor += deltaLoadFactor;
       state = cloneState(committedStepState.evaluation.state);
       finalEvaluation = committedStepState.evaluation;
@@ -485,8 +440,10 @@ export class DisplacementControlNonlinearStaticSolver2D {
           controlDisplacement,
           state,
           evaluation: committedStepState.evaluation,
-          freeIndices,
-          restrainedIndices,
+          freeIndices: [...reduction.reducedDofIds],
+          restrainedIndices: [...reduction.constrainedDofIds],
+          reducedDisplacements,
+          kinematicReduction: reduction.toJSON(),
         }) ?? {}),
       });
 
@@ -520,10 +477,9 @@ export class DisplacementControlNonlinearStaticSolver2D {
       warnings,
       assumptions,
       termination,
-      freeDofIds: freeIndices.map((index) => model.dofRegistry.getDofIds()[index]),
-      restrainedDofIds: restrainedIndices.map(
-        (index) => model.dofRegistry.getDofIds()[index],
-      ),
+      freeDofIds: [...reduction.reducedDofIds],
+      restrainedDofIds: [...reduction.constrainedDofIds],
+      kinematicReduction: reduction.toJSON(),
     };
   }
 }
