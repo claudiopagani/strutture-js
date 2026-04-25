@@ -144,6 +144,50 @@ test("resolveAlignmentMechanicalState reuses NTC existing masonry materials and 
   approx(unmodified.walls[0].material.fm, 1.5e6);
 });
 
+test("resolveAlignmentMechanicalState applies intonaco armato NTC improvement to design masonry properties", () => {
+  const material = createNTC2018ExistingMasonryMaterial({
+    name: "Muratura tipo 7 con intonaco armato",
+    masonryTypologyId: 7,
+    knowledgeLevel: "LC1",
+    parameterLevel: 2,
+    units: { force: "N", length: "mm" },
+    modifierSelections: {
+      intonacoArmato: { selected: true },
+    },
+  });
+  const alignment = createAlignmentWithMaterial(
+    material,
+    "alignment-material-resolution-intonaco-armato",
+  );
+  const stateOfFact = resolveAlignmentMechanicalState({
+    alignment,
+    stage: "state-of-fact",
+  });
+  const design = resolveAlignmentMechanicalState({
+    alignment,
+    stage: "design",
+  });
+
+  approx(stateOfFact.walls[0].material.fm, 3.45e6);
+  approx(stateOfFact.walls[0].material.tau0, 9e4);
+  approx(stateOfFact.walls[0].material.fv0, 2e5);
+  approx(stateOfFact.walls[0].material.E, 1.5e9);
+  approx(stateOfFact.walls[0].material.G, 5e8);
+  approx(design.walls[0].material.fm, 5.175e6);
+  approx(design.walls[0].material.tau0, 1.35e5);
+  approx(design.walls[0].material.fv0, 3e5);
+  approx(design.walls[0].material.E, 2.25e9);
+  approx(design.walls[0].material.G, 7.5e8);
+  assert.equal(
+    stateOfFact.walls[0].metadata.propertySource,
+    "stateOfFactProperties",
+  );
+  assert.equal(
+    design.walls[0].metadata.propertySource,
+    "improvedMechanicalProperties",
+  );
+});
+
 test("aggregated seismic analysis uses the resolved material stage so design and state-of-fact capacities diverge when properties differ", () => {
   const alignment = createAlignmentWithMaterial(
     createManualStageMaterial(),

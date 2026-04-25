@@ -19,6 +19,7 @@ Stato corrente dei moduli applicativi:
 | `single-beam-design` | MVP | Analisi FEM 2D di trave semplice, verifica opzionale e report JSON/Markdown. |
 | `steel-frames` | Parziale | Verifiche di aste in acciaio da risultati FEM e pushover standalone di cerchiature metalliche rettangolari a 4 aste con cerniere plastiche concentrate. |
 | `masonry-piers` | Parziale | Verifica verticale NTC 2018 di maschi murari e idealizzazione 2D a telaio equivalente con tratti rigidi incorporati tramite trasformazione matriciale. |
+| `masonry-wall-openings` | Implementato | Verifiche di cerchiature su allineamenti murari con carichi verticali, confronto laterale pre/post a maschi aggregati e contributo della cerchiatura all'intero sistema. Mancano le fasce murarie non lineari. |
 | `masonry-ring-beams` | Scaffold | Modello e placeholder per cerchiature in muratura. |
 | `reinforced-concrete-sections` | Implementato | Analisi SLU/SLE di sezioni in c.a. a fibre. |
 | `timber-beams` | Parziale | Verifiche di travi in legno da risultati FEM gia disponibili. |
@@ -446,6 +447,43 @@ const result = new MasonryPierApplication().run({ model });
 console.log(result.status);
 console.log(result.outputs.stability.phi1);
 console.log(result.outputs.equivalentFrameIdealization.elements[0].deformableLength);
+```
+
+### `masonry-wall-openings`
+
+Stato: implementato per il modulo cerchiature, con esclusione del modello non lineare delle fasce murarie.
+
+Input minimo:
+
+- `MasonryWallOpeningsModel` con `id`, `units`, `walls`, `openings` e, opzionalmente, `settings`.
+- Ogni allineamento murario richiede geometria, spessore, materiale e carichi verticali; le aperture dichiarano posizione, dimensioni, architrave e, nello stato di progetto, l'eventuale `ringFrame`.
+- Per i confronti pre/post si usano coppie di modelli stato di fatto/progetto; gli esempi JSON in `examples/masonry-wall-openings` seguono questa struttura.
+- I materiali possono usare proprieta di stato di fatto e proprieta migliorate di progetto, incluse le factory NTC 2018 con coefficienti migliorativi come intonaco armato, iniezioni o ristilatura.
+
+Output atteso:
+
+- verifica a carichi verticali dell'allineamento;
+- analisi laterale a maschi aggregati per stato di fatto e progetto;
+- confronto pre/post di rigidezza, resistenza e variazione percentuale;
+- report JSON/Markdown generabili con `npm run example:masonry-wall-openings:cerchiature`.
+
+Regole principali:
+
+- nello stato di progetto il risolutore usa le proprieta meccaniche migliorate quando presenti, cosi rigidezza e resistenza della muratura recepiscono gli interventi dichiarati;
+- la cerchiatura dichiarata sull'apertura appartiene all'allineamento murario e contribuisce alla rigidezza e alla resistenza laterale globali del sistema;
+- il numero di telai paralleli della cerchiatura scala il contributo resistente e deformativo;
+- gli esempi `viabolognese`, `faentina` e `nasini` sono stati costruiti dai file di input storici e confrontati con i relativi report disponibili.
+
+Limiti del metodo:
+
+- le fasce murarie non lineari non sono ancora implementate;
+- l'eventuale telaio equivalente/FEM resta un supporto di controllo e validazione, non il riferimento operativo del modulo cerchiature;
+- non sono ancora modellati degrado ciclico, rotture locali fuori piano o dettagli costruttivi dei collegamenti acciaio-muratura.
+
+Esempio completo:
+
+```bash
+npm run example:masonry-wall-openings:cerchiature
 ```
 
 ### `masonry-ring-beams`
@@ -1317,6 +1355,7 @@ Il layer `src/norms/ntc2018` contiene:
 
 - La libreria non e ancora un software normativo completo.
 - I moduli `masonry-ring-beams`, `masonry-out-of-plane` e `micropiles-broms` restano placeholder dichiarati; `masonry-piers` e invece operativo per la verifica verticale e per la costruzione dello schema 2D equivalente del singolo maschio.
+- Il modulo `masonry-wall-openings` e operativo per le cerchiature con verifica verticale e comportamento laterale pre/post a maschi aggregati; restano escluse le fasce murarie non lineari.
 - Il workflow `single-beam-design` resta oggi un solver 2D lineare; il layer FEM contiene anche un primo solver statico non lineare a controllo indiretto di spostamento, usato dal pushover delle cerchiature metalliche.
 - Le verifiche acciaio non includono ancora torsione e proprieta efficaci per classe 4.
 - I workflow RC non includono ancora momento-curvatura, duttilita e colonna modello.
@@ -1330,6 +1369,7 @@ npm run example:ntc2018
 npm run example:applications
 npm run example:rc-sections
 npm run example:beam-reports
+npm run example:masonry-wall-openings:cerchiature
 npm run validation
 ```
 

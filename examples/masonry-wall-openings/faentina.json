@@ -1,0 +1,298 @@
+{
+  "schemaVersion": "masonry-wall-openings-cerchiature-input/v1",
+  "id": "faentina",
+  "title": "Faentina",
+  "description": "Esempio ricostruito da faentina_cerch_rev03.txt con coordinate aperture convertite da centro a spigolo inferiore sinistro.",
+  "notes": [
+    "Input MATLAB originale: faentina_cerch_rev03.txt.",
+    "Risultati di riferimento estratti da faentina_cerch_rev03.docx.",
+    "Nel TXT le due strutture metalliche non sono richiamate da aperture con strumet; il modello le lascia quindi escluse, come nel riepilogo laterale del DOCX."
+  ],
+  "referenceResults": {
+    "source": "faentina_cerch_rev03.docx",
+    "lateral": {
+      "stateOfFact": {
+        "keKNPerMm": 100.4,
+        "VyKN": 439.33,
+        "duMm": 15.99
+      },
+      "design": {
+        "keKNPerMm": 140.85,
+        "VyKN": 453.21,
+        "duMm": 32
+      }
+    }
+  },
+  "analyses": {
+    "staticOptions": {
+      "combinationType": "ULS_FUNDAMENTAL",
+      "pierDesign": {
+        "gammaM": 3,
+        "confidenceFactor": 1
+      }
+    },
+    "seismicOptions": {
+      "topRotation": "free",
+      "controlPointCount": 90,
+      "shearDriftCapacity": 0.01
+    },
+    "femOptions": {
+      "topRotation": "free",
+      "includeSpandrels": true,
+      "controlPointCount": 90,
+      "sampleCount": 6
+    },
+    "comparisonCriteria": {
+      "stiffnessToleranceRatio": 0.15
+    }
+  },
+  "stateOfFact": {
+    "id": "faentina-sdf",
+    "label": "Stato di fatto",
+    "units": {
+      "force": "N",
+      "length": "m"
+    },
+    "walls": [
+      {
+        "id": "wall-1",
+        "length": 6.82,
+        "height": 3.2,
+        "thickness": 0.36,
+        "material": {
+          "id": "muratura-tipo-7",
+          "category": "masonry",
+          "units": {
+            "force": "N",
+            "length": "m"
+          },
+          "confidenceFactor": 1.35,
+          "stateOfFactProperties": {
+            "fm": 3450000,
+            "fv0": 200000,
+            "tau0": 90000,
+            "E": 750000000,
+            "G": 250000000,
+            "density": 18000,
+            "mu": 0.577,
+            "phi": 0.767
+          },
+          "improvedMechanicalProperties": {
+            "fm": 3450000,
+            "fv0": 200000,
+            "tau0": 90000,
+            "E": 750000000,
+            "G": 250000000,
+            "density": 18000,
+            "mu": 0.577,
+            "phi": 0.767
+          }
+        },
+        "verticalLineLoad": {
+          "G1": 27859.237537,
+          "G2": 40322.580645,
+          "Qk": {
+            "value": 40322.580645,
+            "psi2": 0.3
+          }
+        }
+      },
+      {
+        "id": "wall-2",
+        "length": 6.4,
+        "height": 3.2,
+        "thickness": 0.36,
+        "material": {
+          "id": "muratura-tipo-7",
+          "category": "masonry",
+          "units": {
+            "force": "N",
+            "length": "m"
+          },
+          "confidenceFactor": 1.35,
+          "stateOfFactProperties": {
+            "fm": 3450000,
+            "fv0": 200000,
+            "tau0": 90000,
+            "E": 750000000,
+            "G": 250000000,
+            "density": 18000,
+            "mu": 0.577,
+            "phi": 0.767
+          },
+          "improvedMechanicalProperties": {
+            "fm": 3450000,
+            "fv0": 200000,
+            "tau0": 90000,
+            "E": 750000000,
+            "G": 250000000,
+            "density": 18000,
+            "mu": 0.577,
+            "phi": 0.767
+          }
+        },
+        "verticalLineLoad": {
+          "G1": 29687.5,
+          "G2": 42968.75,
+          "Qk": {
+            "value": 42968.75,
+            "psi2": 0.3
+          }
+        }
+      }
+    ],
+    "openings": [
+      {
+        "id": "apertura-1",
+        "x": 4.39,
+        "y": 0,
+        "width": 2.14,
+        "height": 3
+      },
+      {
+        "id": "apertura-2",
+        "x": 7.745,
+        "y": 0,
+        "width": 4.91,
+        "height": 3
+      }
+    ],
+    "settings": {
+      "normativePreset": "tuscany-openings-2022",
+      "stiffnessSelection": "mean",
+      "strengthSelection": "mean",
+      "stiffnessState": "cracked",
+      "useCorrectiveModifiers": false,
+      "divideByConfidenceFactor": false,
+      "residualPierWarningThreshold": 0
+    }
+  },
+  "design": {
+    "id": "faentina-progetto",
+    "label": "Progetto",
+    "units": {
+      "force": "N",
+      "length": "m"
+    },
+    "walls": [
+      {
+        "id": "wall-3",
+        "length": 6.82,
+        "height": 3.2,
+        "thickness": 0.36,
+        "material": {
+          "id": "muratura-tipo-7-intonaco-armato",
+          "category": "masonry",
+          "units": {
+            "force": "N",
+            "length": "m"
+          },
+          "confidenceFactor": 1.35,
+          "stateOfFactProperties": {
+            "fm": 5175000,
+            "fv0": 300000,
+            "tau0": 135000,
+            "E": 1125000000,
+            "G": 375000000,
+            "density": 18000,
+            "mu": 0.577,
+            "phi": 0.767
+          },
+          "improvedMechanicalProperties": {
+            "fm": 5175000,
+            "fv0": 300000,
+            "tau0": 135000,
+            "E": 1125000000,
+            "G": 375000000,
+            "density": 18000,
+            "mu": 0.577,
+            "phi": 0.767
+          }
+        },
+        "verticalLineLoad": {
+          "G1": 27859.237537,
+          "G2": 40322.580645,
+          "Qk": {
+            "value": 40322.580645,
+            "psi2": 0.3
+          }
+        }
+      },
+      {
+        "id": "wall-4",
+        "length": 6.4,
+        "height": 3.2,
+        "thickness": 0.36,
+        "material": {
+          "id": "muratura-tipo-7",
+          "category": "masonry",
+          "units": {
+            "force": "N",
+            "length": "m"
+          },
+          "confidenceFactor": 1.35,
+          "stateOfFactProperties": {
+            "fm": 3450000,
+            "fv0": 200000,
+            "tau0": 90000,
+            "E": 750000000,
+            "G": 250000000,
+            "density": 18000,
+            "mu": 0.577,
+            "phi": 0.767
+          },
+          "improvedMechanicalProperties": {
+            "fm": 3450000,
+            "fv0": 200000,
+            "tau0": 90000,
+            "E": 750000000,
+            "G": 250000000,
+            "density": 18000,
+            "mu": 0.577,
+            "phi": 0.767
+          }
+        },
+        "verticalLineLoad": {
+          "G1": 29687.5,
+          "G2": 42968.75,
+          "Qk": {
+            "value": 42968.75,
+            "psi2": 0.3
+          }
+        }
+      }
+    ],
+    "openings": [
+      {
+        "id": "apertura-2",
+        "x": 7.745,
+        "y": 0,
+        "width": 4.91,
+        "height": 3
+      },
+      {
+        "id": "apertura-3",
+        "x": 1.36,
+        "y": 0,
+        "width": 0.8,
+        "height": 2.1
+      },
+      {
+        "id": "apertura-4",
+        "x": 4.99,
+        "y": 0,
+        "width": 1.54,
+        "height": 3
+      }
+    ],
+    "settings": {
+      "normativePreset": "tuscany-openings-2022",
+      "stiffnessSelection": "mean",
+      "strengthSelection": "mean",
+      "stiffnessState": "cracked",
+      "useCorrectiveModifiers": false,
+      "divideByConfidenceFactor": false,
+      "residualPierWarningThreshold": 0
+    }
+  }
+}

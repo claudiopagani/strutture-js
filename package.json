@@ -15,6 +15,7 @@
     "example:rc-deflection-report:fixed-fixed": "node examples/write-rc-deflection-report-fixed-fixed.js",
     "example:beam-reports": "node examples/beam-reports.js",
     "example:beam-reports:write": "node examples/write-beam-reports.js",
+    "example:masonry-wall-openings:cerchiature": "node examples/write-masonry-wall-openings-cerchiature-reports.js",
     "validation": "node validation/run-validation.js"
   }
 }

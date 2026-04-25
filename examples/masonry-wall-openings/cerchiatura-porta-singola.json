@@ -1,0 +1,182 @@
+{
+  "schemaVersion": "masonry-wall-openings-cerchiature-input/v1",
+  "id": "cerchiatura-porta-singola",
+  "title": "Cerchiatura porta singola",
+  "description": "Esempio sintetico ricavato dalla struttura logica degli input MATLAB: un allineamento con apertura esistente e progetto con apertura allargata cerchiata.",
+  "notes": [
+    "Il confronto pre/post usa due modelli geometrici separati nello stesso file, come gli allineamenti attuale/progetto degli input MATLAB.",
+    "La verifica laterale aggregata somma i contributi dei maschi murari e delle cerchiature; il confronto FEM include le fasce murarie elastiche e la cerchiatura esplicita."
+  ],
+  "analyses": {
+    "staticOptions": {
+      "combinationType": "ULS_FUNDAMENTAL"
+    },
+    "seismicOptions": {
+      "topRotation": "free",
+      "controlPointCount": 80,
+      "shearDriftCapacity": 0.005
+    },
+    "femOptions": {
+      "topRotation": "free",
+      "includeSpandrels": true,
+      "controlPointCount": 80,
+      "sampleCount": 6
+    },
+    "comparisonCriteria": {
+      "stiffnessToleranceRatio": 0.15
+    }
+  },
+  "stateOfFact": {
+    "id": "cerchiatura-porta-singola-sdf",
+    "label": "Stato di fatto",
+    "units": {
+      "force": "kN",
+      "length": "m"
+    },
+    "walls": [
+      {
+        "id": "wall-a",
+        "length": 4.2,
+        "height": 3,
+        "thickness": 0.3,
+        "material": {
+          "id": "muratura-mista",
+          "category": "masonry",
+          "units": {
+            "force": "kN",
+            "length": "m"
+          },
+          "confidenceFactor": 1,
+          "stateOfFactProperties": {
+            "fm": 4200,
+            "tau0": 90,
+            "fv0": 160,
+            "E": 1500000,
+            "G": 500000,
+            "density": 18
+          },
+          "improvedMechanicalProperties": {
+            "fm": 4200,
+            "tau0": 90,
+            "fv0": 160,
+            "E": 1500000,
+            "G": 500000,
+            "density": 18
+          }
+        },
+        "verticalLineLoad": {
+          "G1": 18,
+          "G2": 6,
+          "Qk": 4
+        }
+      }
+    ],
+    "openings": [
+      {
+        "id": "door-existing",
+        "x": 2.95,
+        "y": 0,
+        "width": 0.85,
+        "height": 2.1,
+        "lintel": {
+          "bearingLength": 0.3,
+          "profileName": "IPE160",
+          "materialGrade": "S275"
+        }
+      }
+    ],
+    "settings": {
+      "normativePreset": "tuscany-openings-2022",
+      "stiffnessSelection": "mean",
+      "strengthSelection": "mean",
+      "stiffnessState": "cracked",
+      "useCorrectiveModifiers": true,
+      "divideByConfidenceFactor": false
+    }
+  },
+  "design": {
+    "id": "cerchiatura-porta-singola-progetto",
+    "label": "Progetto",
+    "units": {
+      "force": "kN",
+      "length": "m"
+    },
+    "walls": [
+      {
+        "id": "wall-a",
+        "length": 4.2,
+        "height": 3,
+        "thickness": 0.3,
+        "material": {
+          "id": "muratura-mista",
+          "category": "masonry",
+          "units": {
+            "force": "kN",
+            "length": "m"
+          },
+          "confidenceFactor": 1,
+          "stateOfFactProperties": {
+            "fm": 4200,
+            "tau0": 90,
+            "fv0": 160,
+            "E": 1500000,
+            "G": 500000,
+            "density": 18
+          },
+          "improvedMechanicalProperties": {
+            "fm": 4200,
+            "tau0": 90,
+            "fv0": 160,
+            "E": 1500000,
+            "G": 500000,
+            "density": 18
+          }
+        },
+        "verticalLineLoad": {
+          "G1": 18,
+          "G2": 6,
+          "Qk": 4
+        }
+      }
+    ],
+    "openings": [
+      {
+        "id": "door-framed",
+        "x": 2.25,
+        "y": 0,
+        "width": 1.65,
+        "height": 2.25,
+        "ringFrame": {
+          "profileWidthInPlane": 0.12,
+          "frameCount": 1,
+          "memberSections": {
+            "columns": "HEA120",
+            "topBeam": "HEA120",
+            "bottomBeam": "HEA120"
+          },
+          "memberOrientations": {
+            "columns": "strong-axis-in-plane",
+            "topBeam": "strong-axis-in-plane",
+            "bottomBeam": "strong-axis-in-plane"
+          },
+          "material": "S275",
+          "baseCondition": "pinned-base-with-bottom-beam",
+          "includeBottomBeam": true
+        },
+        "lintel": {
+          "bearingLength": 0.3,
+          "profileName": "HEA120",
+          "materialGrade": "S275"
+        }
+      }
+    ],
+    "settings": {
+      "normativePreset": "tuscany-openings-2022",
+      "stiffnessSelection": "mean",
+      "strengthSelection": "mean",
+      "stiffnessState": "cracked",
+      "useCorrectiveModifiers": true,
+      "divideByConfidenceFactor": false
+    }
+  }
+}

@@ -1,0 +1,544 @@
+{
+  "schemaVersion": "masonry-wall-openings-cerchiature-report/v1",
+  "id": "cerchiatura-porta-singola-cerchiature-report",
+  "title": "Cerchiatura porta singola",
+  "description": "Esempio sintetico ricavato dalla struttura logica degli input MATLAB: un allineamento con apertura esistente e progetto con apertura allargata cerchiata.",
+  "sourceInputFile": "examples/masonry-wall-openings/cerchiatura-porta-singola.json",
+  "notes": [
+    "Il confronto pre/post usa due modelli geometrici separati nello stesso file, come gli allineamenti attuale/progetto degli input MATLAB.",
+    "La verifica laterale aggregata somma i contributi dei maschi murari e delle cerchiature; il confronto FEM include le fasce murarie elastiche e la cerchiatura esplicita."
+  ],
+  "units": {
+    "force": "N",
+    "length": "m"
+  },
+  "states": {
+    "stateOfFact": {
+      "label": "Stato di fatto",
+      "modelId": "cerchiatura-porta-singola-sdf",
+      "static": {
+        "status": "ok",
+        "summary": "Static vertical analysis of the masonry wall alignment completed with pier tributary loads, optional ring-frame transfers and optional lintel beam checks.",
+        "combinationType": "ULS_FUNDAMENTAL",
+        "piers": [
+          {
+            "id": "cerchiatura-porta-singola-sdf-pier-1",
+            "wallId": "wall-a",
+            "x": 0,
+            "length": 2.95,
+            "effectiveLength": 2.95,
+            "axialForce": 131665.5,
+            "selfWeight": 47790,
+            "baseReaction": 179455.5,
+            "verification": {
+              "status": "ok",
+              "utilizationRatio": 0.135999,
+              "demand": 179455.5,
+              "capacity": 1319535,
+              "checkId": "masonry-pier-compression-stage-1"
+            }
+          },
+          {
+            "id": "cerchiatura-porta-singola-sdf-pier-2",
+            "wallId": "wall-a",
+            "x": 3.8,
+            "length": 0.4,
+            "effectiveLength": 0.4,
+            "axialForce": 33745.5,
+            "selfWeight": 6480,
+            "baseReaction": 40225.5,
+            "verification": {
+              "status": "ok",
+              "utilizationRatio": 0.224824,
+              "demand": 40225.5,
+              "capacity": 178920,
+              "checkId": "masonry-pier-compression-stage-1"
+            }
+          }
+        ],
+        "ringFrames": [],
+        "lintels": [
+          {
+            "id": "cerchiatura-porta-singola-sdf-lintel-door-existing",
+            "openingId": "door-existing",
+            "status": "ok",
+            "providerKind": "steel",
+            "span": 1.45,
+            "totalAppliedLoad": 36771,
+            "maxAbsBendingMoment": 9422.56875,
+            "maxAbsShearForce": 18385.5,
+            "maxAbsVerticalDisplacement": 0.001092,
+            "verification": {
+              "status": "ok",
+              "utilizationRatio": 0.290377,
+              "demand": 9422.56875,
+              "capacity": 32449.41,
+              "checkId": null
+            }
+          }
+        ],
+        "equilibrium": {
+          "appliedTopLineLoad": 161280,
+          "openingBandLoad": 4131,
+          "pierSelfWeight": 54270,
+          "baseReaction": 219681,
+          "difference": 0,
+          "ratio": 0,
+          "tolerance": 0.000001,
+          "ok": true
+        }
+      },
+      "lateralAggregated": {
+        "status": "ok",
+        "ks": 57895725.261803,
+        "Vy": 53241.464501,
+        "du": 0.015,
+        "peakBaseShear": 53570.842098,
+        "contributorCount": 2,
+        "pierCount": 2,
+        "ringFrameCount": 0,
+        "spandrelCount": 1
+      },
+      "femComparison": {
+        "status": "ok",
+        "frameType": "pier-spandrel",
+        "controlStrategy": "direct-global-frame-pushover",
+        "aggregated": {
+          "status": "ok",
+          "ks": 57895725.261803,
+          "Vy": 53241.464501,
+          "du": 0.015,
+          "peakBaseShear": 53570.842098,
+          "contributorCount": null,
+          "activePierCount": null,
+          "activeRingFrameCount": null,
+          "directMasonryPierCount": null,
+          "hingeCount": null
+        },
+        "fem": {
+          "status": "ok",
+          "ks": 70921115.874913,
+          "Vy": 54161.223222,
+          "du": 0.015079,
+          "peakBaseShear": 54211.446081,
+          "contributorCount": 1,
+          "activePierCount": 2,
+          "activeRingFrameCount": 0,
+          "directMasonryPierCount": 2,
+          "hingeCount": 3
+        },
+        "metrics": [
+          {
+            "id": "ks",
+            "label": "Rigidezza iniziale ks",
+            "aggregatedValue": 57895725.261803,
+            "femValue": 70921115.874913,
+            "delta": 13025390.61311,
+            "variationPercent": 22.498018
+          },
+          {
+            "id": "Vy",
+            "label": "Taglio equivalente Vy",
+            "aggregatedValue": 53241.464501,
+            "femValue": 54161.223222,
+            "delta": 919.758721,
+            "variationPercent": 1.727523
+          },
+          {
+            "id": "peakBaseShear",
+            "label": "Taglio massimo Vmax",
+            "aggregatedValue": 53570.842098,
+            "femValue": 54211.446081,
+            "delta": 640.603983,
+            "variationPercent": 1.195807
+          },
+          {
+            "id": "du",
+            "label": "Spostamento ultimo du",
+            "aggregatedValue": 0.015,
+            "femValue": 0.015079,
+            "delta": 0.000079,
+            "variationPercent": 0.526667
+          }
+        ],
+        "sampledCurvePoints": [
+          {
+            "id": "sample-1",
+            "displacement": 0,
+            "aggregatedBaseShear": 0,
+            "femBaseShear": 0,
+            "delta": 0,
+            "variationPercent": null
+          },
+          {
+            "id": "sample-2",
+            "displacement": 0.00092,
+            "aggregatedBaseShear": 51995.892,
+            "femBaseShear": 53480.99863,
+            "delta": 1485.10663,
+            "variationPercent": 2.8562
+          },
+          {
+            "id": "sample-3",
+            "displacement": 0.002143,
+            "aggregatedBaseShear": 52323.990633,
+            "femBaseShear": 54211.446081,
+            "delta": 1887.455448,
+            "variationPercent": 3.607247
+          },
+          {
+            "id": "sample-4",
+            "displacement": 0.004286,
+            "aggregatedBaseShear": 52898.929827,
+            "femBaseShear": 54211.446081,
+            "delta": 1312.516254,
+            "variationPercent": 2.481177
+          },
+          {
+            "id": "sample-5",
+            "displacement": 0.006429,
+            "aggregatedBaseShear": 53473.869021,
+            "femBaseShear": 54211.446081,
+            "delta": 737.57706,
+            "variationPercent": 1.379322
+          },
+          {
+            "id": "sample-6",
+            "displacement": 0.008571,
+            "aggregatedBaseShear": 53570.842098,
+            "femBaseShear": 54211.446081,
+            "delta": 640.603983,
+            "variationPercent": 1.195807
+          },
+          {
+            "id": "sample-7",
+            "displacement": 0.010714,
+            "aggregatedBaseShear": 53570.842098,
+            "femBaseShear": 54211.446081,
+            "delta": 640.603983,
+            "variationPercent": 1.195807
+          },
+          {
+            "id": "sample-8",
+            "displacement": 0.012857,
+            "aggregatedBaseShear": 53570.842098,
+            "femBaseShear": 54211.446081,
+            "delta": 640.603983,
+            "variationPercent": 1.195807
+          },
+          {
+            "id": "sample-9",
+            "displacement": 0.015,
+            "aggregatedBaseShear": 53570.842098,
+            "femBaseShear": 54211.446081,
+            "delta": 640.603983,
+            "variationPercent": 1.195807
+          }
+        ],
+        "reading": {
+          "outcome": "attention",
+          "headline": "Il pushover FEM globale dell'allineamento mostra scarti non trascurabili rispetto alla curva aggregata e richiede una lettura cauta.",
+          "governingMetricId": "ks",
+          "messages": [
+            "Scarto rigidezza ks: 22.498018%.",
+            "Scarto resistenza Vy: 1.727523%.",
+            "Scarto deformabilita du: 0.526667%."
+          ]
+        }
+      }
+    },
+    "design": {
+      "label": "Progetto",
+      "modelId": "cerchiatura-porta-singola-progetto",
+      "static": {
+        "status": "ok",
+        "summary": "Static vertical analysis of the masonry wall alignment completed with pier tributary loads, optional ring-frame transfers and optional lintel beam checks.",
+        "combinationType": "ULS_FUNDAMENTAL",
+        "piers": [
+          {
+            "id": "cerchiatura-porta-singola-progetto-pier-1",
+            "wallId": "wall-a",
+            "x": 0,
+            "length": 2.25,
+            "effectiveLength": 2.13,
+            "axialForce": 86400,
+            "selfWeight": 34506,
+            "baseReaction": 120906,
+            "verification": {
+              "status": "ok",
+              "utilizationRatio": 0.126902,
+              "demand": 120906,
+              "capacity": 952749,
+              "checkId": "masonry-pier-compression-stage-1"
+            }
+          },
+          {
+            "id": "cerchiatura-porta-singola-progetto-pier-2",
+            "wallId": "wall-a",
+            "x": 3.9,
+            "length": 0.3,
+            "effectiveLength": 0.18,
+            "axialForce": 11520,
+            "selfWeight": 2916,
+            "baseReaction": 14436,
+            "verification": {
+              "status": "ok",
+              "utilizationRatio": 0.179298,
+              "demand": 14436,
+              "capacity": 80514,
+              "checkId": "masonry-pier-compression-stage-1"
+            }
+          }
+        ],
+        "ringFrames": [
+          {
+            "id": "cerchiatura-porta-singola-progetto-ring-frame-door-framed",
+            "openingId": "door-framed",
+            "topLoad": 63360,
+            "openingBandLoad": 6682.5,
+            "totalInterceptedLoad": 70042.5,
+            "leftReaction": 35021.25,
+            "rightReaction": 35021.25
+          }
+        ],
+        "lintels": [
+          {
+            "id": "cerchiatura-porta-singola-progetto-lintel-door-framed",
+            "openingId": "door-framed",
+            "status": "ok",
+            "providerKind": "steel",
+            "span": 2.25,
+            "totalAppliedLoad": 70042.5,
+            "maxAbsBendingMoment": 24952.640625,
+            "maxAbsShearForce": 35021.25,
+            "maxAbsVerticalDisplacement": 0.01019,
+            "verification": {
+              "status": "ok",
+              "utilizationRatio": 0.797284,
+              "demand": 24952.640625,
+              "capacity": 31297.05,
+              "checkId": null
+            }
+          }
+        ],
+        "equilibrium": {
+          "appliedTopLineLoad": 161280,
+          "openingBandLoad": 6682.5,
+          "pierSelfWeight": 37422,
+          "baseReaction": 205384.5,
+          "difference": 0,
+          "ratio": 0,
+          "tolerance": 0.000001,
+          "ok": true
+        }
+      },
+      "lateralAggregated": {
+        "status": "ok",
+        "ks": 6646393.523258,
+        "Vy": 50640.078429,
+        "du": 0.015,
+        "peakBaseShear": 50302.261569,
+        "contributorCount": 3,
+        "pierCount": 2,
+        "ringFrameCount": 1,
+        "spandrelCount": 1
+      },
+      "femComparison": {
+        "status": "ok",
+        "frameType": "pier-spandrel-ring-frame",
+        "controlStrategy": "direct-global-frame-pushover",
+        "aggregated": {
+          "status": "ok",
+          "ks": 6646393.523258,
+          "Vy": 50640.078429,
+          "du": 0.015,
+          "peakBaseShear": 50302.261569,
+          "contributorCount": null,
+          "activePierCount": null,
+          "activeRingFrameCount": null,
+          "directMasonryPierCount": null,
+          "hingeCount": null
+        },
+        "fem": {
+          "status": "ok",
+          "ks": 6815029.327812,
+          "Vy": 50630.987105,
+          "du": 0.015144,
+          "peakBaseShear": 50377.675985,
+          "contributorCount": 1,
+          "activePierCount": 2,
+          "activeRingFrameCount": 1,
+          "directMasonryPierCount": 2,
+          "hingeCount": 3
+        },
+        "metrics": [
+          {
+            "id": "ks",
+            "label": "Rigidezza iniziale ks",
+            "aggregatedValue": 6646393.523258,
+            "femValue": 6815029.327812,
+            "delta": 168635.804554,
+            "variationPercent": 2.537253
+          },
+          {
+            "id": "Vy",
+            "label": "Taglio equivalente Vy",
+            "aggregatedValue": 50640.078429,
+            "femValue": 50630.987105,
+            "delta": -9.091324,
+            "variationPercent": -0.017953
+          },
+          {
+            "id": "peakBaseShear",
+            "label": "Taglio massimo Vmax",
+            "aggregatedValue": 50302.261569,
+            "femValue": 50377.675985,
+            "delta": 75.414416,
+            "variationPercent": 0.149923
+          },
+          {
+            "id": "du",
+            "label": "Spostamento ultimo du",
+            "aggregatedValue": 0.015,
+            "femValue": 0.015144,
+            "delta": 0.000144,
+            "variationPercent": 0.96
+          }
+        ],
+        "sampledCurvePoints": [
+          {
+            "id": "sample-1",
+            "displacement": 0,
+            "aggregatedBaseShear": 0,
+            "femBaseShear": 0,
+            "delta": 0,
+            "variationPercent": null
+          },
+          {
+            "id": "sample-2",
+            "displacement": 0.002143,
+            "aggregatedBaseShear": 30281.648722,
+            "femBaseShear": 30593.405633,
+            "delta": 311.75691,
+            "variationPercent": 1.029524
+          },
+          {
+            "id": "sample-3",
+            "displacement": 0.004286,
+            "aggregatedBaseShear": 33630.040498,
+            "femBaseShear": 33897.267482,
+            "delta": 267.226985,
+            "variationPercent": 0.794608
+          },
+          {
+            "id": "sample-4",
+            "displacement": 0.006429,
+            "aggregatedBaseShear": 36978.431701,
+            "femBaseShear": 37193.349183,
+            "delta": 214.917482,
+            "variationPercent": 0.581197
+          },
+          {
+            "id": "sample-5",
+            "displacement": 0.007619,
+            "aggregatedBaseShear": 38838.574707,
+            "femBaseShear": 39024.432437,
+            "delta": 185.85773,
+            "variationPercent": 0.478539
+          },
+          {
+            "id": "sample-6",
+            "displacement": 0.008571,
+            "aggregatedBaseShear": 40326.823619,
+            "femBaseShear": 40489.430883,
+            "delta": 162.607265,
+            "variationPercent": 0.403224
+          },
+          {
+            "id": "sample-7",
+            "displacement": 0.010714,
+            "aggregatedBaseShear": 43675.215108,
+            "femBaseShear": 43785.512584,
+            "delta": 110.297475,
+            "variationPercent": 0.25254
+          },
+          {
+            "id": "sample-8",
+            "displacement": 0.012857,
+            "aggregatedBaseShear": 47006.463764,
+            "femBaseShear": 47081.594284,
+            "delta": 75.13052,
+            "variationPercent": 0.15983
+          },
+          {
+            "id": "sample-9",
+            "displacement": 0.015,
+            "aggregatedBaseShear": 50302.261569,
+            "femBaseShear": 50376.141904,
+            "delta": 73.880335,
+            "variationPercent": 0.146873
+          }
+        ],
+        "reading": {
+          "outcome": "consistent",
+          "headline": "Il pushover FEM globale dell'allineamento riproduce la curva aggregata con scarti contenuti su rigidezza, resistenza e deformabilita.",
+          "governingMetricId": "aligned-response",
+          "messages": [
+            "Scarto rigidezza ks: 2.537253%.",
+            "Scarto resistenza Vy: -0.017953%.",
+            "Scarto deformabilita du: 0.96%."
+          ]
+        }
+      }
+    }
+  },
+  "prePostComparison": {
+    "checks": {
+      "stiffnessWithinTolerance": false,
+      "strengthNotReduced": false,
+      "displacementNotReduced": true
+    },
+    "deltas": {
+      "ks": -51249331.738545,
+      "Vy": -2601.386072,
+      "du": 0,
+      "peakBaseShear": -3268.580529
+    },
+    "variations": {
+      "ks": -88.520062,
+      "Vy": -4.886015,
+      "du": 0
+    },
+    "criteria": {
+      "stiffnessToleranceRatio": 0.15
+    }
+  },
+  "referenceComparison": null,
+  "warnings": [],
+  "assumptions": [
+    "Pier tributary top loads follow the requested width rule: gross pier width plus half of each adjacent opening only when that opening is not intercepted by a ring frame.",
+    "The masonry band above each opening is transferred to adjacent masonry piers when no ring frame is present, and to ring-frame jambs when the opening is framed in steel.",
+    "Lintel beam analysis is optional and does not alter the global equilibrium roll-up; only the transferred masonry-band load is added to pier axial forces in the current release.",
+    "The first mechanical-state resolver distinguishes state-of-fact and design by selecting stage-specific masonry property sets when available, while preserving the original wall geometry and load definition.",
+    "If no dedicated stage-specific property set exists, the resolver falls back to the best available base or direct masonry properties and traces that fallback in warnings.",
+    "Piers are extracted as wall-bounded vertical strips whose x-interval is not occupied by sanitized opening projections; their deformable height is resolved with the Dolce 30-degree construction when adjacent openings exist.",
+    "Spandrels are extracted as the masonry band directly above each sanitized opening, capped by the next overlapping opening above or by the local wall top.",
+    "The first seismic release follows the official minimum method described in todo.md: the global capacity curve is the sum of the individual pier and ring-frame contributions at a common top-displacement axis.",
+    "Pier axial forces are taken from the static vertical analysis in seismic combination: base reaction for flexural capacity and drift, mid-height compression for shear capacity.",
+    "Each masonry pier is represented by an elastic-perfectly-plastic contribution up to its drift-based ultimate displacement, followed by a drop to zero resistance.",
+    "The whole-alignment non-linear FEM workflow solves each masonry pier directly on the global equivalent frame, with a diaphragm master node tying the top ux DOFs through equal-DOF constraints.",
+    "Each masonry pier is represented through a unified macroelement with concentrated end plastic hinges and an internal perfectly plastic shear mechanism, so flexural and shear-governed responses stay in the same non-linear state model.",
+    "Explicit masonry spandrels are included as linear elastic Timoshenko elements in the global frame; their non-linear limit states are intentionally deferred while declared steel ring frames are solved as explicit plastic-hinge frame elements.",
+    "The wall-level FEM builder assembles one vertical 2D Timoshenko element with rigid end offsets for each extracted masonry pier and one linear elastic Timoshenko element for each assemblable masonry spandrel.",
+    "Each pier keeps a fully fixed base; the requested topRotation option is represented only through the rotational restraint at the corresponding top node.",
+    "The resulting frame is intended as the validation scaffold for wall alignments before introducing non-linear masonry spandrel mechanisms.",
+    "When includeDiaphragm is enabled, the builder creates a master diaphragm control node and ties the horizontal ux DOF of each pier top node and steel ring-frame top node to that master through equal-DOF constraints; vertical translations and rotations remain local.",
+    "Each explicit spandrel connects the top nodes of the two adjacent piers; the deformable portion is the opening width, while the distances from pier axes to opening edges are represented as rigid end offsets.",
+    "The non-linear displacement-control solver uses the augmented equilibrium system [Kt -Fext; c^T 0], so it can continue through singular tangents when the control equation regularizes the mechanism.",
+    "The displacement-control step length is currently constant; no adaptive step-size strategy or line search is applied yet.",
+    "The ring frame is modeled in 2D with Euler-Bernoulli frame members and three nodal DOFs per node: ux, uy, rz.",
+    "Plasticity is concentrated at member ends; members remain elastic between hinges and no geometric non-linearity is included in the first MVP.",
+    "The horizontal pushover load pattern is split equally between the two top nodes.",
+    "Each steel ring frame declared on an opening is assembled into the global FEM model with its own jamb and architrave elements; multiple identical parallel frames are condensed into one equivalent steel frame by scaling stiffness and plastic moments."
+  ]
+}

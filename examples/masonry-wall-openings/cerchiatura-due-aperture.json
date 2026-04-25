@@ -1,0 +1,206 @@
+{
+  "schemaVersion": "masonry-wall-openings-cerchiature-input/v1",
+  "id": "cerchiatura-due-aperture",
+  "title": "Cerchiatura su allineamento con due aperture",
+  "description": "Esempio con due aperture nello stato di fatto e progetto con una finestra invariata e una nuova apertura cerchiata.",
+  "notes": [
+    "Il caso serve a produrre fasce murarie nel telaio equivalente FEM e a verificare che la cerchiatura venga letta anche con piu aperture.",
+    "La cerchiatura e dichiarata con due telai paralleli, in analogia al parametro ntelai degli input MATLAB."
+  ],
+  "analyses": {
+    "staticOptions": {
+      "combinationType": "ULS_FUNDAMENTAL"
+    },
+    "seismicOptions": {
+      "topRotation": "free",
+      "controlPointCount": 90,
+      "shearDriftCapacity": 0.005
+    },
+    "femOptions": {
+      "topRotation": "free",
+      "includeSpandrels": true,
+      "controlPointCount": 90,
+      "sampleCount": 6
+    },
+    "comparisonCriteria": {
+      "stiffnessToleranceRatio": 0.15
+    }
+  },
+  "stateOfFact": {
+    "id": "cerchiatura-due-aperture-sdf",
+    "label": "Stato di fatto",
+    "units": {
+      "force": "kN",
+      "length": "m"
+    },
+    "walls": [
+      {
+        "id": "wall-a",
+        "length": 8.4,
+        "height": 3.2,
+        "thickness": 0.38,
+        "material": {
+          "id": "muratura-pietrame",
+          "category": "masonry",
+          "units": {
+            "force": "kN",
+            "length": "m"
+          },
+          "confidenceFactor": 1,
+          "stateOfFactProperties": {
+            "fm": 3500,
+            "tau0": 80,
+            "fv0": 140,
+            "E": 1400000,
+            "G": 460000,
+            "density": 18
+          },
+          "improvedMechanicalProperties": {
+            "fm": 3500,
+            "tau0": 80,
+            "fv0": 140,
+            "E": 1400000,
+            "G": 460000,
+            "density": 18
+          }
+        },
+        "verticalLineLoad": {
+          "G1": 32,
+          "G2": 8,
+          "Qk": 6
+        }
+      }
+    ],
+    "openings": [
+      {
+        "id": "window-left",
+        "x": 1.2,
+        "y": 1.05,
+        "width": 1,
+        "height": 1.35,
+        "lintel": {
+          "bearingLength": 0.3,
+          "profileName": "IPE160",
+          "materialGrade": "S275"
+        }
+      },
+      {
+        "id": "window-right",
+        "x": 4.85,
+        "y": 1.05,
+        "width": 1.1,
+        "height": 1.35,
+        "lintel": {
+          "bearingLength": 0.3,
+          "profileName": "IPE160",
+          "materialGrade": "S275"
+        }
+      }
+    ],
+    "settings": {
+      "normativePreset": "tuscany-openings-2022",
+      "stiffnessSelection": "mean",
+      "strengthSelection": "mean",
+      "stiffnessState": "cracked",
+      "useCorrectiveModifiers": true,
+      "divideByConfidenceFactor": false
+    }
+  },
+  "design": {
+    "id": "cerchiatura-due-aperture-progetto",
+    "label": "Progetto",
+    "units": {
+      "force": "kN",
+      "length": "m"
+    },
+    "walls": [
+      {
+        "id": "wall-a",
+        "length": 8.4,
+        "height": 3.2,
+        "thickness": 0.38,
+        "material": {
+          "id": "muratura-pietrame",
+          "category": "masonry",
+          "units": {
+            "force": "kN",
+            "length": "m"
+          },
+          "confidenceFactor": 1,
+          "stateOfFactProperties": {
+            "fm": 3500,
+            "tau0": 80,
+            "fv0": 140,
+            "E": 1400000,
+            "G": 460000,
+            "density": 18
+          },
+          "improvedMechanicalProperties": {
+            "fm": 3500,
+            "tau0": 80,
+            "fv0": 140,
+            "E": 1400000,
+            "G": 460000,
+            "density": 18
+          }
+        },
+        "verticalLineLoad": {
+          "G1": 32,
+          "G2": 8,
+          "Qk": 6
+        }
+      }
+    ],
+    "openings": [
+      {
+        "id": "window-left",
+        "x": 1.2,
+        "y": 1.05,
+        "width": 1,
+        "height": 1.35,
+        "lintel": {
+          "bearingLength": 0.3,
+          "profileName": "IPE160",
+          "materialGrade": "S275"
+        }
+      },
+      {
+        "id": "opening-framed",
+        "x": 4.2,
+        "y": 0.55,
+        "width": 1.95,
+        "height": 2.15,
+        "ringFrame": {
+          "profileWidthInPlane": 0.16,
+          "frameCount": 2,
+          "memberSections": {
+            "columns": "HEA160",
+            "topBeam": "HEA160",
+            "bottomBeam": "HEA160"
+          },
+          "memberOrientations": {
+            "columns": "strong-axis-in-plane",
+            "topBeam": "strong-axis-in-plane",
+            "bottomBeam": "strong-axis-in-plane"
+          },
+          "material": "S275",
+          "baseCondition": "pinned-base-with-bottom-beam",
+          "includeBottomBeam": true
+        },
+        "lintel": {
+          "bearingLength": 0.3,
+          "profileName": "HEA160",
+          "materialGrade": "S275"
+        }
+      }
+    ],
+    "settings": {
+      "normativePreset": "tuscany-openings-2022",
+      "stiffnessSelection": "mean",
+      "strengthSelection": "mean",
+      "stiffnessState": "cracked",
+      "useCorrectiveModifiers": true,
+      "divideByConfidenceFactor": false
+    }
+  }
+}

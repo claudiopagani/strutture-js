@@ -1,0 +1,625 @@
+{
+  "schemaVersion": "masonry-wall-openings-cerchiature-report/v1",
+  "id": "viabolognese-cerchiature-report",
+  "title": "Via Bolognese",
+  "description": "Esempio ricostruito da viaBolognese_cerch_rev04.txt. Le coordinate delle aperture sono convertite da centro apertura a spigolo inferiore sinistro per il modello JS.",
+  "sourceInputFile": "examples/masonry-wall-openings/viabolognese.json",
+  "notes": [
+    "Input MATLAB originale: viaBolognese_cerch_rev04.txt.",
+    "Risultati di riferimento estratti da viabolognese_cerch_rev04.docx.",
+    "I carichi del file MATLAB sono totali per muro; qui sono convertiti in carichi lineari dividendo per la lunghezza del muro."
+  ],
+  "units": {
+    "force": "N",
+    "length": "m"
+  },
+  "states": {
+    "stateOfFact": {
+      "label": "Stato di fatto",
+      "modelId": "viabolognese-sdf",
+      "static": {
+        "status": "not-verified",
+        "summary": "Static vertical analysis of the masonry wall alignment completed with pier tributary loads, optional ring-frame transfers and optional lintel beam checks.",
+        "combinationType": "ULS_FUNDAMENTAL",
+        "piers": [
+          {
+            "id": "viabolognese-sdf-pier-1",
+            "wallId": "wall-1",
+            "x": 0,
+            "length": 3.1,
+            "effectiveLength": 3.1,
+            "axialForce": 131479.773916,
+            "selfWeight": 20088,
+            "baseReaction": 151567.773916,
+            "verification": {
+              "status": "not-verified",
+              "utilizationRatio": 1.25,
+              "demand": 25,
+              "capacity": 20,
+              "checkId": "masonry-pier-slenderness"
+            }
+          },
+          {
+            "id": "viabolognese-sdf-pier-2",
+            "wallId": "wall-1",
+            "x": 3.9,
+            "length": 0.24,
+            "effectiveLength": 0.24,
+            "axialForce": 24677.426088,
+            "selfWeight": 1555.2,
+            "baseReaction": 26232.626088,
+            "verification": {
+              "status": "not-verified",
+              "utilizationRatio": 1.25,
+              "demand": 25,
+              "capacity": 20,
+              "checkId": "masonry-pier-slenderness"
+            }
+          },
+          {
+            "id": "viabolognese-sdf-pier-3",
+            "wallId": "wall-2",
+            "x": 4.14,
+            "length": 4.04,
+            "effectiveLength": 4.04,
+            "axialForce": 154602.000001,
+            "selfWeight": 26179.2,
+            "baseReaction": 180781.200001,
+            "verification": {
+              "status": "not-verified",
+              "utilizationRatio": 1.25,
+              "demand": 25,
+              "capacity": 20,
+              "checkId": "masonry-pier-slenderness"
+            }
+          }
+        ],
+        "ringFrames": [],
+        "lintels": [],
+        "equilibrium": {
+          "appliedTopLineLoad": 309204.000005,
+          "openingBandLoad": 1555.2,
+          "pierSelfWeight": 47822.4,
+          "baseReaction": 358581.600005,
+          "difference": 0,
+          "ratio": 0,
+          "tolerance": 0.000001,
+          "ok": true
+        }
+      },
+      "lateralAggregated": {
+        "status": "ok",
+        "ks": 33565290.96582,
+        "Vy": 101413.55668,
+        "du": 0.03,
+        "peakBaseShear": 101675.815371,
+        "contributorCount": 3,
+        "pierCount": 3,
+        "ringFrameCount": 0,
+        "spandrelCount": 1
+      },
+      "femComparison": {
+        "status": "ok",
+        "frameType": "pier-spandrel",
+        "controlStrategy": "direct-global-frame-pushover",
+        "aggregated": {
+          "status": "ok",
+          "ks": 33565290.96582,
+          "Vy": 101413.55668,
+          "du": 0.03,
+          "peakBaseShear": 101675.815371,
+          "contributorCount": null,
+          "activePierCount": null,
+          "activeRingFrameCount": null,
+          "directMasonryPierCount": null,
+          "hingeCount": null
+        },
+        "fem": {
+          "status": "ok",
+          "ks": 35459958.758358,
+          "Vy": 101986.831522,
+          "du": 0.029735,
+          "peakBaseShear": 102211.067054,
+          "contributorCount": 1,
+          "activePierCount": 3,
+          "activeRingFrameCount": 0,
+          "directMasonryPierCount": 3,
+          "hingeCount": 4
+        },
+        "metrics": [
+          {
+            "id": "ks",
+            "label": "Rigidezza iniziale ks",
+            "aggregatedValue": 33565290.96582,
+            "femValue": 35459958.758358,
+            "delta": 1894667.792538,
+            "variationPercent": 5.644723
+          },
+          {
+            "id": "Vy",
+            "label": "Taglio equivalente Vy",
+            "aggregatedValue": 101413.55668,
+            "femValue": 101986.831522,
+            "delta": 573.274842,
+            "variationPercent": 0.565284
+          },
+          {
+            "id": "peakBaseShear",
+            "label": "Taglio massimo Vmax",
+            "aggregatedValue": 101675.815371,
+            "femValue": 102211.067054,
+            "delta": 535.251683,
+            "variationPercent": 0.52643
+          },
+          {
+            "id": "du",
+            "label": "Spostamento ultimo du",
+            "aggregatedValue": 0.03,
+            "femValue": 0.029735,
+            "delta": -0.000265,
+            "variationPercent": -0.883333
+          }
+        ],
+        "sampledCurvePoints": [
+          {
+            "id": "sample-1",
+            "displacement": 0,
+            "aggregatedBaseShear": 0,
+            "femBaseShear": 0,
+            "delta": 0,
+            "variationPercent": null
+          },
+          {
+            "id": "sample-2",
+            "displacement": 0.003021,
+            "aggregatedBaseShear": 97347.271412,
+            "femBaseShear": 101398.622569,
+            "delta": 4051.351156,
+            "variationPercent": 4.161751
+          },
+          {
+            "id": "sample-3",
+            "displacement": 0.004286,
+            "aggregatedBaseShear": 101221.047272,
+            "femBaseShear": 101543.876566,
+            "delta": 322.829294,
+            "variationPercent": 0.318935
+          },
+          {
+            "id": "sample-4",
+            "displacement": 0.008571,
+            "aggregatedBaseShear": 101301.537201,
+            "femBaseShear": 101995.206668,
+            "delta": 693.669467,
+            "variationPercent": 0.684757
+          },
+          {
+            "id": "sample-5",
+            "displacement": 0.012857,
+            "aggregatedBaseShear": 101382.02713,
+            "femBaseShear": 102045.44039,
+            "delta": 663.413259,
+            "variationPercent": 0.65437
+          },
+          {
+            "id": "sample-6",
+            "displacement": 0.017143,
+            "aggregatedBaseShear": 101462.517059,
+            "femBaseShear": 102095.66238,
+            "delta": 633.145321,
+            "variationPercent": 0.624019
+          },
+          {
+            "id": "sample-7",
+            "displacement": 0.021429,
+            "aggregatedBaseShear": 101543.006988,
+            "femBaseShear": 102145.896101,
+            "delta": 602.889113,
+            "variationPercent": 0.593728
+          },
+          {
+            "id": "sample-8",
+            "displacement": 0.025714,
+            "aggregatedBaseShear": 101623.496917,
+            "femBaseShear": 102196.118091,
+            "delta": 572.621174,
+            "variationPercent": 0.563473
+          },
+          {
+            "id": "sample-9",
+            "displacement": 0.03,
+            "aggregatedBaseShear": 101675.815371,
+            "femBaseShear": 306.94122,
+            "delta": -101368.874151,
+            "variationPercent": -99.698118
+          }
+        ],
+        "reading": {
+          "outcome": "consistent",
+          "headline": "Il pushover FEM globale dell'allineamento riproduce la curva aggregata con scarti contenuti su rigidezza, resistenza e deformabilita.",
+          "governingMetricId": "aligned-response",
+          "messages": [
+            "Scarto rigidezza ks: 5.644723%.",
+            "Scarto resistenza Vy: 0.565284%.",
+            "Scarto deformabilita du: -0.883333%."
+          ]
+        }
+      }
+    },
+    "design": {
+      "label": "Progetto",
+      "modelId": "viabolognese-progetto",
+      "static": {
+        "status": "not-verified",
+        "summary": "Static vertical analysis of the masonry wall alignment completed with pier tributary loads, optional ring-frame transfers and optional lintel beam checks.",
+        "combinationType": "ULS_FUNDAMENTAL",
+        "piers": [
+          {
+            "id": "viabolognese-progetto-pier-1",
+            "wallId": "wall-3",
+            "x": 0,
+            "length": 0.7,
+            "effectiveLength": 0.46,
+            "axialForce": 26140.434783,
+            "selfWeight": 2980.8,
+            "baseReaction": 29121.234783,
+            "verification": {
+              "status": "not-verified",
+              "utilizationRatio": 1.25,
+              "demand": 25,
+              "capacity": 20,
+              "checkId": "masonry-pier-slenderness"
+            }
+          },
+          {
+            "id": "viabolognese-progetto-pier-2",
+            "wallId": "wall-3",
+            "x": 3.44,
+            "length": 0.7,
+            "effectiveLength": 0.46,
+            "axialForce": 26140.434783,
+            "selfWeight": 2980.8,
+            "baseReaction": 29121.234783,
+            "verification": {
+              "status": "not-verified",
+              "utilizationRatio": 1.25,
+              "demand": 25,
+              "capacity": 20,
+              "checkId": "masonry-pier-slenderness"
+            }
+          },
+          {
+            "id": "viabolognese-progetto-pier-3",
+            "wallId": "wall-2",
+            "x": 4.14,
+            "length": 4.04,
+            "effectiveLength": 4.04,
+            "axialForce": 154602.000001,
+            "selfWeight": 26179.2,
+            "baseReaction": 180781.200001,
+            "verification": {
+              "status": "not-verified",
+              "utilizationRatio": 1.25,
+              "demand": 25,
+              "capacity": 20,
+              "checkId": "masonry-pier-slenderness"
+            }
+          }
+        ],
+        "ringFrames": [
+          {
+            "id": "viabolognese-progetto-ring-frame-apertura-2",
+            "openingId": "apertura-2",
+            "topLoad": 102321.130437,
+            "openingBandLoad": 2367.36,
+            "totalInterceptedLoad": 104688.490437,
+            "leftReaction": 52344.245219,
+            "rightReaction": 52344.245219
+          }
+        ],
+        "lintels": [
+          {
+            "id": "viabolognese-progetto-lintel-apertura-2",
+            "openingId": "apertura-2",
+            "status": "ok",
+            "providerKind": "steel",
+            "span": 3.34,
+            "totalAppliedLoad": 104688.490437,
+            "maxAbsBendingMoment": 51559.08154,
+            "maxAbsShearForce": 52344.245219,
+            "maxAbsVerticalDisplacement": 0.007678,
+            "verification": {
+              "status": "ok",
+              "utilizationRatio": 0.45836,
+              "demand": 51559.08154,
+              "capacity": 112486.05,
+              "checkId": null
+            }
+          }
+        ],
+        "equilibrium": {
+          "appliedTopLineLoad": 309204.000005,
+          "openingBandLoad": 2367.36,
+          "pierSelfWeight": 32140.8,
+          "baseReaction": 343712.160005,
+          "difference": 0,
+          "ratio": 0,
+          "tolerance": 0.000001,
+          "ok": true
+        }
+      },
+      "lateralAggregated": {
+        "status": "ok",
+        "ks": 15798194.369978,
+        "Vy": 473961.629294,
+        "du": 0.030001,
+        "peakBaseShear": 407768.319444,
+        "contributorCount": 4,
+        "pierCount": 3,
+        "ringFrameCount": 1,
+        "spandrelCount": 1
+      },
+      "femComparison": {
+        "status": "ok",
+        "frameType": "pier-spandrel-ring-frame",
+        "controlStrategy": "direct-global-frame-pushover",
+        "aggregated": {
+          "status": "ok",
+          "ks": 15798194.369978,
+          "Vy": 473961.629294,
+          "du": 0.030001,
+          "peakBaseShear": 407768.319444,
+          "contributorCount": null,
+          "activePierCount": null,
+          "activeRingFrameCount": null,
+          "directMasonryPierCount": null,
+          "hingeCount": null
+        },
+        "fem": {
+          "status": "ok",
+          "ks": 15846446.857747,
+          "Vy": 475409.252179,
+          "du": 0.030001,
+          "peakBaseShear": 408577.834466,
+          "contributorCount": 1,
+          "activePierCount": 3,
+          "activeRingFrameCount": 1,
+          "directMasonryPierCount": 3,
+          "hingeCount": 7
+        },
+        "metrics": [
+          {
+            "id": "ks",
+            "label": "Rigidezza iniziale ks",
+            "aggregatedValue": 15798194.369978,
+            "femValue": 15846446.857747,
+            "delta": 48252.487769,
+            "variationPercent": 0.30543
+          },
+          {
+            "id": "Vy",
+            "label": "Taglio equivalente Vy",
+            "aggregatedValue": 473961.629294,
+            "femValue": 475409.252179,
+            "delta": 1447.622885,
+            "variationPercent": 0.30543
+          },
+          {
+            "id": "peakBaseShear",
+            "label": "Taglio massimo Vmax",
+            "aggregatedValue": 407768.319444,
+            "femValue": 408577.834466,
+            "delta": 809.515022,
+            "variationPercent": 0.198523
+          },
+          {
+            "id": "du",
+            "label": "Spostamento ultimo du",
+            "aggregatedValue": 0.030001,
+            "femValue": 0.030001,
+            "delta": 0,
+            "variationPercent": 0
+          }
+        ],
+        "sampledCurvePoints": [
+          {
+            "id": "sample-1",
+            "displacement": 0,
+            "aggregatedBaseShear": 0,
+            "femBaseShear": 0,
+            "delta": 0,
+            "variationPercent": null
+          },
+          {
+            "id": "sample-2",
+            "displacement": 0.004286,
+            "aggregatedBaseShear": 113120.750782,
+            "femBaseShear": 115162.108894,
+            "delta": 2041.358113,
+            "variationPercent": 1.804583
+          },
+          {
+            "id": "sample-3",
+            "displacement": 0.008572,
+            "aggregatedBaseShear": 167226.079911,
+            "femBaseShear": 168631.204227,
+            "delta": 1405.124316,
+            "variationPercent": 0.840254
+          },
+          {
+            "id": "sample-4",
+            "displacement": 0.012858,
+            "aggregatedBaseShear": 220906.492142,
+            "femBaseShear": 221719.549866,
+            "delta": 813.057724,
+            "variationPercent": 0.368055
+          },
+          {
+            "id": "sample-5",
+            "displacement": 0.017143,
+            "aggregatedBaseShear": 273989.524374,
+            "femBaseShear": 274795.497066,
+            "delta": 805.972692,
+            "variationPercent": 0.294162
+          },
+          {
+            "id": "sample-6",
+            "displacement": 0.021429,
+            "aggregatedBaseShear": 327072.554607,
+            "femBaseShear": 327883.842704,
+            "delta": 811.288097,
+            "variationPercent": 0.248045
+          },
+          {
+            "id": "sample-7",
+            "displacement": 0.025715,
+            "aggregatedBaseShear": 380155.586839,
+            "femBaseShear": 380959.789904,
+            "delta": 804.203065,
+            "variationPercent": 0.211546
+          },
+          {
+            "id": "sample-8",
+            "displacement": 0.030001,
+            "aggregatedBaseShear": 346110.924,
+            "femBaseShear": 346110.923733,
+            "delta": -0.000267,
+            "variationPercent": 0
+          }
+        ],
+        "reading": {
+          "outcome": "consistent",
+          "headline": "Il pushover FEM globale dell'allineamento riproduce la curva aggregata con scarti contenuti su rigidezza, resistenza e deformabilita.",
+          "governingMetricId": "aligned-response",
+          "messages": [
+            "Scarto rigidezza ks: 0.30543%.",
+            "Scarto resistenza Vy: 0.30543%.",
+            "Scarto deformabilita du: 0%."
+          ]
+        }
+      }
+    }
+  },
+  "prePostComparison": {
+    "checks": {
+      "stiffnessWithinTolerance": false,
+      "strengthNotReduced": true,
+      "displacementNotReduced": true
+    },
+    "deltas": {
+      "ks": -17767096.595842,
+      "Vy": 372548.072614,
+      "du": 0.000001,
+      "peakBaseShear": 306092.504073
+    },
+    "variations": {
+      "ks": -52.932944,
+      "Vy": 367.355297,
+      "du": 0.003333
+    },
+    "criteria": {
+      "stiffnessToleranceRatio": 0.15
+    }
+  },
+  "referenceComparison": {
+    "source": "viabolognese_cerch_rev04.docx",
+    "rows": [
+      {
+        "state": "Stato di fatto",
+        "metricId": "ks",
+        "metricLabel": "Rigidezza ke",
+        "referenceValue": 38.26,
+        "currentValue": 33.565291,
+        "delta": -4.694709,
+        "variationPercent": -12.270541
+      },
+      {
+        "state": "Stato di fatto",
+        "metricId": "Vy",
+        "metricLabel": "Resistenza Vy",
+        "referenceValue": 113.16,
+        "currentValue": 101.413557,
+        "delta": -11.746443,
+        "variationPercent": -10.380385
+      },
+      {
+        "state": "Stato di fatto",
+        "metricId": "du",
+        "metricLabel": "Spostamento du",
+        "referenceValue": 30,
+        "currentValue": 30,
+        "delta": 0,
+        "variationPercent": 0
+      },
+      {
+        "state": "Progetto",
+        "metricId": "ks",
+        "metricLabel": "Rigidezza ke",
+        "referenceValue": 33.84,
+        "currentValue": 15.798194,
+        "delta": -18.041806,
+        "variationPercent": -53.315028
+      },
+      {
+        "state": "Progetto",
+        "metricId": "Vy",
+        "metricLabel": "Resistenza Vy",
+        "referenceValue": 362.11,
+        "currentValue": 473.961629,
+        "delta": 111.851629,
+        "variationPercent": 30.888854
+      },
+      {
+        "state": "Progetto",
+        "metricId": "du",
+        "metricLabel": "Spostamento du",
+        "referenceValue": 37.5,
+        "currentValue": 30.001,
+        "delta": -7.499,
+        "variationPercent": -19.997333
+      }
+    ],
+    "ringFrames": [
+      {
+        "state": "Progetto",
+        "profile": "HEB200",
+        "frameCount": 2,
+        "heightM": 2.65,
+        "keKNPerMm": 12.65,
+        "VyKN": 304.74
+      }
+    ]
+  },
+  "warnings": [
+    "Pier viabolognese-sdf-pier-2 reached a yield displacement beyond its drift capacity; the elastic branch was capped at 95% of du to keep a consistent first-release contribution curve.",
+    "Opening apertura-2 scales the steel ring-frame contribution by 2 because multiple identical parallel frames were declared through the ringFrame count.",
+    "The capacity curve never dropped by the requested 20% from peak resistance, so the last available point was used as ultimate displacement.",
+    "Equivalent-energy bilinearization reached a negative quadratic radicand; the solution was clamped to preserve a valid bilinear curve."
+  ],
+  "assumptions": [
+    "Pier tributary top loads follow the requested width rule: gross pier width plus half of each adjacent opening only when that opening is not intercepted by a ring frame.",
+    "The masonry band above each opening is transferred to adjacent masonry piers when no ring frame is present, and to ring-frame jambs when the opening is framed in steel.",
+    "Lintel beam analysis is optional and does not alter the global equilibrium roll-up; only the transferred masonry-band load is added to pier axial forces in the current release.",
+    "The first mechanical-state resolver distinguishes state-of-fact and design by selecting stage-specific masonry property sets when available, while preserving the original wall geometry and load definition.",
+    "If no dedicated stage-specific property set exists, the resolver falls back to the best available base or direct masonry properties and traces that fallback in warnings.",
+    "Piers are extracted as wall-bounded vertical strips whose x-interval is not occupied by sanitized opening projections; their deformable height is resolved with the Dolce 30-degree construction when adjacent openings exist.",
+    "Spandrels are extracted as the masonry band directly above each sanitized opening, capped by the next overlapping opening above or by the local wall top.",
+    "The first seismic release follows the official minimum method described in todo.md: the global capacity curve is the sum of the individual pier and ring-frame contributions at a common top-displacement axis.",
+    "Pier axial forces are taken from the static vertical analysis in seismic combination: base reaction for flexural capacity and drift, mid-height compression for shear capacity.",
+    "Each masonry pier is represented by an elastic-perfectly-plastic contribution up to its drift-based ultimate displacement, followed by a drop to zero resistance.",
+    "The whole-alignment non-linear FEM workflow solves each masonry pier directly on the global equivalent frame, with a diaphragm master node tying the top ux DOFs through equal-DOF constraints.",
+    "Each masonry pier is represented through a unified macroelement with concentrated end plastic hinges and an internal perfectly plastic shear mechanism, so flexural and shear-governed responses stay in the same non-linear state model.",
+    "Explicit masonry spandrels are included as linear elastic Timoshenko elements in the global frame; their non-linear limit states are intentionally deferred while declared steel ring frames are solved as explicit plastic-hinge frame elements.",
+    "The wall-level FEM builder assembles one vertical 2D Timoshenko element with rigid end offsets for each extracted masonry pier and one linear elastic Timoshenko element for each assemblable masonry spandrel.",
+    "Each pier keeps a fully fixed base; the requested topRotation option is represented only through the rotational restraint at the corresponding top node.",
+    "The resulting frame is intended as the validation scaffold for wall alignments before introducing non-linear masonry spandrel mechanisms.",
+    "When includeDiaphragm is enabled, the builder creates a master diaphragm control node and ties the horizontal ux DOF of each pier top node and steel ring-frame top node to that master through equal-DOF constraints; vertical translations and rotations remain local.",
+    "Each explicit spandrel connects the top nodes of the two adjacent piers; the deformable portion is the opening width, while the distances from pier axes to opening edges are represented as rigid end offsets.",
+    "The non-linear displacement-control solver uses the augmented equilibrium system [Kt -Fext; c^T 0], so it can continue through singular tangents when the control equation regularizes the mechanism.",
+    "The displacement-control step length is currently constant; no adaptive step-size strategy or line search is applied yet.",
+    "The ring frame is modeled in 2D with Euler-Bernoulli frame members and three nodal DOFs per node: ux, uy, rz.",
+    "Plasticity is concentrated at member ends; members remain elastic between hinges and no geometric non-linearity is included in the first MVP.",
+    "The horizontal pushover load pattern is split equally between the two top nodes.",
+    "Each steel ring frame declared on an opening is assembled into the global FEM model with its own jamb and architrave elements; multiple identical parallel frames are condensed into one equivalent steel frame by scaling stiffness and plastic moments."
+  ]
+}

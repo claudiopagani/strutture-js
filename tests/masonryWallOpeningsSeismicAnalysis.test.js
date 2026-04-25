@@ -172,6 +172,58 @@ test("aggregated seismic analysis adds the steel ring-frame pushover contributio
   );
 });
 
+test("aggregated seismic analysis includes the ring frame in global stiffness and strength metrics", () => {
+  const masonryOnlyResult = new AlignmentSeismicAggregatedAnalysis().analyze({
+    alignment: createSeismicAlignment({
+      id: "alignment-seismic-ring-frame-metric-baseline",
+    }),
+  });
+  const ringFrameResult = new AlignmentSeismicAggregatedAnalysis().analyze({
+    alignment: createSeismicAlignment({
+      id: "alignment-seismic-ring-frame-metrics",
+      openings: [
+        {
+          id: "window-a",
+          x: 2,
+          y: 1,
+          width: 1,
+          height: 1,
+          ringFrame: {
+            memberSections: {
+              columns: "HEA200",
+              topBeam: "HEA200",
+            },
+            material: "S275",
+            baseCondition: "fixed-base",
+          },
+        },
+      ],
+    }),
+  });
+
+  assert.equal(ringFrameResult.metadata.ringFrameCount, 1);
+  assert.equal(
+    ringFrameResult.metadata.contributorCount,
+    masonryOnlyResult.metadata.contributorCount + 1,
+  );
+  assert.equal(ringFrameResult.outputs.ringFrames.length, 1);
+  assert.equal(ringFrameResult.outputs.ringFrames[0].status, "ok");
+  assert.ok(ringFrameResult.outputs.ringFrames[0].maxBaseShear > 0);
+  assert.ok(ringFrameResult.outputs.ringFrames[0].curvePoints.length > 1);
+  assert.ok(
+    ringFrameResult.outputs.bilinearization.ks >
+      masonryOnlyResult.outputs.bilinearization.ks,
+  );
+  assert.ok(
+    ringFrameResult.outputs.bilinearization.Vy >
+      masonryOnlyResult.outputs.bilinearization.Vy,
+  );
+  assert.ok(
+    ringFrameResult.outputs.capacityCurve.maxBaseShear >
+      masonryOnlyResult.outputs.capacityCurve.maxBaseShear,
+  );
+});
+
 test("masonry wall openings application exposes seismic-aggregated-design as a successful workflow", () => {
   const application = new MasonryWallOpeningsApplication();
   const result = application.run({
