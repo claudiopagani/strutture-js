@@ -137,4 +137,18 @@ export function convertPointCoordinates(point, resolver, coordinateKeys = ["x", 
   }, { ...point });
 }
 
+export function convertUnitProperties(source = {}, converters = {}) {
+  const payload = source ?? {};
+  const converted = {};
+
+  for (const [key, converter] of Object.entries(converters)) {
+    converted[key] = converter(payload[key]);
+  }
+
+  return {
+    ...payload,
+    ...converted,
+  };
+}
+
 export { FORCE_UNIT_FACTORS, LENGTH_UNIT_FACTORS };

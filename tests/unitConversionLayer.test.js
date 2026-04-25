@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   LayerLoad,
+  MasonryPierModel,
   ReinforcedConcreteSection,
   ReinforcedConcreteSectionApplication,
   ReinforcedConcreteSectionModel,
@@ -11,6 +12,8 @@ import {
   SteelMaterial,
   TimberConcreteCompositeBeamApplication,
   TimberConcreteCompositeBeamModel,
+  TimberXlamCompositeBeamModel,
+  XlamOutOfPlanePanelModel,
   createNTC2018ConcreteMaterial,
   createNTC2018ReinforcementSteelMaterial,
   createNTC2018TimberMaterial,
@@ -207,6 +210,134 @@ test("serializable domain objects expose internal and source unit systems", () =
   assert.deepEqual(section.metadata.sourceUnitSystem, sourceUnits);
   assert.deepEqual(rebar.toJSON().units, legacyUnits);
   assert.deepEqual(rebar.metadata.sourceUnitSystem, sourceUnits);
+});
+
+test("public models normalize cm and kN inputs to their internal unit systems", () => {
+  const units = { force: "kN", length: "cm" };
+  const rcModel = new ReinforcedConcreteSectionModel({
+    id: "rc-cm-kn",
+    units,
+    actions: {
+      nEd: -12,
+      axialForce: 4,
+      mEd: 3,
+      mxEd: 2,
+      myEd: -1,
+      nValues: [-1, 0.5],
+    },
+    referencePoint: {
+      type: "custom",
+      coordinates: { y: 4, z: 5 },
+    },
+  });
+  const pierModel = new MasonryPierModel({
+    id: "pier-cm-kn",
+    units,
+    geometry: {
+      height: 300,
+      length: 120,
+      thickness: 30,
+      baseX: 5,
+      transverseWallSpacing: 600,
+    },
+    material: {
+      units,
+      fm: 0.2,
+      tau0: 0.01,
+      E: 800,
+      G: 300,
+      w: 0.000018,
+    },
+    actions: {
+      axialForce: -25,
+      outOfPlaneMoment: 12,
+    },
+    design: {
+      constructionEccentricity: 2,
+    },
+    idealization: {
+      rigidEndZoneTop: 10,
+    },
+  });
+
+  approx(rcModel.actions.nEd, -12000);
+  approx(rcModel.actions.axialForce, 4000);
+  approx(rcModel.actions.mEd, 30000);
+  approx(rcModel.actions.mxEd, 20000);
+  approx(rcModel.actions.myEd, -10000);
+  assert.deepEqual(rcModel.actions.nValues, [-1000, 500]);
+  approx(rcModel.referencePoint.coordinates.y, 40);
+  approx(rcModel.referencePoint.coordinates.z, 50);
+  assert.deepEqual(rcModel.units, legacyUnits);
+  assert.deepEqual(rcModel.metadata.sourceUnitSystem, units);
+
+  approx(pierModel.geometry.height, 3000);
+  approx(pierModel.geometry.length, 1200);
+  approx(pierModel.geometry.thickness, 300);
+  approx(pierModel.geometry.baseX, 50);
+  approx(pierModel.geometry.transverseWallSpacing, 6000);
+  approx(pierModel.material.fm, 2);
+  approx(pierModel.material.E, 8000);
+  approx(pierModel.actions.axialForce, -25000);
+  approx(pierModel.actions.outOfPlaneMoment, 120000);
+  approx(pierModel.design.constructionEccentricity, 20);
+  approx(pierModel.idealization.rigidEndZoneTop, 100);
+  assert.deepEqual(pierModel.units, legacyUnits);
+  assert.deepEqual(pierModel.metadata.sourceUnitSystem, units);
+});
+
+test("beam-like public models normalize line loads without losing custom load metadata", () => {
+  const centimeterUnits = { force: "N", length: "cm" };
+  const metricUnits = { force: "kN", length: "m" };
+  const timberConcrete = new TimberConcreteCompositeBeamModel({
+    id: "timber-concrete-cm",
+    span: 425,
+    reinforcementSpacing: 10,
+    connectorSpacing: 15,
+    loads: {
+      ulsLineLoad: 50,
+      sleRareLineLoad: 20,
+      label: "kept",
+    },
+    units: centimeterUnits,
+  });
+  const timberXlam = new TimberXlamCompositeBeamModel({
+    id: "timber-xlam-m",
+    span: 4.2,
+    loads: {
+      ulsLineLoad: 3,
+      slePermanentLineLoad: 1.2,
+      source: "manual",
+    },
+    units: metricUnits,
+  });
+  const xlamPanel = new XlamOutOfPlanePanelModel({
+    id: "xlam-panel-cm",
+    span: 360,
+    loads: {
+      ulsLineLoad: 25,
+      sleLineLoad: 12,
+      source: "manual",
+    },
+    units: centimeterUnits,
+  });
+
+  approx(timberConcrete.span, 4250);
+  approx(timberConcrete.reinforcementSpacing, 100);
+  approx(timberConcrete.connectorSpacing, 150);
+  approx(timberConcrete.loads.ulsLineLoad, 5);
+  approx(timberConcrete.loads.sleRareLineLoad, 2);
+  assert.equal(timberConcrete.loads.label, "kept");
+
+  approx(timberXlam.span, 4200);
+  approx(timberXlam.loads.ulsLineLoad, 3);
+  approx(timberXlam.loads.slePermanentLineLoad, 1.2);
+  assert.equal(timberXlam.loads.source, "manual");
+
+  approx(xlamPanel.span, 3600);
+  approx(xlamPanel.loads.ulsLineLoad, 2.5);
+  approx(xlamPanel.loads.sleLineLoad, 1.2);
+  assert.equal(xlamPanel.loads.source, "manual");
 });
 
 test("reinforced concrete workflow preserves results with explicit N/m inputs", () => {

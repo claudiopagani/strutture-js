@@ -1,4 +1,8 @@
-import { assertExplicitUnitSystem, createUnitResolver } from "../../../domain/units/UnitSystem.js";
+import {
+  assertExplicitUnitSystem,
+  convertUnitProperties,
+  createUnitResolver,
+} from "../../../domain/units/UnitSystem.js";
 
 export class TimberXlamCompositeBeamModel {
   constructor({
@@ -41,12 +45,11 @@ export class TimberXlamCompositeBeamModel {
     this.gammaConnection = gammaConnection;
     this.serviceClass = serviceClass;
     this.psi2 = psi2;
-    this.loads = {
-      ...loads,
-      ulsLineLoad: unitResolver.lineLoad(loads.ulsLineLoad),
-      slePermanentLineLoad: unitResolver.lineLoad(loads.slePermanentLineLoad),
-      sleVariableLineLoad: unitResolver.lineLoad(loads.sleVariableLineLoad),
-    };
+    this.loads = convertUnitProperties(loads, {
+      ulsLineLoad: unitResolver.lineLoad,
+      slePermanentLineLoad: unitResolver.lineLoad,
+      sleVariableLineLoad: unitResolver.lineLoad,
+    });
     this.deflectionLimitShortDenominator = deflectionLimitShortDenominator;
     this.deflectionLimitLongDenominator = deflectionLimitLongDenominator;
     this.units = unitResolver.targetUnitSystem;

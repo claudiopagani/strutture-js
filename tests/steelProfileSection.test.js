@@ -45,6 +45,16 @@ test("steel profile catalog values are converted independently from user units",
   approx(internalSection.elasticSectionModulusY, metricSection.elasticSectionModulusY);
 });
 
+test("steel profile override warping constant is converted from source units", () => {
+  const section = createSteelProfileSection({
+    profileName: "IPE300",
+    units,
+    warpingConstant: 2e-6,
+  });
+
+  approx(section.warpingConstant, 2e12, 1e-3);
+});
+
 test("catalog helpers expose integrated families and profile lookup", () => {
   assert.ok(STEEL_PROFILE_FAMILIES.includes("IPE"));
   assert.deepEqual(listSteelProfileSectionsByFamily("HEA").slice(0, 3), [

@@ -77,6 +77,8 @@ Regola pratica:
 - `toJSON().units` espone le unita interne;
 - `metadata.sourceUnitSystem` conserva le unita dichiarate dall'utente.
 
+Mappa dei model pubblici e dei campi normalizzati: `docs/unit-normalization.md`.
+
 I profili in acciaio hanno unita catalogo proprie (`N`, `m`) e vengono convertiti indipendentemente dalle unita usate dall'utente.
 
 ## Moduli Applicativi

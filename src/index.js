@@ -123,6 +123,7 @@ export {
   FORCE_UNIT_FACTORS,
   LENGTH_UNIT_FACTORS,
   assertExplicitUnitSystem,
+  convertUnitProperties,
   createUnitResolver,
   normalizeUnitSystem,
 } from "./domain/units/UnitSystem.js";

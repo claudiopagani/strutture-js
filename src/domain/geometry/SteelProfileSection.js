@@ -58,6 +58,10 @@ function convertOverrides(overrides, units) {
       overrides.torsionalConstant == null
         ? overrides.torsionalConstant
         : resolver.inertia(overrides.torsionalConstant),
+    warpingConstant:
+      overrides.warpingConstant == null
+        ? overrides.warpingConstant
+        : resolver.convert(overrides.warpingConstant, { lengthExponent: 6 }),
     shearAreaY:
       overrides.shearAreaY == null ? overrides.shearAreaY : resolver.area(overrides.shearAreaY),
     shearAreaZ:
@@ -159,7 +163,7 @@ export class SteelProfileSection extends CrossSection {
     this.rootRadius = firstDefined(resolvedOverrides.rootRadius, data.r, null);
     this.massPerLength = firstDefined(overrides.massPerLength, data.mass_per_length, null);
     this.perimeter = firstDefined(resolvedOverrides.perimeter, data.perimeter, null);
-    this.warpingConstant = firstDefined(overrides.warpingConstant, data.Iw, null);
+    this.warpingConstant = firstDefined(resolvedOverrides.warpingConstant, data.Iw, null);
     this.torsionalSectionModulus = firstDefined(resolvedOverrides.torsionalSectionModulus, data.WT, null);
     this.warpingSectionModulus = firstDefined(resolvedOverrides.warpingSectionModulus, data.Ww, null);
     this.radiusOfGyrationY = firstDefined(resolvedOverrides.radiusOfGyrationY, data.iy, null);

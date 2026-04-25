@@ -144,6 +144,11 @@ export class MasonryWallOpeningsModel {
       };
     });
 
+    const residualPierWarningThreshold =
+      Number.isFinite(settings.residualPierWarningThreshold)
+        ? unitResolver.length(settings.residualPierWarningThreshold)
+        : 0.5;
+
     this.settings = {
       normativePreset: settings.normativePreset ?? "tuscany-openings-2022",
       stiffnessSelection: settings.stiffnessSelection ?? "mean",
@@ -151,11 +156,8 @@ export class MasonryWallOpeningsModel {
       stiffnessState: settings.stiffnessState ?? "cracked",
       useCorrectiveModifiers: settings.useCorrectiveModifiers ?? true,
       divideByConfidenceFactor: settings.divideByConfidenceFactor ?? false,
-      residualPierWarningThreshold:
-        Number.isFinite(settings.residualPierWarningThreshold)
-          ? unitResolver.length(settings.residualPierWarningThreshold)
-          : 0.5,
       ...settings,
+      residualPierWarningThreshold,
     };
     this.metadata = {
       ...metadata,

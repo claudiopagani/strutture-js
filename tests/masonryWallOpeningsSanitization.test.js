@@ -174,6 +174,26 @@ test("sanitizeAlignmentOpenings emits warnings for residual lateral piers below 
   );
 });
 
+test("masonry wall openings model converts residual pier warning threshold", () => {
+  const alignment = new MasonryWallOpeningsModel({
+    id: "alignment-residual-units",
+    units: { force: "N", length: "mm" },
+    walls: [
+      {
+        id: "wall-a",
+        length: 5000,
+        height: 3000,
+        thickness: 300,
+      },
+    ],
+    settings: {
+      residualPierWarningThreshold: 500,
+    },
+  });
+
+  approx(alignment.settings.residualPierWarningThreshold, 0.5);
+});
+
 test("masonry wall openings application exposes sanitize-only as a successful workflow", () => {
   const application = new MasonryWallOpeningsApplication();
   const result = application.run({

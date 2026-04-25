@@ -1,4 +1,8 @@
-import { assertExplicitUnitSystem, createUnitResolver } from "../../../domain/units/UnitSystem.js";
+import {
+  assertExplicitUnitSystem,
+  convertUnitProperties,
+  createUnitResolver,
+} from "../../../domain/units/UnitSystem.js";
 
 export class XlamOutOfPlanePanelModel {
   constructor({
@@ -31,13 +35,12 @@ export class XlamOutOfPlanePanelModel {
     this.kmod = kmod;
     this.gammaM = gammaM;
     this.systemBoardCount = systemBoardCount;
-    this.loads = {
-      ...loads,
-      ulsLineLoad: unitResolver.lineLoad(loads.ulsLineLoad),
-      sleLineLoad: unitResolver.lineLoad(loads.sleLineLoad),
-      slePermanentLineLoad: unitResolver.lineLoad(loads.slePermanentLineLoad),
-      sleVariableLineLoad: unitResolver.lineLoad(loads.sleVariableLineLoad),
-    };
+    this.loads = convertUnitProperties(loads, {
+      ulsLineLoad: unitResolver.lineLoad,
+      sleLineLoad: unitResolver.lineLoad,
+      slePermanentLineLoad: unitResolver.lineLoad,
+      sleVariableLineLoad: unitResolver.lineLoad,
+    });
     this.deflectionLimitDenominator = deflectionLimitDenominator;
     this.longTermDeflectionLimitDenominator = longTermDeflectionLimitDenominator;
     this.units = unitResolver.targetUnitSystem;

@@ -1,5 +1,6 @@
 import {
   assertExplicitUnitSystem,
+  convertUnitProperties,
   createUnitResolver,
   convertPointCoordinates,
 } from "../../../domain/units/UnitSystem.js";
@@ -41,17 +42,17 @@ export class ReinforcedConcreteSectionModel {
     this.analysisSettings = { ...analysisSettings };
     this.mesh = { ...mesh };
     this.solver = { ...solver };
-    this.actions = {
-      ...actions,
-      nEd: unitResolver.force(actions.nEd),
-      axialForce: unitResolver.force(actions.axialForce),
-      mEd: unitResolver.moment(actions.mEd),
-      mxEd: unitResolver.moment(actions.mxEd),
-      myEd: unitResolver.moment(actions.myEd),
-      nValues: Array.isArray(actions.nValues)
-        ? actions.nValues.map((value) => unitResolver.force(value))
-        : actions.nValues,
-    };
+    this.actions = convertUnitProperties(actions, {
+      nEd: unitResolver.force,
+      axialForce: unitResolver.force,
+      mEd: unitResolver.moment,
+      mxEd: unitResolver.moment,
+      myEd: unitResolver.moment,
+      nValues: (values) =>
+        Array.isArray(values)
+          ? values.map((value) => unitResolver.force(value))
+          : values,
+    });
     this.referencePoint = {
       type: referencePoint?.type ?? "concrete-centroid",
       coordinates: referencePoint?.coordinates == null

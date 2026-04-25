@@ -1,6 +1,10 @@
 import { CompositeSection } from "../../../domain/composite/CompositeSection.js";
 import { CompositeSectionComponent } from "../../../domain/composite/CompositeSectionComponent.js";
-import { assertExplicitUnitSystem, createUnitResolver } from "../../../domain/units/UnitSystem.js";
+import {
+  assertExplicitUnitSystem,
+  convertUnitProperties,
+  createUnitResolver,
+} from "../../../domain/units/UnitSystem.js";
 
 const INTERNAL_UNITS = Object.freeze({ force: "N", length: "mm" });
 
@@ -60,13 +64,12 @@ export class TimberConcreteCompositeBeamModel {
     this.gammaTimber = gammaTimber;
     this.gammaConnector = gammaConnector;
     this.alphaCc = alphaCc;
-    this.loads = {
-      ...loads,
-      ulsLineLoad: unitResolver.lineLoad(loads.ulsLineLoad),
-      sleRareLineLoad: unitResolver.lineLoad(loads.sleRareLineLoad),
-      sleFrequentLineLoad: unitResolver.lineLoad(loads.sleFrequentLineLoad),
-      sleQuasiPermanentLineLoad: unitResolver.lineLoad(loads.sleQuasiPermanentLineLoad),
-    };
+    this.loads = convertUnitProperties(loads, {
+      ulsLineLoad: unitResolver.lineLoad,
+      sleRareLineLoad: unitResolver.lineLoad,
+      sleFrequentLineLoad: unitResolver.lineLoad,
+      sleQuasiPermanentLineLoad: unitResolver.lineLoad,
+    });
     this.deflectionLimitDenominator = deflectionLimitDenominator;
     this.units = unitResolver.targetUnitSystem;
     this.metadata = {
