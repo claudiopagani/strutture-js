@@ -4,6 +4,11 @@
   "type": "module",
   "description": "Codebase condivisa OOP per entita di calcolo strutturale in ingegneria civile.",
   "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./applications": "./src/applications/index.js",
+    "./norms/ntc2018": "./src/norms/ntc2018/index.js"
+  },
   "scripts": {
     "test": "node --test tests/run-tests.js",
     "check": "npm test && npm run validation",

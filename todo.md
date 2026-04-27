@@ -49,14 +49,14 @@ Obiettivo: ridurre il file monolitico senza cambiare API pubblica o risultati nu
 
 ## 5. API pubblica e packaging
 
-- [ ] Aggiungere `exports` in `package.json` mantenendo `main` per compatibilita.
-- [ ] Esportare almeno:
+- [x] Aggiungere `exports` in `package.json` mantenendo `main` per compatibilita.
+- [x] Esportare almeno:
   - `.` -> `./src/index.js`
   - `./applications` -> `./src/applications/index.js`
   - `./norms/ntc2018` -> `./src/norms/ntc2018/index.js`
   - eventuali subpath di dominio solo se hanno barrel stabili.
-- [ ] Valutare un barrel `src/domain/index.js` solo se riduce davvero il rumore degli import.
-- [ ] Aggiungere test di smoke sugli import pubblici principali.
+- [x] Valutare un barrel `src/domain/index.js` solo se riduce davvero il rumore degli import.
+- [x] Aggiungere test di smoke sugli import pubblici principali.
 
 ## 6. JSDoc senza migrazione TypeScript
 

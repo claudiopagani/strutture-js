@@ -15,6 +15,7 @@ import "./reinforcedConcreteShearVerification.test.js";
 import "./reinforcedConcreteServiceabilityVerification.test.js";
 import "./rcCrackedDeflectionAnalysis.test.js";
 import "./beamValidationCampaign.test.js";
+import "./packageExports.test.js";
 import "./singleBeamDesignApplication.test.js";
 import "./architecture/applicationRegistry.test.js";
 import "./geometrySections.test.js";
