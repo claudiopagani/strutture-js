@@ -1,4 +1,5 @@
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
+import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const INTERNAL_UNITS = Object.freeze({ force: "N", length: "mm" });
 const I_H_FAMILIES = new Set(["IPE", "HEA", "HEB", "HEM"]);
@@ -217,7 +218,7 @@ export function verifySteelCompressionBuckling({
 
   if (sectionClass > 3) {
     return {
-      status: "not-supported",
+      status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       axisResults: null,
       warnings: [
@@ -253,7 +254,7 @@ export function verifySteelCompressionBuckling({
 
   if (!axisY || !axisZ) {
     return {
-      status: "not-supported",
+      status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       axisResults: { y: axisY, z: axisZ },
       warnings: [
@@ -282,7 +283,7 @@ export function verifySteelCompressionBuckling({
   const utilizationRatio = Math.max(ratioY, ratioZ);
 
   return {
-    status: utilizationRatio <= 1 ? "ok" : "not-verified",
+    status: utilizationRatio <= 1 ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
     check: {
       id: "steel-compression-buckling",
       description: "Compression buckling resistance of the steel member",

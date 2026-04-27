@@ -1,5 +1,6 @@
 import { StructuralApplication } from "../../core/applications/StructuralApplication.js";
 import { TimberBeamVerification } from "./checks/TimberBeamVerification.js";
+import { RESULT_STATUS } from "../../core/results/resultStatus.js";
 
 export class TimberBeamApplication extends StructuralApplication {
   constructor() {
@@ -36,7 +37,7 @@ export class TimberBeamApplication extends StructuralApplication {
       deflectionLimitRatio: input.deflectionLimitRatio,
     });
 
-    if (verification.status !== "not-implemented") {
+    if (verification.status !== RESULT_STATUS.NOT_IMPLEMENTED) {
       return verification;
     }
 

@@ -1,5 +1,6 @@
 import { StructuralApplication } from "../../core/applications/StructuralApplication.js";
 import { CrackedSectionDeflectionAnalysis } from "./analysis/CrackedSectionDeflectionAnalysis.js";
+import { RESULT_STATUS } from "../../core/results/resultStatus.js";
 
 export class RCrackedDeflectionApplication extends StructuralApplication {
   constructor() {
@@ -38,7 +39,7 @@ export class RCrackedDeflectionApplication extends StructuralApplication {
       solver: input.solver ?? input.model?.solver ?? { tolerance: 1e-2, maxIterations: 50 },
     });
 
-    if (analysis.status !== "not-implemented") {
+    if (analysis.status !== RESULT_STATUS.NOT_IMPLEMENTED) {
       return analysis;
     }
 

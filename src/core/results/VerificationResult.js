@@ -1,4 +1,5 @@
 import { CalculationResult } from "./CalculationResult.js";
+import { RESULT_STATUS } from "./resultStatus.js";
 
 export class VerificationResult extends CalculationResult {
   constructor({
@@ -17,7 +18,7 @@ export class VerificationResult extends CalculationResult {
   }
 
   isVerified() {
-    if (this.status !== "ok") {
+    if (this.status !== RESULT_STATUS.OK) {
       return false;
     }
 

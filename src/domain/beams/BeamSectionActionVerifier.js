@@ -1,4 +1,5 @@
 import { VerificationResult } from "../../core/results/VerificationResult.js";
+import { RESULT_STATUS } from "../../core/results/resultStatus.js";
 
 function isFiniteNumber(value) {
   return Number.isFinite(value);
@@ -432,8 +433,8 @@ function normalizeActionVerification(raw, fallback = {}) {
     status:
       raw?.status ??
       (isFiniteNumber(utilizationRatio) && utilizationRatio <= 1
-        ? "ok"
-        : "not-verified"),
+        ? RESULT_STATUS.OK
+        : RESULT_STATUS.NOT_VERIFIED),
     utilizationRatio,
     demand: raw?.demand ?? null,
     capacity: raw?.capacity ?? null,
@@ -590,9 +591,9 @@ export class BeamSectionActionVerifier {
       applicationId: this.applicationId,
       status:
         stationResults.length > 0 &&
-        stationResults.every((result) => result.status === "ok")
-          ? "ok"
-          : "not-verified",
+        stationResults.every((result) => result.status === RESULT_STATUS.OK)
+          ? RESULT_STATUS.OK
+          : RESULT_STATUS.NOT_VERIFIED,
       summary: "Section action verification along beam FEM samples.",
       utilizationRatio: governing?.utilizationRatio ?? null,
       demand: governing?.demand ?? null,

@@ -1,4 +1,5 @@
 import { VerificationResult } from "../../../core/results/VerificationResult.js";
+import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const round = (value, decimals = 6) =>
   Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
@@ -140,7 +141,7 @@ export class XlamOutOfPlanePanelVerification {
 
     return new VerificationResult({
       applicationId: "xlam-panels-out-of-plane",
-      status: checks.every((check) => check.ok) ? "ok" : "not-verified",
+      status: checks.every((check) => check.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       summary:
         "Out-of-plane verification of a standalone XLAM panel following the CLTdesigner/WCTE2010 1D-plate approach based on Timoshenko beam theory.",
       utilizationRatio: round(governingCheck.utilizationRatio),

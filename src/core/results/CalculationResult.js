@@ -1,7 +1,9 @@
+import { RESULT_STATUS } from "./resultStatus.js";
+
 export class CalculationResult {
   constructor({
     applicationId,
-    status = "not-implemented",
+    status = RESULT_STATUS.NOT_IMPLEMENTED,
     summary = "",
     outputs = {},
     warnings = [],
@@ -22,7 +24,7 @@ export class CalculationResult {
   }
 
   isSuccessful() {
-    return this.status === "ok";
+    return this.status === RESULT_STATUS.OK;
   }
 
   toJSON() {

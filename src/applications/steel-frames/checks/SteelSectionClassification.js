@@ -1,4 +1,5 @@
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
+import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const INTERNAL_UNITS = Object.freeze({ force: "N", length: "mm" });
 const I_H_FAMILIES = new Set(["IPE", "HEA", "HEB", "HEM"]);
@@ -309,7 +310,7 @@ export function classifySteelSection({
 
   if (!SUPPORTED_FAMILIES.has(family)) {
     return {
-      status: "not-supported",
+      status: RESULT_STATUS.NOT_SUPPORTED,
       class: 4,
       epsilon: null,
       family,
@@ -327,7 +328,7 @@ export function classifySteelSection({
 
   if (!isFinitePositive(fyk)) {
     return {
-      status: "not-supported",
+      status: RESULT_STATUS.NOT_SUPPORTED,
       class: 4,
       epsilon: null,
       family,
@@ -350,7 +351,7 @@ export function classifySteelSection({
 
   if (missing.length > 0 || !isFinitePositive(section?.area) || !isFinitePositive(section?.inertiaY)) {
     return {
-      status: "not-supported",
+      status: RESULT_STATUS.NOT_SUPPORTED,
       class: 4,
       epsilon: null,
       family,
@@ -394,7 +395,7 @@ export function classifySteelSection({
   }
 
   return {
-    status: "ok",
+    status: RESULT_STATUS.OK,
     class: sectionClass,
     epsilon: round(epsilon),
     family,

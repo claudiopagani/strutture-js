@@ -8,6 +8,7 @@ import { AlignmentSeismicAggregatedAnalysis } from "./AlignmentSeismicAggregated
 import { MasonryEquivalentFrameBuilder } from "./MasonryEquivalentFrameBuilder.js";
 import { createMasonryEquivalentFrameContributorDefinition } from "./MasonryEquivalentFramePushoverInternalForces.js";
 import { MasonryEquivalentFramePushoverSolver2D } from "./MasonryEquivalentFramePushoverSolver2D.js";
+import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const FEM_UNITS = Object.freeze({ force: "kN", length: "m" });
 const DEFAULT_TOP_ROTATION = "free";
@@ -748,7 +749,7 @@ export class MasonryPierCapacityCurveComparisonAnalysis {
     if (!selectedPier) {
       return new CalculationResult({
         applicationId: "masonry-wall-openings",
-        status: "not-verified",
+        status: RESULT_STATUS.NOT_VERIFIED,
         summary:
           "Pier capacity-curve comparison could not select a unique masonry pier from the aggregated analysis output.",
         outputs: {
@@ -865,7 +866,7 @@ export class MasonryPierCapacityCurveComparisonAnalysis {
 
     return new CalculationResult({
       applicationId: "masonry-wall-openings",
-      status: solverResult.points.length > 1 ? "ok" : "not-verified",
+      status: solverResult.points.length > 1 ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       summary:
         "Single-pier capacity-curve comparison completed by confronting the aggregated masonry contribution with the corresponding non-linear equivalent-frame response.",
       outputs: {

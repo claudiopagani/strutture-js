@@ -20,6 +20,7 @@ import { extractEquivalentFrameMembers } from "../geometry/extractEquivalentFram
 import { resolveMasonryUnitWeight } from "../materials/resolveMasonryMaterialProperty.js";
 import { resolveAlignmentMechanicalState } from "../materials/resolveAlignmentMechanicalState.js";
 import { sanitizeAlignmentOpenings } from "../geometry/sanitizeAlignmentOpenings.js";
+import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const DEFAULT_PIER_DESIGN = Object.freeze({
   gammaM: 2,
@@ -525,7 +526,7 @@ function analyzeLintels({
       topLoad: loadTransfer.topLoad,
       openingBandLoad: loadTransfer.openingBandLoad,
       totalAppliedLoad: loadTransfer.topLoad + loadTransfer.openingBandLoad,
-      status: "not-analyzed",
+      status: RESULT_STATUS.NOT_ANALYZED,
       providerKind: provider.providerKind,
       analysis: null,
       verification: null,
@@ -568,7 +569,7 @@ function analyzeLintels({
         },
       });
 
-      output.status = "ok";
+      output.status = RESULT_STATUS.OK;
       output.analysis = summarizeLintelAnalysis(analysisResult);
 
       if (provider.providerKind === "steel" && provider.section && provider.material) {
@@ -587,12 +588,12 @@ function analyzeLintels({
 
         output.verification = resultToJson(verification);
 
-        if (verification.status !== "ok") {
+        if (verification.status !== RESULT_STATUS.OK) {
           output.status = verification.status;
         }
       }
     } catch (error) {
-      output.status = "not-analyzed";
+      output.status = RESULT_STATUS.NOT_ANALYZED;
       warnings.push(
         `Lintel on opening ${opening.id} could not be analyzed: ${error.message}`,
       );
@@ -871,12 +872,12 @@ export class AlignmentStaticAnalysis {
       .filter(Boolean);
     const status =
       equilibrium.ok &&
-      pierResults.every((pier) => pier.verification && pier.verification.status === "ok") &&
+      pierResults.every((pier) => pier.verification && pier.verification.status === RESULT_STATUS.OK) &&
       lintelStatuses.every((lintelStatus) =>
-        ["ok", "not-analyzed"].includes(lintelStatus),
+        [RESULT_STATUS.OK, RESULT_STATUS.NOT_ANALYZED].includes(lintelStatus),
       )
-        ? "ok"
-        : "not-verified";
+        ? RESULT_STATUS.OK
+        : RESULT_STATUS.NOT_VERIFIED;
 
     return new CalculationResult({
       applicationId: "masonry-wall-openings",

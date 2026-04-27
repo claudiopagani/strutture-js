@@ -4,9 +4,13 @@ import assert from "node:assert/strict";
 import {
   APPLICATION_CATALOG,
   ApplicationRegistry,
+  CalculationResult,
+  RESULT_STATUS,
+  RESULT_STATUS_VALUES,
   StructuralApplication,
   VerificationResult,
   createDefaultApplicationRegistry,
+  isResultStatus,
 } from "../../src/index.js";
 import {
   NTC2018ExistingMasonryMaterial,
@@ -37,7 +41,7 @@ test("application registry returns manifests and placeholder results", () => {
   });
 
   assert.ok(manifests.some((manifest) => manifest.metadata.maturity === "scaffolded"));
-  assert.equal(result.status, "not-implemented");
+  assert.equal(result.status, RESULT_STATUS.NOT_IMPLEMENTED);
   assert.equal(result.outputs.beamId, "beam-01");
 });
 
@@ -51,23 +55,44 @@ test("base structural application can build placeholder results", () => {
   const result = application.run();
 
   assert.equal(result.applicationId, "demo");
-  assert.equal(result.status, "not-implemented");
+  assert.equal(result.status, RESULT_STATUS.NOT_IMPLEMENTED);
+});
+
+test("calculation result uses centralized status constants", () => {
+  const result = new CalculationResult({
+    applicationId: "demo",
+    status: RESULT_STATUS.OK,
+  });
+  const placeholder = new CalculationResult({ applicationId: "demo" });
+
+  assert.equal(result.isSuccessful(), true);
+  assert.equal(placeholder.status, RESULT_STATUS.NOT_IMPLEMENTED);
+  assert.deepEqual(RESULT_STATUS_VALUES, [
+    "ok",
+    "not-verified",
+    "not-supported",
+    "not-analyzed",
+    "not-implemented",
+    "failed",
+  ]);
+  assert.equal(isResultStatus(RESULT_STATUS.NOT_SUPPORTED), true);
+  assert.equal(isResultStatus("error"), false);
 });
 
 test("verification result status participates in isVerified", () => {
   const ok = new VerificationResult({
     applicationId: "demo",
-    status: "ok",
+    status: RESULT_STATUS.OK,
     utilizationRatio: 0.7,
   });
   const notImplemented = new VerificationResult({
     applicationId: "demo",
-    status: "not-implemented",
+    status: RESULT_STATUS.NOT_IMPLEMENTED,
     utilizationRatio: 0.7,
   });
   const failedCheck = new VerificationResult({
     applicationId: "demo",
-    status: "ok",
+    status: RESULT_STATUS.OK,
     utilizationRatio: 0.7,
     checks: [{ id: "check", ok: false, utilizationRatio: 0.7 }],
   });

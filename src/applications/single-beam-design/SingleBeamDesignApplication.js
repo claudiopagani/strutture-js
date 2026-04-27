@@ -3,6 +3,7 @@ import { CalculationResult } from "../../core/results/CalculationResult.js";
 import { SingleBeamAnalysis } from "../../domain/beams/SingleBeamAnalysis.js";
 import { SingleBeamDesignModel } from "./models/SingleBeamDesignModel.js";
 import { BeamReportBuilder } from "./reports/BeamReportBuilder.js";
+import { RESULT_STATUS } from "../../core/results/resultStatus.js";
 
 function normalizeModel(input) {
   if (input instanceof SingleBeamDesignModel) {
@@ -18,10 +19,10 @@ function resultToJson(result) {
 
 function statusFromVerification(verificationResult) {
   if (!verificationResult) {
-    return "ok";
+    return RESULT_STATUS.OK;
   }
 
-  return verificationResult.status ?? "ok";
+  return verificationResult.status ?? RESULT_STATUS.OK;
 }
 
 function collectWarnings(...sources) {

@@ -16,6 +16,7 @@ import {
 import { verifySteelCompressionBuckling } from "./SteelCompressionBuckling.js";
 import { verifySteelLateralTorsionalBuckling } from "./SteelLateralTorsionalBuckling.js";
 import { classifySteelSection } from "./SteelSectionClassification.js";
+import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const DEFAULT_SECTION_UNITS = Object.freeze({ force: "N", length: "mm" });
 
@@ -525,7 +526,7 @@ function createLateralTorsionalBucklingChecks({
       checks,
       warnings,
       assumptions,
-      status: "ok",
+      status: RESULT_STATUS.OK,
     };
   }
 
@@ -655,8 +656,8 @@ function createLateralTorsionalBucklingChecks({
     assumptions,
     status:
       checks.length > 0 && checks.every((check) => check.ok)
-        ? "ok"
-        : "not-verified",
+        ? RESULT_STATUS.OK
+        : RESULT_STATUS.NOT_VERIFIED,
   };
 }
 
@@ -680,7 +681,7 @@ function createCompressionBucklingChecks({
       checks,
       warnings,
       assumptions,
-      status: "ok",
+      status: RESULT_STATUS.OK,
     };
   }
 
@@ -795,8 +796,8 @@ function createCompressionBucklingChecks({
     assumptions,
     status:
       checks.length > 0 && checks.every((check) => check.ok)
-        ? "ok"
-        : "not-verified",
+        ? RESULT_STATUS.OK
+        : RESULT_STATUS.NOT_VERIFIED,
   };
 }
 
@@ -910,7 +911,7 @@ function createBeamColumnInteractionChecks({
       checks,
       warnings,
       assumptions,
-      status: "ok",
+      status: RESULT_STATUS.OK,
     };
   }
 
@@ -1093,8 +1094,8 @@ function createBeamColumnInteractionChecks({
     status:
       checks.length > 0 &&
       checks.every((check) => check.ok)
-        ? "ok"
-        : "not-verified",
+        ? RESULT_STATUS.OK
+        : RESULT_STATUS.NOT_VERIFIED,
   };
 }
 
@@ -1183,7 +1184,7 @@ function createSteelActionVerifier({
             ? round(classificationResult.class / 3)
             : 0,
         ok:
-          classificationResult.status === "ok" &&
+          classificationResult.status === RESULT_STATUS.OK &&
           classificationResult.class <= 3,
         metadata: {
           method: classificationResult.metadata?.method,
@@ -1394,7 +1395,7 @@ function createSteelActionVerifier({
       const governing = governingCheck(checks);
 
       return {
-        status: checks.every((check) => check.ok) ? "ok" : "not-verified",
+        status: checks.every((check) => check.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
         utilizationRatio: governing?.utilizationRatio ?? null,
         demand: governing?.demand ?? null,
         capacity: governing?.capacity ?? null,
@@ -1463,7 +1464,7 @@ export class SteelMemberVerification {
     if (!section || !material || !analysisResult) {
       return new VerificationResult({
         applicationId: "steel-frames",
-        status: "not-implemented",
+        status: RESULT_STATUS.NOT_IMPLEMENTED,
         summary: "Steel member verification workflow scaffolded.",
         checks: [],
         warnings: [
@@ -1548,10 +1549,10 @@ export class SteelMemberVerification {
       }, {}),
     );
     const governing = governingCheck(groupedChecks);
-    const ulsOk = actionVerification.status === "ok";
-    const ltbOk = lateralTorsionalBuckling.status === "ok";
-    const compressionBucklingOk = compressionBuckling.status === "ok";
-    const beamColumnInteractionOk = beamColumnInteraction.status === "ok";
+    const ulsOk = actionVerification.status === RESULT_STATUS.OK;
+    const ltbOk = lateralTorsionalBuckling.status === RESULT_STATUS.OK;
+    const compressionBucklingOk = compressionBuckling.status === RESULT_STATUS.OK;
+    const beamColumnInteractionOk = beamColumnInteraction.status === RESULT_STATUS.OK;
     const sleOk =
       deflectionChecks.length === 0 ||
       deflectionChecks.every((check) => check.ok);
@@ -1560,8 +1561,8 @@ export class SteelMemberVerification {
       applicationId: "steel-frames",
       status:
         ulsOk && ltbOk && compressionBucklingOk && beamColumnInteractionOk && sleOk
-          ? "ok"
-          : "not-verified",
+          ? RESULT_STATUS.OK
+          : RESULT_STATUS.NOT_VERIFIED,
       summary: "Steel member ULS section resistance, stability and SLE deflection verification from FEM beam results.",
       utilizationRatio: governing?.utilizationRatio ?? null,
       demand: governing?.demand ?? null,

@@ -1,6 +1,7 @@
 import { VerificationResult } from "../../../core/results/VerificationResult.js";
 import { governingCheck, round, utilizationCheck } from "../../../core/results/checkUtils.js";
 import { MasonryPierModel } from "../models/MasonryPierModel.js";
+import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const PHI_ECCENTRICITY_VALUES = Object.freeze([0, 0.5, 1.0, 1.5, 2.0]);
 const PHI_SLENDERNESS_VALUES = Object.freeze([0, 5, 10, 15, 20]);
@@ -174,7 +175,7 @@ export class MasonryPierVerticalVerification {
     if (!Number.isFinite(compressionForce) || compressionForce <= 0) {
       return new VerificationResult({
         applicationId: "masonry-piers",
-        status: "not-verified",
+        status: RESULT_STATUS.NOT_VERIFIED,
         summary:
           "Masonry pier vertical verification could not be completed because the axial load is not compressive for the selected sign convention.",
         warnings: [
@@ -324,8 +325,8 @@ export class MasonryPierVerticalVerification {
       applicationId: "masonry-piers",
       status:
         hasCompressionCheck && checks.every((check) => check.ok === true)
-          ? "ok"
-          : "not-verified",
+          ? RESULT_STATUS.OK
+          : RESULT_STATUS.NOT_VERIFIED,
       summary:
         "Vertical NTC 2018 verification of a masonry pier under axial load, eccentricities and in-plane bending moment.",
       utilizationRatio: governing?.utilizationRatio ?? null,

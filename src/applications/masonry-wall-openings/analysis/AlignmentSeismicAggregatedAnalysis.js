@@ -10,6 +10,7 @@ import { resolveAlignmentMechanicalState } from "../materials/resolveAlignmentMe
 import { resolveMasonryMaterialProperty } from "../materials/resolveMasonryMaterialProperty.js";
 import { bilinearizeCapacityCurve } from "./AlignmentCapacityBilinearization.js";
 import { AlignmentStaticAnalysis } from "./AlignmentStaticAnalysis.js";
+import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const DEFAULT_TOP_ROTATION = "free";
 const DEFAULT_DRIFT_SHEAR = 0.005;
@@ -704,7 +705,7 @@ function buildRingFrameContribution({
       id: `${alignment.id}-ring-frame-${opening.id}`,
       contributorType: "ring-frame",
       openingId: opening.id,
-      status: "not-analyzed",
+      status: RESULT_STATUS.NOT_ANALYZED,
       frameCount: resolveRingFrameCount(ringFrame),
       curvePoints: [],
       analysisWarnings: [],
@@ -819,7 +820,7 @@ function buildRingFrameContribution({
       id: `${alignment.id}-ring-frame-${opening.id}`,
       contributorType: "ring-frame",
       openingId: opening.id,
-      status: "not-analyzed",
+      status: RESULT_STATUS.NOT_ANALYZED,
       frameCount,
       curvePoints: [],
       analysisWarnings: [error.message],
@@ -951,7 +952,7 @@ export class AlignmentSeismicAggregatedAnalysis {
     if (activeContributors.length === 0) {
       return new CalculationResult({
         applicationId: "masonry-wall-openings",
-        status: "not-verified",
+        status: RESULT_STATUS.NOT_VERIFIED,
         summary:
           "Aggregated seismic analysis could not build any active masonry-pier or steel-ring-frame contribution.",
         outputs: {
@@ -997,7 +998,7 @@ export class AlignmentSeismicAggregatedAnalysis {
     });
     const maxBaseShear =
       maxFinite(capacityCurvePoints.map((point) => point.baseShear)) ?? 0;
-    const status = bilinearization.status === "ok" ? "ok" : "not-verified";
+    const status = bilinearization.status === RESULT_STATUS.OK ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED;
 
     return new CalculationResult({
       applicationId: "masonry-wall-openings",

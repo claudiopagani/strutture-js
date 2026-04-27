@@ -1,3 +1,5 @@
+import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
+
 const DEFAULT_E005_RATIO = 2 / 3;
 const FORCE_TOLERANCE = 1e-9;
 
@@ -111,7 +113,7 @@ export function verifyTimberLateralTorsionalStability({
 
   if (!isFinitePositive(fmD) || !isFinitePositive(fmK)) {
     return {
-      status: "not-supported",
+      status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings: [
         "Timber lateral-torsional stability requires design and characteristic bending strengths fmD/fmK.",
@@ -121,7 +123,7 @@ export function verifyTimberLateralTorsionalStability({
 
   if (!isFinitePositive(wy) || !isFinitePositive(wz)) {
     return {
-      status: "not-supported",
+      status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings: [
         "Timber lateral-torsional stability requires elastic section moduli Wy and Wz.",
@@ -162,7 +164,7 @@ export function verifyTimberLateralTorsionalStability({
 
     if (!isFinitePositive(resolvedSigmaMcrit)) {
       return {
-        status: "not-supported",
+        status: RESULT_STATUS.NOT_SUPPORTED,
         check: null,
         warnings: [
           "Timber lateral-torsional stability requires kcrit, sigmaMcrit, or a rectangular section with width, height, effective unbraced length and E0,05.",
@@ -182,7 +184,7 @@ export function verifyTimberLateralTorsionalStability({
 
   if (!isFinitePositive(resolvedKcrit)) {
     return {
-      status: "not-supported",
+      status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings: [
         "Timber lateral-torsional stability could not compute a positive kcrit.",
@@ -201,7 +203,7 @@ export function verifyTimberLateralTorsionalStability({
   const utilizationRatio = utilizationRatioY + utilizationRatioZ;
 
   return {
-    status: utilizationRatio <= 1 ? "ok" : "not-verified",
+    status: utilizationRatio <= 1 ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
     check: {
       id: "timber-lateral-torsional-stability",
       description: "Timber lateral-torsional stability with weak-axis moment interaction",

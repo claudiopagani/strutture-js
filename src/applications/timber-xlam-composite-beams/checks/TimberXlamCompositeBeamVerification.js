@@ -1,6 +1,7 @@
 import { VerificationResult } from "../../../core/results/VerificationResult.js";
 import { BeamSectionActionVerifier } from "../../../domain/beams/BeamSectionActionVerifier.js";
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
+import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const round = (value, decimals = 6) =>
   Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
@@ -323,7 +324,7 @@ export class TimberXlamCompositeBeamVerification {
     }
 
     return {
-      status: checks.every((check) => check.ok) ? "ok" : "not-verified",
+      status: checks.every((check) => check.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       utilizationRatio: governingCheck.utilizationRatio,
       demand: governingCheck.demand,
       capacity: governingCheck.capacity,
@@ -537,7 +538,7 @@ export class TimberXlamCompositeBeamVerification {
 
     return new VerificationResult({
       applicationId: "timber-xlam-composite-beams",
-      status: combinedChecks.every((check) => check.ok) ? "ok" : "not-verified",
+      status: combinedChecks.every((check) => check.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       summary:
         "Verification of timber beams collaborating with an XLAM panel based on the workbook gamma-method and timber-timber connector checks.",
       utilizationRatio: round(governingCheck.utilizationRatio),

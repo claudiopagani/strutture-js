@@ -1,4 +1,5 @@
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
+import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const INTERNAL_UNITS = Object.freeze({ force: "N", length: "mm" });
 const AUTOMATIC_MCR_FAMILIES = new Set(["IPE", "HEA", "HEB", "HEM"]);
@@ -172,7 +173,7 @@ export function calculateElasticCriticalMomentLT({
 
   if (!AUTOMATIC_MCR_FAMILIES.has(family)) {
     return {
-      status: "not-supported",
+      status: RESULT_STATUS.NOT_SUPPORTED,
       value: null,
       warnings: [
         `Automatic Mcr calculation is implemented only for doubly symmetric I/H profiles; profile family ${family || "unknown"} requires user-provided Mcr.`,
@@ -204,7 +205,7 @@ export function calculateElasticCriticalMomentLT({
     !isFinitePositive(C1)
   ) {
     return {
-      status: "not-supported",
+      status: RESULT_STATUS.NOT_SUPPORTED,
       value: null,
       warnings: [
         "Automatic Mcr calculation requires E, G, Iz, IT, Iw, unbraced length and positive factors.",
@@ -235,7 +236,7 @@ export function calculateElasticCriticalMomentLT({
   }
 
   return {
-    status: isFinitePositive(mCr) ? "ok" : "not-supported",
+    status: isFinitePositive(mCr) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_SUPPORTED,
     value: isFinitePositive(mCr) ? mCr : null,
     warnings,
     metadata: {
@@ -304,7 +305,7 @@ export function verifySteelLateralTorsionalBuckling({
 
   if (!isFinitePositive(mCr)) {
     return {
-      status: "not-supported",
+      status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings,
       metadata: {
@@ -322,7 +323,7 @@ export function verifySteelLateralTorsionalBuckling({
     !isFinitePositive(bendingSectionModulus)
   ) {
     return {
-      status: "not-supported",
+      status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings: [
         ...warnings,
@@ -337,7 +338,7 @@ export function verifySteelLateralTorsionalBuckling({
 
   if (sectionClass > 3) {
     return {
-      status: "not-supported",
+      status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings: [
         ...warnings,
@@ -365,7 +366,7 @@ export function verifySteelLateralTorsionalBuckling({
 
   if (!reduction) {
     return {
-      status: "not-supported",
+      status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings: [
         ...warnings,
@@ -383,7 +384,7 @@ export function verifySteelLateralTorsionalBuckling({
   const utilizationRatio = Math.abs(mEd) / capacity;
 
   return {
-    status: utilizationRatio <= 1 ? "ok" : "not-verified",
+    status: utilizationRatio <= 1 ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
     check: {
       id: "steel-lateral-torsional-buckling",
       description: "Lateral-torsional buckling resistance of the steel beam segment",

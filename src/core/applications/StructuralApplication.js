@@ -1,4 +1,5 @@
 import { CalculationResult } from "../results/CalculationResult.js";
+import { RESULT_STATUS } from "../results/resultStatus.js";
 
 export class StructuralApplication {
   constructor({
@@ -36,7 +37,7 @@ export class StructuralApplication {
   } = {}) {
     return new CalculationResult({
       applicationId: this.id,
-      status: "not-implemented",
+      status: RESULT_STATUS.NOT_IMPLEMENTED,
       summary:
         summary ??
         `${this.name} is scaffolded and ready for domain-specific integration.`,

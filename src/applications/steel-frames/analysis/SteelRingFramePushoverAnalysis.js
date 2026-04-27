@@ -3,6 +3,7 @@ import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
 import { SteelRingFramePushoverModel } from "../models/SteelRingFramePushoverModel.js";
 import { SteelDisplacementControlPushoverSolver2D } from "./SteelDisplacementControlPushoverSolver2D.js";
 import { SteelRingFrame2DBuilder } from "./SteelRingFrame2DBuilder.js";
+import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const FEM_UNITS = Object.freeze({ force: "kN", length: "m" });
 
@@ -61,7 +62,7 @@ export class SteelRingFramePushoverAnalysis {
     );
 
     return {
-      status: points.length > 1 ? "ok" : "not-verified",
+      status: points.length > 1 ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       summary:
         "Non-linear static displacement-controlled pushover analysis of a standalone steel ring frame completed.",
       warnings: uniqueStrings([...frame.warnings, ...solverResult.warnings]),

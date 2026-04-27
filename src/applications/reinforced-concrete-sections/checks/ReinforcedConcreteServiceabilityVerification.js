@@ -8,6 +8,7 @@ import {
   DEFAULT_RC_SLE_MODULAR_RATIO,
   resolveRcSleModularRatio,
 } from "../serviceabilityDefaults.js";
+import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const DEFAULT_SERVICEABILITY_OPTIONS = Object.freeze({
   environment: "ordinary",
@@ -480,7 +481,7 @@ export class ReinforcedConcreteServiceabilityVerification {
       Math.abs(stressActions.stressMyEd) <= 1
     ) {
       return {
-        status: "ok",
+        status: RESULT_STATUS.OK,
         utilizationRatio: null,
         demand: null,
         capacity: null,
@@ -563,7 +564,7 @@ export class ReinforcedConcreteServiceabilityVerification {
       meshResult = solved.mesh;
     } catch (error) {
       return {
-        status: "not-verified",
+        status: RESULT_STATUS.NOT_VERIFIED,
         utilizationRatio: null,
         demand: null,
         capacity: null,
@@ -810,8 +811,8 @@ export class ReinforcedConcreteServiceabilityVerification {
         solvedState.converged &&
         !crackControlNotVerified &&
         checks.every((check) => check.ok)
-          ? "ok"
-          : "not-verified",
+          ? RESULT_STATUS.OK
+          : RESULT_STATUS.NOT_VERIFIED,
       utilizationRatio: governing?.utilizationRatio ?? null,
       demand: governing?.demand ?? null,
       capacity: governing?.capacity ?? null,

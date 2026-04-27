@@ -9,6 +9,7 @@ import {
   DEFAULT_RC_SLE_MODULAR_RATIO,
   resolveRcSleModularRatio,
 } from "../../reinforced-concrete-sections/serviceabilityDefaults.js";
+import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const DEFAULT_SECTION_UNITS = Object.freeze({ force: "N", length: "mm" });
 const SLENDERNESS_LIMITS = Object.freeze({
@@ -215,7 +216,7 @@ export class CrackedSectionDeflectionAnalysis {
     if (!analysisResult || !section?.concreteSection) {
       return new VerificationResult({
         applicationId: "rc-cracked-deflection",
-        status: "not-implemented",
+        status: RESULT_STATUS.NOT_IMPLEMENTED,
         summary: "Cracked-section deflection analysis requires a beam analysis result and an RC section.",
         warnings: [
           "Cracked inertia, tension stiffening and time-dependent effects were not evaluated because required inputs are missing.",
@@ -260,7 +261,7 @@ export class CrackedSectionDeflectionAnalysis {
     if (!isFinitePositive(es) || !isFinitePositive(ec)) {
       return new VerificationResult({
         applicationId: "rc-cracked-deflection",
-        status: "not-verified",
+        status: RESULT_STATUS.NOT_VERIFIED,
         summary: "RC cracked deflection could not be evaluated.",
         warnings: [
           "Concrete and reinforcement elastic moduli are required for curvature integration.",
@@ -464,8 +465,8 @@ export class CrackedSectionDeflectionAnalysis {
       applicationId: "rc-cracked-deflection",
       status:
         checks.length > 0 && checks.every((check) => check.ok)
-          ? "ok"
-          : "not-verified",
+          ? RESULT_STATUS.OK
+          : RESULT_STATUS.NOT_VERIFIED,
       summary:
         "RC service deflection from cracked/uncracked curvature integration.",
       utilizationRatio: governingCheck?.utilizationRatio ?? null,

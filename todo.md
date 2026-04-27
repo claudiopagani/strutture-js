@@ -31,21 +31,21 @@ Scelte confermate:
 
 ## 3. Status dei risultati
 
-- [ ] Centralizzare gli status in un modulo core, ad esempio `src/core/results/resultStatus.js`.
-- [ ] Coprire almeno questi valori: `ok`, `not-verified`, `not-supported`, `not-analyzed`, `not-implemented`, `failed`.
-- [ ] Sostituire progressivamente le stringhe sparse nei moduli con costanti esportate.
-- [ ] Aggiornare i test di `CalculationResult`, `VerificationResult` e application registry per usare gli status centralizzati.
+- [x] Centralizzare gli status in un modulo core, ad esempio `src/core/results/resultStatus.js`.
+- [x] Coprire almeno questi valori: `ok`, `not-verified`, `not-supported`, `not-analyzed`, `not-implemented`, `failed`.
+- [x] Sostituire progressivamente le stringhe sparse nei moduli con costanti esportate.
+- [x] Aggiornare i test di `CalculationResult`, `VerificationResult` e application registry per usare gli status centralizzati.
 
 ## 4. Refactor di `SingleBeamAnalysis`
 
 Obiettivo: ridurre il file monolitico senza cambiare API pubblica o risultati numerici.
 
-- [ ] Estrarre normalizzazione input e carichi in un modulo dedicato.
-- [ ] Estrarre gestione stazioni/discretizzazione/verifica in un modulo dedicato.
-- [ ] Estrarre creazione inviluppi e selezione estremi in un modulo dedicato.
-- [ ] Estrarre sampling dei risultati FEM e conversione output in un modulo dedicato.
-- [ ] Tenere `SingleBeamAnalysis` come orchestratore pubblico compatibile con l'API attuale.
-- [ ] Dopo ogni step, eseguire `npm test` e `npm run validation`.
+- [x] Estrarre normalizzazione input e carichi in un modulo dedicato.
+- [x] Estrarre gestione stazioni/discretizzazione/verifica in un modulo dedicato.
+- [x] Estrarre creazione inviluppi e selezione estremi in un modulo dedicato.
+- [x] Estrarre sampling dei risultati FEM e conversione output in un modulo dedicato.
+- [x] Tenere `SingleBeamAnalysis` come orchestratore pubblico compatibile con l'API attuale.
+- [x] Dopo ogni step, eseguire `npm test` e `npm run validation`.
 
 ## 5. API pubblica e packaging
 

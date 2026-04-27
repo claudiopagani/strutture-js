@@ -9,6 +9,7 @@ import {
 import { BeamSectionActionVerifier } from "../../../domain/beams/BeamSectionActionVerifier.js";
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
 import { verifyTimberLateralTorsionalStability } from "./TimberLateralTorsionalStability.js";
+import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const DEFAULT_SECTION_UNITS = Object.freeze({ force: "N", length: "mm" });
 
@@ -280,7 +281,7 @@ function createLateralTorsionalStabilityChecks({
       checks,
       warnings,
       assumptions,
-      status: "ok",
+      status: RESULT_STATUS.OK,
     };
   }
 
@@ -424,8 +425,8 @@ function createLateralTorsionalStabilityChecks({
     assumptions,
     status:
       checks.length > 0 && checks.every((check) => check.ok)
-        ? "ok"
-        : "not-verified",
+        ? RESULT_STATUS.OK
+        : RESULT_STATUS.NOT_VERIFIED,
   };
 }
 
@@ -509,7 +510,7 @@ function createTimberActionVerifier({
         : shear;
 
       return {
-        status: bending.ok && shear.ok ? "ok" : "not-verified",
+        status: bending.ok && shear.ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
         utilizationRatio: governing.utilizationRatio,
         demand: governing.demand,
         capacity: governing.capacity,
@@ -555,7 +556,7 @@ export class TimberBeamVerification {
     if (!section || !material || !analysisResult) {
       return new VerificationResult({
         applicationId: "timber-beams",
-        status: "not-implemented",
+        status: RESULT_STATUS.NOT_IMPLEMENTED,
         summary: "Timber beam verification workflow scaffolded.",
         warnings: [
           "Bending, shear, deflection and lateral stability checks are placeholders.",
@@ -677,15 +678,15 @@ export class TimberBeamVerification {
     const governingCheck = groupedChecks.reduce((selected, check) =>
       moreSevereCheck(check, selected),
     null);
-    const ulsOk = actionVerification.status === "ok";
-    const lateralStabilityOk = lateralTorsionalStability.status === "ok";
+    const ulsOk = actionVerification.status === RESULT_STATUS.OK;
+    const lateralStabilityOk = lateralTorsionalStability.status === RESULT_STATUS.OK;
     const deflectionOk =
       deflectionCheck.ok && (!finalDeflectionCheck || finalDeflectionCheck.ok);
 
     return new VerificationResult({
       applicationId: "timber-beams",
       status:
-        ulsOk && lateralStabilityOk && deflectionOk ? "ok" : "not-verified",
+        ulsOk && lateralStabilityOk && deflectionOk ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       summary: "Timber beam bending, shear, lateral stability and deflection verification from FEM beam results.",
       utilizationRatio: governingCheck?.utilizationRatio ?? null,
       demand: governingCheck?.demand ?? null,

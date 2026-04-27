@@ -153,6 +153,17 @@ export { DesignCodeContext } from "./core/codes/DesignCodeContext.js";
 export { CalculationResult } from "./core/results/CalculationResult.js";
 export { VerificationResult } from "./core/results/VerificationResult.js";
 export {
+  RESULT_STATUS,
+  RESULT_STATUS_FAILED,
+  RESULT_STATUS_NOT_ANALYZED,
+  RESULT_STATUS_NOT_IMPLEMENTED,
+  RESULT_STATUS_NOT_SUPPORTED,
+  RESULT_STATUS_NOT_VERIFIED,
+  RESULT_STATUS_OK,
+  RESULT_STATUS_VALUES,
+  isResultStatus,
+} from "./core/results/resultStatus.js";
+export {
   assertPositive as assertPositiveCheckValue,
   governingCheck,
   isFinitePositive,

@@ -6,6 +6,7 @@ import {
   utilizationCheck as createUtilizationCheck,
 } from "../../../core/results/checkUtils.js";
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
+import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const DEFAULT_SECTION_UNITS = Object.freeze({ force: "N", length: "mm" });
 const SUPPORTED_MODES = new Set([
@@ -550,7 +551,7 @@ function verifyWithoutTransverseReinforcement({ vEd, params }) {
 
   if (!resistance.available) {
     return {
-      status: "not-verified",
+      status: RESULT_STATUS.NOT_VERIFIED,
       utilizationRatio: null,
       demand: Math.abs(vEd),
       capacity: null,
@@ -578,7 +579,7 @@ function verifyWithoutTransverseReinforcement({ vEd, params }) {
   });
 
   return {
-    status: check.ok ? "ok" : "not-verified",
+    status: check.ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
     utilizationRatio: check.utilizationRatio,
     demand: check.demand,
     capacity: check.capacity,
@@ -753,7 +754,7 @@ function verifyWithTransverseReinforcement({ vEd, params, shear, units }) {
 
   if (missing.length > 0) {
     return {
-      status: "not-verified",
+      status: RESULT_STATUS.NOT_VERIFIED,
       utilizationRatio: null,
       demand: Math.abs(vEd),
       capacity: null,
@@ -832,7 +833,7 @@ function verifyWithTransverseReinforcement({ vEd, params, shear, units }) {
   );
 
   return {
-    status: check.ok ? "ok" : "not-verified",
+    status: check.ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
     utilizationRatio: check.utilizationRatio,
     demand: check.demand,
     capacity: check.capacity,
@@ -934,7 +935,7 @@ export class ReinforcedConcreteShearVerification {
 
     if (baseWarnings.length > 0) {
       return {
-        status: "not-verified",
+        status: RESULT_STATUS.NOT_VERIFIED,
         utilizationRatio: null,
         demand: Math.abs(convertedVEd),
         capacity: null,

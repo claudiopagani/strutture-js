@@ -7,6 +7,7 @@ import { MasonryEquivalentFrameBuilder } from "./MasonryEquivalentFrameBuilder.j
 import { createMasonryEquivalentFrameContributorDefinition } from "./MasonryEquivalentFramePushoverInternalForces.js";
 import { MasonryEquivalentFramePushoverSolver2D } from "./MasonryEquivalentFramePushoverSolver2D.js";
 import { MasonryPierCapacityCurveComparisonAnalysis } from "./MasonryPierCapacityCurveComparisonAnalysis.js";
+import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const FEM_UNITS = Object.freeze({ force: "kN", length: "m" });
 const DEFAULT_TOP_ROTATION = "free";
@@ -257,7 +258,7 @@ function normalizeRingFrameContribution(contributor = {}) {
     id: contributor.id,
     contributorType: "ring-frame",
     openingId: contributor.openingId ?? null,
-    status: contributor.status ?? "ok",
+    status: contributor.status ?? RESULT_STATUS.OK,
     frameCount: contributor.frameCount ?? 1,
     metadata: contributor.metadata ?? {},
     curvePoints,
@@ -688,7 +689,7 @@ export class AlignmentEquivalentFramePushoverAnalysis {
     if (activeContributors.length === 0 || aggregatedCurvePoints.length === 0) {
       return new CalculationResult({
         applicationId: "masonry-wall-openings",
-        status: "not-verified",
+        status: RESULT_STATUS.NOT_VERIFIED,
         summary:
           "Equivalent-frame pushover could not assemble any active non-linear contributor for the wall alignment.",
         outputs: {
@@ -806,9 +807,9 @@ export class AlignmentEquivalentFramePushoverAnalysis {
       })),
     ];
     const status =
-      femBilinearization.status === "ok" && activePierResults.length > 0
-        ? "ok"
-        : "not-verified";
+      femBilinearization.status === RESULT_STATUS.OK && activePierResults.length > 0
+        ? RESULT_STATUS.OK
+        : RESULT_STATUS.NOT_VERIFIED;
 
     return new CalculationResult({
       applicationId: "masonry-wall-openings",

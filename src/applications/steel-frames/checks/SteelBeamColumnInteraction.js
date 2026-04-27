@@ -1,3 +1,5 @@
+import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
+
 const I_H_FAMILIES = new Set(["IPE", "HEA", "HEB", "HEM"]);
 const FORCE_TOLERANCE = 1e-9;
 
@@ -233,7 +235,7 @@ export function verifySteelBeamColumnInteractionMy({
 
   if (!I_H_FAMILIES.has(family) && !allowSinglySymmetric) {
     return {
-      status: "not-supported",
+      status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings: [
         `N+My Method B stability interaction is implemented for doubly symmetric I/H profiles; profile family ${family || "unknown"} requires a dedicated extension or explicit override.`,
@@ -248,7 +250,7 @@ export function verifySteelBeamColumnInteractionMy({
 
   if (sectionClass > 3) {
     return {
-      status: "not-supported",
+      status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings: [
         "N+My Method B stability interaction is blocked for class 4 sections until effective properties are implemented.",
@@ -278,7 +280,7 @@ export function verifySteelBeamColumnInteractionMy({
     !isFinitePositive(bendingSectionModulus)
   ) {
     return {
-      status: "not-supported",
+      status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings: [
         "N+My Method B interaction requires compression buckling reductions, chiLT, A, fyk, gammaM1 and Wy.",
@@ -309,7 +311,7 @@ export function verifySteelBeamColumnInteractionMy({
 
   if (!coefficients) {
     return {
-      status: "not-supported",
+      status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings: [
         "N+My Method B interaction coefficients could not be computed; check alphaMy/alphaMLT and slenderness inputs.",
@@ -328,7 +330,7 @@ export function verifySteelBeamColumnInteractionMy({
   const governingEquation = equationY >= equationZ ? "y" : "z";
 
   return {
-    status: utilizationRatio <= 1 ? "ok" : "not-verified",
+    status: utilizationRatio <= 1 ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
     check: {
       id: "steel-beam-column-interaction-n-my",
       description: "N+My member stability interaction by Method B",
@@ -395,7 +397,7 @@ export function verifySteelBeamColumnInteractionMyMz({
 
   if (!I_H_FAMILIES.has(family) && !allowSinglySymmetric) {
     return {
-      status: "not-supported",
+      status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings: [
         `N+My+Mz Method B stability interaction is implemented for doubly symmetric I/H profiles; profile family ${family || "unknown"} requires a dedicated extension or explicit override.`,
@@ -410,7 +412,7 @@ export function verifySteelBeamColumnInteractionMyMz({
 
   if (sectionClass > 3) {
     return {
-      status: "not-supported",
+      status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings: [
         "N+My+Mz Method B stability interaction is blocked for class 4 sections until effective properties are implemented.",
@@ -441,7 +443,7 @@ export function verifySteelBeamColumnInteractionMyMz({
     !isFinitePositive(bendingSectionModulusZ)
   ) {
     return {
-      status: "not-supported",
+      status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings: [
         "N+My+Mz Method B interaction requires compression buckling reductions, chiLT, A, fyk, gammaM1, Wy and Wz.",
@@ -475,7 +477,7 @@ export function verifySteelBeamColumnInteractionMyMz({
 
   if (!coefficients) {
     return {
-      status: "not-supported",
+      status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings: [
         "N+My+Mz Method B interaction coefficients could not be computed; check alphaMy/alphaMz/alphaMLT and slenderness inputs.",
@@ -500,7 +502,7 @@ export function verifySteelBeamColumnInteractionMyMz({
   const governingEquation = equationY >= equationZ ? "y" : "z";
 
   return {
-    status: utilizationRatio <= 1 ? "ok" : "not-verified",
+    status: utilizationRatio <= 1 ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
     check: {
       id: "steel-beam-column-interaction-n-my-mz",
       description: "N+My+Mz member stability interaction by Method B",

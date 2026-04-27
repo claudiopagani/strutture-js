@@ -9,6 +9,7 @@ import { extractEquivalentFrameMembers } from "./geometry/extractEquivalentFrame
 import { AlignmentStateComparisonReportBuilder } from "./reports/AlignmentStateComparisonReportBuilder.js";
 import { sanitizeAlignmentOpenings } from "./geometry/sanitizeAlignmentOpenings.js";
 import { MasonryWallOpeningsModel } from "./models/MasonryWallOpeningsModel.js";
+import { RESULT_STATUS } from "../../core/results/resultStatus.js";
 
 function resolveMode(input = {}) {
   return String(input.mode ?? input.analysisType ?? "sanitize-only")
@@ -68,7 +69,7 @@ export class MasonryWallOpeningsApplication extends StructuralApplication {
     if (mode === "sanitize-only") {
       return new CalculationResult({
         applicationId: this.id,
-        status: "ok",
+        status: RESULT_STATUS.OK,
         summary:
           "Alignment openings were sanitized, clipped to the wall envelope and merged into deterministic equivalent openings.",
         outputs: {
@@ -92,7 +93,7 @@ export class MasonryWallOpeningsApplication extends StructuralApplication {
     if (mode === "extract-equivalent-frame-members" || mode === "extract-members") {
       return new CalculationResult({
         applicationId: this.id,
-        status: "ok",
+        status: RESULT_STATUS.OK,
         summary:
           "Sanitized openings were transformed into first-release equivalent-frame macroelements, returning wall-bounded piers and opening-driven spandrels.",
         outputs: {
@@ -228,7 +229,7 @@ export class MasonryWallOpeningsApplication extends StructuralApplication {
 
       return new CalculationResult({
         applicationId: this.id,
-        status: "ok",
+        status: RESULT_STATUS.OK,
         summary:
           frame.snapshot.metadata.ringFrameCount > 0
             ? "Equivalent-frame FEM model assembled for the masonry wall alignment with explicit steel ring frames tied to the diaphragm when requested."

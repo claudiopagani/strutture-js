@@ -6,6 +6,7 @@ import { ReinforcedConcreteSectionModel } from "../models/ReinforcedConcreteSect
 import { ReinforcedConcreteServiceabilityVerification } from "./ReinforcedConcreteServiceabilityVerification.js";
 import { ReinforcedConcreteSectionVerification } from "./ReinforcedConcreteSectionVerification.js";
 import { ReinforcedConcreteShearVerification } from "./ReinforcedConcreteShearVerification.js";
+import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const DEFAULT_SECTION_UNITS = Object.freeze({ force: "N", length: "mm" });
 
@@ -187,9 +188,9 @@ function createRcActionVerifier({
 
       return {
         status:
-          statuses.every((status) => status === "ok")
-            ? "ok"
-            : "not-verified",
+          statuses.every((status) => status === RESULT_STATUS.OK)
+            ? RESULT_STATUS.OK
+            : RESULT_STATUS.NOT_VERIFIED,
         utilizationRatio: governing?.utilizationRatio ?? result.utilizationRatio,
         demand: governing?.demand ?? result.demand,
         capacity: governing?.capacity ?? result.capacity,
@@ -334,7 +335,7 @@ export class ReinforcedConcreteBeamVerification {
     if (!section || !analysisResult) {
       return new VerificationResult({
         applicationId: "reinforced-concrete-beams",
-        status: "not-implemented",
+        status: RESULT_STATUS.NOT_IMPLEMENTED,
         summary: "RC beam verification requires a section and a FEM beam analysis result.",
         warnings: [
           "RC beam verification from FEM actions was not run because required inputs are missing.",
@@ -416,11 +417,11 @@ export class ReinforcedConcreteBeamVerification {
       serviceabilityVerification.outputs.stationResultCount > 0
         ? {
             status:
-              ulsVerification.status === "ok" &&
-              serviceabilityVerification.status === "ok" &&
-              (!includeDeflection || deflectionVerification.status === "ok")
-                ? "ok"
-                : "not-verified",
+              ulsVerification.status === RESULT_STATUS.OK &&
+              serviceabilityVerification.status === RESULT_STATUS.OK &&
+              (!includeDeflection || deflectionVerification.status === RESULT_STATUS.OK)
+                ? RESULT_STATUS.OK
+                : RESULT_STATUS.NOT_VERIFIED,
             utilizationRatio: Math.max(
               ulsVerification.utilizationRatio ?? 0,
               serviceabilityVerification.utilizationRatio ?? 0,

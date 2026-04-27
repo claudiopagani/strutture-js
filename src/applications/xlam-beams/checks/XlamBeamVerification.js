@@ -7,6 +7,7 @@ import {
 } from "../../../core/results/checkUtils.js";
 import { BeamSectionActionVerifier } from "../../../domain/beams/BeamSectionActionVerifier.js";
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
+import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const DEFAULT_SECTION_UNITS = Object.freeze({ force: "N", length: "mm" });
 
@@ -216,7 +217,7 @@ function createXlamActionVerifier({
       const governing = governingCheck(checks);
 
       return {
-        status: checks.every((check) => check.ok) ? "ok" : "not-verified",
+        status: checks.every((check) => check.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
         utilizationRatio: governing?.utilizationRatio ?? null,
         demand: governing?.demand ?? null,
         capacity: governing?.capacity ?? null,
@@ -268,7 +269,7 @@ export class XlamBeamVerification {
     if (!section || !material || !analysisResult) {
       return new VerificationResult({
         applicationId: "xlam-beams",
-        status: "not-implemented",
+        status: RESULT_STATUS.NOT_IMPLEMENTED,
         summary: "XLAM beam verification requires a section, material and FEM beam analysis result.",
         warnings: [
           "XLAM strip verification was not run because required inputs are missing.",
@@ -341,9 +342,9 @@ export class XlamBeamVerification {
     return new VerificationResult({
       applicationId: "xlam-beams",
       status:
-        actionVerification.status === "ok" && deflectionOk
-          ? "ok"
-          : "not-verified",
+        actionVerification.status === RESULT_STATUS.OK && deflectionOk
+          ? RESULT_STATUS.OK
+          : RESULT_STATUS.NOT_VERIFIED,
       summary: "XLAM strip beam bending, rolling shear and deflection verification from FEM results.",
       utilizationRatio: governing?.utilizationRatio ?? null,
       demand: governing?.demand ?? null,

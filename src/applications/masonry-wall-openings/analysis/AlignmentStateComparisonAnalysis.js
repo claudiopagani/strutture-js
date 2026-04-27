@@ -2,6 +2,7 @@ import { CalculationResult } from "../../../core/results/CalculationResult.js";
 import { round, uniqueStrings } from "../../../core/results/checkUtils.js";
 import { sanitizeAlignmentOpenings } from "../geometry/sanitizeAlignmentOpenings.js";
 import { AlignmentSeismicAggregatedAnalysis } from "./AlignmentSeismicAggregatedAnalysis.js";
+import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const APPLICATION_ID = "masonry-wall-openings";
 const DEFAULT_STIFFNESS_TOLERANCE_RATIO = 0.15;
@@ -237,11 +238,11 @@ function buildComparisonReading({
   let headline =
     "Il progetto rispetta i criteri ante/post configurati per rigidezza, resistenza e deformabilita.";
 
-  if (stateOfFactStatus !== "ok" || designStatus !== "ok") {
+  if (stateOfFactStatus !== RESULT_STATUS.OK || designStatus !== RESULT_STATUS.OK) {
     outcome = "provisional";
     headline =
       "Il confronto ante/post e disponibile, ma resta provvisorio perche almeno una delle analisi di base non e in stato ok.";
-  } else if (failedChecks.length > 0 || status !== "ok") {
+  } else if (failedChecks.length > 0 || status !== RESULT_STATUS.OK) {
     outcome = "attention-required";
     headline =
       "Il progetto non rispetta tutti i criteri ante/post configurati e richiede una lettura ingegneristica mirata.";
@@ -329,13 +330,13 @@ export class AlignmentStateComparisonAnalysis {
     ];
     const allChecksOk = checks.every((check) => check.ok);
 
-    if (stateOfFactResult.status !== "ok") {
+    if (stateOfFactResult.status !== RESULT_STATUS.OK) {
       warnings.push(
         `The state-of-fact aggregated seismic analysis returned status ${stateOfFactResult.status}, so the ante/post comparison should be interpreted as provisional.`,
       );
     }
 
-    if (designResult.status !== "ok") {
+    if (designResult.status !== RESULT_STATUS.OK) {
       warnings.push(
         `The design aggregated seismic analysis returned status ${designResult.status}, so the ante/post comparison should be interpreted as provisional.`,
       );
@@ -364,11 +365,11 @@ export class AlignmentStateComparisonAnalysis {
     }
 
     const status =
-      stateOfFactResult.status === "ok" &&
-      designResult.status === "ok" &&
+      stateOfFactResult.status === RESULT_STATUS.OK &&
+      designResult.status === RESULT_STATUS.OK &&
       allChecksOk
-        ? "ok"
-        : "not-verified";
+        ? RESULT_STATUS.OK
+        : RESULT_STATUS.NOT_VERIFIED;
     const reading = buildComparisonReading({
       checks,
       status,
@@ -380,7 +381,7 @@ export class AlignmentStateComparisonAnalysis {
       applicationId: APPLICATION_ID,
       status,
       summary:
-        status === "ok"
+        status === RESULT_STATUS.OK
           ? "Ante/post aggregated seismic comparison completed: the project stage stays within the configured stiffness tolerance band and does not reduce equivalent strength or deformability."
           : "Ante/post aggregated seismic comparison completed, but one or more acceptance criteria were not satisfied.",
       outputs: {

@@ -1,6 +1,7 @@
 import { VerificationResult } from "../../../core/results/VerificationResult.js";
 import { BeamSectionActionVerifier } from "../../../domain/beams/BeamSectionActionVerifier.js";
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
+import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const round = (value, decimals = 6) =>
   Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
@@ -317,7 +318,7 @@ export class TimberConcreteCompositeBeamVerification {
     }
 
     return {
-      status: checks.every((check) => check.ok) ? "ok" : "not-verified",
+      status: checks.every((check) => check.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       utilizationRatio: governingCheck.utilizationRatio,
       demand: governingCheck.demand,
       capacity: governingCheck.capacity,
@@ -563,7 +564,7 @@ export class TimberConcreteCompositeBeamVerification {
 
     return new VerificationResult({
       applicationId: "timber-concrete-composite-beams",
-      status: combinedChecks.every((check) => check.ok) ? "ok" : "not-verified",
+      status: combinedChecks.every((check) => check.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       summary:
         "Verification of timber beam with collaborating concrete slab according to the Gelfi-style gamma method implemented from the workbook.",
       utilizationRatio: round(governingCheck.utilizationRatio, 6),

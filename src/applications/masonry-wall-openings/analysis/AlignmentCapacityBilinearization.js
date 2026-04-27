@@ -1,3 +1,5 @@
+import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
+
 const DEFAULT_DROP_RATIO = 0.2;
 const EPS = 1e-9;
 
@@ -222,7 +224,7 @@ export function bilinearizeCapacityCurve({
 
   if (normalizedPoints.length < 2) {
     return {
-      status: "not-verified",
+      status: RESULT_STATUS.NOT_VERIFIED,
       warnings: ["At least two capacity-curve points are required for bilinearization."],
       ks: 0,
       Vy: 0,
@@ -264,7 +266,7 @@ export function bilinearizeCapacityCurve({
 
   if (ks <= EPS || !ultimatePoint || ultimatePoint.displacement <= EPS) {
     return {
-      status: "not-verified",
+      status: RESULT_STATUS.NOT_VERIFIED,
       warnings: [
         ...warnings,
         "The capacity curve does not provide a finite elastic secant stiffness or a positive ultimate displacement.",
@@ -303,7 +305,7 @@ export function bilinearizeCapacityCurve({
     Vy * ultimatePoint.displacement - (Vy * limitedYieldDisplacement) / 2;
 
   return {
-    status: "ok",
+    status: RESULT_STATUS.OK,
     warnings,
     ks,
     Vy,

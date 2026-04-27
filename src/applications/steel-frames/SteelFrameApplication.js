@@ -3,6 +3,7 @@ import { CalculationResult } from "../../core/results/CalculationResult.js";
 import { SteelMemberVerification } from "./checks/SteelMemberVerification.js";
 import { SteelRingFramePushoverAnalysis } from "./analysis/SteelRingFramePushoverAnalysis.js";
 import { SteelRingFramePushoverModel } from "./models/SteelRingFramePushoverModel.js";
+import { RESULT_STATUS } from "../../core/results/resultStatus.js";
 
 function isRingFramePushoverInput(input = {}) {
   return (
@@ -71,7 +72,7 @@ export class SteelFrameApplication extends StructuralApplication {
       deflectionLimitRatio: input.deflectionLimitRatio,
     });
 
-    if (verification.status !== "not-implemented") {
+    if (verification.status !== RESULT_STATUS.NOT_IMPLEMENTED) {
       return verification;
     }
 

@@ -10,6 +10,7 @@ import { SectionFiberDiscretizer } from "../analysis/SectionFiberDiscretizer.js"
 import { RCUniaxialDomainBuilder } from "../analysis/RCUniaxialDomainBuilder.js";
 import { RCUltimateSectionSolver } from "../analysis/RCUltimateSectionSolver.js";
 import { resolveRcSleModularRatio } from "../serviceabilityDefaults.js";
+import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const round = (value, decimals = 6) =>
   Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
@@ -128,7 +129,7 @@ export class ReinforcedConcreteSectionVerification {
 
       return new VerificationResult({
         applicationId: "reinforced-concrete-sections",
-        status: "not-implemented",
+        status: RESULT_STATUS.NOT_IMPLEMENTED,
         summary: "RC section biaxial/uniaxial verification scaffolded.",
         warnings: [
           "Interaction domains, strain compatibility and detailing checks are placeholders.",
@@ -175,7 +176,7 @@ export class ReinforcedConcreteSectionVerification {
 
         return new VerificationResult({
           applicationId: "reinforced-concrete-sections",
-          status: solved.converged ? "ok" : "not-verified",
+          status: solved.converged ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
           summary:
             "Service stress state solved through strain-field equilibrium with concrete tension excluded.",
           outputs: {
@@ -297,7 +298,7 @@ export class ReinforcedConcreteSectionVerification {
 
         return new VerificationResult({
           applicationId: "reinforced-concrete-sections",
-          status: domain.points.every((point) => point.converged) ? "ok" : "not-verified",
+          status: domain.points.every((point) => point.converged) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
           summary:
             "ULS biaxial resistant domain built point-by-point with fiber discretization and Illinois axial-equilibrium iterations.",
           outputs: {
@@ -376,7 +377,7 @@ export class ReinforcedConcreteSectionVerification {
 
         return new VerificationResult({
           applicationId: "reinforced-concrete-sections",
-          status: domain.points.every((point) => point.converged) ? "ok" : "not-verified",
+          status: domain.points.every((point) => point.converged) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
           summary:
             "ULS uniaxial M-N resistant domain built point-by-point with fiber discretization and Illinois axial-equilibrium iterations.",
           outputs: {
@@ -429,7 +430,7 @@ export class ReinforcedConcreteSectionVerification {
 
       return new VerificationResult({
         applicationId: "reinforced-concrete-sections",
-        status: "not-implemented",
+        status: RESULT_STATUS.NOT_IMPLEMENTED,
         summary: `RC section analysis type ${model.analysisType} is not implemented yet.`,
         warnings: [
           "Only uls-uniaxial-resistance is currently wired to the fiber solver.",
@@ -486,7 +487,7 @@ export class ReinforcedConcreteSectionVerification {
 
     return new VerificationResult({
       applicationId: "reinforced-concrete-sections",
-      status: isVerified ? "ok" : "not-verified",
+      status: isVerified ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       summary:
         "ULS uniaxial reinforced-concrete section resistance solved with fiber discretization and Illinois axial-equilibrium iteration.",
       utilizationRatio: round(utilizationRatio, 6),
