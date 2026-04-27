@@ -60,14 +60,14 @@ Obiettivo: ridurre il file monolitico senza cambiare API pubblica o risultati nu
 
 ## 6. JSDoc senza migrazione TypeScript
 
-- [ ] Aggiungere typedef JSDoc per i DTO pubblici piu grandi:
+- [x] Aggiungere typedef JSDoc per i DTO pubblici piu grandi:
   - `SingleBeamDesignModel`
   - `MasonryWallOpeningsModel`
   - `ReinforcedConcreteSectionModel`
   - report DTO delle travi
-- [ ] Abilitare `// @ts-check` solo su file con contratti stabili e basso rischio.
-- [ ] Usare JSDoc per descrivere shape, unita attese e campi opzionali, non per riscrivere l'architettura.
-- [ ] Evitare build step TypeScript, file `.ts` e migrazioni massive.
+- [x] Abilitare `// @ts-check` solo su file con contratti stabili e basso rischio.
+- [x] Usare JSDoc per descrivere shape, unita attese e campi opzionali, non per riscrivere l'architettura.
+- [x] Evitare build step TypeScript, file `.ts` e migrazioni massive.
 
 ## 7. Quality gate locale
 

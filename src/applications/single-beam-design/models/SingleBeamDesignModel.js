@@ -1,3 +1,56 @@
+/**
+ * Explicit unit system used by public beam inputs and reports.
+ *
+ * Values are user-facing units on input. `SingleBeamAnalysis` performs the
+ * internal normalization before solving.
+ *
+ * @typedef {Object} SingleBeamDesignUnitSystem
+ * @property {string} force
+ * @property {string} length
+ */
+
+/**
+ * Serializable metadata bag kept on the model and report output.
+ *
+ * @typedef {Record<string, unknown>} SingleBeamDesignMetadata
+ */
+
+/**
+ * Input accepted by `SingleBeamAnalysis`.
+ *
+ * The object is intentionally open because it may contain domain instances
+ * such as sections, materials, section providers, custom element classes and
+ * solver hooks. `toJSON()` serializes non-plain values into safe DTO payloads.
+ *
+ * @typedef {Record<string, unknown> & {
+ *   id?: string,
+ *   units?: SingleBeamDesignUnitSystem,
+ *   geometry?: Record<string, unknown>,
+ *   supports?: unknown,
+ *   loads?: unknown,
+ *   combinations?: unknown,
+ *   discretization?: Record<string, unknown>,
+ *   verificationStations?: unknown,
+ *   sectionRotation?: Record<string, unknown>
+ * }} SingleBeamAnalysisInputDto
+ */
+
+/**
+ * Public DTO used to create a single-beam design workflow.
+ *
+ * @typedef {Object} SingleBeamDesignModelInput
+ * @property {string} id Stable model/report id.
+ * @property {string|null} [title] Display title. Defaults to `id`.
+ * @property {string} [description]
+ * @property {SingleBeamDesignUnitSystem|null} [units] User input units. Defaults to `beamInput.units`.
+ * @property {SingleBeamAnalysisInputDto} beamInput Beam analysis input in user units.
+ * @property {unknown} [section] Optional domain section instance or DTO.
+ * @property {unknown} [material] Optional domain material instance or DTO.
+ * @property {unknown} [verification] Optional verifier, verifier descriptor or callback.
+ * @property {Record<string, unknown>} [report] Report generation options.
+ * @property {SingleBeamDesignMetadata} [metadata]
+ */
+
 function isPlainObject(value) {
   return (
     value !== null &&
@@ -96,6 +149,9 @@ function serializeVerification(verification) {
 }
 
 export class SingleBeamDesignModel {
+  /**
+   * @param {SingleBeamDesignModelInput} [input]
+   */
   constructor({
     id,
     title = null,
@@ -131,6 +187,9 @@ export class SingleBeamDesignModel {
     this.metadata = { ...metadata };
   }
 
+  /**
+   * @returns {SingleBeamAnalysisInputDto}
+   */
   toAnalysisInput() {
     return {
       ...this.beamInput,
@@ -138,6 +197,9 @@ export class SingleBeamDesignModel {
     };
   }
 
+  /**
+   * @returns {Record<string, unknown>}
+   */
   toJSON() {
     return {
       id: this.id,
@@ -153,4 +215,3 @@ export class SingleBeamDesignModel {
     };
   }
 }
-

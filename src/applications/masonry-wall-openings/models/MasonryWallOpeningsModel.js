@@ -5,6 +5,86 @@ import {
 
 const INTERNAL_UNITS = Object.freeze({ force: "N", length: "m" });
 
+/**
+ * Explicit source unit system for wall/opening input.
+ *
+ * Length fields are provided in this unit system and normalized internally to
+ * meters. Line loads are provided as force/length and normalized to N/m.
+ *
+ * @typedef {Object} MasonryWallOpeningsUnitSystem
+ * @property {string} force
+ * @property {string} length
+ */
+
+/**
+ * @typedef {Object} MasonryWallOpeningsLineLoadPayload
+ * @property {number} [value] Line load in source force/source length.
+ * @property {string} [description]
+ * @property {Record<string, unknown>} [metadata]
+ */
+
+/**
+ * @typedef {Object} MasonryWallOpeningsWallInput
+ * @property {string} [id]
+ * @property {number} length Wall length in source length units.
+ * @property {number} height Wall height in source length units.
+ * @property {number} thickness Wall thickness in source length units.
+ * @property {unknown} [material] Masonry material instance or DTO.
+ * @property {number|MasonryWallOpeningsLineLoadPayload|Record<string, MasonryWallOpeningsLineLoadPayload|number>} [verticalLineLoad]
+ * @property {Record<string, unknown>} [metadata]
+ */
+
+/**
+ * @typedef {Object} MasonryWallOpeningRingFrameInput
+ * @property {number|null} [profileWidthInPlane] Frame profile width in source length units.
+ * @property {Record<string, unknown>} [metadata]
+ */
+
+/**
+ * @typedef {Object} MasonryWallOpeningLintelInput
+ * @property {number|null} [bearingLength] Bearing length in source length units.
+ * @property {Record<string, unknown>} [metadata]
+ */
+
+/**
+ * @typedef {Object} MasonryWallOpeningInput
+ * @property {string} [id]
+ * @property {number} x Opening left coordinate in source length units.
+ * @property {number} y Opening bottom coordinate in source length units.
+ * @property {number} width Opening width in source length units.
+ * @property {number} height Opening height in source length units.
+ * @property {MasonryWallOpeningRingFrameInput|null} [ringFrame]
+ * @property {MasonryWallOpeningLintelInput|null} [lintel]
+ * @property {Record<string, unknown>} [metadata]
+ */
+
+/**
+ * @typedef {Object} MasonryWallOpeningsSettingsInput
+ * @property {string} [normativePreset]
+ * @property {string} [stiffnessSelection]
+ * @property {string} [strengthSelection]
+ * @property {string} [stiffnessState]
+ * @property {boolean} [useCorrectiveModifiers]
+ * @property {boolean} [divideByConfidenceFactor]
+ * @property {number} [residualPierWarningThreshold] Residual pier threshold in source length units.
+ */
+
+/**
+ * Public DTO for masonry wall opening analyses.
+ *
+ * The constructor stores walls/openings in internal units: N and m. Metadata
+ * preserves both target and source unit systems.
+ *
+ * @typedef {Object} MasonryWallOpeningsModelInput
+ * @property {string} id
+ * @property {string|null} [label]
+ * @property {MasonryWallOpeningsUnitSystem} units
+ * @property {MasonryWallOpeningsWallInput[]} walls
+ * @property {MasonryWallOpeningInput[]} [openings]
+ * @property {MasonryWallOpeningsSettingsInput & Record<string, unknown>} [settings]
+ * @property {Record<string, unknown>} [metadata]
+ */
+
 function assertPositive(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`MasonryWallOpeningsModel requires a positive ${label}.`);
@@ -64,6 +144,9 @@ function normalizeLintel(lintel, resolver) {
 }
 
 export class MasonryWallOpeningsModel {
+  /**
+   * @param {MasonryWallOpeningsModelInput} input
+   */
   constructor({
     id,
     label = null,
@@ -166,10 +249,16 @@ export class MasonryWallOpeningsModel {
     };
   }
 
+  /**
+   * @returns {number} Total wall length in meters.
+   */
   totalLength() {
     return this.walls.at(-1)?.xEnd ?? 0;
   }
 
+  /**
+   * @returns {number} Maximum wall height in meters.
+   */
   maxHeight() {
     return this.walls.reduce(
       (selected, wall) => Math.max(selected, wall.height),
@@ -177,6 +266,10 @@ export class MasonryWallOpeningsModel {
     );
   }
 
+  /**
+   * @param {{ x: number, y: number, width: number, height: number }} opening Normalized opening in meters.
+   * @returns {{ xStart: number, xEnd: number, yStart: number, yEnd: number }}
+   */
   openingEnvelope(opening) {
     return {
       xStart: opening.x,
@@ -186,6 +279,9 @@ export class MasonryWallOpeningsModel {
     };
   }
 
+  /**
+   * @returns {Record<string, unknown>}
+   */
   toJSON() {
     return {
       id: this.id,
