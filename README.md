@@ -1379,6 +1379,9 @@ Riferimenti metodologici gia presenti:
 
 - `docs/steel-beam-method.md`;
 - `docs/reinforced-concrete-sle-method.md`.
+- `docs/beam-validation-campaign.md`;
+- `docs/result-status.md`;
+- `docs/implementation-boundaries.md`.
 
 ## Strategia di crescita
 

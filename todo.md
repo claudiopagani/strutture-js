@@ -78,22 +78,22 @@ Obiettivo: ridurre il file monolitico senza cambiare API pubblica o risultati nu
 
 ## 8. Campagna di validazione
 
-- [ ] Espandere `validation/` oltre i casi trave esistenti.
-- [ ] Aggiungere benchmark esterni o workbook di riferimento per:
-  - acciaio: classificazione, instabilita, interazione N-M;
-  - cemento armato: SLU, SLE tensioni, fessurazione, taglio;
-  - muratura: maschi, aperture, curve di capacita;
-  - legno/compositi: gamma method, deformazioni, connettori;
-  - XLAM: flessione, taglio rolling, deformazioni.
-- [ ] Per ogni caso indicare fonte, ipotesi, tolleranza e grandezze confrontate.
-- [ ] Mantenere il report Markdown della campagna come artefatto leggibile.
+- [x] Espandere `validation/` oltre i casi trave esistenti con una prima tranche di casi in cemento armato.
+- [x] Aggiungere benchmark esterni o workbook di riferimento per:
+  - [x] acciaio: prima tranche con SCI P364 per classificazione, resistenze e instabilita;
+  - [x] cemento armato: prima tranche con relazioni locali, JRC EC2 worked examples, SLU/SLE carichi, pressione fondazione e interazione N-M;
+  - [x] muratura: prima tranche con curve di capacita, aperture e report cerchiature derivati da input MATLAB;
+  - [x] legno/compositi: prima tranche con worked example EC5, workbook gamma method, deformazioni e connettori;
+  - [x] XLAM: prima tranche con relazione locale per flessione, vibrazioni e deformazioni.
+- [x] Per ogni caso indicare fonte, ipotesi, tolleranza e grandezze confrontate.
+- [x] Mantenere il report Markdown della campagna come artefatto leggibile.
 
 ## 9. Documentazione tecnica
 
-- [ ] Documentare il ciclo consigliato: `npm test`, `npm run validation`, `npm run check`.
-- [ ] Aggiungere una pagina breve sugli status dei risultati e sul significato applicativo di ciascuno.
-- [ ] Aggiornare la documentazione dei model quando cambiano contratti, unita o DTO.
-- [ ] Separare chiaramente limiti implementativi, ipotesi normative e scelte numeriche.
+- [x] Documentare il ciclo consigliato: `npm test`, `npm run validation`, `npm run check`.
+- [x] Aggiungere una pagina breve sugli status dei risultati e sul significato applicativo di ciascuno.
+- [x] Aggiornare la documentazione dei model quando cambiano contratti, unita o DTO: nessun contratto model cambiato in questa tranche; aggiornata la documentazione del contratto di validazione/report.
+- [x] Separare chiaramente limiti implementativi, ipotesi normative e scelte numeriche.
 
 ## 10. Ordine suggerito
 
@@ -105,3 +105,29 @@ Obiettivo: ridurre il file monolitico senza cambiare API pubblica o risultati nu
 6. Refactor graduale di `SingleBeamAnalysis`.
 7. Espansione campagna di validazione.
 8. Documentazione di supporto.
+
+---
+
+## Giro 2 - Review first principles del 2026-04-30
+
+Esito del nuovo passaggio indipendente:
+
+- build, syntax check, test e validation campaign sono verdi;
+- i rischi residui piu utili da chiudere non sono nuove feature grandi, ma contratti pubblici che devono fallire in modo esplicito quando ricevono dati ambigui;
+- la coerenza fra registry, status e verifiche SLE va mantenuta come barriera di sicurezza.
+
+### 1. Contratto status risultati
+
+- [x] Validare `CalculationResult.status` contro gli status pubblici centralizzati.
+- [x] Aggiungere regressione che rifiuta uno status libero come `error`.
+
+### 2. Registry applicativo
+
+- [x] Impedire la registrazione silenziosa di due applicazioni con lo stesso `id`.
+- [x] Verificare nei test che l'ordine/id del registry di default resti allineato a `APPLICATION_CATALOG`.
+
+### 3. Verifica legno SLE
+
+- [x] Evitare che `TimberBeamVerification` usi risultati ULS come fallback per la verifica di freccia SLE.
+- [x] Esporre `serviceability.status = not-analyzed` quando mancano combinazioni SLE.
+- [x] Aggiungere un test ULS-only che confermi assenza di check `timber-deflection` e warning esplicito.

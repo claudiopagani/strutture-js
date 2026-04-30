@@ -1,4 +1,4 @@
-import { RESULT_STATUS } from "./resultStatus.js";
+import { RESULT_STATUS, isResultStatus } from "./resultStatus.js";
 
 export class CalculationResult {
   constructor({
@@ -12,6 +12,10 @@ export class CalculationResult {
   }) {
     if (!applicationId) {
       throw new Error("A result applicationId is required.");
+    }
+
+    if (!isResultStatus(status)) {
+      throw new Error(`Unsupported result status: ${status}.`);
     }
 
     this.applicationId = applicationId;

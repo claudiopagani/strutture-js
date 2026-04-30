@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   RectangularSection,
+  RESULT_STATUS,
   SingleBeamAnalysis,
   TimberBeamVerification,
   TimberBeamSectionProvider,
@@ -236,6 +237,83 @@ test("timber beam verification checks bending, shear, LTB and deflection from FE
     ),
   );
   assert.ok(verification.utilizationRatio < 1);
+});
+
+test("timber beam verification does not use ULS results as SLE deflection checks", () => {
+  const { section, material } = createTimberFixture();
+  const loads = [
+    {
+      id: "g1",
+      loadCaseId: "G1",
+      value: -0.5,
+      action: createNTC2018PermanentAction({
+        id: "ACT-G1",
+        permanentClass: "G1",
+      }),
+    },
+    {
+      id: "live",
+      loadCaseId: "LIVE",
+      value: -1,
+      action: createNTC2018VariableAction({
+        id: "ACT-LIVE",
+        category: "B",
+      }),
+    },
+  ];
+  const combinations = createNTC2018BeamCombinations({
+    loads,
+    types: ["ULS"],
+    idPrefix: "timber-uls-only",
+  });
+  const sectionProvider = createTimberBeamSectionProvider({
+    section,
+    material,
+    gammaM: 1.5,
+    kdef: 0.6,
+    kmodResolver: ({ loadDurationClass, serviceClass, materialType }) =>
+      getNTC2018TimberKmod({
+        materialType,
+        serviceClass,
+        loadDurationClass,
+      }),
+  });
+  const analysisResult = new SingleBeamAnalysis().analyze({
+    id: "timber-uls-only",
+    units: beamUnits,
+    geometry: {
+      start: { x: 0, y: 0 },
+      end: { x: 4, y: 0 },
+    },
+    sectionProvider,
+    supports: {
+      start: "hinge",
+      end: "roller",
+    },
+    loads,
+    combinations,
+    discretization: {
+      elementCount: 4,
+    },
+  });
+  const verification = new TimberBeamVerification().verify({
+    beamId: "timber-uls-only",
+    section,
+    material,
+    analysisResult,
+  });
+
+  assert.equal(verification.status, RESULT_STATUS.OK);
+  assert.equal(verification.outputs.serviceability.status, RESULT_STATUS.NOT_ANALYZED);
+  assert.equal(
+    verification.checks.some((check) => check.id === "timber-deflection"),
+    false,
+  );
+  assert.ok(
+    verification.warnings.some((warning) =>
+      warning.includes("No SLE timber deflection check"),
+    ),
+  );
 });
 
 test("timber LTB verification includes weak-axis moment from section rotation", () => {

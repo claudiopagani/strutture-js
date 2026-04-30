@@ -56,12 +56,10 @@ function loadCaseEntries(analysisResult = {}) {
   return Object.values(analysisResult.loadCases ?? {});
 }
 
-function filterByLimitState(entries, limitState) {
-  const filtered = entries.filter(
+function entriesByLimitState(entries, limitState) {
+  return entries.filter(
     (entry) => normalizeLimitState(entry.context?.limitState) === normalizeLimitState(limitState),
   );
-
-  return filtered.length > 0 ? filtered : entries;
 }
 
 function isFinalServiceEntry(entry) {
@@ -98,6 +96,16 @@ function maxAbsDeflection(entries) {
 
     return !selected || candidate.value > selected.value ? candidate : selected;
   }, null);
+}
+
+function spanForResult(entries, resultId, analysisResult) {
+  const result = entries.find((entry) => entry.id === resultId);
+
+  return result?.geometry?.length ??
+    result?.geometry?.horizontalSpan ??
+    analysisResult.geometry?.length ??
+    analysisResult.geometry?.horizontalSpan ??
+    null;
 }
 
 function resultEntries(analysisResult = {}) {
@@ -575,7 +583,7 @@ export class TimberBeamVerification {
     const resultToSectionUnits = createUnitResolver(resultUnits, sectionUnits);
     const allEntries = combinationEntries(analysisResult);
     const availableEntries = allEntries.length > 0 ? allEntries : loadCaseEntries(analysisResult);
-    const sleEntries = filterByLimitState(availableEntries, "SLE");
+    const sleEntries = entriesByLimitState(availableEntries, "SLE");
     const instantSleEntries = sleEntries.filter((entry) => !isFinalServiceEntry(entry));
     const finalSleEntries = sleEntries.filter(isFinalServiceEntry);
     const actionVerification = new BeamSectionActionVerifier({
@@ -600,46 +608,43 @@ export class TimberBeamVerification {
     const governingDeflection =
       maxAbsDeflection(instantSleEntries.length > 0 ? instantSleEntries : sleEntries);
     const governingFinalDeflection = maxAbsDeflection(finalSleEntries);
-    const span = analysisResult.combinations?.[governingDeflection?.combinationId]?.geometry?.length ??
-      analysisResult.geometry?.length ??
-      availableEntries[0]?.geometry?.length;
-    const deflectionLimit = span / deflectionLimitDenominator;
-    const deflectionCheck = utilizationCheck({
-      id: "timber-deflection",
-      description: "Serviceability vertical deflection verification",
-      demand:
-        governingDeflection?.sample?.uy ??
-        governingDeflection?.value ??
-        0,
-      capacity: deflectionLimit,
-      metadata: {
-        combinationId:
-          governingDeflection?.resultId ??
-          governingDeflection?.combinationId ??
-          null,
-        station:
-          governingDeflection?.sample?.station ??
-          governingDeflection?.station ??
-          null,
-        limitDenominator: deflectionLimitDenominator,
-      },
-    });
+    const span = spanForResult(availableEntries, governingDeflection?.resultId, analysisResult);
+    const finalSpan = spanForResult(
+      availableEntries,
+      governingFinalDeflection?.resultId,
+      analysisResult,
+    );
+    const deflectionCheck =
+      governingDeflection && isFinitePositive(span)
+        ? utilizationCheck({
+            id: "timber-deflection",
+            description: "Serviceability vertical deflection verification",
+            demand:
+              governingDeflection.sample?.uy ??
+              governingDeflection.value,
+            capacity: span / deflectionLimitDenominator,
+            metadata: {
+              resultId: governingDeflection.resultId,
+              station:
+                governingDeflection.sample?.station ??
+                governingDeflection.station ??
+                null,
+              limitDenominator: deflectionLimitDenominator,
+            },
+          })
+        : null;
     const finalDeflectionCheck =
-      governingFinalDeflection == null
+      governingFinalDeflection == null || !isFinitePositive(finalSpan)
         ? null
         : utilizationCheck({
             id: "timber-final-deflection",
             description: "Final serviceability vertical deflection verification",
             demand:
               governingFinalDeflection.sample?.uy ??
-              governingFinalDeflection.value ??
-              0,
-            capacity: span / finalDeflectionLimitDenominator,
+              governingFinalDeflection.value,
+            capacity: finalSpan / finalDeflectionLimitDenominator,
             metadata: {
-              combinationId:
-                governingFinalDeflection.resultId ??
-                governingFinalDeflection.combinationId ??
-                null,
+              resultId: governingFinalDeflection.resultId,
               station:
                 governingFinalDeflection.sample?.station ??
                 governingFinalDeflection.station ??
@@ -661,7 +666,7 @@ export class TimberBeamVerification {
     const checks = [
       ...governingActionChecks,
       ...lateralTorsionalStability.checks,
-      deflectionCheck,
+      ...(deflectionCheck ? [deflectionCheck] : []),
       ...(finalDeflectionCheck ? [finalDeflectionCheck] : []),
     ];
     const groupedChecks = Object.values(
@@ -681,7 +686,14 @@ export class TimberBeamVerification {
     const ulsOk = actionVerification.status === RESULT_STATUS.OK;
     const lateralStabilityOk = lateralTorsionalStability.status === RESULT_STATUS.OK;
     const deflectionOk =
-      deflectionCheck.ok && (!finalDeflectionCheck || finalDeflectionCheck.ok);
+      (!deflectionCheck || deflectionCheck.ok) &&
+      (!finalDeflectionCheck || finalDeflectionCheck.ok);
+    const serviceabilityStatus =
+      deflectionCheck || finalDeflectionCheck
+        ? deflectionOk
+          ? RESULT_STATUS.OK
+          : RESULT_STATUS.NOT_VERIFIED
+        : RESULT_STATUS.NOT_ANALYZED;
 
     return new VerificationResult({
       applicationId: "timber-beams",
@@ -703,10 +715,11 @@ export class TimberBeamVerification {
           },
         },
         serviceability: {
+          status: serviceabilityStatus,
           deflectionLimitDenominator,
           finalDeflectionLimitDenominator,
           checks: [
-            deflectionCheck,
+            ...(deflectionCheck ? [deflectionCheck] : []),
             ...(finalDeflectionCheck ? [finalDeflectionCheck] : []),
           ].map(copyCheck),
         },
@@ -720,6 +733,9 @@ export class TimberBeamVerification {
           : null,
       },
       warnings: uniqueStrings([
+        ...(deflectionCheck || finalDeflectionCheck
+          ? []
+          : ["No SLE timber deflection check was generated because no SLE combination was found."]),
         ...actionVerification.warnings,
         ...lateralTorsionalStability.warnings,
       ]),

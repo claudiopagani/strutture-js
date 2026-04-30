@@ -1,33 +1,40 @@
 # Beam Validation Campaign
 
-La campagna di validazione delle travi semplici vive in `validation/beamValidationCampaign.js` ed e separata dagli esempi dimostrativi.
+La campagna di validazione vive in `validation/beamValidationCampaign.js` ed e separata dagli esempi dimostrativi. Il nome storico del file resta legato alle travi, ma la campagna copre anche verifiche locali di c.a., acciaio, muratura, legno, XLAM e sistemi collaboranti.
 
 Obiettivo:
 
-* raccogliere casi numerici con valori attesi, tolleranze, fonte e note;
-* rendere ripetibile la verifica dei passaggi chiave del motore trave;
-* produrre un report sintetico consultabile in Markdown o JSON.
+* raccogliere casi numerici con valori attesi, fonte, ipotesi, tolleranze e grandezze confrontate;
+* rendere ripetibile la verifica dei passaggi chiave del motore di calcolo;
+* produrre un report consultabile in Markdown o JSON.
 
 ## Comandi
 
 ```bash
 npm run validation
 npm run validation -- --json
+npm run check
 ```
 
-Il comando esce con codice diverso da zero se almeno un caso fallisce.
+`npm run validation` stampa il report Markdown e termina con codice diverso da zero se almeno un caso fallisce.
 
-La suite `npm test` include anche la campagna tramite `tests/beamValidationCampaign.test.js`.
+`npm run validation -- --json` stampa lo stesso contenuto in forma serializzata, utile per script o confronti automatici.
 
-## Casi iniziali
+`npm run check` esegue `npm test` e poi `npm run validation`; e il gate locale consigliato prima di consegnare modifiche.
 
-* `beam-eb-simply-supported-udl`: trave Euler-Bernoulli appoggio-appoggio con carico uniforme, validata contro formule chiuse di reazione, momento massimo e freccia.
-* `steel-ipe200-classification-pure-bending`: classificazione locale di un profilo IPE200 S275 in flessione pura.
-* `rc-shear-stirrups-cottheta-optimization`: taglio c.a. con staffe verticali e ottimizzazione di `cotTheta`, regressione dal foglio fornito.
-* `rc-sle-stress-limit-factors`: limiti tensionali SLE `0.60 fck`, `0.45 fck` e `0.80 fyk`.
-* `rc-sle-crack-environment-mapping`: classe di fessurazione indiretta da ambiente e combinazione.
-* `rc-sle-crack-tension-group-selection`: selezione automatica del gruppo teso inferiore/superiore in funzione del segno del momento.
-* `beam-verification-user-station-selection`: contratto `verificationStations` con filtro sulle stazioni utente.
+La suite `npm test` include anche la campagna tramite `tests/beamValidationCampaign.test.js`, in modo da intercettare regressioni numeriche dentro il ciclo ordinario dei test.
+
+## Report Markdown
+
+Il report generato da `formatBeamValidationReport()` contiene:
+
+* stato complessivo, numero casi, passati e falliti;
+* riepilogo per categoria;
+* riepilogo per tipo fonte (`sourceKind`);
+* indice dei casi con sorgente, numero controlli e intervallo delle tolleranze;
+* dettaglio per caso con titolo, fonte, ipotesi/note e tabella dei confronti.
+
+Ogni riga di dettaglio espone la grandezza confrontata tramite `path`, il valore attuale, il valore atteso e la tolleranza applicata.
 
 ## Struttura Caso
 
@@ -39,6 +46,7 @@ Ogni caso dichiara:
   title,
   category,
   source,
+  sourceKind,
   notes,
   evaluate,
   expectations
@@ -46,6 +54,13 @@ Ogni caso dichiara:
 ```
 
 `evaluate()` restituisce un oggetto serializzabile con i valori calcolati.
+
+`sourceKind` distingue il livello di autorevolezza o uso del caso:
+
+* `external-reference`: fonte esterna normativa, manuale o worked example autorevole;
+* `external-worked-example`: worked example pubblico usato come confronto indipendente;
+* `project-regression`: relazione, workbook o report locale utile come regressione, non assunto come verita assoluta;
+* `internal-reference`: formula chiusa o contratto interno deterministico.
 
 Ogni aspettativa usa:
 
@@ -65,10 +80,32 @@ Tipi supportati:
 * `equal`: confronto esatto;
 * `greater-than`: confronto di soglia inferiore.
 
-## Estensioni Prioritarie
+## Copertura Attuale
 
-* acciaio: LTB con `Mcr` utente per UPN, aste compresse, interazione `N + My`;
-* c.a.: SLE tensioni, fessurazione indiretta, frecce fessurate;
-* legno: appoggio-appoggio, mensola, carico puntuale e freccia finale;
-* composti: geometria inclinata o carico puntuale;
-* XLAM trave: rigidezza Timoshenko, taglio e freccia.
+La prima tranche estesa include:
+
+* acciaio: classificazione locale, resistenza flessionale/tagliante, instabilita LTB e aste compresse da SCI P364;
+* cemento armato: combinazioni di carico da relazioni locali, pressione fondazione, interazione N-M da JRC EC2, taglio e SLE;
+* muratura: bilinearizzazione della curva di capacita e regressioni su report cerchiature derivati da input MATLAB;
+* legno e sistemi collaboranti: worked example EC5, workbook locali per travi lignee, legno-XLAM e legno-calcestruzzo;
+* XLAM: regressione locale per flessione, deformazioni e vibrazioni;
+* contratti trasversali: FEM trave, selezione stazioni di verifica e mapping SLE.
+
+Le note di fonte e promozione dei casi sono raccolte anche in:
+
+* `validation/steel-validation-sources.md`;
+* `validation/reinforced-concrete-sources.md`;
+* `validation/timber-xlam-validation-sources.md`;
+* `validation/masonry-validation-sources.md`.
+
+## Criteri di Inserimento
+
+Un nuovo caso dovrebbe entrare solo se dichiara:
+
+* fonte o origine del dato;
+* ipotesi principali e limiti di interpretazione;
+* grandezze confrontate;
+* tolleranza numerica motivata;
+* motivo per cui e un benchmark esterno, una regressione di progetto o un contratto interno.
+
+Per relazioni e workbook locali, il caso resta `project-regression` finche non viene confrontato anche con una fonte indipendente o con un calcolo manuale ricostruito.

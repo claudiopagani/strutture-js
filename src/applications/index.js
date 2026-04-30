@@ -117,9 +117,9 @@ export function createDefaultApplicationRegistry() {
   return new ApplicationRegistry([
     new SingleBeamDesignApplication(),
     new SteelFrameApplication(),
+    new MasonryRingBeamApplication(),
     new MasonryPierApplication(),
     new MasonryWallOpeningsApplication(),
-    new MasonryRingBeamApplication(),
     new ReinforcedConcreteSectionApplication(),
     new TimberBeamApplication(),
     new TimberConcreteCompositeBeamApplication(),

@@ -19,10 +19,13 @@ import {
 
 test("default application registry exposes all scaffolded structural applications", () => {
   const registry = createDefaultApplicationRegistry();
+  const registryIds = registry.list().map((application) => application.id);
+  const catalogIds = APPLICATION_CATALOG.map((application) => application.id);
 
   assert.ok(registry instanceof ApplicationRegistry);
   assert.equal(registry.list().length, 13);
   assert.equal(APPLICATION_CATALOG.length, 13);
+  assert.deepEqual(registryIds, catalogIds);
   assert.ok(registry.has("single-beam-design"));
   assert.ok(registry.has("steel-frames"));
   assert.ok(registry.has("masonry-piers"));
@@ -43,6 +46,17 @@ test("application registry returns manifests and placeholder results", () => {
   assert.ok(manifests.some((manifest) => manifest.metadata.maturity === "scaffolded"));
   assert.equal(result.status, RESULT_STATUS.NOT_IMPLEMENTED);
   assert.equal(result.outputs.beamId, "beam-01");
+});
+
+test("application registry rejects duplicate application ids", () => {
+  const first = new StructuralApplication({ id: "demo", name: "Demo" });
+  const duplicate = new StructuralApplication({ id: "demo", name: "Demo duplicate" });
+  const registry = new ApplicationRegistry([first]);
+
+  assert.throws(
+    () => registry.register(duplicate),
+    /already registered/,
+  );
 });
 
 test("base structural application can build placeholder results", () => {
@@ -77,6 +91,14 @@ test("calculation result uses centralized status constants", () => {
   ]);
   assert.equal(isResultStatus(RESULT_STATUS.NOT_SUPPORTED), true);
   assert.equal(isResultStatus("error"), false);
+  assert.throws(
+    () =>
+      new CalculationResult({
+        applicationId: "demo",
+        status: "error",
+      }),
+    /Unsupported result status/,
+  );
 });
 
 test("verification result status participates in isVerified", () => {

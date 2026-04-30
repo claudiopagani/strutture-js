@@ -16,6 +16,7 @@ test("beam validation campaign runs declared numerical cases", () => {
     campaign.results.every(
       (result) =>
         result.source &&
+        result.sourceKind &&
         result.checks.length > 0 &&
         result.checks.every((check) => check.status === "ok"),
     ),
@@ -27,6 +28,9 @@ test("beam validation campaign can produce a markdown summary", () => {
   const markdown = formatBeamValidationReport(campaign);
 
   assert.ok(markdown.includes("# Beam Validation Campaign"));
+  assert.ok(markdown.includes("## Summary by Category"));
+  assert.ok(markdown.includes("## Case Details"));
+  assert.ok(markdown.includes("| Check | Quantity path | Status | Actual | Expected | Tolerance |"));
   assert.ok(markdown.includes("beam-eb-simply-supported-udl"));
   assert.ok(markdown.includes("rc-shear-stirrups-cottheta-optimization"));
 });

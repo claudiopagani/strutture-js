@@ -12,6 +12,10 @@ export class ApplicationRegistry {
       throw new Error("Cannot register an application without an id.");
     }
 
+    if (this.applications.has(application.id)) {
+      throw new Error(`Application ${application.id} is already registered.`);
+    }
+
     this.applications.set(application.id, application);
     return this;
   }
