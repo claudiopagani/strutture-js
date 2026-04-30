@@ -72,9 +72,9 @@ Obiettivo: ridurre il file monolitico senza cambiare API pubblica o risultati nu
 ## 7. Quality gate locale
 
 - [x] Aggiungere uno script `check` in `package.json`: `npm test && npm run validation`.
-- [ ] Valutare uno script locale di syntax check sui file JS, senza introdurre rumore nella pipeline.
-- [ ] Valutare ESLint/Prettier solo se si accetta di introdurre devDependency e una regola di formatting condivisa.
-- [ ] Tenere la verifica minima sempre disponibile con comandi Node standard.
+- [x] Valutare uno script locale di syntax check sui file JS, senza introdurre rumore nella pipeline: aggiunto `npm run syntax` con `node --check`.
+- [x] Valutare ESLint/Prettier solo se si accetta di introdurre devDependency e una regola di formatting condivisa: rimandati per evitare nuove dipendenze e churn di formatting.
+- [x] Tenere la verifica minima sempre disponibile con comandi Node standard.
 
 ## 8. Campagna di validazione
 
