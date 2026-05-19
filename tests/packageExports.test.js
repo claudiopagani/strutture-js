@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import * as PublicApi from "classi-strutturali";
-import * as ApplicationsApi from "classi-strutturali/applications";
-import * as Ntc2018Api from "classi-strutturali/norms/ntc2018";
+import * as PublicApi from "strutture-js";
+import * as ApplicationsApi from "strutture-js/applications";
+import * as Ntc2018Api from "strutture-js/norms/ntc2018";
 
 test("package root export exposes the main public API", () => {
   assert.equal(typeof PublicApi.SingleBeamAnalysis, "function");
