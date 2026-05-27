@@ -9,6 +9,12 @@ export { GlulamTimberMaterial } from "./domain/materials/GlulamTimberMaterial.js
 export { MasonryMaterial } from "./domain/materials/MasonryMaterial.js";
 export { ExistingMasonryMaterial } from "./domain/materials/ExistingMasonryMaterial.js";
 export { NTC2018ExistingMasonryMaterial } from "./domain/materials/NTC2018ExistingMasonryMaterial.js";
+export {
+  EXISTING_MATERIAL_CONFIDENCE_LEVELS,
+  characteristicValueFromExistingMean,
+  normalizeExistingMaterialKnowledgeLevel,
+  resolveExistingMaterialState,
+} from "./domain/materials/existingMaterialConfidence.js";
 
 export { Node } from "./domain/geometry/Node.js";
 export { CrossSection } from "./domain/geometry/CrossSection.js";
@@ -103,7 +109,10 @@ export { CompositeSectionComponent } from "./domain/composite/CompositeSectionCo
 export {
   ConcreteNoTensionLaw,
   ConcreteParabolaRectangleLaw,
+  ConcreteStressBlockLaw,
+  ConcreteTriangularRectangleLaw,
   SteelElasticLaw,
+  SteelElasticPlasticHardeningLaw,
   SteelElasticPerfectlyPlasticLaw,
 } from "./domain/constitutive-laws/index.js";
 export {
@@ -215,6 +224,7 @@ export {
   ReinforcedConcreteServiceabilityVerification,
   ReinforcedConcreteSectionApplication,
   RCBiaxialDomainBuilder,
+  RCMomentCurvatureAnalyzer,
   ReinforcedConcreteSectionModel,
   RCServiceStressSolver,
   RCSectionStateIntegrator,
@@ -280,6 +290,7 @@ export {
   NTC2018_ACTION_PARTIAL_FACTORS,
   NTC2018_CONCRETE_CLASSES,
   NTC2018_DEFAULT_DURATION_CLASS_BY_ACTION,
+  NTC2018_EXISTING_MATERIAL_KNOWLEDGE_LEVELS,
   NTC2018_EXISTING_MASONRY_KNOWLEDGE_LEVELS,
   NTC2018_EXISTING_MASONRY_MODIFIER_DEFINITIONS,
   NTC2018_EXISTING_MASONRY_PARAMETER_LEVELS,
@@ -335,3 +346,12 @@ export {
   createNTC2018SLECombination,
   createNTC2018ULSFundamentalCombination,
 } from "./norms/ntc2018/index.js";
+
+export {
+  ITALIAN_HISTORICAL_REINFORCEMENT_STEEL_GRADE_NAMES,
+  ITALIAN_HISTORICAL_REINFORCEMENT_STEEL_GRADES,
+  ITALIAN_HISTORICAL_REINFORCEMENT_STEEL_STANDARDS,
+  createItalianHistoricalReinforcementSteelMaterial,
+  getItalianHistoricalReinforcementSteelGrade,
+  listItalianHistoricalReinforcementSteelGrades,
+} from "./norms/italian-historical/index.js";

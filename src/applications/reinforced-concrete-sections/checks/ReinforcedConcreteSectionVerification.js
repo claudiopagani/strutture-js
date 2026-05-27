@@ -1,10 +1,14 @@
 import { VerificationResult } from "../../../core/results/VerificationResult.js";
 import { ConcreteNoTensionLaw } from "../../../domain/constitutive-laws/ConcreteNoTensionLaw.js";
 import { ConcreteParabolaRectangleLaw } from "../../../domain/constitutive-laws/ConcreteParabolaRectangleLaw.js";
+import { ConcreteStressBlockLaw } from "../../../domain/constitutive-laws/ConcreteStressBlockLaw.js";
+import { ConcreteTriangularRectangleLaw } from "../../../domain/constitutive-laws/ConcreteTriangularRectangleLaw.js";
 import { SteelElasticLaw } from "../../../domain/constitutive-laws/SteelElasticLaw.js";
+import { SteelElasticPlasticHardeningLaw } from "../../../domain/constitutive-laws/SteelElasticPlasticHardeningLaw.js";
 import { SteelElasticPerfectlyPlasticLaw } from "../../../domain/constitutive-laws/SteelElasticPerfectlyPlasticLaw.js";
 import { IllinoisRootSolver } from "../../../domain/solvers/IllinoisRootSolver.js";
 import { RCBiaxialDomainBuilder } from "../analysis/RCBiaxialDomainBuilder.js";
+import { RCMomentCurvatureAnalyzer } from "../analysis/RCMomentCurvatureAnalyzer.js";
 import { RCServiceStressSolver } from "../analysis/RCServiceStressSolver.js";
 import { SectionFiberDiscretizer } from "../analysis/SectionFiberDiscretizer.js";
 import { RCUniaxialDomainBuilder } from "../analysis/RCUniaxialDomainBuilder.js";
@@ -32,6 +36,35 @@ function resolveReferencePoint(section, referencePoint = null) {
   return section.getReferencePoint(type, coordinates);
 }
 
+function normalizeConcreteLawType(value = "parabola-rectangle") {
+  const aliases = {
+    "parabola-rectangle": "parabola-rectangle",
+    "parabola-rettangolo": "parabola-rectangle",
+    "triangular-rectangle": "triangular-rectangle",
+    "triangolo-rettangolo": "triangular-rectangle",
+    "stress-block": "stress-block",
+    stressBlock: "stress-block",
+    rettangolo: "stress-block",
+    rectangular: "stress-block",
+    "rectangular-stress-block": "stress-block",
+  };
+
+  return aliases[value] ?? value;
+}
+
+function normalizeSteelLawType(value = "elastic-perfectly-plastic") {
+  const aliases = {
+    "elastic-perfectly-plastic": "elastic-perfectly-plastic",
+    "elasto-plastico": "elastic-perfectly-plastic",
+    "elastic-plastic-hardening": "elastic-plastic-hardening",
+    "elasto-plastico-incrudimento": "elastic-plastic-hardening",
+    hardening: "elastic-plastic-hardening",
+    incrudimento: "elastic-plastic-hardening",
+  };
+
+  return aliases[value] ?? value;
+}
+
 function resolveConcreteLaw(model, section) {
   if (model.constitutiveModels?.concreteLaw) {
     return model.constitutiveModels.concreteLaw;
@@ -46,11 +79,39 @@ function resolveConcreteLaw(model, section) {
     );
   }
 
-  return new ConcreteParabolaRectangleLaw({
-    fcd: concreteMaterial.fcd,
-    ec2: model.analysisSettings?.ec2 ?? 0.002,
-    ecu: model.analysisSettings?.ecu ?? 0.0035,
-  });
+  const concreteLawType =
+    normalizeConcreteLawType(
+      model.analysisSettings?.concreteLawType ??
+        model.analysisSettings?.concreteModel ??
+        "parabola-rectangle",
+    );
+
+  if (concreteLawType === "parabola-rectangle") {
+    return new ConcreteParabolaRectangleLaw({
+      fcd: concreteMaterial.fcd,
+      ec2: model.analysisSettings?.ec2 ?? 0.002,
+      ecu: model.analysisSettings?.ecu ?? 0.0035,
+    });
+  }
+
+  if (concreteLawType === "triangular-rectangle") {
+    return new ConcreteTriangularRectangleLaw({
+      fcd: concreteMaterial.fcd,
+      ec3: model.analysisSettings?.ec3 ?? 0.00175,
+      ecu: model.analysisSettings?.ecu ?? 0.0035,
+    });
+  }
+
+  if (concreteLawType === "stress-block") {
+    return new ConcreteStressBlockLaw({
+      fcd: concreteMaterial.fcd,
+      eta: model.analysisSettings?.eta ?? 1,
+      ec4: model.analysisSettings?.ec4 ?? 0,
+      ecu: model.analysisSettings?.ecu ?? 0.0035,
+    });
+  }
+
+  throw new Error(`Unsupported concrete law type: ${concreteLawType}.`);
 }
 
 function resolveSteelLaw(model, section) {
@@ -67,11 +128,40 @@ function resolveSteelLaw(model, section) {
     );
   }
 
-  return new SteelElasticPerfectlyPlasticLaw({
-    Es: reinforcementMaterial.elasticModulus,
-    fyd: reinforcementMaterial.fyd,
-    esu: model.analysisSettings?.esu ?? 0.01,
-  });
+  const steelLawType =
+    normalizeSteelLawType(
+      model.analysisSettings?.steelLawType ??
+        model.analysisSettings?.steelModel ??
+        "elastic-perfectly-plastic",
+    );
+
+  if (steelLawType === "elastic-perfectly-plastic") {
+    return new SteelElasticPerfectlyPlasticLaw({
+      Es: reinforcementMaterial.elasticModulus,
+      fyd: reinforcementMaterial.fyd,
+      esu: model.analysisSettings?.esu ?? 0.01,
+    });
+  }
+
+  if (steelLawType === "elastic-plastic-hardening") {
+    const gammaS = reinforcementMaterial.metadata?.gammaS ?? 1.15;
+    const ftd =
+      model.analysisSettings?.ftd ??
+      model.analysisSettings?.steelUltimateDesignStress ??
+      (Number.isFinite(reinforcementMaterial.ftk)
+        ? reinforcementMaterial.ftk / gammaS
+        : null);
+
+    return new SteelElasticPlasticHardeningLaw({
+      Es: reinforcementMaterial.elasticModulus,
+      fyd: reinforcementMaterial.fyd,
+      ftd,
+      esu: model.analysisSettings?.esu ?? 0.01,
+      hardeningModulus: model.analysisSettings?.hardeningModulus ?? null,
+    });
+  }
+
+  throw new Error(`Unsupported steel law type: ${steelLawType}.`);
 }
 
 function resolveServiceConcreteLaw(model, section) {
@@ -332,6 +422,113 @@ export class ReinforcedConcreteSectionVerification {
             sectionId: model.id,
             analysisType: model.analysisType,
             solverMethod: "illinois",
+            ...this.metadata,
+          },
+        });
+      }
+
+      if (model.analysisType === "moment-curvature") {
+        const section = model.section;
+        const targetFiberCount = model.mesh?.targetFiberCount ?? 100;
+        const referencePoint = resolveReferencePoint(section, model.referencePoint);
+        const concreteLaw = resolveConcreteLaw(model, section);
+        const steelLaw = resolveSteelLaw(model, section);
+        const discretizer = new SectionFiberDiscretizer();
+        const mesh = discretizer.discretize(section, {
+          targetCount: targetFiberCount,
+        });
+        const nEd = model.actions?.nEd ?? model.actions?.axialForce ?? 0;
+
+        if (!Number.isFinite(nEd)) {
+          throw new Error(
+            "ReinforcedConcreteSectionVerification requires a finite actions.nEd for moment-curvature.",
+          );
+        }
+
+        const analyzer = new RCMomentCurvatureAnalyzer({
+          axialRootSolver: new IllinoisRootSolver({
+            tolerance: model.solver?.tolerance ?? 1e-6,
+            maxIterations: model.solver?.maxIterations ?? 100,
+          }),
+          limitRootSolver: new IllinoisRootSolver({
+            tolerance: model.solver?.limitTolerance ?? model.solver?.tolerance ?? 1e-8,
+            maxIterations: model.solver?.limitMaxIterations ?? 60,
+          }),
+          eps0Samples: model.solver?.eps0Samples ?? 161,
+          eps0Min: model.solver?.eps0Min ?? -0.08,
+          eps0Max: model.solver?.eps0Max ?? 0.08,
+        });
+        const curve = analyzer.analyze({
+          section,
+          concreteFibers: mesh.fibers,
+          concreteLaw,
+          steelLaw,
+          nEd,
+          compressedEdge: model.analysisSettings?.compressedEdge ?? "top",
+          curvatureMax: model.analysisSettings?.curvatureMax ?? null,
+          curvatureValues: model.analysisSettings?.curvatureValues ?? null,
+          pointCount: model.analysisSettings?.pointCount ?? 41,
+          referencePoint,
+          includeConcreteTension: model.analysisSettings?.includeConcreteTension ?? false,
+          stopAtFailure: model.analysisSettings?.stopAtFailure ?? true,
+          includeFailurePoint: model.analysisSettings?.includeFailurePoint ?? true,
+        });
+        const summarizedPoints = curve.points.map((point) =>
+          RCMomentCurvatureAnalyzer.summarizePoint(point),
+        );
+        const summarizedFailurePoint =
+          curve.failurePoint == null
+            ? null
+            : RCMomentCurvatureAnalyzer.summarizePoint(curve.failurePoint);
+        const summarizedFirstYieldPoint =
+          curve.firstYieldPoint == null
+            ? null
+            : RCMomentCurvatureAnalyzer.summarizePoint(curve.firstYieldPoint);
+        const allConverged = curve.points.every((point) => point.converged);
+
+        return new VerificationResult({
+          applicationId: "reinforced-concrete-sections",
+          status:
+            summarizedPoints.length > 1 && allConverged
+              ? RESULT_STATUS.OK
+              : RESULT_STATUS.NOT_VERIFIED,
+          summary:
+            "Moment-curvature response solved at assigned axial force through fiber strain compatibility and axial-equilibrium iterations.",
+          outputs: {
+            analysisType: model.analysisType,
+            sectionId: model.id,
+            nEd: round(nEd, 6),
+            compressedEdge: curve.compressedEdge,
+            curvatureMax: round(curve.curvatureMax, 12),
+            requestedPointCount: curve.pointCount,
+            generatedPointCount: curve.generatedPointCount,
+            failureReached: curve.failureReached,
+            firstYieldReached: curve.firstYieldReached,
+            fiberCount: mesh.generatedCount,
+            referencePoint: {
+              y: round(referencePoint.y, 6),
+              z: round(referencePoint.z, 6),
+            },
+            firstYieldPoint: summarizedFirstYieldPoint,
+            failurePoint: summarizedFailurePoint,
+            ntc2018Ductility:
+              RCMomentCurvatureAnalyzer.summarizeDuctility(
+                curve.ntc2018Ductility,
+              ),
+            points: summarizedPoints,
+          },
+          warnings: curve.warnings,
+          assumptions: [
+            "Moment-curvature analysis is uniaxial and keeps the assigned axial force constant while curvature is increased.",
+            "Positive reported curvature corresponds to top-edge compression; bottom-edge compression is reported with negative engineering curvature.",
+            "Concrete tension is excluded by default during moment-curvature integration unless includeConcreteTension=true or a custom concrete law is supplied.",
+            "NTC 2018 ductility outputs use M'yd at the first-yield curvature and phiYd = MRd / M'yd * phiPrimeYd.",
+          ],
+          metadata: {
+            code: this.code,
+            sectionId: model.id,
+            analysisType: model.analysisType,
+            solverMethod: "fiber-section-axial-equilibrium",
             ...this.metadata,
           },
         });

@@ -6,6 +6,7 @@ export { ReinforcedConcreteSectionVerification } from "./checks/ReinforcedConcre
 export { ReinforcedConcreteSectionModel } from "./models/ReinforcedConcreteSectionModel.js";
 export {
   RCBiaxialDomainBuilder,
+  RCMomentCurvatureAnalyzer,
   RCServiceStressSolver,
   RCUltimateSectionSolver,
   RCSectionStateIntegrator,

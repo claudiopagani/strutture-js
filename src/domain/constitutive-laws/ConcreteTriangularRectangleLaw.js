@@ -1,30 +1,30 @@
-export class ConcreteParabolaRectangleLaw {
+export class ConcreteTriangularRectangleLaw {
   constructor({
     fcd,
-    ec2,
+    ec3,
     ecu,
     tensionPositive = true,
   }) {
     if (!Number.isFinite(fcd) || fcd <= 0) {
-      throw new Error("ConcreteParabolaRectangleLaw requires a positive fcd.");
+      throw new Error("ConcreteTriangularRectangleLaw requires a positive fcd.");
     }
 
-    if (!Number.isFinite(ec2) || ec2 <= 0) {
-      throw new Error("ConcreteParabolaRectangleLaw requires a positive ec2.");
+    if (!Number.isFinite(ec3) || ec3 <= 0) {
+      throw new Error("ConcreteTriangularRectangleLaw requires a positive ec3.");
     }
 
-    if (!Number.isFinite(ecu) || ecu <= 0 || ecu < ec2) {
-      throw new Error("ConcreteParabolaRectangleLaw requires ecu >= ec2 > 0.");
+    if (!Number.isFinite(ecu) || ecu <= 0 || ecu < ec3) {
+      throw new Error("ConcreteTriangularRectangleLaw requires ecu >= ec3 > 0.");
     }
 
     this.fcd = fcd;
-    this.ec2 = ec2;
+    this.ec3 = ec3;
     this.ecu = ecu;
     this.tensionPositive = tensionPositive;
   }
 
   peakCompressionStrain() {
-    return this.ec2;
+    return this.ec3;
   }
 
   stress(strain) {
@@ -38,13 +38,11 @@ export class ConcreteParabolaRectangleLaw {
       return 0;
     }
 
-    if (compressionStrain <= this.ec2) {
-      const ratio = compressionStrain / this.ec2;
-      const compressionStress = this.fcd * (2 * ratio - ratio ** 2);
-      return this.tensionPositive ? -compressionStress : compressionStress;
-    }
+    const compressionStress =
+      compressionStrain <= this.ec3
+        ? this.fcd * (compressionStrain / this.ec3)
+        : this.fcd;
 
-    const compressionStress = this.fcd;
     return this.tensionPositive ? -compressionStress : compressionStress;
   }
 
@@ -57,9 +55,9 @@ export class ConcreteParabolaRectangleLaw {
 
   toJSON() {
     return {
-      type: "concrete-parabola-rectangle",
+      type: "concrete-triangular-rectangle",
       fcd: this.fcd,
-      ec2: this.ec2,
+      ec3: this.ec3,
       ecu: this.ecu,
       tensionPositive: this.tensionPositive,
     };

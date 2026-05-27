@@ -1,30 +1,36 @@
-export class ConcreteParabolaRectangleLaw {
+export class ConcreteStressBlockLaw {
   constructor({
     fcd,
-    ec2,
+    eta = 1,
+    ec4 = 0,
     ecu,
     tensionPositive = true,
   }) {
     if (!Number.isFinite(fcd) || fcd <= 0) {
-      throw new Error("ConcreteParabolaRectangleLaw requires a positive fcd.");
+      throw new Error("ConcreteStressBlockLaw requires a positive fcd.");
     }
 
-    if (!Number.isFinite(ec2) || ec2 <= 0) {
-      throw new Error("ConcreteParabolaRectangleLaw requires a positive ec2.");
+    if (!Number.isFinite(eta) || eta <= 0) {
+      throw new Error("ConcreteStressBlockLaw requires a positive eta.");
     }
 
-    if (!Number.isFinite(ecu) || ecu <= 0 || ecu < ec2) {
-      throw new Error("ConcreteParabolaRectangleLaw requires ecu >= ec2 > 0.");
+    if (!Number.isFinite(ec4) || ec4 < 0) {
+      throw new Error("ConcreteStressBlockLaw requires ec4 >= 0.");
+    }
+
+    if (!Number.isFinite(ecu) || ecu <= 0 || ecu < ec4) {
+      throw new Error("ConcreteStressBlockLaw requires ecu >= ec4.");
     }
 
     this.fcd = fcd;
-    this.ec2 = ec2;
+    this.eta = eta;
+    this.ec4 = ec4;
     this.ecu = ecu;
     this.tensionPositive = tensionPositive;
   }
 
   peakCompressionStrain() {
-    return this.ec2;
+    return this.ec4;
   }
 
   stress(strain) {
@@ -34,17 +40,11 @@ export class ConcreteParabolaRectangleLaw {
 
     const compressionStrain = this.tensionPositive ? -strain : strain;
 
-    if (compressionStrain <= 0) {
+    if (compressionStrain <= this.ec4) {
       return 0;
     }
 
-    if (compressionStrain <= this.ec2) {
-      const ratio = compressionStrain / this.ec2;
-      const compressionStress = this.fcd * (2 * ratio - ratio ** 2);
-      return this.tensionPositive ? -compressionStress : compressionStress;
-    }
-
-    const compressionStress = this.fcd;
+    const compressionStress = this.eta * this.fcd;
     return this.tensionPositive ? -compressionStress : compressionStress;
   }
 
@@ -57,9 +57,10 @@ export class ConcreteParabolaRectangleLaw {
 
   toJSON() {
     return {
-      type: "concrete-parabola-rectangle",
+      type: "concrete-stress-block",
       fcd: this.fcd,
-      ec2: this.ec2,
+      eta: this.eta,
+      ec4: this.ec4,
       ecu: this.ecu,
       tensionPositive: this.tensionPositive,
     };

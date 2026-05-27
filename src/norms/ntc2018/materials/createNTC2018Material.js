@@ -5,6 +5,10 @@ import { GlulamTimberMaterial } from "../../../domain/materials/GlulamTimberMate
 import { SolidTimberMaterial } from "../../../domain/materials/SolidTimberMaterial.js";
 import { SteelMaterial } from "../../../domain/materials/SteelMaterial.js";
 import { TimberMaterial } from "../../../domain/materials/TimberMaterial.js";
+import {
+  characteristicValueFromExistingMean,
+  resolveExistingMaterialState,
+} from "../../../domain/materials/existingMaterialConfidence.js";
 import { assertExplicitUnitSystem, createUnitResolver } from "../../../domain/units/UnitSystem.js";
 import {
   NTC2018_CONCRETE_CLASSES,
@@ -37,6 +41,10 @@ export function createNTC2018ConcreteMaterial({
   density = null,
   gammaC = 1.5,
   alphaCc = 0.85,
+  existing = false,
+  knowledgeLevel = "LC1",
+  confidenceFactor = null,
+  meanCompressiveStrength = null,
   units = null,
   metadata = {},
 }) {
@@ -48,10 +56,20 @@ export function createNTC2018ConcreteMaterial({
     `Unsupported NTC 2018 concrete class: ${strengthClass}.`,
   );
 
-  const fcm = preset.fck + 8;
+  const existingState = resolveExistingMaterialState({
+    existing,
+    knowledgeLevel,
+    confidenceFactor,
+  });
+  const fcm = meanCompressiveStrength == null
+    ? preset.fck + 8
+    : unitResolver.stress(meanCompressiveStrength);
+  const fck = existingState.existing
+    ? characteristicValueFromExistingMean(fcm, existingState.confidenceFactor)
+    : preset.fck;
   const ecm = 22000 * (fcm / 10) ** 0.3;
-  const fctm = preset.fck <= 50
-    ? 0.3 * preset.fck ** (2 / 3)
+  const fctm = fck <= 50
+    ? 0.3 * fck ** (2 / 3)
     : 2.12 * Math.log(1 + fcm / 10);
 
   return new ConcreteMaterial({
@@ -63,9 +81,19 @@ export function createNTC2018ConcreteMaterial({
         ? (preset.concreteType === "lightweight" ? 2000 : 2500)
         : unitResolver.volumeLoad(density),
     elasticModulus: round(ecm, 0),
-    fck: preset.fck,
-    fcd: round((alphaCc * preset.fck) / gammaC, 2),
+    fcm: round(fcm, 2),
+    fck: round(fck, 2),
+    fcd: round((alphaCc * fck) / gammaC, 2),
     fctm: round(fctm, 2),
+    existing: existingState.existing,
+    knowledgeLevel: existingState.knowledgeLevel ?? knowledgeLevel,
+    confidenceFactor: existingState.confidenceFactor,
+    meanProperties: existingState.existing
+      ? {
+          fcm: round(fcm, 2),
+          elasticModulus: round(ecm, 0),
+        }
+      : {},
     units: INTERNAL_UNITS,
     metadata: {
       ...metadata,
@@ -76,6 +104,13 @@ export function createNTC2018ConcreteMaterial({
       concreteType: preset.concreteType ?? "normal-weight",
       rck: preset.rck,
       fcm: round(fcm, 2),
+      existingMaterial: existingState.existing,
+      knowledgeLevel: existingState.knowledgeLevel,
+      knowledgeLevelDescription: existingState.knowledgeLevelDescription,
+      confidenceFactor: existingState.confidenceFactor,
+      characteristicStrengthSource: existingState.existing
+        ? "mean-divided-by-confidence-factor"
+        : "catalog-characteristic",
     },
   });
 }
@@ -87,6 +122,11 @@ export function createNTC2018ReinforcementSteelMaterial({
   gammaS = 1.15,
   density = 7850,
   elasticModulus = null,
+  existing = false,
+  knowledgeLevel = "LC1",
+  confidenceFactor = null,
+  yieldMeanStrength = null,
+  ultimateMeanStrength = null,
   units = null,
   metadata = {},
 }) {
@@ -97,6 +137,23 @@ export function createNTC2018ReinforcementSteelMaterial({
     grade,
     `Unsupported NTC 2018 reinforcement steel grade: ${grade}.`,
   );
+  const existingState = resolveExistingMaterialState({
+    existing,
+    knowledgeLevel,
+    confidenceFactor,
+  });
+  const fyMean = yieldMeanStrength == null
+    ? preset.fyk
+    : unitResolver.stress(yieldMeanStrength);
+  const ftMean = ultimateMeanStrength == null
+    ? preset.ftk
+    : unitResolver.stress(ultimateMeanStrength);
+  const fyk = existingState.existing
+    ? characteristicValueFromExistingMean(fyMean, existingState.confidenceFactor)
+    : preset.fyk;
+  const ftk = existingState.existing
+    ? characteristicValueFromExistingMean(ftMean, existingState.confidenceFactor)
+    : preset.ftk;
 
   return new SteelMaterial({
     id,
@@ -104,10 +161,15 @@ export function createNTC2018ReinforcementSteelMaterial({
     grade,
     density: unitResolver.volumeLoad(density),
     elasticModulus: elasticModulus == null ? 210000 : unitResolver.stress(elasticModulus),
-    fyk: preset.fyk,
-    fyd: round(preset.fyk / gammaS, 2),
-    ftk: preset.ftk,
+    fyMean: existingState.existing ? round(fyMean, 2) : null,
+    ftMean: existingState.existing ? round(ftMean, 2) : null,
+    fyk: round(fyk, 2),
+    fyd: round(fyk / gammaS, 2),
+    ftk: round(ftk, 2),
     ductilityClass: preset.ductilityClass,
+    existing: existingState.existing,
+    knowledgeLevel: existingState.knowledgeLevel ?? knowledgeLevel,
+    confidenceFactor: existingState.confidenceFactor,
     units: INTERNAL_UNITS,
     metadata: {
       ...metadata,
@@ -115,6 +177,13 @@ export function createNTC2018ReinforcementSteelMaterial({
       ntcReference: NTC2018_REFERENCE,
       steelUse: "reinforcement",
       gammaS,
+      existingMaterial: existingState.existing,
+      knowledgeLevel: existingState.knowledgeLevel,
+      knowledgeLevelDescription: existingState.knowledgeLevelDescription,
+      confidenceFactor: existingState.confidenceFactor,
+      characteristicStrengthSource: existingState.existing
+        ? "mean-divided-by-confidence-factor"
+        : "catalog-characteristic",
     },
   });
 }

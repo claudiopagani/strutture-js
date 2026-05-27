@@ -8,6 +8,7 @@
   "exports": {
     ".": "./src/index.js",
     "./applications": "./src/applications/index.js",
+    "./norms/italian-historical": "./src/norms/italian-historical/index.js",
     "./norms/ntc2018": "./src/norms/ntc2018/index.js"
   },
   "files": [

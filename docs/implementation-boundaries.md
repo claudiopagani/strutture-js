@@ -11,7 +11,7 @@ Esempi attuali:
 * la libreria non e un software normativo completo;
 * `masonry-ring-beams`, `masonry-out-of-plane` e `micropiles-broms` restano placeholder dichiarati;
 * le verifiche acciaio non coprono ancora torsione e proprieta efficaci per classe 4;
-* i workflow RC non includono ancora momento-curvatura, duttilita e colonna modello;
+* i workflow RC non includono ancora duttilita e colonna modello;
 * le verifiche legno/XLAM sono validate sui casi coperti, ma richiedono campagne piu ampie per usi fuori da quei domini.
 
 Nei risultati, questi casi dovrebbero emergere come `not-implemented` se il workflow non esiste ancora, oppure `not-supported` se il workflow esiste ma il caso richiesto esce dal campo coperto.
@@ -24,7 +24,7 @@ Esempi:
 
 * scelta di NTC 2018 o Eurocodice come riferimento;
 * coefficienti parziali, fattori di combinazione, classi di durata e classi di servizio;
-* fattori di confidenza per murature esistenti;
+* fattori di confidenza per materiali esistenti;
 * mapping tra ambiente, combinazione e classe di fessurazione;
 * scelta di curva di instabilita o fattore nazionale quando il riferimento lo richiede.
 

@@ -564,8 +564,10 @@ Output atteso:
   - `uls-uniaxial-resistance`;
   - `uls-biaxial-domain`;
   - `uls-uniaxial-domain`;
+  - `moment-curvature`;
   - `service-stress`.
-- `outputs` contiene resistenze, punti del dominio o tensioni SLE in base al workflow.
+- `outputs` contiene resistenze, punti del dominio, curva momento-curvatura o tensioni SLE in base al workflow.
+- Nel workflow `moment-curvature`, `outputs.ntc2018Ductility` riporta le grandezze del §4.1.2.3.4.2 NTC 2018: `phiPrimeYd`, `mPrimeYd`, `mRd`, `phiYd`, `phiU` e `curvatureDuctilityRatio`.
 
 Unita richieste:
 
@@ -573,12 +575,18 @@ Unita richieste:
 - unita interne del modulo: `N`, `mm`, `Nmm`, `MPa`;
 - le azioni `nEd`, `mEd`, `mxEd`, `myEd`, `nValues` vengono convertite.
 
+Legami costitutivi:
+
+- calcestruzzo: `parabola-rectangle` (default), `triangular-rectangle`, `stress-block`;
+- acciaio: `elastic-perfectly-plastic` (default), `elastic-plastic-hardening`;
+- le varianti possono essere selezionate tramite `analysisSettings.concreteLawType` e `analysisSettings.steelLawType`, oppure passando direttamente leggi custom in `constitutiveModels`.
+
 Limiti del metodo:
 
 - modello a fibre con griglia nel bounding box, non mesh adattiva;
 - crisi e duttilita non ancora classificate in modo completo;
 - dominio biaxiale campionato per angoli, senza raffinamento adattivo;
-- niente momento-curvatura o colonna modello.
+- niente colonna modello.
 
 Esempio completo:
 
@@ -1353,6 +1361,10 @@ Il layer `src/norms/ntc2018` contiene:
 - combinazioni di carico SLU/SLE;
 - cataloghi per carichi di solaio.
 
+Il layer `src/norms/italian-historical` espone inoltre gli acciai per c.a. storici `Dolce`, `Semi duro`, `Duro`, `Aq42`, `Aq50`, `Aq60`, `FeB22k`, `FeB32k`, `A38`, `A41`, `FeB38k`, `FeB44k`, con riferimento normativo nei metadata (`standardReference`/`normativeReference`) per l'uso in UI.
+
+Per calcestruzzi e armature, le factory accettano `existing: true` e `knowledgeLevel` (`1`/`2`/`3` oppure `LC1`/`LC2`/`LC3`): in questo caso il valore caratteristico viene ottenuto dal valore medio diviso per il fattore di confidenza (`1.35`, `1.20`, `1.00`).
+
 ## Limiti Generali
 
 - La libreria non e ancora un software normativo completo.
@@ -1360,7 +1372,7 @@ Il layer `src/norms/ntc2018` contiene:
 - Il modulo `masonry-wall-openings` e operativo per le cerchiature con verifica verticale e comportamento laterale pre/post a maschi aggregati; restano escluse le fasce murarie non lineari.
 - Il workflow `single-beam-design` resta oggi un solver 2D lineare; il layer FEM contiene anche un primo solver statico non lineare a controllo indiretto di spostamento, usato dal pushover delle cerchiature metalliche.
 - Le verifiche acciaio non includono ancora torsione e proprieta efficaci per classe 4.
-- I workflow RC non includono ancora momento-curvatura, duttilita e colonna modello.
+- I workflow RC non includono ancora duttilita e colonna modello.
 - Le verifiche legno/XLAM sono solide per i casi coperti dai test, ma richiedono ancora campagne di validazione piu ampie.
 
 ## Esempi e Validazione

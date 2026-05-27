@@ -4,10 +4,13 @@ import assert from "node:assert/strict";
 import {
   ConcreteNoTensionLaw,
   ConcreteParabolaRectangleLaw,
+  ConcreteStressBlockLaw,
+  ConcreteTriangularRectangleLaw,
   IllinoisRootSolver,
   ReinforcedConcreteSection,
   ReinforcementBar,
   RectangularSection,
+  SteelElasticPlasticHardeningLaw,
   SteelElasticPerfectlyPlasticLaw,
   createNTC2018ConcreteMaterial,
   createNTC2018ReinforcementSteelMaterial,
@@ -31,6 +34,33 @@ test("concrete parabola-rectangle law returns zero in tension and design compres
   approx(law.stress(-0.0035), -14.17, 1e-9);
 });
 
+test("concrete triangular-rectangle law ramps linearly to design compression", () => {
+  const law = new ConcreteTriangularRectangleLaw({
+    fcd: 14.17,
+    ec3: 0.00175,
+    ecu: 0.0035,
+  });
+
+  approx(law.stress(0.0005), 0);
+  approx(law.stress(-0.000875), -7.085, 1e-9);
+  approx(law.stress(-0.00175), -14.17, 1e-9);
+  approx(law.stress(-0.0035), -14.17, 1e-9);
+  approx(law.peakCompressionStrain(), 0.00175, 1e-12);
+});
+
+test("concrete stress-block law applies a rectangular compression stress", () => {
+  const law = new ConcreteStressBlockLaw({
+    fcd: 14.17,
+    eta: 0.9,
+    ec4: 0,
+    ecu: 0.0035,
+  });
+
+  approx(law.stress(0.0005), 0);
+  approx(law.stress(-0.0001), -12.753, 1e-9);
+  approx(law.stress(-0.0035), -12.753, 1e-9);
+});
+
 test("concrete no-tension law reacts only in compression and can cap stress", () => {
   const law = new ConcreteNoTensionLaw({
     ecm: 30000,
@@ -40,6 +70,21 @@ test("concrete no-tension law reacts only in compression and can cap stress", ()
   approx(law.stress(0.0002), 0);
   approx(law.stress(-0.0002), -6);
   approx(law.stress(-0.001), -12);
+});
+
+test("steel elastic-plastic hardening law reaches ultimate design stress at esu", () => {
+  const law = new SteelElasticPlasticHardeningLaw({
+    Es: 210000,
+    fyd: 391.3,
+    ftd: 469.6,
+    esu: 0.01,
+  });
+
+  approx(law.yieldStrain(), 391.3 / 210000, 1e-12);
+  approx(law.stress(0.001), 210);
+  approx(law.stress(law.yieldStrain()), 391.3, 1e-9);
+  approx(law.stress(0.01), 469.6, 1e-9);
+  approx(law.stress(-0.01), -469.6, 1e-9);
 });
 
 test("steel elastic-perfectly-plastic law yields at the design stress", () => {

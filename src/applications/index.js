@@ -57,6 +57,7 @@ export { ReinforcedConcreteBeamVerification } from "./reinforced-concrete-sectio
 export { ReinforcedConcreteShearVerification } from "./reinforced-concrete-sections/index.js";
 export { ReinforcedConcreteServiceabilityVerification } from "./reinforced-concrete-sections/index.js";
 export { RCBiaxialDomainBuilder } from "./reinforced-concrete-sections/index.js";
+export { RCMomentCurvatureAnalyzer } from "./reinforced-concrete-sections/index.js";
 export { ReinforcedConcreteSectionModel } from "./reinforced-concrete-sections/index.js";
 export { RCServiceStressSolver } from "./reinforced-concrete-sections/index.js";
 export { RCUltimateSectionSolver } from "./reinforced-concrete-sections/index.js";

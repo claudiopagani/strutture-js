@@ -265,11 +265,14 @@ export const NTC2018_TIMBER_STRENGTH_CLASSES = {
   ...NTC2018_GLULAM_TIMBER_STRENGTH_CLASSES,
 };
 
-export const NTC2018_EXISTING_MASONRY_KNOWLEDGE_LEVELS = {
+export const NTC2018_EXISTING_MATERIAL_KNOWLEDGE_LEVELS = {
   LC1: { confidenceFactor: 1.35, description: "conoscenza limitata" },
   LC2: { confidenceFactor: 1.2, description: "conoscenza adeguata" },
   LC3: { confidenceFactor: 1.0, description: "conoscenza accurata" },
 };
+
+export const NTC2018_EXISTING_MASONRY_KNOWLEDGE_LEVELS =
+  NTC2018_EXISTING_MATERIAL_KNOWLEDGE_LEVELS;
 
 export {
   NTC2018_EXISTING_MASONRY_MODIFIER_DEFINITIONS,

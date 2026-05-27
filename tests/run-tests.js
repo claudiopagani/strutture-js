@@ -1,5 +1,6 @@
 import "./ntc2018ExistingMasonryMaterial.test.js";
 import "./ntc2018ExistingMasonryWorkflow.test.js";
+import "./italianHistoricalReinforcementSteel.test.js";
 import "./ntc2018Actions.test.js";
 import "./ntc2018BeamCombinations.test.js";
 import "./loadAbstractions.test.js";
@@ -44,6 +45,7 @@ import "./reinforcedConcreteSectionApplication.test.js";
 import "./reinforcedConcreteSectionBiaxialApplication.test.js";
 import "./reinforcedConcreteSectionServiceApplication.test.js";
 import "./reinforcedConcreteSectionUniaxialDomainApplication.test.js";
+import "./reinforcedConcreteMomentCurvature.test.js";
 import "./rcConstitutiveLawsAndSolvers.test.js";
 import "./rcBiaxialDomainBuilder.test.js";
 import "./rcFiberAnalysis.test.js";
