@@ -568,6 +568,7 @@ Output atteso:
   - `service-stress`.
 - `outputs` contiene resistenze, punti del dominio, curva momento-curvatura o tensioni SLE in base al workflow.
 - Nel workflow `moment-curvature`, `outputs.ntc2018Ductility` riporta le grandezze del §4.1.2.3.4.2 NTC 2018: `phiPrimeYd`, `mPrimeYd`, `mRd`, `phiYd`, `phiU` e `curvatureDuctilityRatio`.
+- Nei workflow SLU la deformazione ultima dell'acciaio viene presa dal materiale, quando disponibile: `ultimateStrain = 0.9 * elongationCharacteristic`.
 
 Unita richieste:
 
@@ -1353,7 +1354,7 @@ console.log(result.outputs.analysis.status);
 Il layer `src/norms/ntc2018` contiene:
 
 - calcestruzzo: classi da `C12/15` a `C50/60`, con `fcd`, `fctm`, `Ecm`;
-- acciaio per c.a.: preset `B450A`, `B450C`;
+- acciaio per c.a.: preset `B450A`, `B450C`, con `elongationCharacteristic` rispettivamente pari a 0.025 e 0.075;
 - acciaio da carpenteria: preset `S235`, `S275`, `S355`;
 - legno: classi massicce `Cxx` e lamellari `GLxxh/GLxxc`;
 - muratura esistente: tipologie tabellate, livelli di conoscenza, fattori di confidenza e coefficienti migliorativi;
@@ -1361,7 +1362,7 @@ Il layer `src/norms/ntc2018` contiene:
 - combinazioni di carico SLU/SLE;
 - cataloghi per carichi di solaio.
 
-Il layer `src/norms/italian-historical` espone inoltre gli acciai per c.a. storici `Dolce`, `Semi duro`, `Duro`, `Aq42`, `Aq50`, `Aq60`, `FeB22k`, `FeB32k`, `A38`, `A41`, `FeB38k`, `FeB44k`, con riferimento normativo nei metadata (`standardReference`/`normativeReference`) per l'uso in UI.
+Il layer `src/norms/italian-historical` espone inoltre gli acciai per c.a. storici `Dolce`, `Semi duro`, `Duro`, `Aq42`, `Aq50`, `Aq60`, `FeB22k`, `FeB32k`, `A38`, `A41`, `FeB38k`, `FeB44k`, con riferimento normativo nei metadata (`standardReference`/`normativeReference`) per l'uso in UI. Per questi acciai `elongationCharacteristic` viene assunto pari a 0.075.
 
 Per calcestruzzi e armature, le factory accettano `existing: true` e `knowledgeLevel` (`1`/`2`/`3` oppure `LC1`/`LC2`/`LC3`): in questo caso il valore caratteristico viene ottenuto dal valore medio diviso per il fattore di confidenza (`1.35`, `1.20`, `1.00`).
 

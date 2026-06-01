@@ -18,6 +18,8 @@ import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const round = (value, decimals = 6) =>
   Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
+const roundNullable = (value, decimals = 6) =>
+  Number.isFinite(value) ? round(value, decimals) : null;
 
 function resolveServiceStressSolverActions(actions = {}) {
   const userMxEd = actions?.mxEd ?? actions?.mEd ?? 0;
@@ -63,6 +65,27 @@ function normalizeSteelLawType(value = "elastic-perfectly-plastic") {
   };
 
   return aliases[value] ?? value;
+}
+
+function resolveSteelUltimateStrain(model, reinforcementMaterial, fallback = 0.01) {
+  const configured =
+    model.analysisSettings?.esu ??
+    model.analysisSettings?.steelUltimateStrain ??
+    null;
+
+  if (Number.isFinite(configured) && configured > 0) {
+    return configured;
+  }
+
+  if (Number.isFinite(reinforcementMaterial?.ultimateStrain)) {
+    return reinforcementMaterial.ultimateStrain;
+  }
+
+  if (Number.isFinite(reinforcementMaterial?.metadata?.ultimateStrain)) {
+    return reinforcementMaterial.metadata.ultimateStrain;
+  }
+
+  return fallback;
 }
 
 function resolveConcreteLaw(model, section) {
@@ -139,7 +162,7 @@ function resolveSteelLaw(model, section) {
     return new SteelElasticPerfectlyPlasticLaw({
       Es: reinforcementMaterial.elasticModulus,
       fyd: reinforcementMaterial.fyd,
-      esu: model.analysisSettings?.esu ?? 0.01,
+      esu: resolveSteelUltimateStrain(model, reinforcementMaterial),
     });
   }
 
@@ -156,7 +179,7 @@ function resolveSteelLaw(model, section) {
       Es: reinforcementMaterial.elasticModulus,
       fyd: reinforcementMaterial.fyd,
       ftd,
-      esu: model.analysisSettings?.esu ?? 0.01,
+      esu: resolveSteelUltimateStrain(model, reinforcementMaterial),
       hardeningModulus: model.analysisSettings?.hardeningModulus ?? null,
     });
   }
@@ -405,8 +428,9 @@ export class ReinforcedConcreteSectionVerification {
               theta: round(point.theta, 12),
               MxRd: round(point.MxRd, 6),
               MyRd: round(point.MyRd, 6),
-              neutralAxisDepth: round(point.neutralAxisDepth, 6),
+              neutralAxisDepth: roundNullable(point.neutralAxisDepth, 6),
               axialResidual: round(point.axialResidual, 6),
+              failureMode: point.failureMode,
               converged: point.converged,
             })),
           },
@@ -602,8 +626,9 @@ export class ReinforcedConcreteSectionVerification {
               curvatureSign: point.curvatureSign,
               MxRd: round(point.MxRd, 6),
               MyRd: round(point.MyRd, 6),
-              neutralAxisDepth: round(point.neutralAxisDepth, 6),
+              neutralAxisDepth: roundNullable(point.neutralAxisDepth, 6),
               axialResidual: round(point.axialResidual, 6),
+              failureMode: point.failureMode,
               converged: point.converged,
             })),
           },
@@ -709,7 +734,8 @@ export class ReinforcedConcreteSectionVerification {
         nEd: round(nEd, 6),
         mEd: round(mEd, 6),
         compressedEdge,
-        neutralAxisDepth: round(solved.neutralAxisDepth, 6),
+        failureMode: solved.failureMode,
+        neutralAxisDepth: roundNullable(solved.neutralAxisDepth, 6),
         axialResidual: round(solved.axialResidual, 6),
         MxRd: round(solved.MxRd, 6),
         MyRd: round(solved.MyRd, 6),

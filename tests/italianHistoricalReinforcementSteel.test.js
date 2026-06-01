@@ -5,6 +5,7 @@ import {
   ITALIAN_HISTORICAL_REINFORCEMENT_STEEL_GRADES,
   createItalianHistoricalReinforcementSteelMaterial,
   createNTC2018ConcreteMaterial,
+  createNTC2018ReinforcementSteelMaterial,
   listItalianHistoricalReinforcementSteelGrades,
 } from "../src/index.js";
 
@@ -32,6 +33,8 @@ test("historical reinforcement steel factory keeps normative reference for UI di
   assert.equal(material.grade, "A41");
   assert.equal(material.fyk, 400);
   assert.equal(material.ftk, 490);
+  approx(material.elongationCharacteristic, 0.075);
+  approx(material.ultimateStrain, 0.0675);
   assert.equal(material.metadata.standardReference, "D.M. 30/05/1972");
   assert.equal(material.metadata.steelUse, "reinforcement");
   assert.equal(material.isExistingMaterial(), false);
@@ -48,6 +51,8 @@ test("existing reinforcement steel derives characteristic strengths from means a
   assert.equal(material.isExistingMaterial(), true);
   assert.equal(material.knowledgeLevel, "LC2");
   approx(material.confidenceFactor, 1.2);
+  approx(material.elongationCharacteristic, 0.075);
+  approx(material.ultimateStrain, 0.0675);
   approx(material.fyMean, 375);
   approx(material.ftMean, 450);
   approx(material.fyk, 312.5);
@@ -57,6 +62,24 @@ test("existing reinforcement steel derives characteristic strengths from means a
     material.metadata.characteristicStrengthSource,
     "mean-divided-by-confidence-factor",
   );
+});
+
+test("NTC reinforcement steel presets expose characteristic elongation and ultimate strain", () => {
+  const b450c = createNTC2018ReinforcementSteelMaterial({
+    grade: "B450C",
+    units,
+  });
+  const b450a = createNTC2018ReinforcementSteelMaterial({
+    grade: "B450A",
+    units,
+  });
+
+  approx(b450c.elongationCharacteristic, 0.075);
+  approx(b450c.ultimateStrain, 0.0675);
+  approx(b450a.elongationCharacteristic, 0.025);
+  approx(b450a.ultimateStrain, 0.0225);
+  assert.equal(b450c.metadata.elongationCharacteristicPermille, 75);
+  assert.equal(b450a.metadata.elongationCharacteristicPermille, 25);
 });
 
 test("existing concrete material derives fck from mean compressive strength and FC", () => {

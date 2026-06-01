@@ -11,6 +11,8 @@ export class SteelMaterial extends BaseMaterial {
     fyd = null,
     ftk = null,
     ductilityClass = null,
+    elongationCharacteristic = null,
+    ultimateStrain = null,
     existing = false,
     knowledgeLevel = "LC1",
     confidenceFactor = null,
@@ -33,6 +35,12 @@ export class SteelMaterial extends BaseMaterial {
     this.fyd = unitResolver.stress(fyd);
     this.ftk = unitResolver.stress(ftk);
     this.ductilityClass = ductilityClass;
+    this.elongationCharacteristic = elongationCharacteristic;
+    this.ultimateStrain =
+      ultimateStrain ??
+      (Number.isFinite(elongationCharacteristic)
+        ? 0.9 * elongationCharacteristic
+        : null);
     const existingState = resolveExistingMaterialState({
       existing,
       knowledgeLevel,
@@ -59,6 +67,8 @@ export class SteelMaterial extends BaseMaterial {
       fyd: this.fyd,
       ftk: this.ftk,
       ductilityClass: this.ductilityClass,
+      elongationCharacteristic: this.elongationCharacteristic,
+      ultimateStrain: this.ultimateStrain,
       existing: this.existing,
       knowledgeLevel: this.knowledgeLevel,
       confidenceFactor: this.confidenceFactor,

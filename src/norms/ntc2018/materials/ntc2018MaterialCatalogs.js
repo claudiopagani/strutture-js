@@ -24,11 +24,13 @@ export const NTC2018_REINFORCEMENT_STEEL_GRADES = {
     fyk: 450,
     ftk: 540,
     ductilityClass: "A",
+    elongationCharacteristic: 0.025,
   },
   B450C: {
     fyk: 450,
     ftk: 540,
     ductilityClass: "C",
+    elongationCharacteristic: 0.075,
   },
 };
 

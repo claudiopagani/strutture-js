@@ -141,3 +141,27 @@ test("rc ultimate section solver changes moment sign when compressed edge flips"
   assert.ok(topResult.MxRd * bottomResult.MxRd < 0);
   approx(Math.abs(topResult.MxRd), Math.abs(bottomResult.MxRd), 5e4);
 });
+
+test("rc ultimate section solver can be governed by steel ultimate tension strain", () => {
+  const fixture = createSolverFixture();
+  const steelLaw = new SteelElasticPerfectlyPlasticLaw({
+    Es: fixture.steelLaw.Es,
+    fyd: fixture.steelLaw.fyd,
+    esu: 0.003,
+  });
+  const solver = new RCUltimateSectionSolver();
+  const result = solver.solveUniaxialAtAxialLoad({
+    section: fixture.section,
+    concreteFibers: fixture.fibers,
+    concreteLaw: fixture.concreteLaw,
+    steelLaw,
+    nEd: 0,
+    compressedEdge: "top",
+  });
+
+  assert.equal(result.converged, true);
+  assert.equal(result.failureMode, "steel-tension");
+  approx(result.state.extremes.maxSteelTension.strain, 0.003, 1e-12);
+  assert.ok(Math.abs(result.state.extremes.minStrain) < 0.0035);
+  approx(result.axialResidual, 0, 5);
+});

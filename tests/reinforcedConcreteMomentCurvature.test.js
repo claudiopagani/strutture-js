@@ -99,7 +99,7 @@ test("reinforced concrete section application returns a moment-curvature curve",
     analysisSettings: {
       compressedEdge: "top",
       pointCount: 12,
-      curvatureMax: 0.00003,
+      curvatureMax: 0.0003,
     },
     units,
   });

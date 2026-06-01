@@ -141,7 +141,7 @@ function resolveLimitState({ state, concreteLaw, steelLaw }) {
 
   if (Number.isFinite(steelLimits.tension)) {
     const limit = Math.abs(steelLimits.tension);
-    const demand = Math.max(0, state.extremes.maxStrain ?? 0);
+    const demand = Math.max(0, state.extremes.maxSteelTension?.strain ?? 0);
     checks.push({
       id: "steel-tension-strain",
       demand,
@@ -153,7 +153,7 @@ function resolveLimitState({ state, concreteLaw, steelLaw }) {
 
   if (Number.isFinite(steelLimits.compression)) {
     const limit = Math.abs(steelLimits.compression);
-    const demand = Math.max(0, -(state.extremes.minStrain ?? 0));
+    const demand = Math.max(0, -(state.extremes.maxSteelCompression?.strain ?? 0));
     checks.push({
       id: "steel-compression-strain",
       demand,
@@ -184,7 +184,7 @@ function resolveFirstYieldState({ state, concreteLaw, steelLaw }) {
   const concretePeakStrain = resolveConcretePeakCompressionStrain(concreteLaw);
 
   if (Number.isFinite(steelYieldStrain) && steelYieldStrain > 0) {
-    const demand = Math.max(0, state.extremes.maxStrain ?? 0);
+    const demand = Math.max(0, state.extremes.maxSteelTension?.strain ?? 0);
     checks.push({
       id: "steel-tension-yield",
       demand,

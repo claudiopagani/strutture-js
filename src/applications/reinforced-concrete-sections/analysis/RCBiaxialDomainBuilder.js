@@ -42,6 +42,7 @@ export class RCBiaxialDomainBuilder {
         MyRd: solved.MyRd,
         neutralAxisDepth: solved.neutralAxisDepth,
         axialResidual: solved.axialResidual,
+        failureMode: solved.failureMode,
         converged: solved.converged,
       });
     }

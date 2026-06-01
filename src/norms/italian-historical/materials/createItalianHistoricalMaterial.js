@@ -10,6 +10,7 @@ import {
 } from "./historicalReinforcementSteelCatalogs.js";
 
 const INTERNAL_UNITS = Object.freeze({ force: "N", length: "mm" });
+const HISTORICAL_REINFORCEMENT_ELONGATION_CHARACTERISTIC = 0.075;
 const round = (value, decimals = 2) =>
   Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
 
@@ -76,6 +77,7 @@ export function createItalianHistoricalReinforcementSteelMaterial({
     fyk: round(fyk, 2),
     fyd: round(fyk / gammaS, 2),
     ftk: round(ftk, 2),
+    elongationCharacteristic: HISTORICAL_REINFORCEMENT_ELONGATION_CHARACTERISTIC,
     existing: existingState.existing,
     knowledgeLevel: existingState.knowledgeLevel ?? knowledgeLevel,
     confidenceFactor: existingState.confidenceFactor,
@@ -89,6 +91,15 @@ export function createItalianHistoricalReinforcementSteelMaterial({
       standardTitle: standard?.title ?? null,
       steelUse: "reinforcement",
       gammaS,
+      elongationCharacteristic: HISTORICAL_REINFORCEMENT_ELONGATION_CHARACTERISTIC,
+      elongationCharacteristicPermille: round(
+        HISTORICAL_REINFORCEMENT_ELONGATION_CHARACTERISTIC * 1000,
+        2,
+      ),
+      ultimateStrain: round(
+        0.9 * HISTORICAL_REINFORCEMENT_ELONGATION_CHARACTERISTIC,
+        6,
+      ),
       existingMaterial: existingState.existing,
       knowledgeLevel: existingState.knowledgeLevel,
       knowledgeLevelDescription: existingState.knowledgeLevelDescription,
