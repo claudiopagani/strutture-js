@@ -21,6 +21,19 @@ const round = (value, decimals = 6) =>
 const roundNullable = (value, decimals = 6) =>
   Number.isFinite(value) ? round(value, decimals) : null;
 
+function summarizeConcreteCompressionEdge(edge) {
+  if (edge == null) {
+    return null;
+  }
+
+  return {
+    strain: round(edge.strain, 12),
+    demand: round(edge.demand, 12),
+    y: round(edge.y, 6),
+    z: round(edge.z, 6),
+  };
+}
+
 function resolveServiceStressSolverActions(actions = {}) {
   const userMxEd = actions?.mxEd ?? actions?.mEd ?? 0;
   const userMyEd = actions?.myEd ?? 0;
@@ -431,6 +444,10 @@ export class ReinforcedConcreteSectionVerification {
               neutralAxisDepth: roundNullable(point.neutralAxisDepth, 6),
               axialResidual: round(point.axialResidual, 6),
               failureMode: point.failureMode,
+              concreteCompressionEdge:
+                summarizeConcreteCompressionEdge(
+                  point.concreteCompressionEdge,
+                ),
               converged: point.converged,
             })),
           },
@@ -494,8 +511,20 @@ export class ReinforcedConcreteSectionVerification {
           pointCount: model.analysisSettings?.pointCount ?? 41,
           referencePoint,
           includeConcreteTension: model.analysisSettings?.includeConcreteTension ?? false,
-          stopAtFailure: model.analysisSettings?.stopAtFailure ?? true,
+          stopAtFailure: model.analysisSettings?.stopAtFailure ?? false,
           includeFailurePoint: model.analysisSettings?.includeFailurePoint ?? true,
+          postPeakMomentDrop:
+            model.analysisSettings?.postPeakMomentDrop ?? 0.3,
+          postUltimateResponse:
+            model.analysisSettings?.postUltimateResponse ??
+            "zero-stress",
+          postUltimateFractureEnergyDensity:
+            model.analysisSettings
+              ?.postUltimateFractureEnergyDensity ?? null,
+          postPeakCurvatureGrowthFactor:
+            model.analysisSettings?.postPeakCurvatureGrowthFactor ?? 1.15,
+          maxPostPeakPoints:
+            model.analysisSettings?.maxPostPeakPoints ?? 120,
         });
         const summarizedPoints = curve.points.map((point) =>
           RCMomentCurvatureAnalyzer.summarizePoint(point),
@@ -508,6 +537,24 @@ export class ReinforcedConcreteSectionVerification {
           curve.firstYieldPoint == null
             ? null
             : RCMomentCurvatureAnalyzer.summarizePoint(curve.firstYieldPoint);
+        const summarizedBalancedFailurePoint =
+          curve.balancedFailurePoint == null
+            ? null
+            : RCMomentCurvatureAnalyzer.summarizePoint(
+                curve.balancedFailurePoint,
+              );
+        const summarizedBalancedCurvaturePoint =
+          curve.balancedCurvaturePoint == null
+            ? null
+            : RCMomentCurvatureAnalyzer.summarizePoint(
+                curve.balancedCurvaturePoint,
+              );
+        const summarizedPostPeakDropPoint =
+          curve.postPeakDropPoint == null
+            ? null
+            : RCMomentCurvatureAnalyzer.summarizePoint(
+                curve.postPeakDropPoint,
+              );
         const allConverged = curve.points.every((point) => point.converged);
 
         return new VerificationResult({
@@ -524,10 +571,23 @@ export class ReinforcedConcreteSectionVerification {
             nEd: round(nEd, 6),
             compressedEdge: curve.compressedEdge,
             curvatureMax: round(curve.curvatureMax, 12),
+            initialCurvatureMax: round(
+              curve.initialCurvatureMax,
+              12,
+            ),
+            balancedCurvature: round(curve.balancedCurvature, 12),
             requestedPointCount: curve.pointCount,
+            analyzedPointCount: curve.analyzedPointCount,
             generatedPointCount: curve.generatedPointCount,
             failureReached: curve.failureReached,
+            failureMode: curve.failureMode,
             firstYieldReached: curve.firstYieldReached,
+            firstYieldType: curve.firstYieldType,
+            balancedFailureReached: curve.balancedFailureReached,
+            postPeakMomentDrop: round(curve.postPeakMomentDrop, 6),
+            postPeakDropReached: curve.postPeakDropReached,
+            postUltimateModel: curve.postUltimateModel,
+            terminationReason: curve.terminationReason,
             fiberCount: mesh.generatedCount,
             referencePoint: {
               y: round(referencePoint.y, 6),
@@ -535,6 +595,16 @@ export class ReinforcedConcreteSectionVerification {
             },
             firstYieldPoint: summarizedFirstYieldPoint,
             failurePoint: summarizedFailurePoint,
+            balancedFailurePoint: summarizedBalancedFailurePoint,
+            balancedCurvaturePoint:
+              summarizedBalancedCurvaturePoint,
+            maximumMomentPoint:
+              curve.maximumMomentPoint == null
+                ? null
+                : RCMomentCurvatureAnalyzer.summarizePoint(
+                    curve.maximumMomentPoint,
+                  ),
+            postPeakDropPoint: summarizedPostPeakDropPoint,
             ntc2018Ductility:
               RCMomentCurvatureAnalyzer.summarizeDuctility(
                 curve.ntc2018Ductility,
@@ -546,7 +616,12 @@ export class ReinforcedConcreteSectionVerification {
             "Moment-curvature analysis is uniaxial and keeps the assigned axial force constant while curvature is increased.",
             "Positive reported curvature corresponds to top-edge compression; bottom-edge compression is reported with negative engineering curvature.",
             "Concrete tension is excluded by default during moment-curvature integration unless includeConcreteTension=true or a custom concrete law is supplied.",
-            "NTC 2018 ductility outputs use M'yd at the first-yield curvature and phiYd = MRd / M'yd * phiPrimeYd.",
+            "Concrete peak and ultimate strains are checked at the actual section edge, while steel yield and ultimate strains are checked at reinforcement coordinates.",
+            "The assigned-axial-force failure point is the first material ultimate limit reached along the N-constant path.",
+            "The balanced failure point imposes simultaneous concrete ultimate compression and extreme tension-steel ultimate strain; its balanced axial force can differ from the assigned nEd.",
+            "By default, material stress drops to zero immediately after its ultimate strain. Linear softening is enabled only when explicitly requested with a post-ultimate fracture-energy density.",
+            "postUltimateFractureEnergyDensity is an energy per unit volume, expressed internally as N/mm2; it is not a mesh-regularized fracture energy per unit crack area.",
+            "NTC 2018 ductility outputs use M'yd at the first-yield curvature, phiYd = MRd / M'yd * phiPrimeYd, and the earlier event between material ultimate strain and a 15% post-peak resistance drop.",
           ],
           metadata: {
             code: this.code,
@@ -629,6 +704,10 @@ export class ReinforcedConcreteSectionVerification {
               neutralAxisDepth: roundNullable(point.neutralAxisDepth, 6),
               axialResidual: round(point.axialResidual, 6),
               failureMode: point.failureMode,
+              concreteCompressionEdge:
+                summarizeConcreteCompressionEdge(
+                  point.concreteCompressionEdge,
+                ),
               converged: point.converged,
             })),
           },
@@ -761,6 +840,10 @@ export class ReinforcedConcreteSectionVerification {
                   y: round(solved.state.extremes.maxConcreteCompression.y, 6),
                   z: round(solved.state.extremes.maxConcreteCompression.z, 6),
                 },
+          concreteCompressionEdge:
+            summarizeConcreteCompressionEdge(
+              solved.concreteStrainExtremes?.compression,
+            ),
           maxSteelTension:
             solved.state.extremes.maxSteelTension == null
               ? null

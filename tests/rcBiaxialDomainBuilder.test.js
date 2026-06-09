@@ -103,6 +103,11 @@ test("biaxial domain builder returns a set of resistant points at assigned axial
   assert.equal(domain.points.length, 16);
   assert.ok(domain.points.every((point) => point.converged));
   assert.ok(domain.points.every((point) => Math.abs(point.axialResidual) < 10));
+  assert.ok(
+    domain.points.every((point) =>
+      Number.isFinite(point.concreteCompressionEdge?.strain),
+    ),
+  );
   assert.ok(domain.points.some((point) => Math.abs(point.MxRd) > 0));
   assert.ok(domain.points.some((point) => Math.abs(point.MyRd) > 0));
 });

@@ -567,7 +567,12 @@ Output atteso:
   - `moment-curvature`;
   - `service-stress`.
 - `outputs` contiene resistenze, punti del dominio, curva momento-curvatura o tensioni SLE in base al workflow.
-- Nel workflow `moment-curvature`, `outputs.ntc2018Ductility` riporta le grandezze del §4.1.2.3.4.2 NTC 2018: `phiPrimeYd`, `mPrimeYd`, `mRd`, `phiYd`, `phiU` e `curvatureDuctilityRatio`.
+- Nel workflow `moment-curvature`, `outputs.ntc2018Ductility` riporta le grandezze del §4.1.2.3.4.2 NTC 2018: `phiPrimeYd`, `mPrimeYd`, `mRd`, `phiYd`, `phiU` e `curvatureDuctilityRatio`; `phiU` usa il primo evento fra deformazione ultima di un materiale e calo del 15% della resistenza massima.
+- `outputs.firstYieldPoint` e inserito anche in `outputs.points` alla curvatura risolta, mentre `outputs.firstYieldType` distingue `steel-tension-yield`, `steel-compression-yield` e `concrete-compression-peak`.
+- `outputs.failurePoint` e la prima rottura lungo il percorso a forza assiale `nEd` costante; `outputs.balancedFailurePoint` e invece lo stato di rottura bilanciata con `epsilon_c = epsilon_cu` ed `epsilon_s = epsilon_su`, e riporta anche la forza assiale bilanciata risultante.
+- Se `curvatureMax` non e assegnata, la curva supera la curvatura bilanciata e prosegue fino a `outputs.postPeakDropPoint`, per default al calo del 30% rispetto al picco. Dopo la deformazione ultima la tensione scende a zero per default; il softening lineare e attivato solo con `postUltimateResponse: "linear-softening"` e `postUltimateFractureEnergyDensity`.
+- `postUltimateFractureEnergyDensity` puo essere un numero o `{ concrete, steel }`; rappresenta l'area della coda tensione-deformazione in `N/mm2`, cioe energia per unita di volume. Non e una energia di frattura `N/mm` regolarizzata rispetto alla dimensione della fibra.
+- Nei workflow di resistenza SLU uniaxiale e biassiale, la deformazione ultima del calcestruzzo viene valutata sui vertici del contorno reale della sezione, non sui centroidi delle fibre o sugli angoli del rettangolo d'ingombro.
 - Nei workflow SLU la deformazione ultima dell'acciaio viene presa dal materiale, quando disponibile: `ultimateStrain = 0.9 * elongationCharacteristic`.
 
 Unita richieste:

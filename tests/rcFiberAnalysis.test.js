@@ -172,3 +172,124 @@ test("rc section state integrator develops bending moment under linear strain pr
   assert.ok(result.extremes.minStrain < 0);
   assert.ok(result.extremes.maxStrain > 0);
 });
+
+test("rc section state integrator tracks steel strain extremes after yielding", () => {
+  const section = createDemoSection();
+  const mesh = new SectionFiberDiscretizer().discretize(section, {
+    targetCount: 100,
+  });
+  const result = new RCSectionStateIntegrator().evaluate({
+    section,
+    concreteFibers: mesh.fibers,
+    concreteLaw: new ConcreteNoTensionLaw({
+      ecm: section.concreteMaterial.elasticModulus,
+      compressionCap: section.concreteMaterial.fcd,
+    }),
+    steelLaw: new SteelElasticPerfectlyPlasticLaw({
+      Es: section.reinforcementMaterial.elasticModulus,
+      fyd: section.reinforcementMaterial.fyd,
+      esu: 0.07,
+    }),
+    strainField: new StrainField({
+      eps0: -0.0035,
+      kappaZ: -0.000154,
+    }),
+    includeConcreteTension: false,
+  });
+
+  assert.equal(result.extremes.maxSteelTensionStrain.id, "top-left");
+  assert.equal(result.extremes.maxSteelTensionStrain.y, 450);
+  approx(result.extremes.maxSteelTensionStrain.strain, 0.0658, 1e-12);
+  assert.equal(
+    result.extremes.maxSteelTensionStrain.stress,
+    section.reinforcementMaterial.fyd,
+  );
+});
+
+test("rc section state integrator drops stress to zero after ultimate strain", () => {
+  const section = createDemoSection();
+  const mesh = new SectionFiberDiscretizer().discretize(section, {
+    targetCount: 100,
+  });
+  const result = new RCSectionStateIntegrator().evaluate({
+    section,
+    concreteFibers: mesh.fibers,
+    concreteLaw: new ConcreteNoTensionLaw({
+      ecm: section.concreteMaterial.elasticModulus,
+      compressionCap: section.concreteMaterial.fcd,
+    }),
+    steelLaw: new SteelElasticPerfectlyPlasticLaw({
+      Es: section.reinforcementMaterial.elasticModulus,
+      fyd: section.reinforcementMaterial.fyd,
+      esu: 0.01,
+    }),
+    strainField: new StrainField({ eps0: 0.015 }),
+  });
+
+  assert.ok(result.steel.bars.every((bar) => bar.stress === 0));
+  assert.ok(result.steel.bars.every((bar) => bar.postUltimate));
+  assert.deepEqual(result.postUltimate.fractureEnergyDensity, {
+    concrete: 0,
+    steel: 0,
+  });
+});
+
+test("rc section state integrator derives softening tail from fracture-energy density", () => {
+  const section = createDemoSection();
+  const mesh = new SectionFiberDiscretizer().discretize(section, {
+    targetCount: 100,
+  });
+  const fyd = section.reinforcementMaterial.fyd;
+  const fractureEnergyDensity = 0.5 * fyd * 0.01;
+  const result = new RCSectionStateIntegrator().evaluate({
+    section,
+    concreteFibers: mesh.fibers,
+    concreteLaw: new ConcreteNoTensionLaw({
+      ecm: section.concreteMaterial.elasticModulus,
+      compressionCap: section.concreteMaterial.fcd,
+    }),
+    steelLaw: new SteelElasticPerfectlyPlasticLaw({
+      Es: section.reinforcementMaterial.elasticModulus,
+      fyd,
+      esu: 0.01,
+    }),
+    strainField: new StrainField({ eps0: 0.015 }),
+    postUltimateResponse: "linear-softening",
+    postUltimateFractureEnergyDensity: {
+      steel: fractureEnergyDensity,
+    },
+  });
+
+  result.steel.bars.forEach((bar) => {
+    approx(bar.stress, 0.5 * fyd, 1e-9);
+    approx(bar.terminalStrain, 0.02, 1e-12);
+    assert.equal(bar.fractureEnergyDensity, fractureEnergyDensity);
+  });
+});
+
+test("rc section state integrator rejects softening without fracture-energy density", () => {
+  const section = createDemoSection();
+  const mesh = new SectionFiberDiscretizer().discretize(section, {
+    targetCount: 100,
+  });
+
+  assert.throws(
+    () =>
+      new RCSectionStateIntegrator().evaluate({
+        section,
+        concreteFibers: mesh.fibers,
+        concreteLaw: new ConcreteNoTensionLaw({
+          ecm: section.concreteMaterial.elasticModulus,
+          compressionCap: section.concreteMaterial.fcd,
+        }),
+        steelLaw: new SteelElasticPerfectlyPlasticLaw({
+          Es: section.reinforcementMaterial.elasticModulus,
+          fyd: section.reinforcementMaterial.fyd,
+          esu: 0.01,
+        }),
+        strainField: new StrainField({ eps0: 0.015 }),
+        postUltimateResponse: "linear-softening",
+      }),
+    /requires a positive postUltimateFractureEnergyDensity/,
+  );
+});

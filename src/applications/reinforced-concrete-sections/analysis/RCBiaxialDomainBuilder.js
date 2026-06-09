@@ -43,6 +43,8 @@ export class RCBiaxialDomainBuilder {
         neutralAxisDepth: solved.neutralAxisDepth,
         axialResidual: solved.axialResidual,
         failureMode: solved.failureMode,
+        concreteCompressionEdge:
+          solved.concreteStrainExtremes?.compression ?? null,
         converged: solved.converged,
       });
     }

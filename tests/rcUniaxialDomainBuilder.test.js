@@ -103,6 +103,11 @@ test("uniaxial domain builder returns M-N points for assigned axial-force levels
   assert.deepEqual(domain.compressedEdges, ["top", "bottom"]);
   assert.ok(domain.points.every((point) => point.converged));
   assert.ok(domain.points.every((point) => Math.abs(point.axialResidual) < 10));
+  assert.ok(
+    domain.points.every((point) =>
+      Number.isFinite(point.concreteCompressionEdge?.strain),
+    ),
+  );
   assert.ok(domain.points.some((point) => point.MxRd > 0));
   assert.ok(domain.points.some((point) => point.MxRd < 0));
 });

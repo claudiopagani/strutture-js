@@ -9,6 +9,7 @@ import {
   RectangularSection,
   SectionFiberDiscretizer,
   SteelElasticPerfectlyPlasticLaw,
+  TSection,
   createNTC2018ConcreteMaterial,
   createNTC2018ReinforcementSteelMaterial,
 } from "../src/index.js";
@@ -114,6 +115,79 @@ test("rc ultimate section solver satisfies axial equilibrium for top-compressed 
   assert.ok(Math.abs(result.MxRd) > 0);
   approx(result.MyRd, 0, 1e-6);
   assert.ok(result.state.extremes.maxConcreteCompression.value < 0);
+  assert.ok(result.state.extremes.maxConcreteCompression.y > 250);
+  assert.equal(result.state.extremes.maxSteelTensionStrain.y, 40);
+  approx(result.concreteStrainExtremes.compression.strain, -0.0035, 1e-12);
+  assert.equal(result.concreteStrainExtremes.compression.y, 500);
+});
+
+test("rc ultimate section solver evaluates concrete strain on the real non-rectangular edge", () => {
+  const concreteMaterial = createNTC2018ConcreteMaterial({
+    strengthClass: "C25/30",
+    units,
+  });
+  const reinforcementMaterial = createNTC2018ReinforcementSteelMaterial({
+    grade: "B450C",
+    units,
+  });
+  const section = new ReinforcedConcreteSection({
+    name: "RC T-section edge fixture",
+    concreteSection: new TSection({
+      flangeWidth: 300,
+      flangeThickness: 100,
+      webWidth: 100,
+      webHeight: 400,
+      units,
+    }),
+    reinforcementBars: [
+      [40, 130],
+      [40, 170],
+      [460, 40],
+      [460, 260],
+    ].map(
+      ([y, z], index) =>
+        new ReinforcementBar({
+          id: `bar-${index}`,
+          diameter: 16,
+          grade: "B450C",
+          material: reinforcementMaterial,
+          y,
+          z,
+          units,
+        }),
+    ),
+    concreteMaterial,
+    reinforcementMaterial,
+    referenceModularRatio: 15,
+    units,
+  });
+  const fibers = new SectionFiberDiscretizer().discretize(section, {
+    targetCount: 160,
+  }).fibers;
+  const result = new RCUltimateSectionSolver().solveAtAxialLoad({
+    section,
+    concreteFibers: fibers,
+    concreteLaw: new ConcreteParabolaRectangleLaw({
+      fcd: concreteMaterial.fcd,
+      ec2: 0.002,
+      ecu: 0.0035,
+    }),
+    steelLaw: new SteelElasticPerfectlyPlasticLaw({
+      Es: reinforcementMaterial.elasticModulus,
+      fyd: reinforcementMaterial.fyd,
+      esu: 0.01,
+    }),
+    nEd: -300000,
+    theta: Math.PI / 4,
+    compressedSide: "negative",
+  });
+
+  assert.equal(result.converged, true);
+  assert.equal(result.failureMode, "concrete-compression");
+  approx(result.concreteStrainExtremes.compression.strain, -0.0035, 1e-12);
+  assert.equal(result.concreteStrainExtremes.compression.y, 0);
+  assert.equal(result.concreteStrainExtremes.compression.z, 100);
+  assert.notEqual(result.concreteStrainExtremes.compression.z, 0);
 });
 
 test("rc ultimate section solver changes moment sign when compressed edge flips", () => {
