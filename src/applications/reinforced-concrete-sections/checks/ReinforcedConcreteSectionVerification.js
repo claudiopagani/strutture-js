@@ -513,8 +513,15 @@ export class ReinforcedConcreteSectionVerification {
           includeConcreteTension: model.analysisSettings?.includeConcreteTension ?? false,
           stopAtFailure: model.analysisSettings?.stopAtFailure ?? false,
           includeFailurePoint: model.analysisSettings?.includeFailurePoint ?? true,
+          postUltimateMomentDrop:
+            model.analysisSettings?.postUltimateMomentDrop ??
+            model.analysisSettings?.postPeakMomentDrop ??
+            0.15,
+          maxPostUltimateCurvatureRatio:
+            model.analysisSettings?.maxPostUltimateCurvatureRatio ??
+            1.2,
           postPeakMomentDrop:
-            model.analysisSettings?.postPeakMomentDrop ?? 0.3,
+            model.analysisSettings?.postPeakMomentDrop ?? null,
           postUltimateResponse:
             model.analysisSettings?.postUltimateResponse ??
             "zero-stress",
@@ -533,6 +540,12 @@ export class ReinforcedConcreteSectionVerification {
           curve.failurePoint == null
             ? null
             : RCMomentCurvatureAnalyzer.summarizePoint(curve.failurePoint);
+        const summarizedMaterialUltimatePoint =
+          curve.materialUltimatePoint == null
+            ? null
+            : RCMomentCurvatureAnalyzer.summarizePoint(
+                curve.materialUltimatePoint,
+              );
         const summarizedFirstYieldPoint =
           curve.firstYieldPoint == null
             ? null
@@ -554,6 +567,12 @@ export class ReinforcedConcreteSectionVerification {
             ? null
             : RCMomentCurvatureAnalyzer.summarizePoint(
                 curve.postPeakDropPoint,
+              );
+        const summarizedPostUltimateTerminationPoint =
+          curve.postUltimateTerminationPoint == null
+            ? null
+            : RCMomentCurvatureAnalyzer.summarizePoint(
+                curve.postUltimateTerminationPoint,
               );
         const allConverged = curve.points.every((point) => point.converged);
 
@@ -584,6 +603,32 @@ export class ReinforcedConcreteSectionVerification {
             firstYieldReached: curve.firstYieldReached,
             firstYieldType: curve.firstYieldType,
             balancedFailureReached: curve.balancedFailureReached,
+            materialUltimateReached: curve.materialUltimateReached,
+            materialUltimateType: curve.materialUltimateType,
+            phiMaterialUltimate: round(
+              curve.phiMaterialUltimate,
+              12,
+            ),
+            Mu: round(curve.Mu, 6),
+            postUltimateMomentDrop: round(
+              curve.postUltimateMomentDrop,
+              6,
+            ),
+            maxPostUltimateCurvatureRatio: round(
+              curve.maxPostUltimateCurvatureRatio,
+              6,
+            ),
+            postUltimateCurvatureLimit: round(
+              curve.postUltimateCurvatureLimit,
+              12,
+            ),
+            postUltimateTerminationReached:
+              curve.postUltimateTerminationReached,
+            postUltimateMomentDropReached:
+              curve.postUltimateMomentDropReached,
+            postUltimateCurvatureLimitReached:
+              curve.postUltimateCurvatureLimitReached,
+            // Legacy aliases retained for existing consumers.
             postPeakMomentDrop: round(curve.postPeakMomentDrop, 6),
             postPeakDropReached: curve.postPeakDropReached,
             postUltimateModel: curve.postUltimateModel,
@@ -595,6 +640,8 @@ export class ReinforcedConcreteSectionVerification {
             },
             firstYieldPoint: summarizedFirstYieldPoint,
             failurePoint: summarizedFailurePoint,
+            materialUltimatePoint:
+              summarizedMaterialUltimatePoint,
             balancedFailurePoint: summarizedBalancedFailurePoint,
             balancedCurvaturePoint:
               summarizedBalancedCurvaturePoint,
@@ -605,6 +652,8 @@ export class ReinforcedConcreteSectionVerification {
                     curve.maximumMomentPoint,
                   ),
             postPeakDropPoint: summarizedPostPeakDropPoint,
+            postUltimateTerminationPoint:
+              summarizedPostUltimateTerminationPoint,
             ntc2018Ductility:
               RCMomentCurvatureAnalyzer.summarizeDuctility(
                 curve.ntc2018Ductility,
@@ -618,6 +667,7 @@ export class ReinforcedConcreteSectionVerification {
             "Concrete tension is excluded by default during moment-curvature integration unless includeConcreteTension=true or a custom concrete law is supplied.",
             "Concrete peak and ultimate strains are checked at the actual section edge, while steel yield and ultimate strains are checked at reinforcement coordinates.",
             "The assigned-axial-force failure point is the first material ultimate limit reached along the N-constant path.",
+            "After the material ultimate point, the analysis stops at the first event between the configured resistance drop from Mu and the configured multiple of phiMaterialUltimate.",
             "The balanced failure point imposes simultaneous concrete ultimate compression and extreme tension-steel ultimate strain; its balanced axial force can differ from the assigned nEd.",
             "By default, material stress drops to zero immediately after its ultimate strain. Linear softening is enabled only when explicitly requested with a post-ultimate fracture-energy density.",
             "postUltimateFractureEnergyDensity is an energy per unit volume, expressed internally as N/mm2; it is not a mesh-regularized fracture energy per unit crack area.",

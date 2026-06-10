@@ -152,7 +152,7 @@ test("reinforced concrete section application returns a moment-curvature curve",
   assert.ok(result.outputs.failurePoint.limitState.governing.utilizationRatio >= 0.99);
 });
 
-test("moment-curvature default range reaches material failure and reports balanced failure", () => {
+test("moment-curvature keeps material ultimate, maximum, and post-ultimate termination distinct", () => {
   const { section, concreteMaterial, reinforcementMaterial } = createSection();
   const model = new ReinforcedConcreteSectionModel({
     id: "rc-moment-curvature-balanced-01",
@@ -191,36 +191,50 @@ test("moment-curvature default range reaches material failure and reports balanc
       result.outputs.initialCurvatureMax - expectedBalancedCurvature,
     ) < 1e-12,
   );
-  assert.ok(result.outputs.curvatureMax > expectedBalancedCurvature);
+  assert.equal(result.outputs.postUltimateMomentDrop, 0.15);
+  assert.equal(result.outputs.maxPostUltimateCurvatureRatio, 1.2);
+  assert.equal(result.outputs.materialUltimateReached, true);
+  assert.equal(
+    result.outputs.materialUltimateType,
+    result.outputs.failureMode,
+  );
+  assert.equal(
+    result.outputs.materialUltimatePoint.absoluteCurvature,
+    result.outputs.failurePoint.absoluteCurvature,
+  );
+  assert.equal(
+    result.outputs.phiMaterialUltimate,
+    result.outputs.materialUltimatePoint.absoluteCurvature,
+  );
+  assert.equal(
+    result.outputs.Mu,
+    Math.abs(result.outputs.materialUltimatePoint.Mx),
+  );
   assert.ok(
-    result.outputs.failurePoint.absoluteCurvature <
+    result.outputs.materialUltimatePoint.absoluteCurvature <
       result.outputs.curvatureMax,
   );
-  assert.equal(result.outputs.postPeakDropReached, true);
   assert.equal(
     result.outputs.terminationReason,
-    "post-peak-moment-drop",
+    "post-ultimate-curvature-limit",
   );
+  assert.equal(result.outputs.postUltimateTerminationReached, true);
+  assert.equal(result.outputs.postUltimateCurvatureLimitReached, true);
+  assert.equal(result.outputs.postUltimateMomentDropReached, false);
+  assert.equal(result.outputs.postPeakDropReached, false);
   assert.ok(
-    result.outputs.postPeakDropPoint.absoluteCurvature >
-      expectedBalancedCurvature,
-  );
-  assert.ok(
-    result.outputs.postPeakDropPoint.Mx /
-      result.outputs.maximumMomentPoint.Mx <=
-      0.7,
+    Math.abs(
+      result.outputs.postUltimateTerminationPoint.absoluteCurvature -
+        1.2 * result.outputs.phiMaterialUltimate,
+    ) < 1e-12,
   );
   assert.equal(
-    result.outputs.postPeakDropPoint.postPeakState.targetDropRatio,
-    0.3,
+    result.outputs.curvatureMax,
+    result.outputs.postUltimateTerminationPoint.absoluteCurvature,
   );
   assert.ok(
-    result.outputs.postPeakDropPoint.postPeakState.actualDropRatio >=
-      0.3,
-  );
-  assert.equal(
-    result.outputs.postPeakDropPoint.postUltimate.active,
-    true,
+    Math.abs(result.outputs.maximumMomentPoint.Mx) >=
+      result.outputs.Mu,
   );
   assert.equal(
     result.outputs.postUltimateModel.response,
@@ -253,6 +267,122 @@ test("moment-curvature default range reaches material failure and reports balanc
     result.outputs.ntc2018Ductility.ultimateCurvatureSource,
     "material-ultimate-strain",
   );
+});
+
+test("moment-curvature stops at a descending 15 percent loss referred to Mu", () => {
+  const { section, concreteMaterial, reinforcementMaterial } = createSection();
+  const model = new ReinforcedConcreteSectionModel({
+    id: "rc-moment-curvature-mu-drop-01",
+    section,
+    materials: {
+      concreteMaterial,
+      reinforcementMaterial,
+    },
+    analysisType: "moment-curvature",
+    mesh: {
+      targetFiberCount: 120,
+    },
+    actions: {
+      nEd: 0,
+    },
+    analysisSettings: {
+      compressedEdge: "top",
+      pointCount: 41,
+      postUltimateMomentDrop: 0.15,
+      maxPostUltimateCurvatureRatio: 10,
+    },
+    units,
+  });
+  const result = new ReinforcedConcreteSectionApplication().run({ model });
+  const termination = result.outputs.postUltimateTerminationPoint;
+
+  assert.equal(result.status, "ok");
+  assert.equal(
+    result.outputs.terminationReason,
+    "post-ultimate-moment-drop",
+  );
+  assert.equal(result.outputs.postUltimateMomentDropReached, true);
+  assert.equal(result.outputs.postUltimateCurvatureLimitReached, false);
+  assert.ok(
+    Math.abs(termination.Mx) <=
+      (1 - result.outputs.postUltimateMomentDrop) * result.outputs.Mu,
+  );
+  assert.equal(
+    termination.postUltimateState.reference,
+    "material-ultimate-moment",
+  );
+  assert.equal(
+    termination.postUltimateState.referenceMoment,
+    result.outputs.Mu,
+  );
+  assert.ok(
+    termination.postUltimateState.actualDropRatio >=
+      result.outputs.postUltimateMomentDrop,
+  );
+  assert.ok(
+    termination.absoluteCurvature <
+      result.outputs.postUltimateCurvatureLimit,
+  );
+  assert.ok(
+    Math.abs(result.outputs.maximumMomentPoint.Mx) >
+      result.outputs.Mu,
+  );
+});
+
+test("moment-curvature applies the first post-ultimate event for both moment signs", () => {
+  const { section, concreteMaterial, reinforcementMaterial } = createSection();
+
+  for (const compressedEdge of ["top", "bottom"]) {
+    const model = new ReinforcedConcreteSectionModel({
+      id: `rc-moment-curvature-first-event-${compressedEdge}`,
+      section,
+      materials: {
+        concreteMaterial,
+        reinforcementMaterial,
+      },
+      analysisType: "moment-curvature",
+      mesh: {
+        targetFiberCount: 120,
+      },
+      actions: {
+        nEd: 0,
+      },
+      analysisSettings: {
+        compressedEdge,
+        pointCount: 41,
+        postUltimateMomentDrop: 0.9,
+        maxPostUltimateCurvatureRatio: 1.01,
+      },
+      units,
+    });
+    const result = new ReinforcedConcreteSectionApplication().run({ model });
+    const termination = result.outputs.postUltimateTerminationPoint;
+
+    assert.equal(result.status, "ok");
+    assert.equal(
+      result.outputs.terminationReason,
+      "post-ultimate-curvature-limit",
+    );
+    assert.ok(
+      Math.abs(
+        termination.absoluteCurvature -
+          1.01 * result.outputs.phiMaterialUltimate,
+      ) < 1e-12,
+    );
+    assert.ok(
+      Math.abs(termination.Mx) >
+        (1 - result.outputs.postUltimateMomentDrop) *
+          result.outputs.Mu,
+    );
+    assert.equal(
+      Math.sign(termination.Mx),
+      compressedEdge === "top" ? 1 : -1,
+    );
+    assert.equal(
+      Math.sign(termination.curvature),
+      compressedEdge === "top" ? 1 : -1,
+    );
+  }
 });
 
 test("moment-curvature enables linear softening only with explicit fracture-energy density", () => {
@@ -302,11 +432,10 @@ test("moment-curvature enables linear softening only with explicit fracture-ener
       steel: steelFractureEnergyDensity,
     },
   );
+  assert.equal(result.outputs.postUltimateTerminationReached, true);
   assert.ok(
-    Math.abs(
-      result.outputs.postPeakDropPoint.postPeakState.actualDropRatio -
-        0.3,
-    ) < 1e-6,
+    result.outputs.postUltimateTerminationPoint.absoluteCurvature >
+      result.outputs.phiMaterialUltimate,
   );
 });
 

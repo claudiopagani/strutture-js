@@ -13,9 +13,11 @@ const EVENT_UTILIZATION_TOLERANCE = 1e-10;
 const EVENT_CURVATURE_TOLERANCE = 1e-13;
 const EVENT_MAX_ITERATIONS = 80;
 const NTC2018_ULTIMATE_MOMENT_DROP = 0.15;
-const DEFAULT_POST_PEAK_MOMENT_DROP = 0.3;
+const DEFAULT_POST_ULTIMATE_MOMENT_DROP = 0.15;
+const DEFAULT_MAX_POST_ULTIMATE_CURVATURE_RATIO = 1.2;
 const DEFAULT_POST_PEAK_CURVATURE_GROWTH_FACTOR = 1.15;
 const DEFAULT_MAX_POST_PEAK_POINTS = 120;
+const POST_ULTIMATE_MOMENT_TOLERANCE = 1e-9;
 
 const round = (value, decimals = 12) =>
   Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
@@ -378,19 +380,31 @@ function appendUniquePoint(points, point) {
   points.push(point);
 }
 
-function annotateMomentDropPoint(point, { maximumMoment, dropRatio }) {
+function annotateMomentDropPoint(point, { referenceMoment, dropRatio }) {
   const moment = absoluteMoment(point);
+  const targetMoment = (1 - dropRatio) * referenceMoment;
+  const actualDropRatio =
+    referenceMoment > 0 ? 1 - moment / referenceMoment : null;
 
   return {
     ...point,
-    postPeakState: {
-      maximumMoment,
-      targetMoment: (1 - dropRatio) * maximumMoment,
+    postUltimateState: {
+      referenceMoment,
+      reference: "material-ultimate-moment",
+      targetMoment,
       moment,
       targetDropRatio: dropRatio,
-      actualDropRatio:
-        maximumMoment > 0 ? 1 - moment / maximumMoment : null,
-      reached: moment <= (1 - dropRatio) * maximumMoment,
+      actualDropRatio,
+      reached: moment <= targetMoment,
+    },
+    // Legacy alias retained for consumers of the previous post-peak API.
+    postPeakState: {
+      maximumMoment: referenceMoment,
+      targetMoment,
+      moment,
+      targetDropRatio: dropRatio,
+      actualDropRatio,
+      reached: moment <= targetMoment,
     },
   };
 }
@@ -1068,20 +1082,37 @@ export class RCMomentCurvatureAnalyzer {
     includeConcreteTension = false,
     stopAtFailure = false,
     includeFailurePoint = true,
-    postPeakMomentDrop = DEFAULT_POST_PEAK_MOMENT_DROP,
+    postUltimateMomentDrop = null,
+    maxPostUltimateCurvatureRatio =
+      DEFAULT_MAX_POST_ULTIMATE_CURVATURE_RATIO,
+    postPeakMomentDrop = null,
     postUltimateResponse = "zero-stress",
     postUltimateFractureEnergyDensity = null,
     postPeakCurvatureGrowthFactor =
       DEFAULT_POST_PEAK_CURVATURE_GROWTH_FACTOR,
     maxPostPeakPoints = DEFAULT_MAX_POST_PEAK_POINTS,
   } = {}) {
+    const resolvedPostUltimateMomentDrop =
+      postUltimateMomentDrop ??
+      postPeakMomentDrop ??
+      DEFAULT_POST_ULTIMATE_MOMENT_DROP;
+
     if (
-      !Number.isFinite(postPeakMomentDrop) ||
-      postPeakMomentDrop <= 0 ||
-      postPeakMomentDrop >= 1
+      !Number.isFinite(resolvedPostUltimateMomentDrop) ||
+      resolvedPostUltimateMomentDrop <= 0 ||
+      resolvedPostUltimateMomentDrop >= 1
     ) {
       throw new Error(
-        "RCMomentCurvatureAnalyzer postPeakMomentDrop must be between 0 and 1.",
+        "RCMomentCurvatureAnalyzer postUltimateMomentDrop must be between 0 and 1.",
+      );
+    }
+
+    if (
+      !Number.isFinite(maxPostUltimateCurvatureRatio) ||
+      maxPostUltimateCurvatureRatio <= 1
+    ) {
+      throw new Error(
+        "RCMomentCurvatureAnalyzer maxPostUltimateCurvatureRatio must be greater than 1.",
       );
     }
 
@@ -1174,8 +1205,12 @@ export class RCMomentCurvatureAnalyzer {
     let failurePoint = null;
     let firstYieldPoint = null;
     let balancedCurvaturePoint = null;
+    let postUltimateTerminationPoint = null;
     let postPeakDropPoint = null;
     let postPeakPointCount = 0;
+    let phiMaterialUltimate = null;
+    let materialUltimateMoment = null;
+    let postUltimateCurvatureLimit = null;
     let terminationReason = "curvature-range-completed";
 
     for (let valueIndex = 0; valueIndex < values.length; valueIndex += 1) {
@@ -1251,8 +1286,7 @@ export class RCMomentCurvatureAnalyzer {
       if (
         !failurePoint &&
         point.limitState.reached &&
-        previousPoint &&
-        includeFailurePoint
+        previousPoint
       ) {
         try {
           intervalFailurePoint = this.findFailurePoint({
@@ -1293,11 +1327,48 @@ export class RCMomentCurvatureAnalyzer {
 
       if (intervalFailurePoint) {
         failurePoint = intervalFailurePoint;
-        appendUniquePoint(points, intervalFailurePoint);
+        phiMaterialUltimate = Number.isFinite(
+          intervalFailurePoint.absoluteCurvature,
+        )
+          ? intervalFailurePoint.absoluteCurvature
+          : null;
+        materialUltimateMoment = Number.isFinite(
+          absoluteMoment(intervalFailurePoint),
+        )
+          ? absoluteMoment(intervalFailurePoint)
+          : null;
+        postUltimateCurvatureLimit =
+          phiMaterialUltimate != null &&
+          phiMaterialUltimate > EVENT_CURVATURE_TOLERANCE
+            ? maxPostUltimateCurvatureRatio * phiMaterialUltimate
+            : null;
+
+        if (includeFailurePoint) {
+          appendUniquePoint(points, intervalFailurePoint);
+        }
       }
 
       if (intervalFailurePoint && stopAtFailure) {
+        if (!includeFailurePoint) {
+          appendUniquePoint(points, intervalFailurePoint);
+        }
         terminationReason = "first-material-ultimate-strain";
+        break;
+      }
+
+      if (
+        intervalFailurePoint &&
+        postUltimateCurvatureLimit == null &&
+        (materialUltimateMoment == null ||
+          materialUltimateMoment <= POST_ULTIMATE_MOMENT_TOLERANCE)
+      ) {
+        if (!includeFailurePoint) {
+          appendUniquePoint(points, intervalFailurePoint);
+        }
+        warnings.push(
+          "Post-ultimate continuation cannot be evaluated because both Mu and phiMaterialUltimate are null or too close to zero.",
+        );
+        terminationReason = "post-ultimate-reference-unavailable";
         break;
       }
 
@@ -1324,24 +1395,69 @@ export class RCMomentCurvatureAnalyzer {
           });
         } catch (error) {
           warnings.push(error.message);
+          terminationReason = "axial-equilibrium-not-found";
+          break;
         }
       }
 
-      const maximumBeforePoint = findMaximumMomentPoint(points);
-      const targetMoment =
-        maximumBeforePoint == null
-          ? null
-          : (1 - postPeakMomentDrop) * maximumBeforePoint.moment;
-      const crossesPostPeakTarget =
-        failurePoint != null &&
-        previousPoint != null &&
-        maximumBeforePoint != null &&
-        absoluteMoment(point) < absoluteMoment(previousPoint) &&
-        absoluteMoment(previousPoint) >= targetMoment &&
-        absoluteMoment(point) <= targetMoment;
       let resolvedPointThisStep = point;
+      const postUltimateLowerPoint =
+        intervalFailurePoint ?? (failurePoint == null ? null : previousPoint);
+      const momentCriterionAvailable =
+        materialUltimateMoment != null &&
+        materialUltimateMoment > POST_ULTIMATE_MOMENT_TOLERANCE;
+      const targetMoment = momentCriterionAvailable
+        ? (1 - resolvedPostUltimateMomentDrop) *
+          materialUltimateMoment
+        : null;
+      const reachesPostUltimateCurvatureLimit =
+        failurePoint != null &&
+        postUltimateCurvatureLimit != null &&
+        point.absoluteCurvature >=
+          postUltimateCurvatureLimit - EVENT_CURVATURE_TOLERANCE;
 
-      if (crossesPostPeakTarget && postPeakDropPoint == null) {
+      if (
+        reachesPostUltimateCurvatureLimit &&
+        Math.abs(
+          point.absoluteCurvature - postUltimateCurvatureLimit,
+        ) > EVENT_CURVATURE_TOLERANCE
+      ) {
+        try {
+          resolvedPointThisStep = this.solveAtCurvature({
+            section,
+            concreteFibers,
+            concreteLaw,
+            steelLaw,
+            curvature: postUltimateCurvatureLimit,
+            nEd,
+            compressedEdge,
+            referencePoint,
+            includeConcreteTension,
+            eps0Hint:
+              postUltimateLowerPoint?.eps0 ??
+              failurePoint?.eps0 ??
+              null,
+            postUltimateResponse,
+            postUltimateFractureEnergyDensity:
+              normalizedFractureEnergyDensity,
+          });
+        } catch (error) {
+          warnings.push(error.message);
+          terminationReason = "axial-equilibrium-not-found";
+          break;
+        }
+      }
+
+      const crossesPostUltimateMomentTarget =
+        failurePoint != null &&
+        postUltimateLowerPoint != null &&
+        targetMoment != null &&
+        absoluteMoment(resolvedPointThisStep) <
+          absoluteMoment(postUltimateLowerPoint) &&
+        absoluteMoment(postUltimateLowerPoint) >= targetMoment &&
+        absoluteMoment(resolvedPointThisStep) <= targetMoment;
+
+      if (crossesPostUltimateMomentTarget) {
         try {
           postPeakDropPoint = this.findMomentDropPoint({
             section,
@@ -1355,24 +1471,28 @@ export class RCMomentCurvatureAnalyzer {
             postUltimateResponse,
             postUltimateFractureEnergyDensity:
               normalizedFractureEnergyDensity,
-            lowerPoint: previousPoint,
-            upperPoint: point,
-            maximumMoment: maximumBeforePoint.moment,
-            dropRatio: postPeakMomentDrop,
+            lowerPoint: postUltimateLowerPoint,
+            upperPoint: resolvedPointThisStep,
+            referenceMoment: materialUltimateMoment,
+            dropRatio: resolvedPostUltimateMomentDrop,
           });
         } catch (error) {
           warnings.push(error.message);
-          postPeakDropPoint = annotateMomentDropPoint(point, {
-            maximumMoment: maximumBeforePoint.moment,
-            dropRatio: postPeakMomentDrop,
-          });
+          postPeakDropPoint = annotateMomentDropPoint(
+            resolvedPointThisStep,
+            {
+              referenceMoment: materialUltimateMoment,
+              dropRatio: resolvedPostUltimateMomentDrop,
+            },
+          );
         }
 
-        appendUniquePoint(points, postPeakDropPoint);
         resolvedPointThisStep = postPeakDropPoint;
-      } else {
-        appendUniquePoint(points, point);
+        postUltimateTerminationPoint = postPeakDropPoint;
+        terminationReason = "post-ultimate-moment-drop";
       }
+
+      appendUniquePoint(points, resolvedPointThisStep);
 
       if (
         balancedCurvaturePoint == null &&
@@ -1411,17 +1531,19 @@ export class RCMomentCurvatureAnalyzer {
         }
       }
 
-      const passedBalancedCurvature =
-        resolvedPointThisStep.absoluteCurvature >
-        balancedCurvature + EVENT_CURVATURE_TOLERANCE;
-
-      if (postPeakDropPoint && passedBalancedCurvature) {
-        terminationReason = "post-peak-moment-drop";
+      if (postUltimateTerminationPoint) {
         previousPoint = resolvedPointThisStep;
         break;
       }
 
-      previousPoint = point;
+      if (reachesPostUltimateCurvatureLimit) {
+        postUltimateTerminationPoint = resolvedPointThisStep;
+        terminationReason = "post-ultimate-curvature-limit";
+        previousPoint = resolvedPointThisStep;
+        break;
+      }
+
+      previousPoint = resolvedPointThisStep;
 
       if (
         valueIndex === values.length - 1 &&
@@ -1429,7 +1551,7 @@ export class RCMomentCurvatureAnalyzer {
       ) {
         if (postPeakPointCount >= maxPostPeakPoints) {
           warnings.push(
-            "Post-peak continuation reached maxPostPeakPoints before the requested moment drop.",
+            "Post-ultimate continuation reached maxPostPeakPoints before a termination criterion.",
           );
           terminationReason = "maximum-post-peak-point-count";
           break;
@@ -1443,7 +1565,7 @@ export class RCMomentCurvatureAnalyzer {
 
         if (nextCurvature > maximumAutomaticCurvature) {
           warnings.push(
-            "Post-peak continuation reached the automatic curvature guard before the requested moment drop.",
+            "Post-ultimate continuation reached the automatic curvature guard before a termination criterion.",
           );
           terminationReason = "maximum-automatic-curvature";
           break;
@@ -1469,6 +1591,12 @@ export class RCMomentCurvatureAnalyzer {
       failureReached: failurePoint != null,
       failurePoint,
       failureMode: failurePoint?.limitState?.eventType ?? null,
+      materialUltimateReached: failurePoint != null,
+      materialUltimatePoint: failurePoint,
+      materialUltimateType:
+        failurePoint?.limitState?.eventType ?? null,
+      phiMaterialUltimate,
+      Mu: materialUltimateMoment,
       balancedFailureReached: balancedFailurePoint != null,
       balancedFailurePoint,
       balancedCurvaturePoint,
@@ -1476,7 +1604,18 @@ export class RCMomentCurvatureAnalyzer {
       firstYieldPoint,
       firstYieldType: firstYieldPoint?.firstYieldState?.eventType ?? null,
       maximumMomentPoint: maximum?.point ?? null,
-      postPeakMomentDrop,
+      postUltimateMomentDrop: resolvedPostUltimateMomentDrop,
+      maxPostUltimateCurvatureRatio,
+      postUltimateCurvatureLimit,
+      postUltimateTerminationReached:
+        postUltimateTerminationPoint != null,
+      postUltimateTerminationPoint,
+      postUltimateMomentDropReached:
+        terminationReason === "post-ultimate-moment-drop",
+      postUltimateCurvatureLimitReached:
+        terminationReason === "post-ultimate-curvature-limit",
+      // Legacy aliases retained for backward compatibility.
+      postPeakMomentDrop: resolvedPostUltimateMomentDrop,
       postPeakDropReached: postPeakDropPoint != null,
       postPeakDropPoint,
       postUltimateModel: {
@@ -1506,13 +1645,17 @@ export class RCMomentCurvatureAnalyzer {
   findMomentDropPoint({
     lowerPoint,
     upperPoint,
+    referenceMoment = null,
     maximumMoment,
     dropRatio,
     ...options
   }) {
-    const targetMoment = (1 - dropRatio) * maximumMoment;
+    const resolvedReferenceMoment = referenceMoment ?? maximumMoment;
+    const targetMoment = (1 - dropRatio) * resolvedReferenceMoment;
 
     if (
+      !Number.isFinite(resolvedReferenceMoment) ||
+      resolvedReferenceMoment <= POST_ULTIMATE_MOMENT_TOLERANCE ||
       !lowerPoint ||
       !upperPoint ||
       lowerPoint.absoluteCurvature >= upperPoint.absoluteCurvature ||
@@ -1520,7 +1663,7 @@ export class RCMomentCurvatureAnalyzer {
       absoluteMoment(upperPoint) > targetMoment
     ) {
       throw new Error(
-        "RCMomentCurvatureAnalyzer requires a valid post-peak moment-drop bracket.",
+        "RCMomentCurvatureAnalyzer requires a valid post-ultimate moment-drop bracket.",
       );
     }
 
@@ -1561,7 +1704,7 @@ export class RCMomentCurvatureAnalyzer {
 
       if (
         Math.abs(moment - targetMoment) <=
-          Math.max(1, maximumMoment * 1e-8) ||
+          Math.max(1, resolvedReferenceMoment * 1e-8) ||
         upper.absoluteCurvature - lower.absoluteCurvature <=
           EVENT_CURVATURE_TOLERANCE
       ) {
@@ -1570,7 +1713,7 @@ export class RCMomentCurvatureAnalyzer {
     }
 
     return annotateMomentDropPoint(upper, {
-      maximumMoment,
+      referenceMoment: resolvedReferenceMoment,
       dropRatio,
     });
   }
@@ -1749,6 +1892,30 @@ export class RCMomentCurvatureAnalyzer {
                 point.postUltimate.concreteFiberCount,
               steelBarCount: point.postUltimate.steelBarCount,
               active: point.postUltimate.active,
+            },
+      postUltimateState:
+        point.postUltimateState == null
+          ? null
+          : {
+              referenceMoment: round(
+                point.postUltimateState.referenceMoment,
+                6,
+              ),
+              reference: point.postUltimateState.reference,
+              targetMoment: round(
+                point.postUltimateState.targetMoment,
+                6,
+              ),
+              moment: round(point.postUltimateState.moment, 6),
+              targetDropRatio: round(
+                point.postUltimateState.targetDropRatio,
+                6,
+              ),
+              actualDropRatio: round(
+                point.postUltimateState.actualDropRatio,
+                6,
+              ),
+              reached: point.postUltimateState.reached,
             },
       postPeakState:
         point.postPeakState == null
