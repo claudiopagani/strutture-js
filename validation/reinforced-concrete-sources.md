@@ -12,6 +12,7 @@ authoritative references until each calculation is independently reviewed.
 | `rc-project-trieste-slab-load-combinations` | project-regression | `CdC_Trieste-Relazione_di_calcolo-SolaiPT-rev04.pdf` | Slab SLU/SLE surface loads and slab-beam interface shear | Medium: clean arithmetic, anchorage resistance is taken from the report |
 | `rc-project-rgl-ramp-foundation-pressure` | project-regression | `RGL-004-VAR01-02-Relazione_sulle strutture-rev01.pdf` | Ramp slab shear summary and footing pressure arithmetic | Medium: clean arithmetic, geotechnical assumptions not independently reviewed |
 | `rc-jrc-ec2-column-b2-interaction-parameters` | external-reference | JRC EUR 26566 EN, "Eurocode 2: Background and applications. Design of concrete buildings. Worked examples", doi:10.2788/35386 | Column B2 normalized interaction parameters and 8 phi 20 reinforcement check | High for published arithmetic; medium for comparison with local fiber solver because detailing assumptions are simplified |
+| `rc-circular-shear-cosenza-2016` | external-reference | E. Cosenza, G. Maddaloni, G. Cuomo, "A simplified method for shear capacity assessment of circular RC cross-sections" (2016), Equations (3) and (5) | Circular RC shear resistance with and without transverse reinforcement | High for formula transcription; empirical research formulation without code partial factors |
 
 ## Online Candidates To Promote Later
 

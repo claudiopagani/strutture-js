@@ -582,6 +582,15 @@ Unita richieste:
 - unita interne del modulo: `N`, `mm`, `Nmm`, `MPa`;
 - le azioni `nEd`, `mEd`, `mxEd`, `myEd`, `nValues` vengono convertite.
 
+Verifica a taglio di sezioni circolari:
+
+- `ReinforcedConcreteShearVerification` mantiene per default il metodo `ntc2018`;
+- la formulazione sperimentale di Cosenza et al. (2016) si seleziona con `shear.method: "cosenza-et-al-2016"` e richiede una `CircularSection`;
+- `mode: "without-transverse-reinforcement"` applica l'Eq. (3), mentre `mode: "with-transverse-reinforcement"` applica l'Eq. (5);
+- `longitudinalReinforcementArea` rappresenta l'area longitudinale totale `Asl`; se omessa viene ricavata da tutte le barre della sezione;
+- `fcPrime` puo specificare la resistenza cilindrica usata dalla formula; in assenza viene usato `concreteMaterial.fck`;
+- per l'Eq. (5), `transverseReinforcement` usa `diameter` o `areaPerLeg`, `legs` e `spacing`, con `rhoW = Asw / (s D)`.
+
 Legami costitutivi:
 
 - calcestruzzo: `parabola-rectangle` (default), `triangular-rectangle`, `stress-block`;

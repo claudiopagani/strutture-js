@@ -13,6 +13,14 @@ const SUPPORTED_MODES = new Set([
   "without-transverse-reinforcement",
   "with-transverse-reinforcement",
 ]);
+const DEFAULT_METHOD = "ntc2018";
+const COSENZA_METHOD = "cosenza-et-al-2016";
+const METHOD_ALIASES = new Map([
+  ["ntc2018", DEFAULT_METHOD],
+  ["ntc-2018", DEFAULT_METHOD],
+  [COSENZA_METHOD, COSENZA_METHOD],
+  ["cosenza-2016", COSENZA_METHOD],
+]);
 
 function utilizationCheck(options) {
   return createUtilizationCheck({
@@ -65,6 +73,16 @@ function resolveMode(shear = {}, fallbackMode = null) {
   }
 
   return mode;
+}
+
+function resolveMethod(shear = {}, fallbackMethod = null) {
+  const requested =
+    shear.method ??
+    shear.formulation ??
+    fallbackMethod ??
+    DEFAULT_METHOD;
+
+  return METHOD_ALIASES.get(String(requested).trim().toLowerCase()) ?? null;
 }
 
 function resolveBw({ section, shear, resolver, warnings, sources }) {
@@ -302,6 +320,7 @@ function resolveTransverseReinforcement({
   reinforcementMaterial,
   resolver,
   warnings,
+  requireFyd = true,
 }) {
   const transverse = shear.transverseReinforcement ?? {};
   const angle = transverse.angle ?? 90;
@@ -343,7 +362,7 @@ function resolveTransverseReinforcement({
     );
   }
 
-  if (!isFinitePositive(fyd)) {
+  if (requireFyd && !isFinitePositive(fyd)) {
     warnings.push(
       "Transverse reinforcement requires a design yield strength fyd or a reinforcement material with fyd.",
     );
@@ -353,7 +372,7 @@ function resolveTransverseReinforcement({
     !isFinitePositive(legs) ||
     !isFinitePositive(spacing) ||
     !isFinitePositive(areaPerLeg) ||
-    !isFinitePositive(fyd)
+    (requireFyd && !isFinitePositive(fyd))
   ) {
     return null;
   }
@@ -368,6 +387,171 @@ function resolveTransverseReinforcement({
     area: legs * areaPerLeg,
     areaPerSpacing: (legs * areaPerLeg) / spacing,
     fyd,
+  };
+}
+
+function resolveCircularDiameter({ section, shear, resolver, sources }) {
+  if (Number.isFinite(shear.sectionDiameter ?? shear.D)) {
+    sources.diameter = "explicit";
+    return resolver.length(shear.sectionDiameter ?? shear.D);
+  }
+
+  const concreteSection = concreteSectionFrom(section);
+
+  if (Number.isFinite(concreteSection?.diameter)) {
+    sources.diameter = "derived-circular-section";
+    return concreteSection.diameter;
+  }
+
+  sources.diameter = "missing";
+  return null;
+}
+
+function resolveCosenzaLongitudinalArea({
+  section,
+  shear,
+  resolver,
+  sources,
+}) {
+  if (
+    Number.isFinite(
+      shear.longitudinalReinforcementArea ??
+        shear.asl,
+    )
+  ) {
+    sources.asl = "explicit";
+    return resolver.area(
+      shear.longitudinalReinforcementArea ??
+        shear.asl,
+    );
+  }
+
+  const area = reinforcementBars(section).reduce(
+    (sum, bar) => sum + (Number.isFinite(bar.area) ? bar.area : 0),
+    0,
+  );
+
+  if (isFinitePositive(area)) {
+    sources.asl = "derived-all-longitudinal-bars";
+    return area;
+  }
+
+  sources.asl = "missing";
+  return null;
+}
+
+function resolveCosenzaConcreteStrength({
+  concreteMaterial,
+  shear,
+  resolver,
+  sources,
+}) {
+  const explicitStrength =
+    shear.fcPrime ??
+    shear.concreteCylinderStrength ??
+    shear.fck;
+
+  if (Number.isFinite(explicitStrength)) {
+    sources.fcPrime = "explicit";
+    return resolver.stress(explicitStrength);
+  }
+
+  if (Number.isFinite(concreteMaterial?.fck)) {
+    sources.fcPrime = "concrete-material-fck";
+    return concreteMaterial.fck;
+  }
+
+  if (Number.isFinite(concreteMaterial?.fcm)) {
+    sources.fcPrime = "concrete-material-fcm";
+    return concreteMaterial.fcm;
+  }
+
+  sources.fcPrime = "missing";
+  return null;
+}
+
+function resolveCosenzaParameters({
+  section,
+  concreteMaterial,
+  reinforcementMaterial,
+  shear,
+  nEd,
+  units,
+  mode,
+}) {
+  const resolver = createUnitResolver(units, DEFAULT_SECTION_UNITS);
+  const warnings = [];
+  const sources = {};
+  const shape = sectionShape(section);
+  const diameter = resolveCircularDiameter({
+    section,
+    shear,
+    resolver,
+    sources,
+  });
+  const concreteArea = resolveConcreteArea({
+    section,
+    shear,
+    resolver,
+    sources,
+  });
+  const longitudinalArea = resolveCosenzaLongitudinalArea({
+    section,
+    shear,
+    resolver,
+    sources,
+  });
+  const fcPrime = resolveCosenzaConcreteStrength({
+    concreteMaterial,
+    shear,
+    resolver,
+    sources,
+  });
+  const rhoL =
+    isFinitePositive(longitudinalArea) && isFinitePositive(concreteArea)
+      ? longitudinalArea / concreteArea
+      : null;
+  const transverseReinforcement =
+    mode === "with-transverse-reinforcement"
+      ? resolveTransverseReinforcement({
+          shear,
+          reinforcementMaterial,
+          resolver,
+          warnings,
+          requireFyd: false,
+        })
+      : null;
+  const rhoW =
+    transverseReinforcement &&
+    isFinitePositive(diameter)
+      ? transverseReinforcement.area /
+        (transverseReinforcement.spacing * diameter)
+      : null;
+
+  if (shape !== "circular") {
+    warnings.push(
+      "Cosenza et al. (2016) shear resistance is available only for circular concrete sections.",
+    );
+  }
+
+  if (Math.abs(nEd ?? 0) > 1e-9) {
+    warnings.push(
+      "Cosenza et al. (2016) does not include axial-force effects; nEd was ignored.",
+    );
+  }
+
+  return {
+    mode,
+    shape,
+    diameter,
+    concreteArea,
+    longitudinalArea,
+    rhoL,
+    fcPrime,
+    transverseReinforcement,
+    rhoW,
+    sources,
+    warnings,
   };
 }
 
@@ -599,6 +783,140 @@ function verifyWithoutTransverseReinforcement({ vEd, params }) {
     },
     metadata: {
       method: "ntc2018-4.1.2.3.5.1",
+      governingCheckId: check.id,
+    },
+  };
+}
+
+function verifyCosenzaCircularShear({ vEd, params }) {
+  const warnings = [...params.warnings];
+  const missing = requiredParametersMissing(
+    {
+      diameter: params.diameter,
+      concreteArea: params.concreteArea,
+      longitudinalArea: params.longitudinalArea,
+      fcPrime: params.fcPrime,
+    },
+    ["diameter", "concreteArea", "longitudinalArea", "fcPrime"],
+    warnings,
+  );
+
+  if (params.shape !== "circular") {
+    missing.push("circularSection");
+  }
+
+  if (
+    params.mode === "with-transverse-reinforcement" &&
+    !params.transverseReinforcement
+  ) {
+    missing.push("transverseReinforcement");
+  }
+
+  if (missing.length > 0) {
+    return {
+      status: RESULT_STATUS.NOT_VERIFIED,
+      utilizationRatio: null,
+      demand: Math.abs(vEd),
+      capacity: null,
+      checks: [],
+      warnings,
+      assumptions: [
+        "Cosenza et al. (2016) circular-section shear verification was not run because required parameters are incomplete.",
+      ],
+      outputs: {
+        parameters: params,
+      },
+      metadata: {
+        method: COSENZA_METHOD,
+        missingParameters: [...new Set(missing)],
+      },
+    };
+  }
+
+  const baseCoefficient = 0.232;
+  const transverseCoefficient = 245;
+  const vRdWithoutTransverseReinforcement =
+    baseCoefficient *
+    params.diameter ** 2 *
+    Math.cbrt(100 * params.rhoL * params.fcPrime);
+  const amplificationFactor =
+    params.mode === "with-transverse-reinforcement"
+      ? 1 + transverseCoefficient * params.rhoW
+      : 1;
+  const capacity =
+    vRdWithoutTransverseReinforcement * amplificationFactor;
+  const equation =
+    params.mode === "with-transverse-reinforcement" ? 5 : 3;
+  const check = utilizationCheck({
+    id:
+      params.mode === "with-transverse-reinforcement"
+        ? "rc-shear-resistance"
+        : "rc-shear-without-transverse-reinforcement",
+    description:
+      params.mode === "with-transverse-reinforcement"
+        ? "Circular-section shear resistance with transverse reinforcement according to Cosenza et al. (2016)"
+        : "Circular-section shear resistance without transverse reinforcement according to Cosenza et al. (2016)",
+    demand: vEd,
+    capacity,
+    metadata: {
+      method: `${COSENZA_METHOD}-eq-${equation}`,
+      equation,
+      baseCoefficient,
+      transverseCoefficient,
+      diameter: round(params.diameter),
+      Ac: round(params.concreteArea),
+      Asl: round(params.longitudinalArea),
+      rhoL: round(params.rhoL, 9),
+      fcPrime: round(params.fcPrime),
+      Asw: round(params.transverseReinforcement?.area),
+      spacing: round(params.transverseReinforcement?.spacing),
+      rhoW: round(params.rhoW, 9),
+      amplificationFactor: round(amplificationFactor, 9),
+      sources: params.sources,
+    },
+  });
+
+  warnings.push(
+    "Cosenza et al. (2016) is an empirical research formulation and does not introduce a partial safety factor in Equations (3) and (5).",
+  );
+
+  return {
+    status: check.ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+    utilizationRatio: check.utilizationRatio,
+    demand: check.demand,
+    capacity: check.capacity,
+    checks: [check],
+    warnings,
+    assumptions: [
+      "Equation (3) is evaluated as VR = 0.232 D^2 (100 rhoL f'c)^(1/3), with rhoL = Asl / Ac.",
+      ...(params.mode === "with-transverse-reinforcement"
+        ? [
+            "Equation (5) is evaluated by multiplying the unreinforced resistance by (1 + 245 rhoW), with rhoW = Asw / (s D).",
+          ]
+        : []),
+      "The formulation is applied in N, mm and MPa and ignores axial-force effects.",
+    ],
+    outputs: {
+      parameters: params,
+      baseCoefficient,
+      transverseCoefficient:
+        params.mode === "with-transverse-reinforcement"
+          ? transverseCoefficient
+          : null,
+      rhoL: round(params.rhoL, 9),
+      rhoW: round(params.rhoW, 9),
+      amplificationFactor: round(amplificationFactor, 9),
+      vRdWithoutTransverseReinforcement: round(
+        vRdWithoutTransverseReinforcement,
+      ),
+      vRdWithTransverseReinforcement:
+        params.mode === "with-transverse-reinforcement"
+          ? round(capacity)
+          : null,
+      vRd: round(capacity),
+    },
+    metadata: {
+      method: `${COSENZA_METHOD}-eq-${equation}`,
       governingCheckId: check.id,
     },
   };
@@ -879,6 +1197,7 @@ export class ReinforcedConcreteShearVerification {
   constructor({
     code = "NTC2018",
     mode = null,
+    method = null,
     shear = {},
     section = null,
     concreteMaterial = null,
@@ -887,6 +1206,7 @@ export class ReinforcedConcreteShearVerification {
   } = {}) {
     this.code = code;
     this.mode = mode;
+    this.method = method;
     this.shear = { ...shear };
     this.section = section;
     this.concreteMaterial = concreteMaterial;
@@ -910,6 +1230,12 @@ export class ReinforcedConcreteShearVerification {
       ...this.shear,
       ...shear,
       mode: shear?.mode ?? this.mode ?? this.shear.mode,
+      method:
+        shear?.method ??
+        shear?.formulation ??
+        this.method ??
+        this.shear.method ??
+        this.shear.formulation,
     };
     const resolver = createUnitResolver(units, DEFAULT_SECTION_UNITS);
     const convertedNEd = resolver.force(nEd ?? 0);
@@ -926,10 +1252,17 @@ export class ReinforcedConcreteShearVerification {
     }
 
     const mode = resolveMode(resolvedShear, this.mode);
+    const method = resolveMethod(resolvedShear, this.method);
 
     if (!mode) {
       baseWarnings.push(
         "RC shear verification requires shear.mode: without-transverse-reinforcement or with-transverse-reinforcement.",
+      );
+    }
+
+    if (!method) {
+      baseWarnings.push(
+        "Unsupported RC shear method; use ntc2018 or cosenza-et-al-2016.",
       );
     }
 
@@ -945,35 +1278,57 @@ export class ReinforcedConcreteShearVerification {
         outputs: {},
         metadata: {
           code: this.code,
-          method: mode,
+          method: method ?? resolvedShear.method ?? resolvedShear.formulation,
         },
       };
     }
 
-    const params = resolveShearParameters({
-      section,
-      concreteMaterial,
-      reinforcementMaterial,
-      shear: {
-        ...resolvedShear,
+    let result;
+
+    if (method === COSENZA_METHOD) {
+      const params = resolveCosenzaParameters({
+        section,
+        concreteMaterial,
+        reinforcementMaterial,
+        shear: {
+          ...resolvedShear,
+          mode,
+          method,
+        },
+        nEd: convertedNEd,
+        units,
         mode,
-      },
-      nEd: convertedNEd,
-      mEd: convertedMEd,
-      units,
-    });
-    const result =
-      mode === "without-transverse-reinforcement"
-        ? verifyWithoutTransverseReinforcement({
-            vEd: convertedVEd,
-            params,
-          })
-        : verifyWithTransverseReinforcement({
-            vEd: convertedVEd,
-            params,
-            shear: resolvedShear,
-            units,
-          });
+      });
+      result = verifyCosenzaCircularShear({
+        vEd: convertedVEd,
+        params,
+      });
+    } else {
+      const params = resolveShearParameters({
+        section,
+        concreteMaterial,
+        reinforcementMaterial,
+        shear: {
+          ...resolvedShear,
+          mode,
+        },
+        nEd: convertedNEd,
+        mEd: convertedMEd,
+        units,
+      });
+      result =
+        mode === "without-transverse-reinforcement"
+          ? verifyWithoutTransverseReinforcement({
+              vEd: convertedVEd,
+              params,
+            })
+          : verifyWithTransverseReinforcement({
+              vEd: convertedVEd,
+              params,
+              shear: resolvedShear,
+              units,
+            });
+    }
 
     return {
       ...result,
@@ -1015,7 +1370,7 @@ export class ReinforcedConcreteShearVerification {
     return new VerificationResult({
       applicationId: "reinforced-concrete-shear",
       status: result.status,
-      summary: "RC shear verification according to the selected NTC 2018 shear mode.",
+      summary: "RC shear verification according to the selected shear formulation.",
       utilizationRatio: result.utilizationRatio,
       demand: result.demand,
       capacity: result.capacity,

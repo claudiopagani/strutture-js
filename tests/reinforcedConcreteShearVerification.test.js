@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  CircularSection,
   RectangularSection,
   ReinforcedConcreteSection,
   ReinforcedConcreteShearVerification,
@@ -228,4 +229,159 @@ test("RC shear verification optimizes cotTheta and compares stirrup/no-stirrup m
   approx(result.outputs.vRdWithoutTransverseReinforcement / 1000, 113.904023, 1e-3);
   approx(result.outputs.vRd / 1000, 113.904023, 1e-3);
   assert.equal(result.outputs.selectedMechanism, "without-transverse-reinforcement");
+});
+
+test("RC circular shear verification applies Cosenza et al. (2016) without stirrups", () => {
+  const concreteMaterial = createNTC2018ConcreteMaterial({
+    strengthClass: "C25/30",
+    units,
+  });
+  const reinforcementMaterial = createNTC2018ReinforcementSteelMaterial({
+    grade: "B450C",
+    units,
+  });
+  const diameter = 300;
+  const concreteSection = new CircularSection({
+    diameter,
+    units,
+  });
+  const barDiameter = 16;
+  const barCount = 8;
+  const barRadius = 110;
+  const reinforcementBars = Array.from({ length: barCount }, (_, index) => {
+    const angle = (2 * Math.PI * index) / barCount;
+
+    return new ReinforcementBar({
+      id: `circular-bar-${index + 1}`,
+      diameter: barDiameter,
+      material: reinforcementMaterial,
+      y: diameter / 2 + barRadius * Math.cos(angle),
+      z: diameter / 2 + barRadius * Math.sin(angle),
+      units,
+    });
+  });
+  const section = new ReinforcedConcreteSection({
+    id: "rc-circular-cosenza-without-stirrups",
+    name: "RC circular Cosenza section",
+    concreteSection,
+    concreteMaterial,
+    reinforcementMaterial,
+    reinforcementBars,
+    units,
+  });
+  const longitudinalReinforcementArea =
+    barCount * Math.PI * barDiameter ** 2 / 4;
+  const rhoL = longitudinalReinforcementArea / concreteSection.area;
+  const result = new ReinforcedConcreteShearVerification().verify({
+    section,
+    concreteMaterial,
+    reinforcementMaterial,
+    actions: {
+      vEd: 60000,
+      nEd: 0,
+    },
+    shear: {
+      method: "cosenza-et-al-2016",
+      mode: "without-transverse-reinforcement",
+    },
+    units,
+  });
+  const expected =
+    0.232 *
+    diameter ** 2 *
+    Math.cbrt(100 * rhoL * concreteMaterial.fck);
+
+  assert.equal(result.status, "ok");
+  approx(result.outputs.vRd, expected);
+  approx(result.outputs.rhoL, rhoL, 1e-9);
+  assert.equal(result.outputs.parameters.sources.diameter, "derived-circular-section");
+  assert.equal(result.outputs.parameters.sources.asl, "derived-all-longitudinal-bars");
+  assert.equal(result.outputs.parameters.sources.fcPrime, "concrete-material-fck");
+  assert.equal(result.metadata.method, "cosenza-et-al-2016-eq-3");
+});
+
+test("RC circular shear verification applies the Cosenza stirrup amplification", () => {
+  const concreteMaterial = createNTC2018ConcreteMaterial({
+    strengthClass: "C25/30",
+    units,
+  });
+  const reinforcementMaterial = createNTC2018ReinforcementSteelMaterial({
+    grade: "B450C",
+    units,
+  });
+  const diameter = 300;
+  const concreteSection = new CircularSection({
+    diameter,
+    units,
+  });
+  const section = new ReinforcedConcreteSection({
+    id: "rc-circular-cosenza-with-stirrups",
+    name: "RC circular Cosenza section with stirrups",
+    concreteSection,
+    concreteMaterial,
+    reinforcementMaterial,
+    units,
+  });
+  const longitudinalReinforcementArea = 0.02 * concreteSection.area;
+  const stirrupDiameter = 8;
+  const legs = 2;
+  const spacing = 150;
+  const asw = legs * Math.PI * stirrupDiameter ** 2 / 4;
+  const rhoW = asw / (spacing * diameter);
+  const baseResistance =
+    0.232 *
+    diameter ** 2 *
+    Math.cbrt(100 * 0.02 * 25);
+  const result = new ReinforcedConcreteShearVerification().verify({
+    section,
+    concreteMaterial,
+    reinforcementMaterial,
+    actions: {
+      vEd: 100000,
+      nEd: 0,
+    },
+    shear: {
+      formulation: "cosenza-2016",
+      mode: "with-transverse-reinforcement",
+      longitudinalReinforcementArea,
+      fcPrime: 25,
+      transverseReinforcement: {
+        diameter: stirrupDiameter,
+        legs,
+        spacing,
+      },
+    },
+    units,
+  });
+  const expected = baseResistance * (1 + 245 * rhoW);
+
+  assert.equal(result.status, "ok");
+  approx(result.outputs.rhoW, rhoW, 1e-9);
+  approx(result.outputs.amplificationFactor, 1 + 245 * rhoW, 1e-9);
+  approx(result.outputs.vRd, expected);
+  approx(result.outputs.vRdWithTransverseReinforcement, expected);
+  assert.equal(result.metadata.method, "cosenza-et-al-2016-eq-5");
+});
+
+test("Cosenza et al. (2016) shear verification rejects non-circular sections", () => {
+  const { section, concreteMaterial, reinforcementMaterial } = createRcShearFixture();
+  const result = new ReinforcedConcreteShearVerification().verify({
+    section,
+    concreteMaterial,
+    reinforcementMaterial,
+    actions: {
+      vEd: 10000,
+    },
+    shear: {
+      method: "cosenza-et-al-2016",
+      mode: "without-transverse-reinforcement",
+      longitudinalReinforcementArea: 1000,
+      fcPrime: 25,
+    },
+    units,
+  });
+
+  assert.equal(result.status, "not-verified");
+  assert.ok(result.metadata.missingParameters.includes("circularSection"));
+  assert.ok(result.warnings.some((warning) => warning.includes("only for circular")));
 });
