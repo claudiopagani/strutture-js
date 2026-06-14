@@ -1,5 +1,52 @@
+const TWO_PI = 2 * Math.PI;
+const ANGLE_TOLERANCE = 1e-14;
+
+export function normalizeNeutralAxisAngle(theta) {
+  if (!Number.isFinite(theta)) {
+    throw new Error("Neutral-axis theta must be finite.");
+  }
+
+  let normalized = theta % TWO_PI;
+
+  if (normalized < 0) {
+    normalized += TWO_PI;
+  }
+
+  if (
+    Math.abs(normalized) <= ANGLE_TOLERANCE ||
+    Math.abs(normalized - TWO_PI) <= ANGLE_TOLERANCE
+  ) {
+    return 0;
+  }
+
+  for (const cardinal of [Math.PI / 2, Math.PI, (3 * Math.PI) / 2]) {
+    if (Math.abs(normalized - cardinal) <= ANGLE_TOLERANCE) {
+      return cardinal;
+    }
+  }
+
+  return Number(normalized.toPrecision(15));
+}
+
+export function neutralAxisDirection(theta) {
+  const normalizedTheta = normalizeNeutralAxisAngle(theta);
+  const cos = Math.cos(normalizedTheta);
+  const sin = Math.sin(normalizedTheta);
+
+  return {
+    theta: normalizedTheta,
+    cos: Math.abs(cos) <= ANGLE_TOLERANCE ? 0 : cos,
+    sin: Math.abs(sin) <= ANGLE_TOLERANCE ? 0 : sin,
+  };
+}
+
+/**
+ * Signed coordinate normal to the neutral axis.
+ * theta is counterclockwise from +z toward +y.
+ */
 export function projectionAt(theta, { y, z }) {
-  return y * Math.cos(theta) + z * Math.sin(theta);
+  const direction = neutralAxisDirection(theta);
+  return y * direction.cos - z * direction.sin;
 }
 
 export function getConcreteProjectedBounds(section, theta) {

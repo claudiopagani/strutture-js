@@ -3,6 +3,7 @@ import { StrainField } from "./StrainField.js";
 import { RCSectionStateIntegrator } from "./RCSectionStateIntegrator.js";
 import {
   getConcreteProjectedBounds,
+  neutralAxisDirection,
   projectionAt,
   resolveConcreteStrainExtremes,
 } from "./RCSectionStrainExtremes.js";
@@ -27,43 +28,6 @@ function resolveSteelUltimateTensionStrain(steelLaw) {
     : null;
 }
 
-function buildStrainFieldForUniaxialFailure({
-  bounds,
-  neutralAxisDepth,
-  ultimateCompressionStrain,
-  compressedEdge,
-}) {
-  const height = bounds.maxY - bounds.minY;
-
-  if (!Number.isFinite(neutralAxisDepth) || neutralAxisDepth <= 0) {
-    throw new Error("Neutral axis depth must be positive.");
-  }
-
-  if (compressedEdge === "top") {
-    const neutralAxisY = bounds.maxY - neutralAxisDepth;
-    const curvature = ultimateCompressionStrain / neutralAxisDepth;
-
-    return new StrainField({
-      eps0: curvature * neutralAxisY,
-      kappaY: 0,
-      kappaZ: curvature,
-    });
-  }
-
-  if (compressedEdge === "bottom") {
-    const neutralAxisY = bounds.minY + neutralAxisDepth;
-    const curvature = ultimateCompressionStrain / neutralAxisDepth;
-
-    return new StrainField({
-      eps0: -curvature * neutralAxisY,
-      kappaY: 0,
-      kappaZ: -curvature,
-    });
-  }
-
-  throw new Error(`Unsupported compressed edge: ${compressedEdge}.`);
-}
-
 function buildStrainFieldForOrientedFailure({
   section,
   theta,
@@ -84,6 +48,7 @@ function buildStrainFieldForOrientedFailure({
   }
 
   const projectedBounds = getConcreteProjectedBounds(section, theta);
+  const direction = neutralAxisDirection(theta);
   const minProjection = projectedBounds.minimum.projection;
   const maxProjection = projectedBounds.maximum.projection;
   const sideSign = compressedSide === "positive" ? 1 : -1;
@@ -95,8 +60,8 @@ function buildStrainFieldForOrientedFailure({
 
   return new StrainField({
     eps0: sideSign * curvature * neutralAxisProjection,
-    kappaY: -sideSign * curvature * Math.sin(theta),
-    kappaZ: sideSign * curvature * Math.cos(theta),
+    kappaY: sideSign * curvature * direction.sin,
+    kappaZ: sideSign * curvature * direction.cos,
   });
 }
 
@@ -129,6 +94,7 @@ function buildStrainFieldForOrientedSteelTensionFailure({
   }
 
   const projectedBounds = getConcreteProjectedBounds(section, theta);
+  const direction = neutralAxisDirection(theta);
   const minProjection = projectedBounds.minimum.projection;
   const maxProjection = projectedBounds.maximum.projection;
   const steelProjections = reinforcementBars.map((bar) => projectionAt(theta, bar));
@@ -152,8 +118,8 @@ function buildStrainFieldForOrientedSteelTensionFailure({
 
   return new StrainField({
     eps0: sideSign * curvature * neutralAxisProjection,
-    kappaY: -sideSign * curvature * Math.sin(theta),
-    kappaZ: sideSign * curvature * Math.cos(theta),
+    kappaY: sideSign * curvature * direction.sin,
+    kappaZ: sideSign * curvature * direction.cos,
   });
 }
 
@@ -207,6 +173,9 @@ function steelTensionExceeded(state, ultimateTensionStrain, tolerance = 1e-9) {
   );
 }
 
+/**
+ * Ultimate resistance solver using theta counterclockwise from +z toward +y.
+ */
 export class RCUltimateSectionSolver {
   constructor({
     rootSolver = new IllinoisRootSolver(),
@@ -234,6 +203,7 @@ export class RCUltimateSectionSolver {
       throw new Error("RCUltimateSectionSolver requires a finite theta.");
     }
 
+    const normalizedTheta = neutralAxisDirection(theta).theta;
     const bounds = section.getBoundingBox();
     const height = bounds.maxY - bounds.minY;
     const width = bounds.maxZ - bounds.minZ;
@@ -249,7 +219,7 @@ export class RCUltimateSectionSolver {
     const evaluateConcreteFailureAtDepth = (neutralAxisDepth) => {
       const strainField = buildStrainFieldForOrientedFailure({
         section,
-        theta,
+        theta: normalizedTheta,
         neutralAxisDepth,
         ultimateCompressionStrain,
         compressedSide,
@@ -315,7 +285,7 @@ export class RCUltimateSectionSolver {
 
         return {
           converged: true,
-          theta,
+          theta: normalizedTheta,
           compressedSide,
           failureMode,
           neutralAxisDepth: direct.neutralAxisDepth,
@@ -346,7 +316,7 @@ export class RCUltimateSectionSolver {
 
       return {
         converged: root.converged,
-        theta,
+        theta: normalizedTheta,
         compressedSide,
         failureMode,
         neutralAxisDepth: solved.neutralAxisDepth,
@@ -375,10 +345,12 @@ export class RCUltimateSectionSolver {
         );
       }
 
-      const projectedBounds = getConcreteProjectedBounds(section, theta);
+      const projectedBounds = getConcreteProjectedBounds(section, normalizedTheta);
       const minProjection = projectedBounds.minimum.projection;
       const maxProjection = projectedBounds.maximum.projection;
-      const steelProjections = reinforcementBars.map((bar) => projectionAt(theta, bar));
+      const steelProjections = reinforcementBars.map((bar) =>
+        projectionAt(normalizedTheta, bar),
+      );
       const sideSign = compressedSide === "positive" ? 1 : -1;
       const compressedEdgeProjection =
         compressedSide === "positive" ? maxProjection : minProjection;
@@ -394,7 +366,7 @@ export class RCUltimateSectionSolver {
       const evaluateSteelFailureAtDepth = (neutralAxisDepth) => {
         const strainField = buildStrainFieldForOrientedSteelTensionFailure({
           section,
-          theta,
+          theta: normalizedTheta,
           neutralAxisDepth,
           ultimateTensionStrain: ultimateSteelTensionStrain,
           compressedSide,
@@ -470,7 +442,7 @@ export class RCUltimateSectionSolver {
 
       return {
         converged: true,
-        theta,
+        theta: normalizedTheta,
         compressedSide,
         failureMode: "steel-tension",
         neutralAxisDepth: Number.POSITIVE_INFINITY,
@@ -550,7 +522,6 @@ export class RCUltimateSectionSolver {
     return {
       ...orientedResult,
       compressedEdge,
-      MxRd: -orientedResult.MxRd,
     };
   }
 }

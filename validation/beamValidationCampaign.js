@@ -1832,7 +1832,7 @@ function rcCrackTensionGroupSelectionCase() {
     title: "RC SLE top/bottom crack-control group selection",
     category: "reinforced-concrete-sle",
     source: "Declared top/bottom reinforcement group contract",
-    notes: "Positive My selects bottom bars; negative My selects top bars.",
+    notes: "Positive Mx = Mzz selects bottom bars; negative Mx selects top bars.",
     evaluate() {
       const { section, concreteMaterial, reinforcementMaterial } =
         createGroupedRcServiceabilityFixture();

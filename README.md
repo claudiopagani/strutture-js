@@ -567,6 +567,9 @@ Output atteso:
   - `moment-curvature`;
   - `service-stress`.
 - `outputs` contiene resistenze, punti del dominio, curva momento-curvatura o tensioni SLE in base al workflow.
+- La sezione giace nel piano `y-z`, con `z` verso destra e `y` verso l'alto. Nell'API storica `Mx`/`MxRd` indica `Mzz = -sum(Fi * yi)`, mentre `My`/`MyRd` indica `Myy = sum(Fi * zi)`.
+- `theta` orienta l'asse neutro: `0` e parallelo a `+z`, gli angoli positivi ruotano in senso antiorario verso `+y`, e `pi/2` e parallelo a `+y`. La coordinata normale e `p = y cos(theta) - z sin(theta)`.
+- La convenzione completa e la nota di migrazione sono in [`docs/rc-sign-conventions.md`](docs/rc-sign-conventions.md).
 - Nel workflow `moment-curvature`, `outputs.ntc2018Ductility` riporta le grandezze del §4.1.2.3.4.2 NTC 2018: `phiPrimeYd`, `mPrimeYd`, `mRd`, `phiYd`, `phiU` e `curvatureDuctilityRatio`; `phiU` usa il primo evento fra deformazione ultima di un materiale e calo del 15% della resistenza massima.
 - `outputs.firstYieldPoint` e inserito anche in `outputs.points` alla curvatura risolta, mentre `outputs.firstYieldType` distingue `steel-tension-yield`, `steel-compression-yield` e `concrete-compression-peak`.
 - `outputs.materialUltimatePoint` e il primo punto lungo il percorso a forza assiale `nEd` costante in cui acciaio o calcestruzzo raggiunge la deformazione ultima; `outputs.failurePoint` resta un alias compatibile. `outputs.phiMaterialUltimate` e la sua curvatura, mentre `outputs.Mu` e il valore assoluto del momento in quel punto. `outputs.balancedFailurePoint` resta distinto e descrive lo stato bilanciato con `epsilon_c = epsilon_cu` ed `epsilon_s = epsilon_su`, inclusa la forza assiale risultante.

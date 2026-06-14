@@ -40,8 +40,8 @@ function resolveServiceStressSolverActions(actions = {}) {
 
   return {
     nEd: actions?.nEd ?? actions?.axialForce,
-    mxEd: -userMxEd,
-    myEd: -userMyEd,
+    mxEd: userMxEd,
+    myEd: userMyEd,
   };
 }
 
@@ -505,6 +505,9 @@ export class ReinforcedConcreteSectionVerification {
           concreteLaw,
           steelLaw,
           nEd,
+          theta: model.analysisSettings?.theta ?? 0,
+          compressedSide:
+            model.analysisSettings?.compressedSide ?? null,
           compressedEdge: model.analysisSettings?.compressedEdge ?? "top",
           curvatureMax: model.analysisSettings?.curvatureMax ?? null,
           curvatureValues: model.analysisSettings?.curvatureValues ?? null,
@@ -588,6 +591,8 @@ export class ReinforcedConcreteSectionVerification {
             analysisType: model.analysisType,
             sectionId: model.id,
             nEd: round(nEd, 6),
+            theta: round(curve.theta, 12),
+            compressedSide: curve.compressedSide,
             compressedEdge: curve.compressedEdge,
             curvatureMax: round(curve.curvatureMax, 12),
             initialCurvatureMax: round(
@@ -662,8 +667,8 @@ export class ReinforcedConcreteSectionVerification {
           },
           warnings: curve.warnings,
           assumptions: [
-            "Moment-curvature analysis is uniaxial and keeps the assigned axial force constant while curvature is increased.",
-            "Positive reported curvature corresponds to top-edge compression; bottom-edge compression is reported with negative engineering curvature.",
+            "Moment-curvature analysis keeps the assigned axial force constant while curvature is increased at the requested neutral-axis orientation.",
+            "theta is measured counterclockwise from +z toward +y; positive-side compression gives positive engineering curvature.",
             "Concrete tension is excluded by default during moment-curvature integration unless includeConcreteTension=true or a custom concrete law is supplied.",
             "Concrete peak and ultimate strains are checked at the actual section edge, while steel yield and ultimate strains are checked at reinforcement coordinates.",
             "The assigned-axial-force failure point is the first material ultimate limit reached along the N-constant path.",

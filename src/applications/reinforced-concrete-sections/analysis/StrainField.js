@@ -1,3 +1,5 @@
+import { neutralAxisDirection } from "./RCSectionStrainExtremes.js";
+
 export class StrainField {
   constructor({ eps0 = 0, kappaY = 0, kappaZ = 0 } = {}) {
     if (!Number.isFinite(eps0) || !Number.isFinite(kappaY) || !Number.isFinite(kappaZ)) {
@@ -32,13 +34,12 @@ export class StrainField {
       );
     }
 
-    const normalY = Math.cos(theta);
-    const normalZ = Math.sin(theta);
+    const direction = neutralAxisDirection(theta);
 
     return new StrainField({
       eps0: -curvature * neutralAxisOffset,
-      kappaY: curvature * normalZ,
-      kappaZ: -curvature * normalY,
+      kappaY: -curvature * direction.sin,
+      kappaZ: -curvature * direction.cos,
     });
   }
 }

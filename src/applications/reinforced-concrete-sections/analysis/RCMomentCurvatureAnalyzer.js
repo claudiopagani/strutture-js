@@ -3,7 +3,12 @@ import {
   normalizePostUltimateFractureEnergyDensity,
   RCSectionStateIntegrator,
 } from "./RCSectionStateIntegrator.js";
-import { resolveConcreteStrainExtremes } from "./RCSectionStrainExtremes.js";
+import {
+  getConcreteProjectedBounds,
+  neutralAxisDirection,
+  projectionAt,
+  resolveConcreteStrainExtremes,
+} from "./RCSectionStrainExtremes.js";
 import { StrainField } from "./StrainField.js";
 
 const DEFAULT_EPS0_MIN = -0.08;
@@ -96,31 +101,59 @@ function createCurvatureValues({ curvatureMax, pointCount }) {
   });
 }
 
-function buildUniaxialStrainField({ eps0, curvature, compressedEdge }) {
-  const absoluteCurvature = Math.abs(curvature);
+function resolveCompressedSide({ compressedSide = null, compressedEdge = "top" }) {
+  if (compressedSide != null) {
+    if (!["positive", "negative"].includes(compressedSide)) {
+      throw new Error(`Unsupported compressed side: ${compressedSide}.`);
+    }
+
+    return compressedSide;
+  }
 
   if (compressedEdge === "top") {
-    return new StrainField({
-      eps0,
-      kappaY: 0,
-      kappaZ: absoluteCurvature,
-    });
+    return "positive";
   }
 
   if (compressedEdge === "bottom") {
-    return new StrainField({
-      eps0,
-      kappaY: 0,
-      kappaZ: -absoluteCurvature,
-    });
+    return "negative";
   }
 
   throw new Error(`Unsupported compressed edge: ${compressedEdge}.`);
 }
 
-function signedEngineeringCurvature({ curvature, compressedEdge }) {
+function resolveUniaxialCompressedEdge({ theta, compressedSide }) {
+  if (neutralAxisDirection(theta).theta !== 0) {
+    return null;
+  }
+
+  return compressedSide === "positive" ? "top" : "bottom";
+}
+
+function buildOrientedStrainField({
+  eps0,
+  curvature,
+  theta,
+  compressedSide,
+}) {
   const absoluteCurvature = Math.abs(curvature);
-  return compressedEdge === "top" ? absoluteCurvature : -absoluteCurvature;
+  const direction = neutralAxisDirection(theta);
+  const sideSign = compressedSide === "positive" ? 1 : -1;
+
+  return new StrainField({
+    eps0,
+    kappaY: sideSign * absoluteCurvature * direction.sin,
+    kappaZ: sideSign * absoluteCurvature * direction.cos,
+  });
+}
+
+function signedEngineeringCurvature({
+  curvature,
+  compressedSide = null,
+  compressedEdge = "top",
+}) {
+  const absoluteCurvature = Math.abs(curvature);
+  const side = resolveCompressedSide({ compressedSide, compressedEdge });
+  return side === "positive" ? absoluteCurvature : -absoluteCurvature;
 }
 
 function findBrackets(samples, target) {
@@ -413,13 +446,14 @@ function resolveBalancedFailureGeometry({
   section,
   concreteLaw,
   steelLaw,
-  compressedEdge,
+  theta = 0,
+  compressedSide = null,
+  compressedEdge = "top",
 }) {
   const ultimateCompressionStrain =
     resolveConcreteUltimateCompressionStrain(concreteLaw);
   const ultimateSteelTensionStrain =
     resolveSteelUltimateTensionStrain(steelLaw);
-  const bounds = section.getBoundingBox();
   const reinforcementBars = section.getReinforcementBars();
 
   if (
@@ -430,13 +464,24 @@ function resolveBalancedFailureGeometry({
     return null;
   }
 
-  const compressedEdgeY =
-    compressedEdge === "top" ? bounds.maxY : bounds.minY;
-  const tensionReinforcementY =
-    compressedEdge === "top"
-      ? Math.min(...reinforcementBars.map((bar) => bar.y))
-      : Math.max(...reinforcementBars.map((bar) => bar.y));
-  const effectiveDepth = Math.abs(compressedEdgeY - tensionReinforcementY);
+  const direction = neutralAxisDirection(theta);
+  const side = resolveCompressedSide({ compressedSide, compressedEdge });
+  const sideSign = side === "positive" ? 1 : -1;
+  const projectedBounds = getConcreteProjectedBounds(section, direction.theta);
+  const reinforcementProjections = reinforcementBars.map((bar) =>
+    projectionAt(direction.theta, bar),
+  );
+  const compressedEdgeProjection =
+    side === "positive"
+      ? projectedBounds.maximum.projection
+      : projectedBounds.minimum.projection;
+  const tensionReinforcementProjection =
+    side === "positive"
+      ? Math.min(...reinforcementProjections)
+      : Math.max(...reinforcementProjections);
+  const effectiveDepth =
+    sideSign *
+    (compressedEdgeProjection - tensionReinforcementProjection);
 
   if (!Number.isFinite(effectiveDepth) || effectiveDepth <= 0) {
     return null;
@@ -444,16 +489,25 @@ function resolveBalancedFailureGeometry({
 
   const absoluteCurvature =
     (ultimateCompressionStrain + ultimateSteelTensionStrain) / effectiveDepth;
-  const kappaZ =
-    compressedEdge === "top" ? absoluteCurvature : -absoluteCurvature;
-  const eps0 = -ultimateCompressionStrain + kappaZ * compressedEdgeY;
+  const kappaY = sideSign * absoluteCurvature * direction.sin;
+  const kappaZ = sideSign * absoluteCurvature * direction.cos;
+  const eps0 =
+    -ultimateCompressionStrain +
+    sideSign * absoluteCurvature * compressedEdgeProjection;
 
   return {
+    theta: direction.theta,
+    compressedSide: side,
     absoluteCurvature,
     eps0,
+    kappaY,
     kappaZ,
-    compressedEdgeY,
-    tensionReinforcementY,
+    compressedEdgeProjection,
+    tensionReinforcementProjection,
+    compressedEdgeY:
+      direction.theta === 0 ? compressedEdgeProjection : null,
+    tensionReinforcementY:
+      direction.theta === 0 ? tensionReinforcementProjection : null,
     effectiveDepth,
     neutralAxisDepth: ultimateCompressionStrain / absoluteCurvature,
     ultimateCompressionStrain,
@@ -469,8 +523,24 @@ function neutralAxisY(strainField) {
   return strainField.eps0 / strainField.kappaZ;
 }
 
+function neutralAxisProjection({ strainField, compressedSide }) {
+  const curvature = Math.hypot(strainField.kappaY, strainField.kappaZ);
+
+  if (!Number.isFinite(curvature) || curvature < 1e-18) {
+    return null;
+  }
+
+  const sideSign = compressedSide === "positive" ? 1 : -1;
+  return strainField.eps0 / (sideSign * curvature);
+}
+
+function projectedMoment(point) {
+  const direction = neutralAxisDirection(point?.theta ?? 0);
+  return (point?.Mx ?? 0) * direction.cos + (point?.My ?? 0) * direction.sin;
+}
+
 function absoluteMoment(point) {
-  return Math.abs(point?.Mx ?? 0);
+  return Math.abs(projectedMoment(point));
 }
 
 function findMaximumMomentPoint(points) {
@@ -502,10 +572,16 @@ function interpolateCurvatureAtMomentDrop({
 
     if (previousMoment >= targetMoment && currentMoment <= targetMoment) {
       if (Math.abs(previousMoment - currentMoment) < 1e-12) {
+        const compressedSide =
+          current.compressedSide ?? previous.compressedSide ?? null;
+
         return {
+          theta: current.theta ?? previous.theta ?? 0,
+          compressedSide,
           absoluteCurvature: current.absoluteCurvature,
           curvature: signedEngineeringCurvature({
             curvature: current.absoluteCurvature,
+            compressedSide,
             compressedEdge,
           }),
           Mx: current.Mx,
@@ -520,16 +596,22 @@ function interpolateCurvatureAtMomentDrop({
       const absoluteCurvature =
         previous.absoluteCurvature +
         ratio * (current.absoluteCurvature - previous.absoluteCurvature);
-      const signedMoment = Math.sign(current.Mx || previous.Mx || 1) * targetMoment;
+      const mx = previous.Mx + ratio * (current.Mx - previous.Mx);
+      const my = previous.My + ratio * (current.My - previous.My);
+      const compressedSide =
+        current.compressedSide ?? previous.compressedSide ?? null;
 
       return {
+        theta: current.theta ?? previous.theta ?? 0,
+        compressedSide,
         absoluteCurvature,
         curvature: signedEngineeringCurvature({
           curvature: absoluteCurvature,
+          compressedSide,
           compressedEdge,
         }),
-        Mx: signedMoment,
-        My: null,
+        Mx: mx,
+        My: my,
         source: "15-percent-post-peak-drop",
         interpolation: "linear-moment-curvature",
       };
@@ -674,12 +756,16 @@ function defaultCurvatureMax({
   section,
   concreteLaw,
   steelLaw,
-  compressedEdge,
+  theta = 0,
+  compressedSide = null,
+  compressedEdge = "top",
 }) {
   const balancedGeometry = resolveBalancedFailureGeometry({
     section,
     concreteLaw,
     steelLaw,
+    theta,
+    compressedSide,
     compressedEdge,
   });
 
@@ -687,8 +773,10 @@ function defaultCurvatureMax({
     return balancedGeometry.absoluteCurvature;
   }
 
-  const bounds = section.getBoundingBox();
-  const height = bounds.maxY - bounds.minY;
+  const projectedBounds = getConcreteProjectedBounds(section, theta);
+  const height =
+    projectedBounds.maximum.projection -
+    projectedBounds.minimum.projection;
 
   if (!Number.isFinite(height) || height <= 0) {
     throw new Error("RCMomentCurvatureAnalyzer requires a positive section height.");
@@ -713,6 +801,9 @@ function summarizeStateCheck(check) {
   };
 }
 
+/**
+ * Moment-curvature solver with the same theta and moment conventions as ULS.
+ */
 export class RCMomentCurvatureAnalyzer {
   constructor({
     axialRootSolver = new IllinoisRootSolver(),
@@ -741,6 +832,8 @@ export class RCMomentCurvatureAnalyzer {
     steelLaw,
     curvature,
     nEd = 0,
+    theta = 0,
+    compressedSide = null,
     compressedEdge = "top",
     referencePoint = null,
     includeConcreteTension = false,
@@ -764,13 +857,23 @@ export class RCMomentCurvatureAnalyzer {
       throw new Error("RCMomentCurvatureAnalyzer requires a finite axial force.");
     }
 
+    const direction = neutralAxisDirection(theta);
+    const resolvedCompressedSide = resolveCompressedSide({
+      compressedSide,
+      compressedEdge,
+    });
+    const resolvedCompressedEdge = resolveUniaxialCompressedEdge({
+      theta: direction.theta,
+      compressedSide: resolvedCompressedSide,
+    });
     const resolvedReferencePoint =
       referencePoint ?? section.getReferencePoint("concrete-centroid");
     const evaluateAtEps0 = (eps0) => {
-      const strainField = buildUniaxialStrainField({
+      const strainField = buildOrientedStrainField({
         eps0,
         curvature,
-        compressedEdge,
+        theta: direction.theta,
+        compressedSide: resolvedCompressedSide,
       });
       const state = this.sectionIntegrator.evaluate({
         section,
@@ -791,10 +894,16 @@ export class RCMomentCurvatureAnalyzer {
         residual: state.N - nEd,
       };
     };
-    const bounds = section.getBoundingBox();
+    const projectedBounds = getConcreteProjectedBounds(
+      section,
+      direction.theta,
+    );
     const coordinateShift =
       Math.abs(curvature) *
-      Math.max(Math.abs(bounds.minY), Math.abs(bounds.maxY));
+      Math.max(
+        Math.abs(projectedBounds.minimum.projection),
+        Math.abs(projectedBounds.maximum.projection),
+      );
     const sampleMinimum = Math.min(
       this.eps0Min - coordinateShift,
       Number.isFinite(eps0Hint)
@@ -907,7 +1016,8 @@ export class RCMomentCurvatureAnalyzer {
         section,
         strainField: stateAtRoot.strainField,
       }),
-      edge: compressedEdge,
+      edge: resolvedCompressedEdge,
+      side: resolvedCompressedSide,
     };
     const limitState = resolveLimitState({
       state: stateAtRoot.state,
@@ -924,16 +1034,29 @@ export class RCMomentCurvatureAnalyzer {
 
     return {
       converged,
-      curvature: signedEngineeringCurvature({ curvature, compressedEdge }),
+      theta: direction.theta,
+      compressedSide: resolvedCompressedSide,
+      curvature: signedEngineeringCurvature({
+        curvature,
+        compressedSide: resolvedCompressedSide,
+        compressedEdge,
+      }),
       absoluteCurvature: Math.abs(curvature),
-      compressedEdge,
+      compressedEdge: resolvedCompressedEdge,
       eps0: stateAtRoot.strainField.eps0,
       kappaY: stateAtRoot.strainField.kappaY,
       kappaZ: stateAtRoot.strainField.kappaZ,
       neutralAxisY: neutralAxisY(stateAtRoot.strainField),
+      neutralAxisProjection: neutralAxisProjection({
+        strainField: stateAtRoot.strainField,
+        compressedSide: resolvedCompressedSide,
+      }),
       N: stateAtRoot.state.N,
-      Mx: -stateAtRoot.state.Mx,
+      Mx: stateAtRoot.state.Mx,
       My: stateAtRoot.state.My,
+      projectedMoment:
+        stateAtRoot.state.Mx * direction.cos +
+        stateAtRoot.state.My * direction.sin,
       axialResidual: stateAtRoot.residual,
       state: stateAtRoot.state,
       postUltimate: stateAtRoot.state.postUltimate,
@@ -958,6 +1081,8 @@ export class RCMomentCurvatureAnalyzer {
     concreteLaw,
     steelLaw,
     nEd = 0,
+    theta = 0,
+    compressedSide = null,
     compressedEdge = "top",
     referencePoint = null,
     includeConcreteTension = false,
@@ -966,6 +1091,8 @@ export class RCMomentCurvatureAnalyzer {
       section,
       concreteLaw,
       steelLaw,
+      theta,
+      compressedSide,
       compressedEdge,
     });
 
@@ -973,11 +1100,15 @@ export class RCMomentCurvatureAnalyzer {
       return null;
     }
 
+    const resolvedCompressedEdge = resolveUniaxialCompressedEdge({
+      theta: geometry.theta,
+      compressedSide: geometry.compressedSide,
+    });
     const resolvedReferencePoint =
       referencePoint ?? section.getReferencePoint("concrete-centroid");
     const strainField = new StrainField({
       eps0: geometry.eps0,
-      kappaY: 0,
+      kappaY: geometry.kappaY,
       kappaZ: geometry.kappaZ,
     });
     const state = this.sectionIntegrator.evaluate({
@@ -995,7 +1126,8 @@ export class RCMomentCurvatureAnalyzer {
         section,
         strainField,
       }),
-      edge: compressedEdge,
+      edge: resolvedCompressedEdge,
+      side: geometry.compressedSide,
     };
     const firstYieldState = resolveFirstYieldState({
       state,
@@ -1024,19 +1156,29 @@ export class RCMomentCurvatureAnalyzer {
 
     return {
       converged: true,
+      theta: geometry.theta,
+      compressedSide: geometry.compressedSide,
       curvature: signedEngineeringCurvature({
         curvature: geometry.absoluteCurvature,
+        compressedSide: geometry.compressedSide,
         compressedEdge,
       }),
       absoluteCurvature: geometry.absoluteCurvature,
-      compressedEdge,
+      compressedEdge: resolvedCompressedEdge,
       eps0: strainField.eps0,
       kappaY: strainField.kappaY,
       kappaZ: strainField.kappaZ,
       neutralAxisY: neutralAxisY(strainField),
+      neutralAxisProjection: neutralAxisProjection({
+        strainField,
+        compressedSide: geometry.compressedSide,
+      }),
       N: state.N,
-      Mx: -state.Mx,
+      Mx: state.Mx,
       My: state.My,
+      projectedMoment:
+        state.Mx * Math.cos(geometry.theta) +
+        state.My * Math.sin(geometry.theta),
       axialResidual,
       state,
       concreteCompressionEdge,
@@ -1053,6 +1195,9 @@ export class RCMomentCurvatureAnalyzer {
         steel: steelCheck,
         effectiveDepth: geometry.effectiveDepth,
         neutralAxisDepth: geometry.neutralAxisDepth,
+        compressedEdgeProjection: geometry.compressedEdgeProjection,
+        tensionReinforcementProjection:
+          geometry.tensionReinforcementProjection,
         compressedEdgeY: geometry.compressedEdgeY,
         tensionReinforcementY: geometry.tensionReinforcementY,
         assignedAxialForce: nEd,
@@ -1074,6 +1219,8 @@ export class RCMomentCurvatureAnalyzer {
     concreteLaw,
     steelLaw,
     nEd = 0,
+    theta = 0,
+    compressedSide = null,
     compressedEdge = "top",
     curvatureMax = null,
     curvatureValues = null,
@@ -1092,6 +1239,15 @@ export class RCMomentCurvatureAnalyzer {
       DEFAULT_POST_PEAK_CURVATURE_GROWTH_FACTOR,
     maxPostPeakPoints = DEFAULT_MAX_POST_PEAK_POINTS,
   } = {}) {
+    const direction = neutralAxisDirection(theta);
+    const resolvedCompressedSide = resolveCompressedSide({
+      compressedSide,
+      compressedEdge,
+    });
+    const resolvedCompressedEdge = resolveUniaxialCompressedEdge({
+      theta: direction.theta,
+      compressedSide: resolvedCompressedSide,
+    });
     const resolvedPostUltimateMomentDrop =
       postUltimateMomentDrop ??
       postPeakMomentDrop ??
@@ -1166,6 +1322,8 @@ export class RCMomentCurvatureAnalyzer {
         concreteLaw,
         steelLaw,
         nEd,
+        theta: direction.theta,
+        compressedSide: resolvedCompressedSide,
         compressedEdge,
         referencePoint,
         includeConcreteTension,
@@ -1179,6 +1337,8 @@ export class RCMomentCurvatureAnalyzer {
         section,
         concreteLaw,
         steelLaw,
+        theta: direction.theta,
+        compressedSide: resolvedCompressedSide,
         compressedEdge,
       });
     const usesExplicitCurvatureValues =
@@ -1227,6 +1387,8 @@ export class RCMomentCurvatureAnalyzer {
           steelLaw,
           curvature: Math.abs(curvature),
           nEd,
+          theta: direction.theta,
+          compressedSide: resolvedCompressedSide,
           compressedEdge,
           referencePoint,
           includeConcreteTension,
@@ -1255,6 +1417,8 @@ export class RCMomentCurvatureAnalyzer {
               concreteLaw,
               steelLaw,
               nEd,
+              theta: direction.theta,
+              compressedSide: resolvedCompressedSide,
               compressedEdge,
               referencePoint,
               includeConcreteTension,
@@ -1295,6 +1459,8 @@ export class RCMomentCurvatureAnalyzer {
             concreteLaw,
             steelLaw,
             nEd,
+            theta: direction.theta,
+            compressedSide: resolvedCompressedSide,
             compressedEdge,
             referencePoint,
             includeConcreteTension,
@@ -1385,6 +1551,8 @@ export class RCMomentCurvatureAnalyzer {
             steelLaw,
             curvature: point.absoluteCurvature,
             nEd,
+            theta: direction.theta,
+            compressedSide: resolvedCompressedSide,
             compressedEdge,
             referencePoint,
             includeConcreteTension,
@@ -1430,6 +1598,8 @@ export class RCMomentCurvatureAnalyzer {
             steelLaw,
             curvature: postUltimateCurvatureLimit,
             nEd,
+            theta: direction.theta,
+            compressedSide: resolvedCompressedSide,
             compressedEdge,
             referencePoint,
             includeConcreteTension,
@@ -1465,6 +1635,8 @@ export class RCMomentCurvatureAnalyzer {
             concreteLaw,
             steelLaw,
             nEd,
+            theta: direction.theta,
+            compressedSide: resolvedCompressedSide,
             compressedEdge,
             referencePoint,
             includeConcreteTension,
@@ -1517,6 +1689,8 @@ export class RCMomentCurvatureAnalyzer {
               steelLaw,
               curvature: balancedCurvature,
               nEd,
+              theta: direction.theta,
+              compressedSide: resolvedCompressedSide,
               compressedEdge,
               referencePoint,
               includeConcreteTension,
@@ -1581,7 +1755,9 @@ export class RCMomentCurvatureAnalyzer {
 
     return {
       nEd,
-      compressedEdge,
+      theta: direction.theta,
+      compressedSide: resolvedCompressedSide,
+      compressedEdge: resolvedCompressedEdge,
       curvatureMax: finalCurvature,
       initialCurvatureMax,
       balancedCurvature,
@@ -1866,15 +2042,22 @@ export class RCMomentCurvatureAnalyzer {
   static summarizePoint(point) {
     return {
       converged: point.converged,
+      theta: round(point.theta, 12),
+      compressedSide: point.compressedSide ?? null,
       curvature: round(point.curvature),
       absoluteCurvature: round(point.absoluteCurvature),
       eps0: round(point.eps0),
       kappaY: round(point.kappaY),
       kappaZ: round(point.kappaZ),
       neutralAxisY: round(point.neutralAxisY, 6),
+      neutralAxisProjection: round(point.neutralAxisProjection, 6),
       N: round(point.N, 6),
       Mx: round(point.Mx, 6),
       My: round(point.My, 6),
+      projectedMoment: round(
+        point.projectedMoment ?? projectedMoment(point),
+        6,
+      ),
       axialResidual: round(point.axialResidual, 6),
       failureMode: point.failureMode ?? point.limitState?.eventType ?? null,
       postUltimate:
@@ -1961,6 +2144,7 @@ export class RCMomentCurvatureAnalyzer {
             ? null
             : {
                 edge: point.concreteCompressionEdge.edge,
+                side: point.concreteCompressionEdge.side ?? null,
                 strain: round(point.concreteCompressionEdge.strain),
                 demand: round(point.concreteCompressionEdge.demand),
                 y: round(point.concreteCompressionEdge.y, 6),
@@ -2030,6 +2214,14 @@ export class RCMomentCurvatureAnalyzer {
               ),
               neutralAxisDepth: round(
                 point.balancedFailureState.neutralAxisDepth,
+                6,
+              ),
+              compressedEdgeProjection: round(
+                point.balancedFailureState.compressedEdgeProjection,
+                6,
+              ),
+              tensionReinforcementProjection: round(
+                point.balancedFailureState.tensionReinforcementProjection,
                 6,
               ),
               compressedEdgeY: round(

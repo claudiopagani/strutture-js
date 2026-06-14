@@ -23,9 +23,9 @@ import {
  * @typedef {Object} ReinforcedConcreteSectionActionsInput
  * @property {number} [nEd] Axial force in source force units.
  * @property {number} [axialForce] Axial force alias in source force units.
- * @property {number} [mEd] Bending moment in source force*length units.
- * @property {number} [mxEd] Bending moment around x in source force*length units.
- * @property {number} [myEd] Bending moment around y in source force*length units.
+ * @property {number} [mEd] Alias of mxEd in source force*length units.
+ * @property {number} [mxEd] Mzz component, positive by the right-hand rule around +z.
+ * @property {number} [myEd] Myy component, positive by the right-hand rule around +y.
  * @property {number[]} [nValues] Axial force sampling values in source force units.
  */
 

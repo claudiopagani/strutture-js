@@ -114,6 +114,20 @@ test("strain field evaluates affine strain profiles and neutral-axis form", () =
   approx(neutralAxisField.strainAt({ y: 100, z: 0 }), 0);
   approx(neutralAxisField.strainAt({ y: 0, z: 0 }), -0.2);
   approx(neutralAxisField.strainAt({ y: 200, z: 0 }), 0.2);
+
+  const counterclockwiseField = StrainField.fromNeutralAxis({
+    theta: Math.PI / 2,
+    curvature: 0.002,
+  });
+  const fullTurnField = StrainField.fromNeutralAxis({
+    theta: 2 * Math.PI,
+    curvature: 0.002,
+    neutralAxisOffset: 100,
+  });
+
+  approx(counterclockwiseField.strainAt({ y: 0, z: 100 }), -0.2);
+  approx(counterclockwiseField.strainAt({ y: 0, z: -100 }), 0.2);
+  approx(fullTurnField.strainAt({ y: 200, z: 0 }), 0.2);
 });
 
 test("rc section state integrator returns near-zero moments for uniform strain on symmetric section", () => {
@@ -171,6 +185,74 @@ test("rc section state integrator develops bending moment under linear strain pr
   approx(result.My, 0, 1e-6);
   assert.ok(result.extremes.minStrain < 0);
   assert.ok(result.extremes.maxStrain > 0);
+});
+
+test("rc section state integrator uses Mzz = -sum Fi yi for top-edge compression", () => {
+  const section = createDemoSection();
+  const mesh = new SectionFiberDiscretizer().discretize(section, {
+    targetCount: 100,
+  });
+  const result = new RCSectionStateIntegrator().evaluate({
+    section,
+    concreteFibers: mesh.fibers,
+    concreteLaw: new ConcreteNoTensionLaw({
+      ecm: section.concreteMaterial.elasticModulus,
+      compressionCap: section.concreteMaterial.fcd,
+    }),
+    steelLaw: new SteelElasticPerfectlyPlasticLaw({
+      Es: section.reinforcementMaterial.elasticModulus,
+      fyd: section.reinforcementMaterial.fyd,
+      esu: 0.01,
+    }),
+    strainField: new StrainField({
+      eps0: 0.0005,
+      kappaZ: 0.000002,
+    }),
+    includeConcreteTension: false,
+  });
+  const integratedMx = [
+    ...result.concrete.fibers,
+    ...result.steel.bars,
+  ].reduce((sum, item) => sum + item.mx, 0);
+
+  assert.ok(result.Mx > 0);
+  approx(result.Mx, integratedMx, 1e-6);
+  result.concrete.fibers.forEach((fiber) => {
+    const leverY = fiber.y - result.referencePoint.y;
+    approx(fiber.mx, -fiber.force * leverY, 1e-9);
+  });
+});
+
+test("rc section state integrator uses Myy = sum Fi zi for left-edge compression", () => {
+  const section = createDemoSection();
+  const mesh = new SectionFiberDiscretizer().discretize(section, {
+    targetCount: 100,
+  });
+  const result = new RCSectionStateIntegrator().evaluate({
+    section,
+    concreteFibers: mesh.fibers,
+    concreteLaw: new ConcreteNoTensionLaw({
+      ecm: section.concreteMaterial.elasticModulus,
+      compressionCap: section.concreteMaterial.fcd,
+    }),
+    steelLaw: new SteelElasticPerfectlyPlasticLaw({
+      Es: section.reinforcementMaterial.elasticModulus,
+      fyd: section.reinforcementMaterial.fyd,
+      esu: 0.01,
+    }),
+    strainField: new StrainField({
+      eps0: -0.0003,
+      kappaY: 0.000002,
+    }),
+    includeConcreteTension: false,
+  });
+
+  assert.ok(result.My > 0);
+  approx(result.Mx, 0, 1e-6);
+  result.concrete.fibers.forEach((fiber) => {
+    const leverZ = fiber.z - result.referencePoint.z;
+    approx(fiber.my, fiber.force * leverZ, 1e-9);
+  });
 });
 
 test("rc section state integrator tracks steel strain extremes after yielding", () => {

@@ -340,7 +340,7 @@ export class CrackedSectionDeflectionAnalysis {
             steelLaw,
             actions: {
               nEd,
-              mxEd: -mEd,
+              mxEd: mEd,
               myEd: 0,
             },
           });

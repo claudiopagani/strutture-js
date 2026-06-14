@@ -123,7 +123,7 @@ function printUniaxialResistance(result) {
       status: result.status,
       "Ned [kN]": kN(outputs.nEd),
       "Med [kNm]": kNm(outputs.mEd),
-      "MxRd [kNm]": kNm(outputs.MxRd),
+      "MxRd = Mzz [kNm]": kNm(outputs.MxRd),
       "utilization [-]": round(result.utilizationRatio, 3),
       "x [mm]": mm(outputs.neutralAxisDepth),
       "residual N [kN]": kN(outputs.axialResidual),
@@ -144,15 +144,15 @@ function printUniaxialResistance(result) {
 function printBiaxialDomain(result) {
   const { outputs } = result;
 
-  printTitle("ULS Mx-My domain");
+  printTitle("ULS Mx(Mzz)-My(Myy) domain");
   console.log(
     `Ned = ${kN(outputs.nEd)} kN, angles = ${outputs.angleCount}, fibers = ${outputs.fiberCount}`,
   );
   console.table(
     outputs.points.map((point) => ({
       "theta [deg]": round((point.theta * 180) / Math.PI, 1),
-      "MxRd [kNm]": kNm(point.MxRd),
-      "MyRd [kNm]": kNm(point.MyRd),
+      "MxRd = Mzz [kNm]": kNm(point.MxRd),
+      "MyRd = Myy [kNm]": kNm(point.MyRd),
       "x [mm]": mm(point.neutralAxisDepth),
       "residual N [kN]": kN(point.axialResidual),
       converged: point.converged,
@@ -185,8 +185,8 @@ function printServiceStress(result) {
       status: result.status,
       iterations: outputs.iterations,
       "Ned [kN]": kN(outputs.nEd),
-      "MxEd [kNm]": kNm(outputs.mxEd),
-      "MyEd [kNm]": kNm(outputs.myEd),
+      "MxEd = Mzz [kNm]": kNm(outputs.mxEd),
+      "MyEd = Myy [kNm]": kNm(outputs.myEd),
       "residual N [kN]": kN(outputs.residual.n),
       "residual Mx [kNm]": kNm(outputs.residual.mx),
       "residual My [kNm]": kNm(outputs.residual.my),
@@ -235,7 +235,7 @@ function printUniaxialDomain(result) {
     outputs.points.map((point) => ({
       "Ned [kN]": kN(point.nEd),
       "compressed edge": point.compressedEdge,
-      "MxRd [kNm]": kNm(point.MxRd),
+      "MxRd = Mzz [kNm]": kNm(point.MxRd),
       "x [mm]": mm(point.neutralAxisDepth),
       "residual N [kN]": kN(point.axialResidual),
       converged: point.converged,

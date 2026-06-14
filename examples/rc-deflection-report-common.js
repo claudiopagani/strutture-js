@@ -336,7 +336,7 @@ function computeFullyCrackedDeflection({
       steelLaw,
       actions: {
         nEd,
-        mxEd: -mEd,
+        mxEd: mEd,
         myEd: 0,
       },
     });

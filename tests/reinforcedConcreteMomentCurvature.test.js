@@ -152,6 +152,42 @@ test("reinforced concrete section application returns a moment-curvature curve",
   assert.ok(result.outputs.failurePoint.limitState.governing.utilizationRatio >= 0.99);
 });
 
+test("moment-curvature applies theta pi over two as a counterclockwise rotation", () => {
+  const { section, concreteMaterial, reinforcementMaterial } = createSection();
+  const model = new ReinforcedConcreteSectionModel({
+    id: "rc-moment-curvature-theta-90",
+    section,
+    materials: {
+      concreteMaterial,
+      reinforcementMaterial,
+    },
+    analysisType: "moment-curvature",
+    mesh: {
+      targetFiberCount: 120,
+    },
+    actions: {
+      nEd: -400000,
+    },
+    analysisSettings: {
+      theta: Math.PI / 2,
+      compressedSide: "positive",
+      pointCount: 8,
+      curvatureMax: 0.00003,
+    },
+    units,
+  });
+  const result = new ReinforcedConcreteSectionApplication().run({ model });
+  const lastPoint = result.outputs.points.at(-1);
+
+  assert.equal(result.status, "ok");
+  assert.ok(Math.abs(result.outputs.theta - Math.PI / 2) < 1e-12);
+  assert.equal(result.outputs.compressedSide, "positive");
+  assert.ok(lastPoint.kappaY > 0);
+  assert.equal(lastPoint.kappaZ, 0);
+  assert.ok(lastPoint.My > 0);
+  assert.ok(lastPoint.projectedMoment > 0);
+});
+
 test("moment-curvature keeps material ultimate, maximum, and post-ultimate termination distinct", () => {
   const { section, concreteMaterial, reinforcementMaterial } = createSection();
   const model = new ReinforcedConcreteSectionModel({

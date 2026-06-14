@@ -243,17 +243,15 @@ function resolveStressActions({ nEd, mEd, mxEd, myEd }) {
   const userMxEd = Number.isFinite(mxEd) ? mxEd : Number.isFinite(mEd) ? mEd : 0;
   const userMyEd = Number.isFinite(myEd) ? myEd : 0;
   const primaryMoment = Number.isFinite(mEd) ? mEd : userMxEd;
-  const stressMxEd = -userMxEd;
-  const stressMyEd = -userMyEd;
 
   return {
     nEd,
     primaryMoment,
     userMxEd,
     userMyEd,
-    stressMxEd,
-    stressMyEd,
-    biaxialStress: hasSignificantAction(stressMyEd, stressMxEd),
+    stressMxEd: userMxEd,
+    stressMyEd: userMyEd,
+    biaxialStress: hasSignificantAction(userMyEd, userMxEd),
   };
 }
 
@@ -665,7 +663,7 @@ export class ReinforcedConcreteServiceabilityVerification {
           reinforcementMaterial,
           actions: {
             nEd,
-            mxEd: -stressActions.primaryMoment,
+            mxEd: stressActions.primaryMoment,
             myEd: 0,
           },
           mesh,

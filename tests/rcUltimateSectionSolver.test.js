@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   ConcreteParabolaRectangleLaw,
+  RCMomentCurvatureAnalyzer,
   RCUltimateSectionSolver,
   ReinforcedConcreteSection,
   ReinforcementBar,
@@ -112,7 +113,8 @@ test("rc ultimate section solver satisfies axial equilibrium for top-compressed 
   assert.equal(result.converged, true);
   approx(result.axialResidual, 0, 5);
   assert.ok(result.neutralAxisDepth > 0);
-  assert.ok(Math.abs(result.MxRd) > 0);
+  assert.ok(result.MxRd > 0);
+  assert.equal(result.MxRd, result.state.Mx);
   approx(result.MyRd, 0, 1e-6);
   assert.ok(result.state.extremes.maxConcreteCompression.value < 0);
   assert.ok(result.state.extremes.maxConcreteCompression.y > 250);
@@ -164,19 +166,22 @@ test("rc ultimate section solver evaluates concrete strain on the real non-recta
   const fibers = new SectionFiberDiscretizer().discretize(section, {
     targetCount: 160,
   }).fibers;
-  const result = new RCUltimateSectionSolver().solveAtAxialLoad({
+  const solver = new RCUltimateSectionSolver();
+  const concreteLaw = new ConcreteParabolaRectangleLaw({
+    fcd: concreteMaterial.fcd,
+    ec2: 0.002,
+    ecu: 0.0035,
+  });
+  const steelLaw = new SteelElasticPerfectlyPlasticLaw({
+    Es: reinforcementMaterial.elasticModulus,
+    fyd: reinforcementMaterial.fyd,
+    esu: 0.01,
+  });
+  const result = solver.solveAtAxialLoad({
     section,
     concreteFibers: fibers,
-    concreteLaw: new ConcreteParabolaRectangleLaw({
-      fcd: concreteMaterial.fcd,
-      ec2: 0.002,
-      ecu: 0.0035,
-    }),
-    steelLaw: new SteelElasticPerfectlyPlasticLaw({
-      Es: reinforcementMaterial.elasticModulus,
-      fyd: reinforcementMaterial.fyd,
-      esu: 0.01,
-    }),
+    concreteLaw,
+    steelLaw,
     nEd: -300000,
     theta: Math.PI / 4,
     compressedSide: "negative",
@@ -186,8 +191,160 @@ test("rc ultimate section solver evaluates concrete strain on the real non-recta
   assert.equal(result.failureMode, "concrete-compression");
   approx(result.concreteStrainExtremes.compression.strain, -0.0035, 1e-12);
   assert.equal(result.concreteStrainExtremes.compression.y, 0);
-  assert.equal(result.concreteStrainExtremes.compression.z, 100);
+  assert.equal(result.concreteStrainExtremes.compression.z, 200);
   assert.notEqual(result.concreteStrainExtremes.compression.z, 0);
+  assert.ok(
+    result.MxRd * Math.cos(Math.PI / 4) +
+      result.MyRd * Math.sin(Math.PI / 4) <
+      0,
+  );
+
+  const uniaxial = solver.solveUniaxialAtAxialLoad({
+    section,
+    concreteFibers: fibers,
+    concreteLaw,
+    steelLaw,
+    nEd: -300000,
+    compressedEdge: "top",
+  });
+  const fullTurn = solver.solveAtAxialLoad({
+    section,
+    concreteFibers: fibers,
+    concreteLaw,
+    steelLaw,
+    nEd: -300000,
+    theta: -2 * Math.PI,
+    compressedSide: "positive",
+  });
+
+  approx(fullTurn.MxRd, uniaxial.MxRd, 1e-6);
+  approx(fullTurn.MyRd, uniaxial.MyRd, 1e-6);
+  assert.ok(fullTurn.MxRd > 0);
+});
+
+test("uniaxial top compression and theta zero positive-side compression are identical", () => {
+  const fixture = createSolverFixture();
+  const solver = new RCUltimateSectionSolver();
+  const uniaxial = solver.solveUniaxialAtAxialLoad({
+    section: fixture.section,
+    concreteFibers: fixture.fibers,
+    concreteLaw: fixture.concreteLaw,
+    steelLaw: fixture.steelLaw,
+    nEd: -800000,
+    compressedEdge: "top",
+  });
+  const oriented = solver.solveAtAxialLoad({
+    section: fixture.section,
+    concreteFibers: fixture.fibers,
+    concreteLaw: fixture.concreteLaw,
+    steelLaw: fixture.steelLaw,
+    nEd: -800000,
+    theta: 0,
+    compressedSide: "positive",
+  });
+
+  approx(uniaxial.MxRd, oriented.MxRd, 1e-6);
+  approx(uniaxial.MyRd, oriented.MyRd, 1e-6);
+  approx(uniaxial.strainField.eps0, oriented.strainField.eps0, 1e-12);
+  assert.ok(uniaxial.MxRd > 0);
+});
+
+test("theta zero and full positive or negative turns give identical signed resistance", () => {
+  const fixture = createSolverFixture();
+  const solver = new RCUltimateSectionSolver();
+  const solve = (theta) =>
+    solver.solveAtAxialLoad({
+      section: fixture.section,
+      concreteFibers: fixture.fibers,
+      concreteLaw: fixture.concreteLaw,
+      steelLaw: fixture.steelLaw,
+      nEd: -800000,
+      theta,
+      compressedSide: "positive",
+    });
+  const zero = solve(0);
+
+  for (const fullTurn of [2 * Math.PI, -2 * Math.PI]) {
+    const result = solve(fullTurn);
+
+    assert.equal(result.theta, 0);
+    approx(result.MxRd, zero.MxRd, 1e-6);
+    approx(result.MyRd, zero.MyRd, 1e-6);
+    assert.equal(Math.sign(result.MxRd), Math.sign(zero.MxRd));
+    assert.equal(Math.sign(result.MyRd), Math.sign(zero.MyRd));
+  }
+
+  const diagonal = solve(Math.PI / 4);
+  const diagonalFullTurn = solve(Math.PI / 4 + 2 * Math.PI);
+
+  assert.equal(diagonalFullTurn.theta, diagonal.theta);
+  approx(diagonalFullTurn.MxRd, diagonal.MxRd, 1e-6);
+  approx(diagonalFullTurn.MyRd, diagonal.MyRd, 1e-6);
+});
+
+test("theta pi over two rotates counterclockwise and positive-side compression gives positive Myy", () => {
+  const fixture = createSolverFixture();
+  const solver = new RCUltimateSectionSolver();
+  const positiveSide = solver.solveAtAxialLoad({
+    section: fixture.section,
+    concreteFibers: fixture.fibers,
+    concreteLaw: fixture.concreteLaw,
+    steelLaw: fixture.steelLaw,
+    nEd: -800000,
+    theta: Math.PI / 2,
+    compressedSide: "positive",
+  });
+  const negativeSide = solver.solveAtAxialLoad({
+    section: fixture.section,
+    concreteFibers: fixture.fibers,
+    concreteLaw: fixture.concreteLaw,
+    steelLaw: fixture.steelLaw,
+    nEd: -800000,
+    theta: Math.PI / 2,
+    compressedSide: "negative",
+  });
+
+  approx(positiveSide.MxRd, 0, 1e-6);
+  assert.ok(positiveSide.MyRd > 0);
+  assert.equal(positiveSide.concreteStrainExtremes.compression.z, 0);
+  approx(negativeSide.MxRd, 0, 1e-6);
+  assert.ok(negativeSide.MyRd < 0);
+  assert.ok(positiveSide.MyRd * negativeSide.MyRd < 0);
+});
+
+test("moment-curvature and ultimate resistance use the same components at a common theta", () => {
+  const fixture = createSolverFixture();
+  const theta = Math.PI / 2;
+  const ultimate = new RCUltimateSectionSolver().solveAtAxialLoad({
+    section: fixture.section,
+    concreteFibers: fixture.fibers,
+    concreteLaw: fixture.concreteLaw,
+    steelLaw: fixture.steelLaw,
+    nEd: -800000,
+    theta,
+    compressedSide: "positive",
+  });
+  const curvature = Math.hypot(
+    ultimate.strainField.kappaY,
+    ultimate.strainField.kappaZ,
+  );
+  const point = new RCMomentCurvatureAnalyzer().solveAtCurvature({
+    section: fixture.section,
+    concreteFibers: fixture.fibers,
+    concreteLaw: fixture.concreteLaw,
+    steelLaw: fixture.steelLaw,
+    nEd: -800000,
+    theta,
+    compressedSide: "positive",
+    curvature,
+    eps0Hint: ultimate.strainField.eps0,
+    postUltimateResponse: "retain",
+  });
+
+  assert.equal(point.converged, true);
+  approx(point.Mx, ultimate.MxRd, 5);
+  approx(point.My, ultimate.MyRd, 5);
+  assert.ok(point.My > 0);
 });
 
 test("rc ultimate section solver changes moment sign when compressed edge flips", () => {

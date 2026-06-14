@@ -111,3 +111,27 @@ test("biaxial domain builder returns a set of resistant points at assigned axial
   assert.ok(domain.points.some((point) => Math.abs(point.MxRd) > 0));
   assert.ok(domain.points.some((point) => Math.abs(point.MyRd) > 0));
 });
+
+test("biaxial domain follows increasing theta counterclockwise from Mzz to Myy", () => {
+  const fixture = createBiaxialFixture();
+  const domain = new RCBiaxialDomainBuilder().buildAtAxialLoad({
+    section: fixture.section,
+    concreteFibers: fixture.fibers,
+    concreteLaw: fixture.concreteLaw,
+    steelLaw: fixture.steelLaw,
+    nEd: -800000,
+    angleCount: 4,
+  });
+  const [theta0, theta90, theta180, theta270] = domain.points;
+
+  assert.equal(theta0.theta, 0);
+  assert.equal(theta90.theta, Math.PI / 2);
+  assert.equal(theta180.theta, Math.PI);
+  assert.equal(theta270.theta, (3 * Math.PI) / 2);
+  assert.ok(theta0.MxRd > 0);
+  assert.ok(theta90.MyRd > 0);
+  assert.ok(theta180.MxRd < 0);
+  assert.ok(theta270.MyRd < 0);
+  assert.equal(theta90.concreteCompressionEdge.z, 0);
+  assert.equal(theta270.concreteCompressionEdge.z, 300);
+});

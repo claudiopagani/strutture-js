@@ -268,7 +268,8 @@ test("reinforced concrete beam verification includes SLE biaxial stress and warn
 
   assert.equal(verification.status, "ok");
   assert.equal(sleStress.metadata.biaxialStress, true);
-  assert.ok(Math.abs(sleStress.metadata.myEd) > 0);
+  assert.ok(sleStress.metadata.mxEd > 0);
+  assert.ok(sleStress.metadata.myEd > 0);
   assert.equal(crackCheck.metadata.weakAxisMomentNeglected, true);
   assert.ok(
     verification.warnings.some((warning) =>

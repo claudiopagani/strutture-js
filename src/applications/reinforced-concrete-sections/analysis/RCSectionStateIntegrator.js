@@ -125,6 +125,9 @@ function applyPostUltimateResponse({
   };
 }
 
+/**
+ * Integrates N, Mx = Mzz = -sum(Fi * yi), and My = Myy = sum(Fi * zi).
+ */
 export class RCSectionStateIntegrator {
   evaluate({
     section,
@@ -230,7 +233,7 @@ export class RCSectionStateIntegrator {
       const force = stress * fiber.area;
       const leverY = fiber.y - resolvedReferencePoint.y;
       const leverZ = fiber.z - resolvedReferencePoint.z;
-      const mx = force * leverY;
+      const mx = -force * leverY;
       const my = force * leverZ;
 
       axialForce += force;
@@ -290,7 +293,7 @@ export class RCSectionStateIntegrator {
       const force = stress * bar.area;
       const leverY = bar.y - resolvedReferencePoint.y;
       const leverZ = bar.z - resolvedReferencePoint.z;
-      const mx = force * leverY;
+      const mx = -force * leverY;
       const my = force * leverZ;
 
       axialForce += force;

@@ -102,7 +102,20 @@ test("reinforced concrete section application runs the first ULS uniaxial workfl
   assert.ok(["ok", "not-verified"].includes(result.status));
   assert.equal(result.outputs.analysisType, "uls-uniaxial-resistance");
   assert.ok(result.outputs.MxRd > 0);
+  assert.equal(Math.sign(result.outputs.MxRd), Math.sign(result.outputs.mEd));
   assert.ok(result.outputs.fiberCount > 0);
   assert.equal(result.checks.length, 1);
   assert.ok(result.capacity > 0);
+});
+
+test("reinforced concrete section verification keeps negative mxEd and MxRd on the same convention", () => {
+  const model = createApplicationModel();
+  model.actions.mEd = -1.5e8;
+  model.actions.mxEd = -1.5e8;
+  model.analysisSettings.compressedEdge = "bottom";
+  const result = new ReinforcedConcreteSectionApplication().run({ model });
+
+  assert.equal(result.outputs.mEd, -1.5e8);
+  assert.ok(result.outputs.MxRd < 0);
+  assert.equal(Math.sign(result.outputs.MxRd), Math.sign(result.outputs.mEd));
 });

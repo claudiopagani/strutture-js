@@ -107,4 +107,9 @@ test("service stress solver equilibrates a combined N-Mx-My state with concrete 
   assert.ok(Math.abs(result.residual.mx) < 1e-1);
   assert.ok(Math.abs(result.residual.my) < 1e-1);
   assert.equal(result.state.extremes.maxConcreteTension, null);
+  assert.ok(result.strainField.kappaZ > 0);
+  assert.ok(result.strainField.kappaY > 0);
+  assert.ok(result.state.extremes.maxConcreteCompression.y > 250);
+  assert.ok(result.state.extremes.maxConcreteCompression.z < 150);
+  assert.equal(result.state.extremes.maxSteelTension.id, "bottom-right");
 });

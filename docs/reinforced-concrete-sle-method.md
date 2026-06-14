@@ -69,6 +69,10 @@ Il solve di sezione usa:
 * equilibrio su `N`, `Mx`, `My` tramite `RCServiceStressSolver`;
 * fallback automatici di curvatura iniziale per migliorare la convergenza con momento positivo o negativo.
 
+Nel contratto storico del modulo `Mx = Mzz = -sum(Fi * yi)` e
+`My = Myy = sum(Fi * zi)`. Le azioni `mxEd` e `myEd` entrano nel solver con
+gli stessi segni, senza conversioni locali nei wrapper.
+
 Anche il workflow `service-stress` standalone della sezione usa lo stesso `metodo n`:
 
 * modulo del calcestruzzo equivalente `Ec,eq = Es / n`;
