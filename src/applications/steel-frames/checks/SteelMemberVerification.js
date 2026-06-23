@@ -40,6 +40,12 @@ function classificationPartById(classificationResult, id) {
   return classificationResult.parts.find((part) => part.id === id) ?? null;
 }
 
+function classificationPartMetadata(classificationResult, key) {
+  return Object.fromEntries(
+    classificationResult.parts.map((part) => [part.id, part[key] ?? null]),
+  );
+}
+
 function classificationPartSeverity(part) {
   if (!Number.isFinite(part?.ratio) || !isFinitePositive(part?.limits?.class3)) {
     return 0;
@@ -531,7 +537,7 @@ function createLateralTorsionalBucklingChecks({
   }
 
   assumptions.push(
-    "Lateral-torsional buckling is checked on ULS FEM bending maxima for declared unbraced segments; automatic Mcr is limited to doubly symmetric I/H profiles.",
+    "Lateral-torsional buckling is checked on ULS FEM bending maxima for declared unbraced segments; automatic Mcr is available for I/H and RHS profiles, while CHS/SHS/ROUND are treated as not susceptible to the classic LTB check.",
   );
 
   for (const result of resultEntries(analysisResult.combinations)) {
@@ -567,6 +573,7 @@ function createLateralTorsionalBucklingChecks({
         material,
         nEd: nEdSectionUnits,
         mEd: mEdSectionUnits,
+        mzEd: mzEdSectionUnits,
         axialForceConvention:
           classification.axialForceConvention ?? "absolute",
       });
@@ -719,11 +726,13 @@ function createCompressionBucklingChecks({
     const strongAxisMoment = sampleStrongAxisMoment(sample);
     const weakAxisMoment = sample.principalActions?.mZ ?? sample.mZ ?? 0;
     const mEdSectionUnits = resultToSectionUnits.moment(strongAxisMoment);
+    const mzEdSectionUnits = resultToSectionUnits.moment(weakAxisMoment);
     const classificationResult = classifySteelSection({
       section,
       material,
       nEd: nEdSectionUnits,
       mEd: mEdSectionUnits,
+      mzEd: mzEdSectionUnits,
       axialForceConvention:
         classification.axialForceConvention ?? "absolute",
     });
@@ -743,6 +752,11 @@ function createCompressionBucklingChecks({
       imperfectionFactorY: optionValue(options, ["imperfectionFactorY", "alphaY"]),
       imperfectionFactorZ: optionValue(options, ["imperfectionFactorZ", "alphaZ"]),
       gammaM1: optionValue(options, ["gammaM1"]),
+      allowOpenSectionFlexuralBuckling: optionValue(
+        options,
+        ["allowOpenSectionFlexuralBuckling", "allowFlexuralOnlyOpenSections"],
+        false,
+      ),
       axialForceConvention,
     });
 
@@ -916,7 +930,7 @@ function createBeamColumnInteractionChecks({
   }
 
   assumptions.push(
-    "Steel beam-column stability interaction uses Circolare NTC 2018 Method B; Mz is included for supported doubly symmetric I/H profiles, while torsion and torsional interactions are excluded.",
+    "Steel beam-column stability interaction uses Circolare NTC 2018 Method B; Mz is included for supported doubly symmetric profiles, while torsion and torsional interactions are excluded.",
   );
 
   for (const result of resultEntries(analysisResult.combinations)) {
@@ -954,6 +968,7 @@ function createBeamColumnInteractionChecks({
         material,
         nEd: nEdSectionUnits,
         mEd: mEdSectionUnits,
+        mzEd: mzEdSectionUnits,
         axialForceConvention:
           classification.axialForceConvention ?? "absolute",
       });
@@ -995,6 +1010,17 @@ function createBeamColumnInteractionChecks({
         gammaM1:
           optionValue(interactionOptions, ["gammaM1"], null) ??
           optionValue(bucklingOptions, ["gammaM1"]),
+        allowOpenSectionFlexuralBuckling:
+          optionValue(
+            interactionOptions,
+            ["allowOpenSectionFlexuralBuckling", "allowFlexuralOnlyOpenSections"],
+            null,
+          ) ??
+          optionValue(
+            bucklingOptions,
+            ["allowOpenSectionFlexuralBuckling", "allowFlexuralOnlyOpenSections"],
+            false,
+          ),
         axialForceConvention,
       });
       const ltbReduction = ltbReductionForInteraction({
@@ -1159,6 +1185,7 @@ function createSteelActionVerifier({
         material,
         nEd: convertedNEd,
         mEd: convertedMEd,
+        mzEd: convertedMZEd,
         axialForceConvention:
           classification.axialForceConvention ?? "absolute",
       });
@@ -1209,6 +1236,8 @@ function createSteelActionVerifier({
           webRatio: webPart?.ratio ?? null,
           webAlpha: webPart?.metadata?.alpha ?? null,
           webPsi: webPart?.metadata?.psi ?? null,
+          partClasses: classificationPartMetadata(classificationResult, "class"),
+          partRatios: classificationPartMetadata(classificationResult, "ratio"),
         },
       };
       const axialStress = isFinitePositive(section.area)
@@ -1618,7 +1647,7 @@ export class SteelMemberVerification {
         ...(deflectionChecks.length === 0
           ? ["No SLE steel deflection check was generated because no SLE combination was found."]
           : []),
-        "Section classification is included for I/H and UPN profiles, but effective class-4 section properties are not implemented yet.",
+        "Section classification is included for supported catalog steel profiles, but effective class-4 section properties are not implemented yet.",
         ...(groupedChecks.some(
           (check) =>
             check.id === "steel-section-classification" &&
@@ -1631,7 +1660,7 @@ export class SteelMemberVerification {
         ...lateralTorsionalBuckling.warnings,
         ...compressionBuckling.warnings,
         ...beamColumnInteraction.warnings,
-        "Steel member stability excludes torsion and torsional interactions; N+My+Mz is available only for supported doubly symmetric I/H profiles.",
+        "Steel member stability excludes torsion and torsional interactions; N+My+Mz is available for supported doubly symmetric profiles.",
       ]),
       assumptions: [
         ...actionVerification.assumptions,

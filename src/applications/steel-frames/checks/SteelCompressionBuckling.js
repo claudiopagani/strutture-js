@@ -3,6 +3,15 @@ import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const INTERNAL_UNITS = Object.freeze({ force: "N", length: "mm" });
 const I_H_FAMILIES = new Set(["IPE", "HEA", "HEB", "HEM"]);
+const CLOSED_HOLLOW_FAMILIES = new Set(["CHS", "SHS", "RHS"]);
+const SOLID_DOUBLY_SYMMETRIC_FAMILIES = new Set(["ROUND", "FLAT"]);
+const OPEN_UNSYMMETRIC_FAMILIES = new Set(["L", "LU", "T"]);
+const AUTOMATIC_FLEXURAL_BUCKLING_FAMILIES = new Set([
+  ...I_H_FAMILIES,
+  "UPN",
+  ...CLOSED_HOLLOW_FAMILIES,
+  ...SOLID_DOUBLY_SYMMETRIC_FAMILIES,
+]);
 const FORCE_TOLERANCE = 1e-9;
 
 const round = (value, decimals = 6) =>
@@ -112,6 +121,38 @@ export function inferSteelCompressionBucklingCurves(section) {
     return { y: "c", z: "c", source: "ntc2018-table-4.2.VIII-u-section-default" };
   }
 
+  if (CLOSED_HOLLOW_FAMILIES.has(family)) {
+    return {
+      y: "c",
+      z: "c",
+      source: "conservative-hollow-section-default-curve-c",
+    };
+  }
+
+  if (family === "ROUND") {
+    return {
+      y: "a",
+      z: "a",
+      source: "rolled-solid-round-default-curve-a",
+    };
+  }
+
+  if (family === "FLAT") {
+    return {
+      y: "c",
+      z: "c",
+      source: "conservative-solid-flat-default-curve-c",
+    };
+  }
+
+  if (OPEN_UNSYMMETRIC_FAMILIES.has(family)) {
+    return {
+      y: "c",
+      z: "c",
+      source: "open-unsymmetric-flexural-only-default-curve-c",
+    };
+  }
+
   return { y: "c", z: "c", source: "default-conservative-curve-c" };
 }
 
@@ -192,9 +233,11 @@ export function verifySteelCompressionBuckling({
   imperfectionFactorY = null,
   imperfectionFactorZ = null,
   gammaM1 = null,
+  allowOpenSectionFlexuralBuckling = false,
   axialForceConvention = "absolute",
 } = {}) {
   const warnings = [];
+  const family = normalizedFamily(section);
   const resolvedGammaM1 = gammaM1FromMaterial(material, gammaM1);
   const fyk = material?.fyk;
   const E = material?.elasticModulus;
@@ -216,6 +259,34 @@ export function verifySteelCompressionBuckling({
       ? lengthZ * effectiveLengthFactorZ
       : null);
 
+  if (
+    !AUTOMATIC_FLEXURAL_BUCKLING_FAMILIES.has(family) &&
+    !(OPEN_UNSYMMETRIC_FAMILIES.has(family) && allowOpenSectionFlexuralBuckling)
+  ) {
+    return {
+      status: RESULT_STATUS.NOT_SUPPORTED,
+      check: null,
+      axisResults: null,
+      warnings: [
+        `Compression buckling automatic flexural verification is not enabled for profile family ${family || "unknown"}.`,
+      ],
+      metadata: {
+        method: "ntc2018-4.2.4.1.3.1-compression-buckling",
+        family,
+        sectionClass,
+        curveY: selectedCurveY,
+        curveZ: selectedCurveZ,
+        curveSource: inferredCurves.source,
+      },
+    };
+  }
+
+  if (OPEN_UNSYMMETRIC_FAMILIES.has(family) && allowOpenSectionFlexuralBuckling) {
+    warnings.push(
+      "Open unsymmetric section compression buckling is checked only as flexural buckling about y/z; torsional and flexural-torsional buckling must be checked separately.",
+    );
+  }
+
   if (sectionClass > 3) {
     return {
       status: RESULT_STATUS.NOT_SUPPORTED,
@@ -226,6 +297,7 @@ export function verifySteelCompressionBuckling({
       ],
       metadata: {
         method: "ntc2018-4.2.4.1.3.1-compression-buckling",
+        family,
         sectionClass,
       },
     };
@@ -262,6 +334,7 @@ export function verifySteelCompressionBuckling({
       ],
       metadata: {
         method: "ntc2018-4.2.4.1.3.1-compression-buckling",
+        family,
         sectionClass,
         lengthY: round(lengthY),
         lengthZ: round(lengthZ),
@@ -293,7 +366,7 @@ export function verifySteelCompressionBuckling({
       ok: utilizationRatio <= 1,
       metadata: {
         method: "ntc2018-4.2.4.1.3.1-compression-buckling",
-        family: normalizedFamily(section),
+        family,
         sectionClass,
         axialForceConvention,
         gammaM1: round(resolvedGammaM1),

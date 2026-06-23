@@ -1,21 +1,21 @@
 # Metodo per travi semplici in acciaio
 
 Questo documento descrive il metodo implementato per travi semplici in acciaio.
-Il perimetro e prudente: la classificazione locale della sezione governa la resistenza a flessione, l'instabilita flesso-torsionale e implementata in MVP per profili I/H o con `Mcr` fornito dall'utente, l'instabilita di aste compresse segue le curve NTC 2018 e la pressoflessione normativa copre `N + My`, con estensione `N + My + Mz` per profili I/H doppiamente simmetrici.
+Il perimetro e prudente: la classificazione locale della sezione governa la resistenza a flessione, l'instabilita flesso-torsionale e implementata in MVP per profili I/H, `RHS` o con `Mcr` fornito dall'utente, l'instabilita di aste compresse segue le curve NTC 2018 e la pressoflessione normativa copre `N + My`, con estensione `N + My + Mz` per profili doppiamente simmetrici supportati.
 Torsione, interazioni torsionali, affinamenti LTB sofisticati e sezioni efficaci di classe 4 restano fuori dal dominio attuale.
 
 ## Perimetro
 
 Il workflow copre:
 
-* profili da catalogo `HEA`, `HEB`, `HEM`, `IPE`, `UPN`;
+* profili da catalogo `HEA`, `HEB`, `HEM`, `IPE`, `UPN`, `CHS`, `SHS`, `RHS`, `L`, `LU`, `T`, `FLAT`, `ROUND`;
 * materiali `S235`, `S275`, `S355`;
 * analisi FEM della trave con modello Euler-Bernoulli o Timoshenko;
 * classificazione locale della sezione per stazioni FEM ULS;
 * verifiche ULS di sezione da diagrammi FEM, con flessione governata dalla classe;
 * instabilita flesso-torsionale su segmenti non controventati;
 * instabilita di aste compresse con lunghezze efficaci configurabili;
-* interazione di stabilita `N + My` e, quando `Mz` e presente, `N + My + Mz` secondo Metodo B della Circolare per profili I/H supportati;
+* interazione di stabilita `N + My` e, quando `Mz` e presente, `N + My + Mz` secondo Metodo B della Circolare per profili doppiamente simmetrici supportati;
 * verifica SLE di freccia verticale;
 * report JSON/Markdown con checks, metadata, warning e assunzioni.
 
@@ -66,7 +66,10 @@ Questo evita di trattare la classe come proprieta fissa del profilo quando la di
 Profili supportati:
 
 * I/H: `IPE`, `HEA`, `HEB`, `HEM`;
-* canali: `UPN`.
+* canali: `UPN`;
+* tubolari: `CHS`, `SHS`, `RHS`;
+* barre e piatti: `ROUND`, `FLAT`;
+* profili aperti aggiuntivi: `L`, `LU`, `T`.
 
 Il metodo usa:
 
@@ -82,7 +85,7 @@ Per l'anima vengono riportati:
 * rapporto `c/t`;
 * limiti di classe 1, 2, 3.
 
-Per gli `UPN` la classificazione locale e supportata. L'instabilita flesso-torsionale degli `UPN` richiede invece `Mcr` fornito dall'utente: il motore non riusa automaticamente la formula semplificata dei profili I/H doppiamente simmetrici.
+Per gli `UPN` la classificazione locale e supportata. L'instabilita flesso-torsionale degli `UPN` richiede invece `Mcr` fornito dall'utente: il motore non riusa automaticamente la formula semplificata dei profili I/H o `RHS`.
 
 Se la sezione risulta in classe 4:
 
@@ -148,7 +151,7 @@ Gli input principali sono:
 * `criticalMoment` / `mCr`, se noto;
 * coefficienti opzionali `gammaM1`, `curve`, `imperfectionFactor`, `effectiveLengthFactor`, `warpingLengthFactor`, `momentGradientFactor`.
 
-Se `criticalMoment` non e fornito, il motore calcola automaticamente `Mcr` solo per profili I/H doppiamente simmetrici (`IPE`, `HEA`, `HEB`, `HEM`) con la formula semplificata:
+Se `criticalMoment` non e fornito, il motore calcola automaticamente `Mcr` per profili I/H doppiamente simmetrici (`IPE`, `HEA`, `HEB`, `HEM`) e per `RHS` con la formula semplificata:
 
 ```txt
 Mcr = C1 * pi^2 * E * Iz / Lcr^2 * sqrt(Iw / Iz / kw^2 + Lcr^2 * G * IT / (pi^2 * E * Iz))
@@ -156,7 +159,7 @@ Mcr = C1 * pi^2 * E * Iz / Lcr^2 * sqrt(Iw / Iz / kw^2 + Lcr^2 * G * IT / (pi^2 
 
 Assunzioni del calcolo automatico:
 
-* profilo I/H doppiamente simmetrico;
+* profilo I/H doppiamente simmetrico o `RHS`;
 * flessione principale;
 * carico applicato senza effetto destabilizzante torsionale esplicito;
 * coefficienti default `C1 = 1`, `k = 1`, `kw = 1`.
@@ -168,7 +171,7 @@ lambdaLT = sqrt(Wy * fyk / Mcr)
 Mb,Rd = chiLT * Wy * fyk / gammaM1
 ```
 
-Per gli `UPN` la verifica e disponibile se l'utente fornisce `Mcr`; in caso contrario il report segnala che la verifica non puo essere generata.
+Per `CHS`, `SHS` e `ROUND` il controllo classico LTB e trattato come non richiesto (`chiLT = 1`). Per `UPN`, `L`, `LU`, `T` e `FLAT` la verifica e disponibile se l'utente fornisce `Mcr`; in caso contrario il report segnala che la verifica non puo essere generata.
 
 Per una trave dichiarata controventata lateralmente si puo disattivare il controllo con:
 
@@ -212,7 +215,7 @@ Nb,Rd,i = chi_i * A * fyk / gammaM1
 ```
 
 Il check usa la minore tra `Nb,Rd,y` e `Nb,Rd,z`.
-Le curve di instabilita sono inferite per i profili laminati I/H e per `UPN`, ma restano sovrascrivibili con `curveY` e `curveZ`.
+Le curve di instabilita sono inferite per i profili laminati I/H, per `UPN`, per i tubolari chiusi e per barre/piatti; restano sovrascrivibili con `curveY` e `curveZ`.
 
 Le lunghezze libere si impostano con:
 
@@ -253,7 +256,7 @@ Il dominio `N + My` resta usato quando `Mz` e nullo:
 NEd + My,Ed
 ```
 
-Quando `Mz` e significativo e il profilo e I/H doppiamente simmetrico, il dominio diventa:
+Quando `Mz` e significativo e il profilo e doppiamente simmetrico supportato, il dominio diventa:
 
 ```txt
 NEd + My,Ed + Mz,Ed
@@ -318,7 +321,7 @@ new SteelMemberVerification({
 ```
 
 Per sezioni di classe 4 il check e bloccato, perche servono `Aeff` e `Weff`.
-Per `UPN`, il motore mantiene le verifiche di sezione, classificazione, aste compresse e LTB con `Mcr` utente; l'interazione Method B automatica `N + My + Mz` resta limitata ai profili I/H doppiamente simmetrici, salvo override esplicito dell'utente.
+Per `UPN`, il motore mantiene le verifiche di sezione, classificazione, aste compresse e LTB con `Mcr` utente; l'interazione Method B automatica resta disabilitata salvo override esplicito o estensione dedicata per sezioni semplicemente simmetriche. Per `L`, `LU` e `T`, l'instabilita e l'interazione automatica restano protette per evitare di trascurare modi torsionali o flesso-torsionali.
 
 ## Verifica SLE
 
@@ -406,11 +409,12 @@ I test coprono:
 | Area | Test |
 | --- | --- |
 | Conversione rigidezza provider acciaio | `tests/steelBeamSectionProvider.test.js` |
-| Classificazione locale I/H e UPN | `tests/steelBeamSectionProvider.test.js` |
+| Classificazione locale I/H, UPN e famiglie estese | `tests/steelBeamSectionProvider.test.js` |
 | Blocco prudente per classe 4 | `tests/steelBeamSectionProvider.test.js` |
 | Resistenze da profilo, materiale e classe | `tests/steelBeamSectionProvider.test.js` |
-| Instabilita flesso-torsionale I/H automatica e UPN con `Mcr` utente | `tests/steelBeamSectionProvider.test.js` |
-| Instabilita aste compresse e interazione `N + My` standalone | `tests/steelBeamSectionProvider.test.js` |
+| Instabilita flesso-torsionale I/H/RHS automatica, CHS esente e UPN con `Mcr` utente | `tests/steelBeamSectionProvider.test.js` |
+| Instabilita aste compresse e interazioni `N + My` / `N + My + Mz` standalone | `tests/steelBeamSectionProvider.test.js` |
+| Sezioni composte 2UPN e 2L come proprieta geometriche | `tests/steelCompoundProfileSection.test.js` |
 | Report acciaio con checks di stabilita `LTB`, aste compresse e `N + My` | `tests/singleBeamDesignApplication.test.js` |
 | Verifica ULS da diagrammi FEM | `tests/steelBeamSectionProvider.test.js` |
 | Verifica SLE freccia da diagrammi FEM | `tests/steelBeamSectionProvider.test.js` |
@@ -429,6 +433,7 @@ Restano fuori dal perimetro di questo MVP:
 
 * torsione e interazioni torsionali;
 * verifica `N + My + Mz` automatica per profili non doppiamente simmetrici;
+* verifica normativa completa delle sezioni composte `COMPOUND`;
 * classificazione locale biaxiale raffinata oltre il criterio MVP;
 * affinamento dei coefficienti LTB per diagrammi di momento e vincoli laterali specifici;
 * influenza del taglio sulla resistenza a flessione;

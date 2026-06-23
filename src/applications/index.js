@@ -80,6 +80,7 @@ export { SteelDisplacementControlPushoverSolver2D } from "./steel-frames/index.j
 export { SteelPlasticHingeFrameElement2D } from "./steel-frames/index.js";
 export { SteelPlasticHingeState } from "./steel-frames/index.js";
 export { classifySteelSection } from "./steel-frames/index.js";
+export { getSteelVerificationCapabilities } from "./steel-frames/index.js";
 export { calculateElasticCriticalMomentLT } from "./steel-frames/index.js";
 export { calculateSteelCompressionBucklingAxis } from "./steel-frames/index.js";
 export { calculateSteelMethodBInteractionCoefficients } from "./steel-frames/index.js";

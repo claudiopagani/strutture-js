@@ -6,6 +6,7 @@ export { SteelPlasticHingeFrameElement2D } from "./analysis/SteelPlasticHingeFra
 export { SteelPlasticHingeState } from "./analysis/SteelPlasticHingeState.js";
 export { SteelMemberVerification } from "./checks/SteelMemberVerification.js";
 export { classifySteelSection } from "./checks/SteelSectionClassification.js";
+export { getSteelVerificationCapabilities } from "./checks/steelVerificationCapabilities.js";
 export {
   calculateSteelCompressionBucklingAxis,
   inferSteelCompressionBucklingCurves,

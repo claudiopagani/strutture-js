@@ -6,6 +6,7 @@ import "./ntc2018BeamCombinations.test.js";
 import "./loadAbstractions.test.js";
 import "./ntc2018SlabLoadAnalysis.test.js";
 import "./steelProfileSection.test.js";
+import "./steelCompoundProfileSection.test.js";
 import "./steelBeamSectionProvider.test.js";
 import "./steelRingFramePushover.test.js";
 import "./longitudinalReinforcementLayout.test.js";

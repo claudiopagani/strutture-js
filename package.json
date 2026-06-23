@@ -1,6 +1,6 @@
 {
   "name": "strutture-js",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "Codebase condivisa OOP per entita di calcolo strutturale in ingegneria civile.",
   "license": "MIT",
@@ -22,6 +22,7 @@
     "example": "node examples/basic-model.js",
     "example:ntc2018": "node examples/ntc2018-presets.js",
     "example:applications": "node examples/application-registry.js",
+    "example:steel-consumer": "node examples/steel-beam-consumer.js",
     "example:rc-sections": "node examples/rc-sections.js",
     "example:rc-sections:1000": "node examples/rc-sections-1000.js",
     "example:rc-deflection-report:simple-span": "node examples/write-rc-deflection-report-simple-span.js",

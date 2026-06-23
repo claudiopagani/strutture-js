@@ -2,7 +2,9 @@ import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
 import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const INTERNAL_UNITS = Object.freeze({ force: "N", length: "mm" });
-const AUTOMATIC_MCR_FAMILIES = new Set(["IPE", "HEA", "HEB", "HEM"]);
+const I_H_FAMILIES = new Set(["IPE", "HEA", "HEB", "HEM"]);
+const AUTOMATIC_MCR_FAMILIES = new Set([...I_H_FAMILIES, "RHS"]);
+const LTB_NOT_SUSCEPTIBLE_FAMILIES = new Set(["CHS", "SHS", "ROUND"]);
 
 const round = (value, decimals = 6) =>
   Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
@@ -110,8 +112,12 @@ function defaultLtbCurve(section) {
     section?.width ?? section?.catalogProperties?.b,
   );
 
-  if (AUTOMATIC_MCR_FAMILIES.has(family) && isFinitePositive(h) && isFinitePositive(b)) {
+  if (I_H_FAMILIES.has(family) && isFinitePositive(h) && isFinitePositive(b)) {
     return h / b <= 2 ? "b" : "c";
+  }
+
+  if (family === "RHS") {
+    return "d";
   }
 
   return "d";
@@ -176,10 +182,10 @@ export function calculateElasticCriticalMomentLT({
       status: RESULT_STATUS.NOT_SUPPORTED,
       value: null,
       warnings: [
-        `Automatic Mcr calculation is implemented only for doubly symmetric I/H profiles; profile family ${family || "unknown"} requires user-provided Mcr.`,
+        `Automatic Mcr calculation is implemented for I/H profiles and RHS closed sections; profile family ${family || "unknown"} requires user-provided Mcr or an explicit exemption.`,
       ],
       metadata: {
-        method: "ntc2018-en1993-ltb-mcr-ih-simplified",
+        method: "ntc2018-en1993-ltb-mcr-doubly-symmetric-simplified",
         family,
       },
     };
@@ -189,7 +195,7 @@ export function calculateElasticCriticalMomentLT({
   const G = shearModulus(material);
   const Iz = resolveCatalogInertia(section, "Iz", section?.inertiaZ);
   const It = resolveCatalogInertia(section, "IT", section?.torsionalConstant);
-  const Iw = resolveWarpingConstant(section);
+  const Iw = resolveWarpingConstant(section) ?? 0;
   const L = unbracedLength * effectiveLengthFactor;
   const kw = warpingLengthFactor;
   const C1 = momentGradientFactor;
@@ -199,7 +205,8 @@ export function calculateElasticCriticalMomentLT({
     !isFinitePositive(G) ||
     !isFinitePositive(Iz) ||
     !isFinitePositive(It) ||
-    !isFinitePositive(Iw) ||
+    !Number.isFinite(Iw) ||
+    Iw < 0 ||
     !isFinitePositive(L) ||
     !isFinitePositive(kw) ||
     !isFinitePositive(C1)
@@ -211,7 +218,7 @@ export function calculateElasticCriticalMomentLT({
         "Automatic Mcr calculation requires E, G, Iz, IT, Iw, unbraced length and positive factors.",
       ],
       metadata: {
-        method: "ntc2018-en1993-ltb-mcr-ih-simplified",
+        method: "ntc2018-en1993-ltb-mcr-doubly-symmetric-simplified",
         family,
         E: round(E),
         G: round(G),
@@ -240,7 +247,7 @@ export function calculateElasticCriticalMomentLT({
     value: isFinitePositive(mCr) ? mCr : null,
     warnings,
     metadata: {
-      method: "ntc2018-en1993-ltb-mcr-ih-simplified",
+      method: "ntc2018-en1993-ltb-mcr-doubly-symmetric-simplified",
       family,
       E: round(E),
       G: round(G),
@@ -283,9 +290,82 @@ export function verifySteelLateralTorsionalBuckling({
   const resolvedGammaM1 =
     gammaM1 ?? material?.metadata?.gammaM1 ?? material?.metadata?.gammaM0 ?? 1.05;
   const fyk = material?.fyk;
+  const family = normalizedFamily(section);
   let mCr = criticalMoment;
   let mCrMetadata = {};
   let source = criticalMomentSource ?? "user-provided";
+
+  if (sectionClass > 3) {
+    return {
+      status: RESULT_STATUS.NOT_SUPPORTED,
+      check: null,
+      warnings: [
+        "LTB verification is blocked for class 4 sections until effective section properties are implemented.",
+      ],
+      metadata: {
+        method: "ntc2018-en1993-lateral-torsional-buckling-mvp",
+        family,
+        sectionClass,
+      },
+    };
+  }
+
+  if (
+    LTB_NOT_SUSCEPTIBLE_FAMILIES.has(family) &&
+    !isFinitePositive(mCr)
+  ) {
+    if (
+      !isFinitePositive(fyk) ||
+      !isFinitePositive(resolvedGammaM1) ||
+      !isFinitePositive(bendingSectionModulus)
+    ) {
+      return {
+        status: RESULT_STATUS.NOT_SUPPORTED,
+        check: null,
+        warnings: [
+          "LTB exemption requires fyk, gammaM1 and a positive bending section modulus.",
+        ],
+        metadata: {
+          method: "ntc2018-en1993-lateral-torsional-buckling-mvp",
+          family,
+          sectionClass,
+        },
+      };
+    }
+
+    const referenceMoment = bendingSectionModulus * fyk;
+    const capacity = referenceMoment / resolvedGammaM1;
+    const utilizationRatio = Math.abs(mEd) / capacity;
+
+    return {
+      status: utilizationRatio <= 1 ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+      check: {
+        id: "steel-lateral-torsional-buckling",
+        description: "Lateral-torsional buckling resistance of the steel beam segment",
+        demand: round(Math.abs(mEd)),
+        capacity: round(capacity),
+        utilizationRatio: round(utilizationRatio),
+        ok: utilizationRatio <= 1,
+        metadata: {
+          method: "ntc2018-en1993-lateral-torsional-buckling-mvp",
+          criticalMomentMethod: "not-required-for-axisymmetric-or-square-closed-section",
+          family,
+          sectionClass,
+          curve: null,
+          gammaM1: round(resolvedGammaM1),
+          fyk: round(fyk),
+          bendingSectionModulus: round(bendingSectionModulus),
+          referenceMoment: round(referenceMoment),
+          criticalMoment: null,
+          criticalMomentSource: "not-required",
+          relativeSlenderness: 0,
+          chiLT: 1,
+          baseChiLT: 1,
+        },
+      },
+      warnings,
+    };
+  }
 
   if (!isFinitePositive(mCr)) {
     const automatic = calculateElasticCriticalMomentLT({
@@ -310,7 +390,7 @@ export function verifySteelLateralTorsionalBuckling({
       warnings,
       metadata: {
         method: "ntc2018-en1993-lateral-torsional-buckling-mvp",
-        family: normalizedFamily(section),
+        family,
         criticalMomentSource: source,
         ...mCrMetadata,
       },
@@ -331,23 +411,7 @@ export function verifySteelLateralTorsionalBuckling({
       ],
       metadata: {
         method: "ntc2018-en1993-lateral-torsional-buckling-mvp",
-        family: normalizedFamily(section),
-      },
-    };
-  }
-
-  if (sectionClass > 3) {
-    return {
-      status: RESULT_STATUS.NOT_SUPPORTED,
-      check: null,
-      warnings: [
-        ...warnings,
-        "LTB verification is blocked for class 4 sections until effective section properties are implemented.",
-      ],
-      metadata: {
-        method: "ntc2018-en1993-lateral-torsional-buckling-mvp",
-        family: normalizedFamily(section),
-        sectionClass,
+        family,
       },
     };
   }
@@ -374,7 +438,7 @@ export function verifySteelLateralTorsionalBuckling({
       ],
       metadata: {
         method: "ntc2018-en1993-lateral-torsional-buckling-mvp",
-        family: normalizedFamily(section),
+        family,
         relativeSlenderness: round(relativeSlenderness),
       },
     };
@@ -396,7 +460,7 @@ export function verifySteelLateralTorsionalBuckling({
         ...mCrMetadata,
         method: "ntc2018-en1993-lateral-torsional-buckling-mvp",
         criticalMomentMethod: mCrMetadata.method ?? null,
-        family: normalizedFamily(section),
+        family,
         sectionClass,
         curve: selectedCurve,
         gammaM1: round(resolvedGammaM1),

@@ -1,6 +1,14 @@
 import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const I_H_FAMILIES = new Set(["IPE", "HEA", "HEB", "HEM"]);
+const DOUBLY_SYMMETRIC_METHOD_B_FAMILIES = new Set([
+  ...I_H_FAMILIES,
+  "CHS",
+  "SHS",
+  "RHS",
+  "ROUND",
+  "FLAT",
+]);
 const FORCE_TOLERANCE = 1e-9;
 
 const round = (value, decimals = 6) =>
@@ -233,12 +241,12 @@ export function verifySteelBeamColumnInteractionMy({
   const demandN = compressionAxialForce(nEd, axialForceConvention);
   const demandMy = Math.abs(myEd ?? 0);
 
-  if (!I_H_FAMILIES.has(family) && !allowSinglySymmetric) {
+  if (!DOUBLY_SYMMETRIC_METHOD_B_FAMILIES.has(family) && !allowSinglySymmetric) {
     return {
       status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings: [
-        `N+My Method B stability interaction is implemented for doubly symmetric I/H profiles; profile family ${family || "unknown"} requires a dedicated extension or explicit override.`,
+        `N+My Method B stability interaction is enabled for supported doubly symmetric profiles; profile family ${family || "unknown"} requires a dedicated extension or explicit override.`,
       ],
       metadata: {
         method: "circolare-ntc2018-c4.2.4.1.3.3.2-method-b-n-my",
@@ -340,7 +348,7 @@ export function verifySteelBeamColumnInteractionMy({
       ok: utilizationRatio <= 1,
       metadata: {
         method: "circolare-ntc2018-c4.2.4.1.3.3.2-method-b-n-my",
-        interactionTable: "C4.2.V-open-torsionally-deformable-members",
+        interactionTable: "C4.2.V-method-b-supported-family",
         domain: "N+My",
         excludedActions: "Mz, torsion, torsional-interactions",
         family,
@@ -395,12 +403,12 @@ export function verifySteelBeamColumnInteractionMyMz({
   const demandMy = Math.abs(myEd ?? 0);
   const demandMz = Math.abs(mzEd ?? 0);
 
-  if (!I_H_FAMILIES.has(family) && !allowSinglySymmetric) {
+  if (!DOUBLY_SYMMETRIC_METHOD_B_FAMILIES.has(family) && !allowSinglySymmetric) {
     return {
       status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings: [
-        `N+My+Mz Method B stability interaction is implemented for doubly symmetric I/H profiles; profile family ${family || "unknown"} requires a dedicated extension or explicit override.`,
+        `N+My+Mz Method B stability interaction is enabled for supported doubly symmetric profiles; profile family ${family || "unknown"} requires a dedicated extension or explicit override.`,
       ],
       metadata: {
         method: "circolare-ntc2018-c4.2.4.1.3.3.2-method-b-n-my-mz",
@@ -512,7 +520,7 @@ export function verifySteelBeamColumnInteractionMyMz({
       ok: utilizationRatio <= 1,
       metadata: {
         method: "circolare-ntc2018-c4.2.4.1.3.3.2-method-b-n-my-mz",
-        interactionTable: "C4.2.V-open-torsionally-deformable-members",
+        interactionTable: "C4.2.V-method-b-supported-family",
         domain: "N+My+Mz",
         excludedActions: "torsion, torsional-interactions",
         coefficientModel: "biaxial-method-b-mvp",

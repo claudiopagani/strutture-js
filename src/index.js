@@ -34,6 +34,12 @@ export { createXlamPanelSection } from "./domain/geometry/createXlamPanelSection
 export { SteelProfileSection } from "./domain/geometry/SteelProfileSection.js";
 export { createSteelProfileSection } from "./domain/geometry/createSteelProfileSection.js";
 export {
+  SteelCompoundProfileSection,
+  createDoubleAngleOpposedSection,
+  createDoubleUPNBackToBackSection,
+  createSteelCompoundProfileSection,
+} from "./domain/geometry/SteelCompoundProfileSection.js";
+export {
   STEEL_PROFILE_FAMILIES,
   STEEL_PROFILE_CATALOG_UNITS,
   STEEL_PROFILE_SECTION_DATABASE,
@@ -250,6 +256,7 @@ export {
   calculateSteelMethodBInteractionCoefficients,
   calculateSteelMethodBInteractionCoefficientsMyMz,
   classifySteelSection,
+  getSteelVerificationCapabilities,
   inferSteelCompressionBucklingCurves,
   steelBucklingCurveImperfectionFactor,
   verifySteelBeamColumnInteractionMy,

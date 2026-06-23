@@ -65,6 +65,37 @@ test("catalog helpers expose integrated families and profile lookup", () => {
   assert.equal(getSteelProfileSectionData("UPN200").family, "UPN");
 });
 
+test("catalog includes extended European steel profile families", () => {
+  const expectedFamilies = ["CHS", "SHS", "RHS", "L", "LU", "T", "FLAT", "ROUND"];
+
+  for (const family of expectedFamilies) {
+    assert.ok(STEEL_PROFILE_FAMILIES.includes(family));
+    assert.ok(listSteelProfileSectionsByFamily(family).length > 0);
+  }
+
+  const profileNames = [
+    "CHS114.3X5",
+    "SHS100X100X5",
+    "RHS200X100X6.3",
+    "L60X60X6",
+    "LU100X75X8",
+    "T100X100X11",
+    "FL100X10",
+    "RD40",
+  ];
+
+  for (const profileName of profileNames) {
+    const section = createSteelProfileSection({ profileName, units });
+
+    assert.ok(section.area > 0, `${profileName} area`);
+    assert.ok(section.inertiaY > 0, `${profileName} Iy`);
+    assert.ok(section.inertiaZ > 0, `${profileName} Iz`);
+    assert.ok(section.massPerLength > 0, `${profileName} mass`);
+    assert.equal(section.metadata.catalogUnitSystem.length, "m");
+    assert.ok(section.convertedCatalogProperties.A > section.catalogProperties.A);
+  }
+});
+
 test("throws on unknown steel profile", () => {
   assert.throws(
     () => createSteelProfileSection({ profileName: "XYZ999", units }),

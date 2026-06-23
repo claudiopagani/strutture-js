@@ -11,8 +11,10 @@ import {
   verifySteelLateralTorsionalBuckling,
   classifySteelSection,
   createNTC2018StructuralSteelMaterial,
+  createDoubleUPNBackToBackSection,
   createSteelBeamSectionProvider,
   createSteelProfileSection,
+  getSteelVerificationCapabilities,
 } from "../src/index.js";
 
 const units = { force: "kN", length: "m" };
@@ -415,6 +417,267 @@ test("steel section classification supports I/H and UPN profiles", () => {
     tinyActionClassification.parts.find((part) => part.id === "web").compression,
     false,
   );
+});
+
+test("steel section classification supports extended catalog profile families", () => {
+  const material = createNTC2018StructuralSteelMaterial({
+    grade: "S275",
+    units,
+  });
+  const cases = [
+    ["CHS114.3X5", "CHS", "wall"],
+    ["SHS100X100X5", "SHS", "flange"],
+    ["RHS200X100X6.3", "RHS", "web"],
+    ["L60X60X6", "L", "leg"],
+    ["LU100X75X8", "LU", "long-leg"],
+    ["T100X100X11", "T", "stem"],
+    ["FL100X10", "FLAT", "flat"],
+    ["RD40", "ROUND", "solid-round"],
+  ];
+
+  for (const [profileName, family, partId] of cases) {
+    const section = createSteelProfileSection({ profileName, units });
+    const classification = classifySteelSection({
+      section,
+      material,
+      nEd: 10e3,
+      mEd: 1e6,
+      mzEd: 0.25e6,
+    });
+
+    assert.equal(classification.status, "ok", profileName);
+    assert.equal(classification.family, family);
+    assert.ok(classification.class <= 3, profileName);
+    assert.ok(
+      classification.parts.some((part) => part.id === partId),
+      `${profileName} exposes ${partId}`,
+    );
+  }
+});
+
+test("extended RHS profiles support compression buckling, automatic Mcr and Method B interaction", () => {
+  const material = createNTC2018StructuralSteelMaterial({
+    grade: "S275",
+    units,
+  });
+  const section = createSteelProfileSection({
+    profileName: "RHS200X100X6.3",
+    units,
+  });
+  const classification = classifySteelSection({
+    section,
+    material,
+    nEd: 20e3,
+    mEd: 4e6,
+    mzEd: 1e6,
+  });
+  const compression = verifySteelCompressionBuckling({
+    section,
+    material,
+    nEd: 20e3,
+    sectionClass: classification.class,
+    lengthY: 3000,
+    lengthZ: 3000,
+  });
+  const ltb = verifySteelLateralTorsionalBuckling({
+    section,
+    material,
+    mEd: 4e6,
+    sectionClass: classification.class,
+    bendingSectionModulus: section.plasticSectionModulusY,
+    unbracedLength: 3000,
+  });
+  const interaction = verifySteelBeamColumnInteractionMyMz({
+    section,
+    material,
+    nEd: 20e3,
+    myEd: 4e6,
+    mzEd: 1e6,
+    sectionClass: classification.class,
+    bendingSectionModulusY: section.plasticSectionModulusY,
+    bendingSectionModulusZ: section.plasticSectionModulusZ,
+    compressionBucklingResult: compression,
+    chiLT: ltb.check.metadata.chiLT,
+  });
+
+  assert.equal(classification.status, "ok");
+  assert.equal(compression.status, "ok");
+  assert.equal(compression.check.metadata.family, "RHS");
+  assert.equal(compression.check.metadata.curveSource, "conservative-hollow-section-default-curve-c");
+  assert.equal(ltb.status, "ok");
+  assert.equal(ltb.check.metadata.family, "RHS");
+  assert.equal(ltb.check.metadata.criticalMomentSource, "automatic-simplified");
+  assert.equal(interaction.status, "ok");
+  assert.equal(interaction.check.metadata.family, "RHS");
+  assert.equal(interaction.check.metadata.domain, "N+My+Mz");
+});
+
+test("axisymmetric profiles bypass classic LTB while open unsymmetric profiles stay guarded", () => {
+  const material = createNTC2018StructuralSteelMaterial({
+    grade: "S275",
+    units,
+  });
+  const chs = createSteelProfileSection({
+    profileName: "CHS114.3X5",
+    units,
+  });
+  const tee = createSteelProfileSection({
+    profileName: "T100X100X11",
+    units,
+  });
+  const chsClassification = classifySteelSection({
+    section: chs,
+    material,
+    nEd: 0,
+    mEd: 2e6,
+  });
+  const chsLtb = verifySteelLateralTorsionalBuckling({
+    section: chs,
+    material,
+    mEd: 2e6,
+    sectionClass: chsClassification.class,
+    bendingSectionModulus: chs.plasticSectionModulusY,
+    unbracedLength: 3000,
+  });
+  const teeClassification = classifySteelSection({
+    section: tee,
+    material,
+    nEd: 20e3,
+    mEd: 1e6,
+  });
+  const guardedCompression = verifySteelCompressionBuckling({
+    section: tee,
+    material,
+    nEd: 20e3,
+    sectionClass: teeClassification.class,
+    lengthY: 3000,
+    lengthZ: 3000,
+  });
+  const flexuralOnlyCompression = verifySteelCompressionBuckling({
+    section: tee,
+    material,
+    nEd: 20e3,
+    sectionClass: teeClassification.class,
+    lengthY: 3000,
+    lengthZ: 3000,
+    allowOpenSectionFlexuralBuckling: true,
+  });
+
+  assert.equal(chsLtb.status, "ok");
+  assert.equal(chsLtb.check.metadata.criticalMomentSource, "not-required");
+  assert.equal(chsLtb.check.metadata.chiLT, 1);
+  assert.equal(guardedCompression.status, "not-supported");
+  assert.equal(flexuralOnlyCompression.status, "ok");
+  assert.ok(
+    flexuralOnlyCompression.warnings.some((warning) =>
+      warning.includes("flexural-torsional buckling"),
+    ),
+  );
+});
+
+test("steel verification capabilities describe automatic and guarded checks", () => {
+  const rhs = getSteelVerificationCapabilities({
+    profileName: "RHS200X100X6.3",
+    units,
+  });
+  const upn = getSteelVerificationCapabilities({
+    profileName: "UPN200",
+    units,
+  });
+  const compound = createDoubleUPNBackToBackSection({
+    profileName: "UPN200",
+    gap: 0.02,
+    units,
+  });
+  const compoundCapabilities = getSteelVerificationCapabilities({
+    section: compound,
+  });
+  const unknown = getSteelVerificationCapabilities({
+    profileName: "XYZ999",
+    units,
+  });
+
+  assert.equal(rhs.status, "supported");
+  assert.equal(rhs.checks.classification.status, "supported");
+  assert.equal(rhs.checks.compressionBuckling.status, "automatic");
+  assert.equal(rhs.checks.lateralTorsionalBuckling.status, "automatic");
+  assert.equal(rhs.checks.beamColumnInteraction.status, "automatic");
+  assert.equal(upn.status, "supported");
+  assert.equal(upn.checks.lateralTorsionalBuckling.status, "requires-input");
+  assert.equal(upn.checks.beamColumnInteraction.status, "requires-override");
+  assert.equal(compoundCapabilities.status, "partially-supported");
+  assert.equal(compoundCapabilities.family, "COMPOUND");
+  assert.equal(compoundCapabilities.compound.geometry, "supported");
+  assert.equal(compoundCapabilities.checks.classification.status, "not-supported");
+  assert.equal(unknown.status, "not-supported");
+  assert.equal(unknown.checks.classification.status, "not-supported");
+});
+
+test("steel member verification runs RHS stability and interaction without user Mcr", () => {
+  const section = createSteelProfileSection({
+    profileName: "RHS200X100X6.3",
+    units,
+  });
+  const material = createNTC2018StructuralSteelMaterial({
+    grade: "S275",
+    units,
+  });
+  const sectionProvider = createSteelBeamSectionProvider({
+    section,
+    material,
+  });
+  const analysisResult = new SingleBeamAnalysis().analyze({
+    id: "rhs-steel-check",
+    units: beamUnits,
+    geometry: {
+      start: { x: 0, y: 0 },
+      end: { x: 4, y: 0 },
+    },
+    sectionProvider,
+    supports: {
+      start: "hinge",
+      end: "roller",
+    },
+    loads: [
+      {
+        id: "g1",
+        actionType: "G1",
+        type: "uniform",
+        value: -1,
+      },
+    ],
+    combinations: [
+      {
+        id: "uls",
+        limitState: "ULS",
+        factors: { G1: 1.3 },
+      },
+    ],
+    discretization: {
+      elementCount: 4,
+    },
+  });
+  const verification = new SteelMemberVerification().verify({
+    memberId: "rhs-steel-check",
+    section,
+    material,
+    analysisResult,
+  });
+  const ltb = verification.checks.find(
+    (check) => check.id === "steel-lateral-torsional-buckling",
+  );
+  const compression = verification.checks.find(
+    (check) => check.id === "steel-compression-buckling",
+  );
+  const interaction = verification.checks.find(
+    (check) => check.id === "steel-beam-column-interaction-n-my",
+  );
+
+  assert.equal(verification.status, "ok");
+  assert.equal(ltb.metadata.family, "RHS");
+  assert.equal(ltb.metadata.criticalMomentSource, "automatic-simplified");
+  assert.equal(compression.metadata.family, "RHS");
+  assert.equal(interaction.metadata.family, "RHS");
 });
 
 test("steel member verification blocks class 4 sections until effective properties exist", () => {
