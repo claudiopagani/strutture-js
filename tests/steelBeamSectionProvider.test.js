@@ -55,14 +55,16 @@ test("steel beam provider returns elastic stiffness and resistance metadata", ()
   approx(properties.metadata.fyd, material.fyd);
   approx(
     properties.metadata.elasticMomentResistance,
-    material.fyd * section.catalogProperties.Wel_y * 1e9,
+    material.fyd * section.catalogProperties.Wel_z * 1e9,
     1e-6,
   );
   approx(
     properties.metadata.plasticMomentResistance,
-    material.fyd * section.catalogProperties.Wpl_y * 1e9,
+    material.fyd * section.catalogProperties.Wpl_z * 1e9,
     1e-6,
   );
+  assert.equal(properties.metadata.primaryBendingMoment, "Mzz");
+  assert.equal(properties.metadata.secondaryBendingMoment, "Myy");
 });
 
 test("steel beam provider can drive SingleBeamAnalysis with Timoshenko model", () => {
@@ -186,10 +188,11 @@ test("steel member verification checks base resistance from FEM samples", () => 
   assert.ok(compressionBuckling);
   assert.equal(compressionBuckling.metadata.lengthInferenceSource, "inferred-pinned-pinned");
   assert.ok(beamColumnInteraction);
-  assert.equal(beamColumnInteraction.metadata.domain, "N+My");
+  assert.equal(beamColumnInteraction.metadata.domain, "N+Mzz");
+  assert.equal(beamColumnInteraction.metadata.legacyDomain, "N+My");
   assert.equal(
     beamColumnInteraction.metadata.excludedActions,
-    "Mz, torsion, torsional-interactions",
+    "Myy, torsion, torsional-interactions",
   );
   assert.ok(verification.checks.some((check) => check.id === "steel-bending"));
   assert.ok(verification.checks.some((check) => check.id === "steel-shear"));
@@ -198,7 +201,7 @@ test("steel member verification checks base resistance from FEM samples", () => 
   assert.ok(verification.utilizationRatio < 1);
 });
 
-test("steel member verification checks rotated weak-axis moment with N+My+Mz stability", () => {
+test("steel member verification checks rotated weak-axis moment with N+Mzz+Myy stability", () => {
   const { section, material } = createSteelFixture();
   const sectionProvider = createSteelBeamSectionProvider({
     section,
@@ -252,8 +255,10 @@ test("steel member verification checks rotated weak-axis moment with N+My+Mz sta
 
   assert.equal(verification.status, "ok");
   assert.ok(interaction);
-  assert.equal(interaction.metadata.domain, "N+My+Mz");
+  assert.equal(interaction.metadata.domain, "N+Mzz+Myy");
+  assert.equal(interaction.metadata.legacyDomain, "N+My+Mz");
   assert.ok(Math.abs(interaction.metadata.mzEdSectionUnits) > 0);
+  assert.ok(Math.abs(interaction.metadata.myyEdSectionUnits) > 0);
   assert.ok(Number.isFinite(interaction.metadata.kyz));
   assert.ok(Number.isFinite(interaction.metadata.kzz));
   assert.ok(interaction.metadata.equationY > 0);
@@ -279,7 +284,7 @@ test("steel lateral-torsional buckling supports automatic I/H Mcr and user Mcr f
     material,
     mEd: 5e6,
     sectionClass: 1,
-    bendingSectionModulus: ipe.catalogProperties.Wpl_y * 1e9,
+    bendingSectionModulus: ipe.catalogProperties.Wpl_z * 1e9,
     unbracedLength: 2500,
   });
   const upnCheck = verifySteelLateralTorsionalBuckling({
@@ -287,7 +292,7 @@ test("steel lateral-torsional buckling supports automatic I/H Mcr and user Mcr f
     material,
     mEd: 5e6,
     sectionClass: 1,
-    bendingSectionModulus: upn.catalogProperties.Wpl_y * 1e9,
+    bendingSectionModulus: upn.catalogProperties.Wpl_z * 1e9,
     unbracedLength: 3000,
     criticalMoment: 120e6,
   });
@@ -301,7 +306,7 @@ test("steel lateral-torsional buckling supports automatic I/H Mcr and user Mcr f
   assert.equal(upnCheck.check.metadata.criticalMoment, 120e6);
 });
 
-test("steel compression buckling and N+My Method B work as standalone checks", () => {
+test("steel compression buckling and N+Mzz Method B work as standalone checks", () => {
   const material = createNTC2018StructuralSteelMaterial({
     grade: "S275",
     units,
@@ -324,7 +329,7 @@ test("steel compression buckling and N+My Method B work as standalone checks", (
     nEd: 50e3,
     myEd: 10e6,
     sectionClass: 1,
-    bendingSectionModulus: ipe.catalogProperties.Wpl_y * 1e9,
+    bendingSectionModulus: ipe.catalogProperties.Wpl_z * 1e9,
     compressionBucklingResult: compression,
     chiLT: 1,
   });
@@ -335,30 +340,30 @@ test("steel compression buckling and N+My Method B work as standalone checks", (
     myEd: 10e6,
     mzEd: 2e6,
     sectionClass: 1,
-    bendingSectionModulusY: ipe.catalogProperties.Wpl_y * 1e9,
-    bendingSectionModulusZ: ipe.catalogProperties.Wpl_z * 1e9,
+    bendingSectionModulusY: ipe.catalogProperties.Wpl_z * 1e9,
+    bendingSectionModulusZ: ipe.catalogProperties.Wpl_y * 1e9,
     compressionBucklingResult: compression,
     chiLT: 1,
   });
 
   assert.equal(compression.status, "ok");
-  assert.equal(compression.check.metadata.curveY, "a");
-  assert.equal(compression.check.metadata.curveZ, "b");
-  assert.ok(compression.check.metadata.axisZResistance < compression.check.metadata.axisYResistance);
+  assert.equal(compression.check.metadata.curveY, "b");
+  assert.equal(compression.check.metadata.curveZ, "a");
+  assert.ok(compression.check.metadata.axisYResistance < compression.check.metadata.axisZResistance);
   assert.equal(interaction.status, "ok");
   assert.equal(interaction.check.metadata.method, "circolare-ntc2018-c4.2.4.1.3.3.2-method-b-n-my");
-  assert.equal(interaction.check.metadata.domain, "N+My");
+  assert.equal(interaction.check.metadata.domain, "N+Mzz");
   assert.ok(interaction.check.metadata.kyy > 1);
   assert.equal(
     interaction.check.metadata.excludedActions,
-    "Mz, torsion, torsional-interactions",
+    "Myy, torsion, torsional-interactions",
   );
   assert.equal(biaxialInteraction.status, "ok");
   assert.equal(
     biaxialInteraction.check.metadata.method,
     "circolare-ntc2018-c4.2.4.1.3.3.2-method-b-n-my-mz",
   );
-  assert.equal(biaxialInteraction.check.metadata.domain, "N+My+Mz");
+  assert.equal(biaxialInteraction.check.metadata.domain, "N+Mzz+Myy");
   assert.equal(
     biaxialInteraction.check.metadata.excludedActions,
     "torsion, torsional-interactions",
@@ -509,7 +514,7 @@ test("extended RHS profiles support compression buckling, automatic Mcr and Meth
   assert.equal(ltb.check.metadata.criticalMomentSource, "automatic-simplified");
   assert.equal(interaction.status, "ok");
   assert.equal(interaction.check.metadata.family, "RHS");
-  assert.equal(interaction.check.metadata.domain, "N+My+Mz");
+  assert.equal(interaction.check.metadata.domain, "N+Mzz+Myy");
 });
 
 test("axisymmetric profiles bypass classic LTB while open unsymmetric profiles stay guarded", () => {

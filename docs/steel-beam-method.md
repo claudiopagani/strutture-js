@@ -1,7 +1,7 @@
 # Metodo per travi semplici in acciaio
 
 Questo documento descrive il metodo implementato per travi semplici in acciaio.
-Il perimetro e prudente: la classificazione locale della sezione governa la resistenza a flessione, l'instabilita flesso-torsionale e implementata in MVP per profili I/H, `RHS` o con `Mcr` fornito dall'utente, l'instabilita di aste compresse segue le curve NTC 2018 e la pressoflessione normativa copre `N + My`, con estensione `N + My + Mz` per profili doppiamente simmetrici supportati.
+Il perimetro e prudente: la classificazione locale della sezione governa la resistenza a flessione, l'instabilita flesso-torsionale e implementata in MVP per profili I/H, `RHS` o con `Mcr` fornito dall'utente, l'instabilita di aste compresse segue le curve NTC 2018 e la pressoflessione normativa copre `N + Mzz`, con estensione `N + Mzz + Myy` per profili doppiamente simmetrici supportati.
 Torsione, interazioni torsionali, affinamenti LTB sofisticati e sezioni efficaci di classe 4 restano fuori dal dominio attuale.
 
 ## Perimetro
@@ -15,7 +15,7 @@ Il workflow copre:
 * verifiche ULS di sezione da diagrammi FEM, con flessione governata dalla classe;
 * instabilita flesso-torsionale su segmenti non controventati;
 * instabilita di aste compresse con lunghezze efficaci configurabili;
-* interazione di stabilita `N + My` e, quando `Mz` e presente, `N + My + Mz` secondo Metodo B della Circolare per profili doppiamente simmetrici supportati;
+* interazione di stabilita `N + Mzz` e, quando `Myy` e presente, `N + Mzz + Myy` secondo Metodo B della Circolare per profili doppiamente simmetrici supportati;
 * verifica SLE di freccia verticale;
 * report JSON/Markdown con checks, metadata, warning e assunzioni.
 
@@ -30,6 +30,16 @@ Le sezioni e i materiali sono normalizzati internamente in:
 
 `SteelBeamSectionProvider` espone le rigidezze in `N/mm`, poi `SingleBeamAnalysis` le converte nelle unita del modello di trave, per esempio `kN/m`.
 Questo mantiene coerenti rigidezza FEM, resistenze e report.
+
+## Convenzione Assi SCA
+
+Le sezioni in acciaio esposte dal profilario seguono la stessa convenzione SCA:
+
+* `y-y` verticale nel piano della sezione;
+* `z-z` orizzontale nel piano della sezione;
+* `x-x` longitudinale alla trave, entrante nel foglio quando si guarda la sezione frontalmente.
+
+Per un IPE/HE in posizione ordinaria l'asse forte e quindi `z-z`: il catalogo pubblico normalizzato espone `Izz`, `Wel_zz`, `Wpl_zz` come proprieta forti e `Iyy`, `Wel_yy`, `Wpl_yy` come proprieta deboli. I campi legacy `inertiaY`, `elasticSectionModulusY` e `plasticSectionModulusY` restano usati internamente dal FEM come slot di flessione verticale primaria; nei metadata dei check sono esplicitati come `Mzz/Wzz`.
 
 ## Verificatore
 
@@ -47,8 +57,8 @@ Checks implementati:
 * `steel-axial-bending-interaction`: screening lineare locale assiale-flessione.
 * `steel-lateral-torsional-buckling`: instabilita flesso-torsionale del segmento non controventato.
 * `steel-compression-buckling`: instabilita di asta compressa.
-* `steel-beam-column-interaction-n-my`: interazione di stabilita `N + My`.
-* `steel-beam-column-interaction-n-my-mz`: interazione di stabilita `N + My + Mz`.
+* `steel-beam-column-interaction-n-my`: interazione di stabilita `N + Mzz` (id storico).
+* `steel-beam-column-interaction-n-my-mz`: interazione di stabilita `N + Mzz + Myy` (id storico).
 
 La tensione di progetto e:
 
@@ -99,13 +109,13 @@ La flessione usa il modulo resistente coerente con la classe locale:
 
 | Classe | Modulo usato |
 | --- | --- |
-| 1 | `Wpl,y` |
-| 2 | `Wpl,y` |
-| 3 | `Wel,y` |
+| 1 | `Wpl,zz` |
+| 2 | `Wpl,zz` |
+| 3 | `Wel,zz` |
 | 4 | verifica bloccata finche non esistono proprieta efficaci |
 
 ```txt
-MRd = Wy * fyd
+Mzz,Rd = Wzz * fyd
 ```
 
 Il taglio usa l'area efficace disponibile nel catalogo:
@@ -118,7 +128,7 @@ Lo screening tensionale espone:
 
 ```txt
 sigmaN = |NEd| / A
-sigmaM = |MEd| / Wy
+sigmaM = |Mzz,Ed| / Wzz
 tau = |VEd| / Av,y
 sigmaEq = sqrt((sigmaN + sigmaM)^2 + 3 tau^2)
 ```
@@ -154,7 +164,7 @@ Gli input principali sono:
 Se `criticalMoment` non e fornito, il motore calcola automaticamente `Mcr` per profili I/H doppiamente simmetrici (`IPE`, `HEA`, `HEB`, `HEM`) e per `RHS` con la formula semplificata:
 
 ```txt
-Mcr = C1 * pi^2 * E * Iz / Lcr^2 * sqrt(Iw / Iz / kw^2 + Lcr^2 * G * IT / (pi^2 * E * Iz))
+Mcr = C1 * pi^2 * E * Iyy / Lcr^2 * sqrt(Iw / Iyy / kw^2 + Lcr^2 * G * IT / (pi^2 * E * Iyy))
 ```
 
 Assunzioni del calcolo automatico:
@@ -167,8 +177,8 @@ Assunzioni del calcolo automatico:
 La resistenza e calcolata come:
 
 ```txt
-lambdaLT = sqrt(Wy * fyk / Mcr)
-Mb,Rd = chiLT * Wy * fyk / gammaM1
+lambdaLT = sqrt(Wzz * fyk / Mcr)
+Mb,Rd = chiLT * Wzz * fyk / gammaM1
 ```
 
 Per `CHS`, `SHS` e `ROUND` il controllo classico LTB e trattato come non richiesto (`chiLT = 1`). Per `UPN`, `L`, `LU`, `T` e `FLAT` la verifica e disponibile se l'utente fornisce `Mcr`; in caso contrario il report segnala che la verifica non puo essere generata.
@@ -243,23 +253,23 @@ Se non sono fornite, il wrapper della trave semplice usa la luce FEM e prova a i
 
 Per telai complessi o vincoli non riconducibili allo schema di trave semplice, la lunghezza libera deve essere fornita dall'utente.
 
-## Pressoflessione N + My e N + My + Mz
+## Pressoflessione N + Mzz e N + Mzz + Myy
 
 Le verifiche implementate sono:
 
 * `steel-beam-column-interaction-n-my`
 * `steel-beam-column-interaction-n-my-mz`
 
-Il dominio `N + My` resta usato quando `Mz` e nullo:
+Il dominio `N + Mzz` resta usato quando `Myy` e nullo:
 
 ```txt
-NEd + My,Ed
+NEd + Mzz,Ed
 ```
 
-Quando `Mz` e significativo e il profilo e doppiamente simmetrico supportato, il dominio diventa:
+Quando `Myy` e significativo e il profilo e doppiamente simmetrico supportato, il dominio diventa:
 
 ```txt
-NEd + My,Ed + Mz,Ed
+NEd + Mzz,Ed + Myy,Ed
 ```
 
 Restano non considerate:
@@ -268,34 +278,34 @@ Restano non considerate:
 * interazioni torsionali;
 * instabilita torsionale non rappresentata dal modello LTB MVP.
 
-Per sezioni di classe 1, 2 o 3 il controllo `N + My` usa il Metodo B della Circolare:
+Per sezioni di classe 1, 2 o 3 il controllo `N + Mzz` usa il Metodo B della Circolare:
 
 ```txt
 NEd * gammaM1 / (chi_y * A * fyk)
-  + kyy * My,Ed * gammaM1 / (chiLT * Wy * fyk) <= 1
+  + kyy * Mzz,Ed * gammaM1 / (chiLT * Wzz * fyk) <= 1
 
 NEd * gammaM1 / (chi_z * A * fyk)
-  + kzy * My,Ed * gammaM1 / (chiLT * Wy * fyk) <= 1
+  + kzy * Mzz,Ed * gammaM1 / (chiLT * Wzz * fyk) <= 1
 ```
 
-Il controllo `N + My + Mz` usa l'estensione biaxiale:
+Il controllo `N + Mzz + Myy` usa l'estensione biaxiale:
 
 ```txt
 NEd * gammaM1 / (chi_y * A * fyk)
-  + kyy * My,Ed * gammaM1 / (chiLT * Wy * fyk)
-  + kyz * Mz,Ed * gammaM1 / (Wz * fyk) <= 1
+  + kyy * Mzz,Ed * gammaM1 / (chiLT * Wzz * fyk)
+  + kyz * Myy,Ed * gammaM1 / (Wyy * fyk) <= 1
 
 NEd * gammaM1 / (chi_z * A * fyk)
-  + kzy * My,Ed * gammaM1 / (chiLT * Wy * fyk)
-  + kzz * Mz,Ed * gammaM1 / (Wz * fyk) <= 1
+  + kzy * Mzz,Ed * gammaM1 / (chiLT * Wzz * fyk)
+  + kzz * Myy,Ed * gammaM1 / (Wyy * fyk) <= 1
 ```
 
 Dove:
 
 * `chi_y` e `chi_z` arrivano dal modulo di instabilita a compressione;
 * `chiLT` arriva dal modulo di instabilita flesso-torsionale, oppure vale `1` se la trave e dichiarata controventata;
-* `Wy` e `Wpl,y` per classi 1-2 e `Wel,y` per classe 3;
-* `Wz` e `Wpl,z` per classi 1-2 e `Wel,z` per classe 3;
+* `Wzz` e `Wpl,zz` per classi 1-2 e `Wel,zz` per classe 3;
+* `Wyy` e `Wpl,yy` per classi 1-2 e `Wel,yy` per classe 3;
 * `kyy`, `kyz`, `kzy` e `kzz` sono i coefficienti di interazione del modello Metodo B MVP;
 * i coefficienti di momento `alphaMy`, `alphaMz` e `alphaMLT` valgono `1.0` di default e sono configurabili.
 
@@ -384,7 +394,9 @@ I metadata dei checks acciaio includono grandezze utili per il frontend:
 * `webAlpha`;
 * `webPsi`;
 * `nEd` e `mEd` nelle unita del modello di trave;
+* `mzzEd` e `myyEd` nelle unita del modello di trave, coerenti con la convenzione SCA;
 * `nEdSectionUnits` e `mEdSectionUnits` nelle unita interne della sezione;
+* `mzzEdSectionUnits` e `myyEdSectionUnits` nelle unita interne della sezione;
 * `resultId`;
 * `station`;
 * `combinationType`;
@@ -413,9 +425,9 @@ I test coprono:
 | Blocco prudente per classe 4 | `tests/steelBeamSectionProvider.test.js` |
 | Resistenze da profilo, materiale e classe | `tests/steelBeamSectionProvider.test.js` |
 | Instabilita flesso-torsionale I/H/RHS automatica, CHS esente e UPN con `Mcr` utente | `tests/steelBeamSectionProvider.test.js` |
-| Instabilita aste compresse e interazioni `N + My` / `N + My + Mz` standalone | `tests/steelBeamSectionProvider.test.js` |
+| Instabilita aste compresse e interazioni `N + Mzz` / `N + Mzz + Myy` standalone | `tests/steelBeamSectionProvider.test.js` |
 | Sezioni composte 2UPN e 2L come proprieta geometriche | `tests/steelCompoundProfileSection.test.js` |
-| Report acciaio con checks di stabilita `LTB`, aste compresse e `N + My` | `tests/singleBeamDesignApplication.test.js` |
+| Report acciaio con checks di stabilita `LTB`, aste compresse e `N + Mzz` | `tests/singleBeamDesignApplication.test.js` |
 | Verifica ULS da diagrammi FEM | `tests/steelBeamSectionProvider.test.js` |
 | Verifica SLE freccia da diagrammi FEM | `tests/steelBeamSectionProvider.test.js` |
 | Integrazione nei report di trave semplice | `tests/singleBeamDesignApplication.test.js` |
@@ -432,7 +444,7 @@ npm run example:beam-reports:write
 Restano fuori dal perimetro di questo MVP:
 
 * torsione e interazioni torsionali;
-* verifica `N + My + Mz` automatica per profili non doppiamente simmetrici;
+* verifica `N + Mzz + Myy` automatica per profili non doppiamente simmetrici;
 * verifica normativa completa delle sezioni composte `COMPOUND`;
 * classificazione locale biaxiale raffinata oltre il criterio MVP;
 * affinamento dei coefficienti LTB per diagrammi di momento e vincoli laterali specifici;

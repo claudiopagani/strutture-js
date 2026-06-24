@@ -6,7 +6,8 @@ La sezione giace nel piano `y-z`:
 
 - `z` positivo verso destra;
 - `y` positivo verso l'alto;
-- `x` longitudinale alla trave.
+- `x` longitudinale alla trave, positivo entrante nel piano del foglio quando
+  la sezione e vista frontalmente.
 
 Per una forza longitudinale `F` applicata in `(y, z)`, rispetto al punto di riferimento della sezione:
 

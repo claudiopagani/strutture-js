@@ -72,6 +72,19 @@ function resolveWarpingConstant(section) {
   return null;
 }
 
+function resolveScaInertiaAboutY(section) {
+  const value =
+    section?.inertiaAboutY ??
+    section?.inertiaYY ??
+    section?.convertedCatalogProperties?.Iyy;
+
+  if (Number.isFinite(value)) {
+    return value;
+  }
+
+  return resolveCatalogInertia(section, "Iy", section?.inertiaZ);
+}
+
 function shearModulus(material) {
   if (Number.isFinite(material?.shearModulus)) {
     return material.shearModulus;
@@ -193,7 +206,7 @@ export function calculateElasticCriticalMomentLT({
 
   const E = material?.elasticModulus;
   const G = shearModulus(material);
-  const Iz = resolveCatalogInertia(section, "Iz", section?.inertiaZ);
+  const Iyy = resolveScaInertiaAboutY(section);
   const It = resolveCatalogInertia(section, "IT", section?.torsionalConstant);
   const Iw = resolveWarpingConstant(section) ?? 0;
   const L = unbracedLength * effectiveLengthFactor;
@@ -203,7 +216,7 @@ export function calculateElasticCriticalMomentLT({
   if (
     !isFinitePositive(E) ||
     !isFinitePositive(G) ||
-    !isFinitePositive(Iz) ||
+    !isFinitePositive(Iyy) ||
     !isFinitePositive(It) ||
     !Number.isFinite(Iw) ||
     Iw < 0 ||
@@ -215,14 +228,14 @@ export function calculateElasticCriticalMomentLT({
       status: RESULT_STATUS.NOT_SUPPORTED,
       value: null,
       warnings: [
-        "Automatic Mcr calculation requires E, G, Iz, IT, Iw, unbraced length and positive factors.",
+        "Automatic Mcr calculation requires E, G, Iyy, IT, Iw, unbraced length and positive factors.",
       ],
       metadata: {
         method: "ntc2018-en1993-ltb-mcr-doubly-symmetric-simplified",
         family,
         E: round(E),
         G: round(G),
-        Iz: round(Iz),
+        Iyy: round(Iyy),
         It: round(It),
         Iw: round(Iw),
         unbracedLength: round(unbracedLength),
@@ -233,9 +246,9 @@ export function calculateElasticCriticalMomentLT({
     };
   }
 
-  const base = (Math.PI ** 2 * E * Iz) / L ** 2;
-  const torsionTerm = (L ** 2 * G * It) / (Math.PI ** 2 * E * Iz);
-  const warpingTerm = (Iw / Iz) / kw ** 2;
+  const base = (Math.PI ** 2 * E * Iyy) / L ** 2;
+  const torsionTerm = (L ** 2 * G * It) / (Math.PI ** 2 * E * Iyy);
+  const warpingTerm = (Iw / Iyy) / kw ** 2;
   const mCr = C1 * base * Math.sqrt(warpingTerm + torsionTerm);
 
   if (!isFinitePositive(mCr)) {
@@ -249,9 +262,10 @@ export function calculateElasticCriticalMomentLT({
     metadata: {
       method: "ntc2018-en1993-ltb-mcr-doubly-symmetric-simplified",
       family,
+      axisConvention: section?.axisConvention?.id ?? section?.metadata?.axisConvention?.id ?? null,
       E: round(E),
       G: round(G),
-      Iz: round(Iz),
+      Iyy: round(Iyy),
       It: round(It),
       Iw: round(Iw),
       unbracedLength: round(unbracedLength),

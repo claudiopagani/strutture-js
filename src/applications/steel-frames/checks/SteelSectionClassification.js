@@ -768,10 +768,11 @@ export function classifySteelSection({
       profileName: section?.profileName ?? null,
       parts: [],
       warnings: [
-        `Steel section classification requires complete profile geometry; missing ${missing.join(", ") || "area/inertia"}.`,
+        `Steel section classification requires complete profile geometry; missing ${missing.join(", ") || "area/Izz"}.`,
       ],
       metadata: {
         method: "ntc2018-en1993-section-classification-mvp",
+        axisConvention: section?.axisConvention?.id ?? section?.metadata?.axisConvention?.id ?? null,
         axialForceConvention,
       },
     };
@@ -798,10 +799,11 @@ export function classifySteelSection({
       profileName: section?.profileName ?? null,
       parts: [],
       warnings: [
-        "Steel section classification with Mz on rectangular hollow profiles requires Iz.",
+        "Steel section classification with Myy on rectangular hollow profiles requires Iyy.",
       ],
       metadata: {
         method: "ntc2018-en1993-section-classification-mvp",
+        axisConvention: section?.axisConvention?.id ?? section?.metadata?.axisConvention?.id ?? null,
         axialForceConvention,
         nEd: round(normalizedNEd),
         mEd: round(normalizedMEd),
@@ -837,6 +839,11 @@ export function classifySteelSection({
     warnings,
     metadata: {
       method: "ntc2018-en1993-section-classification-mvp",
+      axisConvention: section?.axisConvention?.id ?? section?.metadata?.axisConvention?.id ?? null,
+      primaryMoment: "Mzz",
+      secondaryMoment: "Myy",
+      mzzEd: round(normalizedMEd),
+      myyEd: round(normalizedMZEd),
       axialForceConvention,
       axialCompressionForce: round(nCompression),
       nEd: round(normalizedNEd),

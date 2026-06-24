@@ -246,12 +246,13 @@ export function verifySteelBeamColumnInteractionMy({
       status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings: [
-        `N+My Method B stability interaction is enabled for supported doubly symmetric profiles; profile family ${family || "unknown"} requires a dedicated extension or explicit override.`,
+        `N+Mzz Method B stability interaction is enabled for supported doubly symmetric profiles; profile family ${family || "unknown"} requires a dedicated extension or explicit override.`,
       ],
       metadata: {
         method: "circolare-ntc2018-c4.2.4.1.3.3.2-method-b-n-my",
         family,
-        domain: "N+My",
+        domain: "N+Mzz",
+        legacyDomain: "N+My",
       },
     };
   }
@@ -261,7 +262,7 @@ export function verifySteelBeamColumnInteractionMy({
       status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings: [
-        "N+My Method B stability interaction is blocked for class 4 sections until effective properties are implemented.",
+        "N+Mzz Method B stability interaction is blocked for class 4 sections until effective properties are implemented.",
       ],
       metadata: {
         method: "circolare-ntc2018-c4.2.4.1.3.3.2-method-b-n-my",
@@ -291,7 +292,7 @@ export function verifySteelBeamColumnInteractionMy({
       status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings: [
-        "N+My Method B interaction requires compression buckling reductions, chiLT, A, fyk, gammaM1 and Wy.",
+        "N+Mzz Method B interaction requires compression buckling reductions, chiLT, A, fyk, gammaM1 and Wzz.",
       ],
       metadata: {
         method: "circolare-ntc2018-c4.2.4.1.3.3.2-method-b-n-my",
@@ -322,7 +323,7 @@ export function verifySteelBeamColumnInteractionMy({
       status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings: [
-        "N+My Method B interaction coefficients could not be computed; check alphaMy/alphaMLT and slenderness inputs.",
+        "N+Mzz Method B interaction coefficients could not be computed; check alphaMy/alphaMLT and slenderness inputs.",
       ],
       metadata: {
         method: "circolare-ntc2018-c4.2.4.1.3.3.2-method-b-n-my",
@@ -341,7 +342,7 @@ export function verifySteelBeamColumnInteractionMy({
     status: utilizationRatio <= 1 ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
     check: {
       id: "steel-beam-column-interaction-n-my",
-      description: "N+My member stability interaction by Method B",
+      description: "N+Mzz member stability interaction by Method B",
       demand: round(utilizationRatio),
       capacity: 1,
       utilizationRatio: round(utilizationRatio),
@@ -349,8 +350,12 @@ export function verifySteelBeamColumnInteractionMy({
       metadata: {
         method: "circolare-ntc2018-c4.2.4.1.3.3.2-method-b-n-my",
         interactionTable: "C4.2.V-method-b-supported-family",
-        domain: "N+My",
-        excludedActions: "Mz, torsion, torsional-interactions",
+        domain: "N+Mzz",
+        legacyDomain: "N+My",
+        primaryMomentAxis: "z",
+        primaryMomentSymbol: "Mzz",
+        legacyPrimaryMomentParameter: "myEd",
+        excludedActions: "Myy, torsion, torsional-interactions",
         family,
         sectionClass,
         axialForceConvention,
@@ -408,12 +413,13 @@ export function verifySteelBeamColumnInteractionMyMz({
       status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings: [
-        `N+My+Mz Method B stability interaction is enabled for supported doubly symmetric profiles; profile family ${family || "unknown"} requires a dedicated extension or explicit override.`,
+        `N+Mzz+Myy Method B stability interaction is enabled for supported doubly symmetric profiles; profile family ${family || "unknown"} requires a dedicated extension or explicit override.`,
       ],
       metadata: {
         method: "circolare-ntc2018-c4.2.4.1.3.3.2-method-b-n-my-mz",
         family,
-        domain: "N+My+Mz",
+        domain: "N+Mzz+Myy",
+        legacyDomain: "N+My+Mz",
       },
     };
   }
@@ -423,7 +429,7 @@ export function verifySteelBeamColumnInteractionMyMz({
       status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings: [
-        "N+My+Mz Method B stability interaction is blocked for class 4 sections until effective properties are implemented.",
+        "N+Mzz+Myy Method B stability interaction is blocked for class 4 sections until effective properties are implemented.",
       ],
       metadata: {
         method: "circolare-ntc2018-c4.2.4.1.3.3.2-method-b-n-my-mz",
@@ -454,7 +460,7 @@ export function verifySteelBeamColumnInteractionMyMz({
       status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings: [
-        "N+My+Mz Method B interaction requires compression buckling reductions, chiLT, A, fyk, gammaM1, Wy and Wz.",
+        "N+Mzz+Myy Method B interaction requires compression buckling reductions, chiLT, A, fyk, gammaM1, Wzz and Wyy.",
       ],
       metadata: {
         method: "circolare-ntc2018-c4.2.4.1.3.3.2-method-b-n-my-mz",
@@ -488,7 +494,7 @@ export function verifySteelBeamColumnInteractionMyMz({
       status: RESULT_STATUS.NOT_SUPPORTED,
       check: null,
       warnings: [
-        "N+My+Mz Method B interaction coefficients could not be computed; check alphaMy/alphaMz/alphaMLT and slenderness inputs.",
+        "N+Mzz+Myy Method B interaction coefficients could not be computed; check alphaMy/alphaMz/alphaMLT and slenderness inputs.",
       ],
       metadata: {
         method: "circolare-ntc2018-c4.2.4.1.3.3.2-method-b-n-my-mz",
@@ -513,7 +519,7 @@ export function verifySteelBeamColumnInteractionMyMz({
     status: utilizationRatio <= 1 ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
     check: {
       id: "steel-beam-column-interaction-n-my-mz",
-      description: "N+My+Mz member stability interaction by Method B",
+      description: "N+Mzz+Myy member stability interaction by Method B",
       demand: round(utilizationRatio),
       capacity: 1,
       utilizationRatio: round(utilizationRatio),
@@ -521,7 +527,14 @@ export function verifySteelBeamColumnInteractionMyMz({
       metadata: {
         method: "circolare-ntc2018-c4.2.4.1.3.3.2-method-b-n-my-mz",
         interactionTable: "C4.2.V-method-b-supported-family",
-        domain: "N+My+Mz",
+        domain: "N+Mzz+Myy",
+        legacyDomain: "N+My+Mz",
+        primaryMomentAxis: "z",
+        primaryMomentSymbol: "Mzz",
+        secondaryMomentAxis: "y",
+        secondaryMomentSymbol: "Myy",
+        legacyPrimaryMomentParameter: "myEd",
+        legacySecondaryMomentParameter: "mzEd",
         excludedActions: "torsion, torsional-interactions",
         coefficientModel: "biaxial-method-b-mvp",
         family,

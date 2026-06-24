@@ -1,5 +1,6 @@
 import { CrossSection } from "./CrossSection.js";
 import { createSteelProfileSection } from "./createSteelProfileSection.js";
+import { STEEL_PROFILE_AXIS_CONVENTION } from "./steelProfileCatalog.js";
 import {
   calculateSectionMassProperties,
   rotateSecondMoments,
@@ -410,6 +411,7 @@ export class SteelCompoundProfileSection extends CrossSection {
         bounds: properties.bounds,
         plasticModulusModel: "not-computed",
         torsionModel: "sum-of-component-st-venant-constants",
+        axisConvention: STEEL_PROFILE_AXIS_CONVENTION,
         sourceUnitSystem: resolver.sourceUnitSystem,
       },
     });
@@ -419,6 +421,17 @@ export class SteelCompoundProfileSection extends CrossSection {
     this.profileName = id ?? name;
     this.massPerLength = properties.massPerLength;
     this.bounds = { ...properties.bounds };
+    this.axisConvention = STEEL_PROFILE_AXIS_CONVENTION;
+    this.inertiaAboutY = properties.inertiaZ;
+    this.inertiaAboutZ = properties.inertiaY;
+    this.inertiaYY = properties.inertiaZ;
+    this.inertiaZZ = properties.inertiaY;
+    this.elasticSectionModulusAboutY = properties.elasticSectionModulusZ;
+    this.elasticSectionModulusAboutZ = properties.elasticSectionModulusY;
+    this.elasticSectionModulusYY = properties.elasticSectionModulusZ;
+    this.elasticSectionModulusZZ = properties.elasticSectionModulusY;
+    this.shearAreaAlongY = properties.shearAreaY;
+    this.shearAreaAlongZ = properties.shearAreaZ;
   }
 
   getComponent(role) {
@@ -432,6 +445,17 @@ export class SteelCompoundProfileSection extends CrossSection {
       profileName: this.profileName,
       massPerLength: this.massPerLength,
       bounds: { ...this.bounds },
+      axisConvention: { ...this.axisConvention },
+      inertiaAboutY: this.inertiaAboutY,
+      inertiaAboutZ: this.inertiaAboutZ,
+      inertiaYY: this.inertiaYY,
+      inertiaZZ: this.inertiaZZ,
+      elasticSectionModulusAboutY: this.elasticSectionModulusAboutY,
+      elasticSectionModulusAboutZ: this.elasticSectionModulusAboutZ,
+      elasticSectionModulusYY: this.elasticSectionModulusYY,
+      elasticSectionModulusZZ: this.elasticSectionModulusZZ,
+      shearAreaAlongY: this.shearAreaAlongY,
+      shearAreaAlongZ: this.shearAreaAlongZ,
       components: this.components.map((component) => ({
         id: component.id,
         role: component.role,

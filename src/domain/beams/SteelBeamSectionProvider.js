@@ -41,11 +41,15 @@ function designStrength(material, gammaM0) {
 }
 
 function catalogKeyForSectionModulus(axis) {
+  // SteelProfileSection keeps legacy beam-provider property names:
+  // elasticSectionModulusY/plasticSectionModulusY are the primary vertical
+  // bending moduli, i.e. SCA Wzz. The explicit geometric aliases remain
+  // available as Wel_yy/Wel_zz and Wpl_yy/Wpl_zz on catalog data.
   const aliases = {
-    elasticSectionModulusY: ["Wel_y", "Wel_strong"],
-    elasticSectionModulusZ: ["Wel_z", "Wel_weak"],
-    plasticSectionModulusY: ["Wpl_y", "Wpl_strong"],
-    plasticSectionModulusZ: ["Wpl_z", "Wpl_weak"],
+    elasticSectionModulusY: ["Wel_zz", "Wel_z", "Wel_strong"],
+    elasticSectionModulusZ: ["Wel_yy", "Wel_y", "Wel_weak"],
+    plasticSectionModulusY: ["Wpl_zz", "Wpl_z", "Wpl_strong"],
+    plasticSectionModulusZ: ["Wpl_yy", "Wpl_y", "Wpl_weak"],
   };
 
   return aliases[axis] ?? [];
@@ -141,6 +145,11 @@ export class SteelBeamSectionProvider {
         shearAreaAxis: this.shearAreaAxis,
         elasticSectionModulusAxis: this.elasticSectionModulusAxis,
         plasticSectionModulusAxis: this.plasticSectionModulusAxis,
+        axisConvention: this.section.axisConvention ?? null,
+        primaryBendingAxis: "z",
+        primaryBendingMoment: "Mzz",
+        secondaryBendingAxis: "y",
+        secondaryBendingMoment: "Myy",
         profileName: this.section.profileName ?? null,
         family: this.section.family ?? null,
         grade: this.material.grade ?? null,

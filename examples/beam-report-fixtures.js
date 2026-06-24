@@ -304,7 +304,7 @@ export function createSteelIpeBeamReportModel() {
   return new SingleBeamDesignModel({
     id,
     title: "Trave in acciaio IPE200",
-    description: "Trave appoggio-appoggio con profilo IPE, verifiche di sezione e stabilita N+My.",
+    description: "Trave appoggio-appoggio con profilo IPE, verifiche di sezione e stabilita N+Mzz.",
     units: beamUnits,
     section,
     material,
@@ -383,7 +383,7 @@ export function createSteelCantileverReportModel() {
   return new SingleBeamDesignModel({
     id,
     title: "Mensola in acciaio S355 HEA200",
-    description: "Mensola con carico puntuale in estremita e verifiche di sezione e stabilita N+My.",
+    description: "Mensola con carico puntuale in estremita e verifiche di sezione e stabilita N+Mzz.",
     units: beamUnits,
     section,
     material,
@@ -553,7 +553,7 @@ export function createSteelCompressionInteractionReportModel() {
   return new SingleBeamDesignModel({
     id,
     title: "Trave in acciaio IPE200 con compressione",
-    description: "Trave appoggio-appoggio con carico assiale e verifica di interazione N + My.",
+    description: "Trave appoggio-appoggio con carico assiale e verifica di interazione N + Mzz.",
     units: beamUnits,
     section,
     material,

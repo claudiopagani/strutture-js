@@ -240,7 +240,7 @@ Prima versione stabilizzata per:
 * legno lamellare GL24h;
 * acciaio IPE;
 * mensola in acciaio;
-* acciaio con verifiche ULS governate dalla classe, instabilita flesso-torsionale MVP, instabilita aste compresse, interazione `N + My` e freccia SLE;
+* acciaio con verifiche ULS governate dalla classe, instabilita flesso-torsionale MVP, instabilita aste compresse, interazione `N + Mzz` e freccia SLE;
 * c.a. elastico con verifiche ULS `N-M`, taglio, tensioni SLE, fessurazione indiretta e deformazioni;
 * legno-calcestruzzo;
 * legno-XLAM;
