@@ -1048,7 +1048,7 @@ function simplySupportedUniformLoadCase() {
 function steelClassificationCase() {
   return {
     id: "steel-ipe200-classification-pure-bending",
-    title: "Steel IPE200 classification in pure Mzz bending",
+    title: "Steel IPE200 classification in pure My bending",
     category: "steel",
     source: "NTC/EC3 local classification limits implemented in SteelSectionClassification",
     notes: "Pure bending reference for a stock IPE200 S275 profile.",
@@ -1289,7 +1289,7 @@ function sciP364PinnedColumnBucklingCase() {
     source: "SCI P364 Steel Building Design: Worked Examples - Open Sections, Example 9",
     sourceKind: "external-reference",
     notes:
-      "Rebuilds the 356 x 368 x 129 UKC Class 3 compression example with local classification and flexural buckling checks. The SCI source uses y-y as the strong axis and z-z as the weak axis; this case maps that weak source z-z axis to SCA y-y.",
+      "Rebuilds the 356 x 368 x 129 UKC Class 3 compression example with local classification and flexural buckling checks.",
     evaluate() {
       const material = new SteelMaterial({
         name: "SCI P364 S355",
@@ -1315,11 +1315,6 @@ function sciP364PinnedColumnBucklingCase() {
         area,
         inertiaY: area * 156 ** 2,
         inertiaZ: area * 94.3 ** 2,
-        inertiaAboutY: area * 94.3 ** 2,
-        inertiaAboutZ: area * 156 ** 2,
-        Iyy: area * 94.3 ** 2,
-        Izz: area * 156 ** 2,
-        axisConvention: { id: "sca-y-vertical-z-horizontal-x-longitudinal" },
         metadata: {
           unitSystem: sectionUnits,
         },
@@ -1353,15 +1348,12 @@ function sciP364PinnedColumnBucklingCase() {
         webRatio: web?.ratio,
         compressionResistance: round((area * material.fyk) / 1000, 0),
         compressionUtilizationRatio: round(3500 / ((area * material.fyk) / 1000), 2),
-        bucklingLength: buckling.check?.metadata.effectiveLengthY,
-        governingAxis: buckling.check?.metadata.governingAxis,
-        lambdaY: buckling.check?.metadata.axisYRelativeSlenderness,
+        bucklingLength: buckling.check?.metadata.effectiveLengthZ,
         lambdaZ: buckling.check?.metadata.axisZRelativeSlenderness,
-        chiY: buckling.check?.metadata.chiY,
         chiZ: buckling.check?.metadata.chiZ,
         nbYRd: round(buckling.check?.metadata.axisYResistance / 1000, 0),
         nbZRd: round(buckling.check?.metadata.axisZResistance / 1000, 0),
-        bucklingUtilizationRatio: round(buckling.check?.metadata.axisYUtilizationRatio, 2),
+        bucklingUtilizationRatio: round(buckling.check?.metadata.axisZUtilizationRatio, 2),
       };
     },
     expectations: [
@@ -1391,13 +1383,10 @@ function sciP364PinnedColumnBucklingCase() {
         tolerance: 0.01,
       },
       { id: "buckling-length", path: "bucklingLength", expected: 6000, tolerance: 1e-9 },
-      { id: "governing-axis", path: "governingAxis", expected: "y", type: "equal" },
-      { id: "lambda-y", path: "lambdaY", expected: 0.82, tolerance: 0.01 },
-      { id: "lambda-z", path: "lambdaZ", expected: 0.5, tolerance: 0.01 },
-      { id: "chi-y", path: "chiY", expected: 0.65, tolerance: 0.01 },
-      { id: "chi-z", path: "chiZ", expected: 0.89, tolerance: 0.01 },
-      { id: "nb-y-rd", path: "nbYRd", expected: 3678, tolerance: 10 },
-      { id: "nb-z-rd", path: "nbZRd", expected: 5010, tolerance: 10 },
+      { id: "lambda-z", path: "lambdaZ", expected: 0.82, tolerance: 0.01 },
+      { id: "chi-z", path: "chiZ", expected: 0.65, tolerance: 0.01 },
+      { id: "nb-y-rd", path: "nbYRd", expected: 5010, tolerance: 10 },
+      { id: "nb-z-rd", path: "nbZRd", expected: 3678, tolerance: 10 },
       {
         id: "buckling-utilization",
         path: "bucklingUtilizationRatio",

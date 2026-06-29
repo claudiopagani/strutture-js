@@ -179,8 +179,7 @@ function lateralTorsionalBucklingCapability(family) {
 function beamColumnInteractionCapability(family) {
   if (DOUBLY_SYMMETRIC_METHOD_B_FAMILIES.has(family)) {
     return automatic("Method B N+M interaction is available for this supported doubly symmetric family.", {
-      domains: ["N+Mzz", "N+Mzz+Myy"],
-      legacyDomains: ["N+My", "N+My+Mz"],
+      domains: ["N+My", "N+My+Mz"],
       excludes: ["torsion", "torsional interactions"],
     });
   }
@@ -190,9 +189,8 @@ function beamColumnInteractionCapability(family) {
       ["allowSinglySymmetric"],
       "UPN interaction requires an explicit override or a dedicated singly symmetric extension.",
       {
-        domains: ["N+Mzz"],
-        legacyDomains: ["N+My"],
-        excludes: ["Myy by default", "torsion", "torsional interactions"],
+        domains: ["N+My"],
+        excludes: ["Mz by default", "torsion", "torsional interactions"],
       },
     );
   }

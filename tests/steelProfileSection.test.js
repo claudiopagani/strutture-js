@@ -24,14 +24,10 @@ test("creates a steel profile section from the integrated database", () => {
   approx(section.area, 5380.999999999999);
   approx(section.inertiaY, 83559999.99999999);
   approx(section.inertiaZ, 6038000);
-  approx(section.inertiaAboutY, 6038000);
-  approx(section.inertiaAboutZ, 83559999.99999999);
-  approx(section.inertiaYY, 6038000);
-  approx(section.inertiaZZ, 83559999.99999999);
+  assert.ok(section.inertiaY > section.inertiaZ);
+  assert.ok(section.catalogProperties.Iy > section.catalogProperties.Iz);
+  assert.ok(section.catalogProperties.Wel_y > section.catalogProperties.Wel_z);
   assert.equal(section.family, "IPE");
-  assert.equal(section.axisConvention.id, "sca-y-vertical-z-horizontal-x-longitudinal");
-  assert.ok(section.catalogProperties.Iz > section.catalogProperties.Iy);
-  assert.ok(section.catalogProperties.Izz > section.catalogProperties.Iyy);
   assert.equal(section.massPerLength, 42.2);
   assert.deepEqual(section.metadata.catalogUnitSystem, { force: "N", length: "m" });
   assert.ok(section.convertedCatalogProperties.Wel_y > section.catalogProperties.Wel_y);

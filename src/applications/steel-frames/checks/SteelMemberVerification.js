@@ -108,16 +108,14 @@ function normalizeCombinationType(combinationType) {
 
 function steelSectionModulus(section, type = "elastic", axis = "Y") {
   const normalizedAxis = String(axis).toUpperCase();
-  // Axis "Y" is the legacy primary beam-action slot. For steel in the SCA
-  // convention that slot is geometric Mzz/Wzz; axis "Z" is geometric Myy/Wyy.
   const keys =
     type === "plastic"
       ? normalizedAxis === "Z"
-        ? ["Wpl_yy", "Wpl_y", "Wpl_weak"]
-        : ["Wpl_zz", "Wpl_z", "Wpl_strong"]
+        ? ["Wpl_z", "Wpl_weak"]
+        : ["Wpl_y", "Wpl_strong"]
       : normalizedAxis === "Z"
-        ? ["Wel_yy", "Wel_y", "Wel_weak"]
-        : ["Wel_zz", "Wel_z", "Wel_strong"];
+        ? ["Wel_z", "Wel_weak"]
+        : ["Wel_y", "Wel_strong"];
 
   for (const key of keys) {
     const value = section.convertedCatalogProperties?.[key];
@@ -145,18 +143,6 @@ function steelSectionModulus(section, type = "elastic", axis = "Y") {
   return normalizedAxis === "Z"
     ? section.elasticSectionModulusZ
     : section.elasticSectionModulusY;
-}
-
-function scaAxisMetadata(section) {
-  return {
-    axisConvention: section?.axisConvention?.id ?? section?.metadata?.axisConvention?.id ?? null,
-    primaryBendingAxis: "z",
-    primaryBendingMoment: "Mzz",
-    secondaryBendingAxis: "y",
-    secondaryBendingMoment: "Myy",
-    legacyPrimaryMomentSlot: "mY/myEd",
-    legacySecondaryMomentSlot: "mZ/mzEd",
-  };
 }
 
 function selectBendingResistanceBasis({
@@ -652,15 +638,10 @@ function createLateralTorsionalBucklingChecks({
           segmentTo: round(segment.to),
           unbracedLength: round(segment.length),
           unbracedLengthSectionUnits: round(unbracedLength),
-          ...scaAxisMetadata(section),
           mEd: round(strongAxisMoment),
           mzEd: round(weakAxisMoment),
-          mzzEd: round(strongAxisMoment),
-          myyEd: round(weakAxisMoment),
           mEdSectionUnits: round(mEdSectionUnits),
           mzEdSectionUnits: round(mzEdSectionUnits),
-          mzzEdSectionUnits: round(mEdSectionUnits),
-          myyEdSectionUnits: round(mzEdSectionUnits),
           nEdSectionUnits: round(nEdSectionUnits),
           resistanceBasis: bendingResistanceBasis.basis,
           criticalMoment: round(sectionToResultUnits.moment(ltbResult.check.metadata.criticalMoment)),
@@ -801,14 +782,9 @@ function createCompressionBucklingChecks({
         combinationType: normalizeCombinationType(result.context?.combinationType),
         nEd: round(sample.n ?? 0),
         nEdSectionUnits: round(nEdSectionUnits),
-        ...scaAxisMetadata(section),
         mEd: round(strongAxisMoment),
         mzEd: round(weakAxisMoment),
-        mzzEd: round(strongAxisMoment),
-        myyEd: round(weakAxisMoment),
         mEdSectionUnits: round(mEdSectionUnits),
-        mzzEdSectionUnits: round(mEdSectionUnits),
-        myyEdSectionUnits: round(mzEdSectionUnits),
         lengthY: round(lengths.lengthYModelUnits),
         lengthZ: round(lengths.lengthZModelUnits),
         effectiveLengthY: round(lengths.effectiveLengthYModelUnits),
@@ -874,7 +850,7 @@ function ltbReductionForInteraction({
   if (!isFinitePositive(unbracedLength)) {
     return {
       chiLT: null,
-      warnings: [`N+Mzz interaction requires a positive LTB segment length for station ${sample.station}.`],
+      warnings: [`N+My interaction requires a positive LTB segment length for station ${sample.station}.`],
       metadata: {
         chiLTSource: "not-available",
       },
@@ -954,7 +930,7 @@ function createBeamColumnInteractionChecks({
   }
 
   assumptions.push(
-        "Steel beam-column stability interaction uses Circolare NTC 2018 Method B; Myy is included for supported doubly symmetric profiles, while torsion and torsional interactions are excluded.",
+    "Steel beam-column stability interaction uses Circolare NTC 2018 Method B; Mz is included for supported doubly symmetric profiles, while torsion and torsional interactions are excluded.",
   );
 
   for (const result of resultEntries(analysisResult.combinations)) {
@@ -1114,15 +1090,10 @@ function createBeamColumnInteractionChecks({
           combinationType: normalizeCombinationType(result.context?.combinationType),
           nEd: round(sample.n ?? 0),
           nEdSectionUnits: round(nEdSectionUnits),
-          ...scaAxisMetadata(section),
           myEd: round(strongAxisMoment),
           mzEd: round(weakAxisMoment),
-          mzzEd: round(strongAxisMoment),
-          myyEd: round(weakAxisMoment),
           myEdSectionUnits: round(mEdSectionUnits),
           mzEdSectionUnits: round(mzEdSectionUnits),
-          mzzEdSectionUnits: round(mEdSectionUnits),
-          myyEdSectionUnits: round(mzEdSectionUnits),
           lengthY: round(lengths.lengthYModelUnits),
           lengthZ: round(lengths.lengthZModelUnits),
           effectiveLengthY: round(lengths.effectiveLengthYModelUnits),
@@ -1138,7 +1109,7 @@ function createBeamColumnInteractionChecks({
 
   if (checks.length === 0) {
     warnings.push(
-      "No steel beam-column interaction check was generated; Method B needs ULS FEM samples, class 1-3 section, compression buckling data, chiLT and SCA section moduli.",
+      "No steel beam-column interaction check was generated; Method B needs ULS FEM samples, class 1-3 section, compression buckling data, chiLT and section moduli.",
     );
   }
 
@@ -1252,17 +1223,12 @@ function createSteelActionVerifier({
             classificationResult.metadata?.axialForceConvention,
           axialCompressionForce:
             classificationResult.metadata?.axialCompressionForce,
-          ...scaAxisMetadata(section),
           nEd: round(nEd ?? 0),
           mEd: round(mYEd ?? 0),
           mzEd: round(mZEd ?? 0),
-          mzzEd: round(mYEd ?? 0),
-          myyEd: round(mZEd ?? 0),
           nEdSectionUnits: classificationResult.metadata?.nEd,
           mEdSectionUnits: classificationResult.metadata?.mEd,
           mzEdSectionUnits: round(convertedMZEd),
-          mzzEdSectionUnits: classificationResult.metadata?.mEd,
-          myyEdSectionUnits: round(convertedMZEd),
           classificationSeverity: round(classificationSeverity(classificationResult)),
           flangeClass: flangePart?.class ?? null,
           webClass: webPart?.class ?? null,
@@ -1347,33 +1313,20 @@ function createSteelActionVerifier({
           resistanceBasis: bendingResistanceBasis.basis,
           resistanceBasisZ: bendingResistanceBasisZ.basis,
           actionBasis: principalActions ? "principal-actions" : "global-actions",
-          ...scaAxisMetadata(section),
           mYEd: round(mYEd),
           mZEd: round(mZEd),
-          mzzEd: round(mYEd),
-          myyEd: round(mZEd),
           selectedSectionModulus: round(bendingResistanceBasis.sectionModulus),
           selectedSectionModulusZ: round(bendingResistanceBasisZ.sectionModulus),
-          selectedSectionModulusZZ: round(bendingResistanceBasis.sectionModulus),
-          selectedSectionModulusYY: round(bendingResistanceBasisZ.sectionModulus),
           elasticSectionModulus: round(elasticSectionModulus),
           elasticSectionModulusZ: round(elasticSectionModulusZ),
-          elasticSectionModulusZZ: round(elasticSectionModulus),
-          elasticSectionModulusYY: round(elasticSectionModulusZ),
           plasticSectionModulus: round(plasticSectionModulus),
           plasticSectionModulusZ: round(plasticSectionModulusZ),
-          plasticSectionModulusZZ: round(plasticSectionModulus),
-          plasticSectionModulusYY: round(plasticSectionModulusZ),
           elasticMomentResistance: round(elasticMomentResistance),
           plasticMomentResistance: round(plasticMomentResistance),
           bendingCapacityY: round(bendingCapacity),
           bendingCapacityZ: round(bendingCapacityZ),
-          bendingCapacityZZ: round(bendingCapacity),
-          bendingCapacityYY: round(bendingCapacityZ),
           utilizationRatioY: round(bendingRatioY),
           utilizationRatioZ: round(bendingRatioZ),
-          utilizationRatioZZ: round(bendingRatioY),
-          utilizationRatioYY: round(bendingRatioZ),
         },
       };
       const shearRatioY =
@@ -1404,12 +1357,9 @@ function createSteelActionVerifier({
         ok: shearRatio <= 1,
         metadata: {
           fyd: round(fyd),
-          ...scaAxisMetadata(section),
           shearArea: round(shearArea),
           shearAreaY: round(shearArea),
           shearAreaZ: round(shearAreaZ),
-          shearAreaAlongY: round(shearArea),
-          shearAreaAlongZ: round(shearAreaZ),
           vYEd: round(vYEd),
           vZEd: round(vZEd),
           shearCapacityY: round(shearCapacity),
@@ -1421,7 +1371,7 @@ function createSteelActionVerifier({
       const axial = utilizationCheck({
         id: "steel-axial",
         description: "Axial resistance verification",
-        demand: nEd,
+          demand: nEd,
         capacity: axialCapacity,
         metadata: {
           fyd: round(fyd),
@@ -1445,13 +1395,9 @@ function createSteelActionVerifier({
           equivalentStress: round(equivalentStress),
           area: round(section.area),
           resistanceBasis: bendingResistanceBasis.basis,
-          ...scaAxisMetadata(section),
           selectedSectionModulus: round(bendingResistanceBasis.sectionModulus),
-          selectedSectionModulusZZ: round(bendingResistanceBasis.sectionModulus),
           elasticSectionModulus: round(elasticSectionModulus),
-          elasticSectionModulusZZ: round(elasticSectionModulus),
           shearArea: round(shearArea),
-          shearAreaAlongY: round(shearArea),
         },
       });
       const interactionRatio = axial.utilizationRatio + bending.utilizationRatio;
@@ -1485,7 +1431,6 @@ function createSteelActionVerifier({
         checks,
         assumptions: [
           "Steel section bending resistance is governed by local section class: class 1/2 can use Wpl, class 3 uses Wel, class 4 is blocked until effective properties exist.",
-          "For steel profiles the SCA convention is y vertical, z horizontal: the primary beam bending slot is Mzz/Wzz and the secondary slot is Myy/Wyy.",
           "Steel section classification is evaluated locally for each ULS FEM station.",
           "Axial force is treated as compression by absolute value for section classification unless a different convention is configured.",
         ],
@@ -1715,7 +1660,7 @@ export class SteelMemberVerification {
         ...lateralTorsionalBuckling.warnings,
         ...compressionBuckling.warnings,
         ...beamColumnInteraction.warnings,
-        "Steel member stability excludes torsion and torsional interactions; N+Mzz+Myy is available for supported doubly symmetric profiles.",
+        "Steel member stability excludes torsion and torsional interactions; N+My+Mz is available for supported doubly symmetric profiles.",
       ]),
       assumptions: [
         ...actionVerification.assumptions,

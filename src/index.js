@@ -40,12 +40,10 @@ export {
   createSteelCompoundProfileSection,
 } from "./domain/geometry/SteelCompoundProfileSection.js";
 export {
-  STEEL_PROFILE_AXIS_CONVENTION,
   STEEL_PROFILE_FAMILIES,
   STEEL_PROFILE_CATALOG_UNITS,
   STEEL_PROFILE_SECTION_DATABASE,
   STEEL_PROFILE_SECTION_NAMES,
-  STEEL_PROFILE_SOURCE_AXIS_CONVENTION,
   getSteelProfileSectionData,
   listSteelProfileSectionsByFamily,
 } from "./domain/geometry/steelProfileCatalog.js";

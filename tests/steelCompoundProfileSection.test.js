@@ -35,9 +35,6 @@ test("creates a double UPN back-to-back compound section", () => {
   approx(compound.centroidZ, 0);
   approx(compound.inertiaY, 2 * base.inertiaY, 1e-3);
   assert.ok(compound.inertiaZ > 2 * base.inertiaZ);
-  approx(compound.inertiaZZ, compound.inertiaY, 1e-3);
-  approx(compound.inertiaYY, compound.inertiaZ, 1e-3);
-  assert.equal(compound.axisConvention.id, "sca-y-vertical-z-horizontal-x-longitudinal");
   assert.ok(compound.elasticSectionModulusY > 0);
   assert.ok(compound.elasticSectionModulusZ > 0);
   assert.equal(compound.components.length, 2);

@@ -52,26 +52,6 @@ function resolveSectionLength(section, ...keys) {
   return null;
 }
 
-function inertiaAboutY(section) {
-  return (
-    section?.inertiaAboutY ??
-    section?.inertiaYY ??
-    section?.convertedCatalogProperties?.Iyy ??
-    section?.convertedCatalogProperties?.Iy ??
-    section?.inertiaZ
-  );
-}
-
-function inertiaAboutZ(section) {
-  return (
-    section?.inertiaAboutZ ??
-    section?.inertiaZZ ??
-    section?.convertedCatalogProperties?.Izz ??
-    section?.convertedCatalogProperties?.Iz ??
-    section?.inertiaY
-  );
-}
-
 function compressionAxialForce(nEd, convention = "absolute") {
   if (!Number.isFinite(nEd)) {
     return 0;
@@ -125,16 +105,16 @@ export function inferSteelCompressionBucklingCurves(section) {
     if (isFinitePositive(ratio) && isFinitePositive(tf)) {
       if (ratio > 1.2) {
         return tf <= 40
-          ? { y: "b", z: "a", source: "ntc2018-table-4.2.VIII-rolled-ih-sca-axes" }
-          : { y: "c", z: "b", source: "ntc2018-table-4.2.VIII-rolled-ih-sca-axes" };
+          ? { y: "a", z: "b", source: "ntc2018-table-4.2.VIII-rolled-ih" }
+          : { y: "b", z: "c", source: "ntc2018-table-4.2.VIII-rolled-ih" };
       }
 
       return tf <= 100
-        ? { y: "c", z: "b", source: "ntc2018-table-4.2.VIII-rolled-ih-sca-axes" }
+        ? { y: "b", z: "c", source: "ntc2018-table-4.2.VIII-rolled-ih" }
         : { y: "d", z: "d", source: "ntc2018-table-4.2.VIII-rolled-ih" };
     }
 
-    return { y: "c", z: "b", source: "ntc2018-table-4.2.VIII-rolled-ih-default-sca-axes" };
+    return { y: "b", z: "c", source: "ntc2018-table-4.2.VIII-rolled-ih-default" };
   }
 
   if (family === "UPN") {
@@ -262,8 +242,8 @@ export function verifySteelCompressionBuckling({
   const fyk = material?.fyk;
   const E = material?.elasticModulus;
   const area = section?.area;
-  const inertiaY = inertiaAboutY(section);
-  const inertiaZ = inertiaAboutZ(section);
+  const inertiaY = section?.inertiaY;
+  const inertiaZ = section?.inertiaZ;
   const demand = compressionAxialForce(nEd, axialForceConvention);
   const inferredCurves = inferSteelCompressionBucklingCurves(section);
   const selectedCurveY = curveY ?? inferredCurves.y;
@@ -350,7 +330,7 @@ export function verifySteelCompressionBuckling({
       check: null,
       axisResults: { y: axisY, z: axisZ },
       warnings: [
-        "Compression buckling verification requires A, Iyy, Izz, E, fyk, gammaM1 and positive effective lengths about both SCA axes.",
+        "Compression buckling verification requires A, Iy, Iz, E, fyk, gammaM1 and positive effective lengths about both axes.",
       ],
       metadata: {
         method: "ntc2018-4.2.4.1.3.1-compression-buckling",
@@ -393,9 +373,6 @@ export function verifySteelCompressionBuckling({
         fyk: round(fyk),
         elasticModulus: round(E),
         area: round(area),
-        axisConvention: section?.axisConvention?.id ?? section?.metadata?.axisConvention?.id ?? null,
-        inertiaYY: round(inertiaY),
-        inertiaZZ: round(inertiaZ),
         lengthY: round(lengthY),
         lengthZ: round(lengthZ),
         effectiveLengthY: round(l0Y),

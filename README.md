@@ -221,7 +221,7 @@ Input minimo:
 Output atteso:
 
 - per la verifica membro: `VerificationResult` se gli input sono completi.
-- Checks tipici: classificazione sezione, flessione, taglio, sforzo normale, tensione elastica, LTB, instabilita a compressione, interazione `N + Mzz`, freccia SLE.
+- Checks tipici: classificazione sezione, flessione, taglio, sforzo normale, tensione elastica, LTB, instabilita a compressione, interazione `N + My`, freccia SLE.
 - per il pushover standalone: `CalculationResult` con:
   - `outputs.frameIdealization`;
   - `outputs.control`;
@@ -250,7 +250,7 @@ Limiti del metodo:
 - il solver pushover usa il sistema aumentato `[Kt -Fext; c^T 0]`, quindi puo proseguire naturalmente oltre il primo meccanismo finche il target di spostamento e maggiore e la risposta resta numericamente determinabile;
 - nel caso della cerchiatura rettangolare oggi la curva di capacita restituisce sia il ramo ascendente sia il plateau post-meccanismo a forza orizzontale costante quando il modello elastico-perfettamente-plastico ha esaurito la capacita;
 - non sono ancora incluse non linearita geometriche, incrudimento, degrado ciclico o criteri avanzati di prosecuzione per meccanismi multipli;
-- dominio principale di verifica membro `N + Mzz`, con supporto parziale per componenti ruotate (`N + Mzz + Myy`);
+- dominio principale di verifica membro `N + My`, con supporto parziale per componenti ruotate;
 - torsione e interazioni torsionali escluse;
 - sezioni di classe 4 bloccate finche non saranno disponibili proprieta efficaci.
 

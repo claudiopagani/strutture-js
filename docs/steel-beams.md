@@ -48,19 +48,13 @@ Le proprieta geometriche del catalogo sono espresse nella unita del catalogo
 `{ force: "N", length: "m" }` e vengono convertite internamente in
 `{ force: "N", length: "mm" }` quando si crea una `SteelProfileSection`.
 
-Convenzione assi pubblica del profilario:
+### Convenzione assi del profilario
 
-* `y-y` verticale nel piano della sezione;
-* `z-z` orizzontale nel piano della sezione;
-* `x-x` longitudinale alla trave, entrante nel foglio nella vista di sezione.
-
-I dati sorgente dei profilari europei usano spesso `y-y` come asse forte
-orizzontale e `z-z` come asse debole verticale. L'API normalizza questi campi
-alla convenzione SCA: per un IPE/HE ordinario `Izz`, `Wel_zz` e `Wpl_zz`
-sono forti, mentre `Iyy`, `Wel_yy` e `Wpl_yy` sono deboli. I campi legacy
-`inertiaY`, `elasticSectionModulusY` e `plasticSectionModulusY` restano slot
-interni del modello trave per la flessione verticale principale e non vanno
-usati come label UI degli assi geometrici.
+Per i profili in acciaio si usa la convenzione del profilario europeo: l'asse
+`y-y` e orizzontale, parallelo alle ali e forte; l'asse `z-z` e verticale,
+parallelo all'anima e debole; l'asse `x-x` e l'asse longitudinale dell'asta.
+Per un IPE/HE ordinario `Iy`, `Wel_y` e `Wpl_y` sono quindi le proprieta
+forti, mentre `Iz`, `Wel_z` e `Wpl_z` sono le proprieta deboli.
 
 Le righe generate per le famiglie estese includono metadati di fonte e modello:
 
@@ -132,8 +126,8 @@ Le sezioni composte espongono proprieta geometriche elastiche:
 
 * area
 * baricentro
-* `Iyy`, `Izz`, `Iyz`
-* moduli elastici `Wel_yy`, `Wel_zz`
+* `Iy`, `Iz`, `Iyz`
+* moduli elastici `Wel_y`, `Wel_z`
 * ingombri
 * massa lineare
 * aree di taglio sommate
