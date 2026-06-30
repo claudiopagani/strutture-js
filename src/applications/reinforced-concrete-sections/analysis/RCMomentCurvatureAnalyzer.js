@@ -1,8 +1,20 @@
 import { IllinoisRootSolver } from "../../../domain/solvers/IllinoisRootSolver.js";
+import { RCSectionStateIntegrator } from "./RCSectionStateIntegrator.js";
 import {
-  normalizePostUltimateFractureEnergyDensity,
-  RCSectionStateIntegrator,
-} from "./RCSectionStateIntegrator.js";
+  DEFAULT_MAX_POST_PEAK_POINTS,
+  DEFAULT_MAX_POST_ULTIMATE_CURVATURE_RATIO,
+  DEFAULT_POST_PEAK_CURVATURE_GROWTH_FACTOR,
+  DEFAULT_POST_ULTIMATE_MOMENT_DROP,
+  resolvePostUltimateOptions,
+} from "./moment-curvature/MomentCurvaturePostUltimateOptions.js";
+import {
+  EVENT_CURVATURE_TOLERANCE,
+  appendUniquePoint,
+  bracketDistanceFromHint,
+  createCurvatureValues,
+  createLinearSamples,
+  findBrackets,
+} from "./moment-curvature/MomentCurvatureSampling.js";
 import {
   getConcreteProjectedBounds,
   neutralAxisDirection,
@@ -15,13 +27,8 @@ const DEFAULT_EPS0_MIN = -0.08;
 const DEFAULT_EPS0_MAX = 0.08;
 const LIMIT_TOLERANCE = 1e-9;
 const EVENT_UTILIZATION_TOLERANCE = 1e-10;
-const EVENT_CURVATURE_TOLERANCE = 1e-13;
 const EVENT_MAX_ITERATIONS = 80;
 const NTC2018_ULTIMATE_MOMENT_DROP = 0.15;
-const DEFAULT_POST_ULTIMATE_MOMENT_DROP = 0.15;
-const DEFAULT_MAX_POST_ULTIMATE_CURVATURE_RATIO = 1.2;
-const DEFAULT_POST_PEAK_CURVATURE_GROWTH_FACTOR = 1.15;
-const DEFAULT_MAX_POST_PEAK_POINTS = 120;
 const POST_ULTIMATE_MOMENT_TOLERANCE = 1e-9;
 
 const round = (value, decimals = 12) =>
@@ -73,32 +80,6 @@ function resolveSteelUltimateTensionStrain(steelLaw) {
   return Number.isFinite(tensionLimit) && tensionLimit > 0
     ? Math.abs(tensionLimit)
     : null;
-}
-
-function createLinearSamples({ minimum, maximum, count }) {
-  if (!Number.isFinite(minimum) || !Number.isFinite(maximum) || minimum > maximum) {
-    throw new Error("RCMomentCurvatureAnalyzer requires a valid sample interval.");
-  }
-
-  if (!Number.isInteger(count) || count < 2) {
-    throw new Error("RCMomentCurvatureAnalyzer requires at least two samples.");
-  }
-
-  const step = (maximum - minimum) / (count - 1);
-
-  return Array.from({ length: count }, (_, index) => minimum + step * index);
-}
-
-function createCurvatureValues({ curvatureMax, pointCount }) {
-  if (!Number.isFinite(curvatureMax) || curvatureMax <= 0) {
-    throw new Error("RCMomentCurvatureAnalyzer requires a positive curvatureMax.");
-  }
-
-  return createLinearSamples({
-    minimum: 0,
-    maximum: curvatureMax,
-    count: pointCount,
-  });
 }
 
 function resolveCompressedSide({ compressedSide = null, compressedEdge = "top" }) {
@@ -154,56 +135,6 @@ function signedEngineeringCurvature({
   const absoluteCurvature = Math.abs(curvature);
   const side = resolveCompressedSide({ compressedSide, compressedEdge });
   return side === "positive" ? absoluteCurvature : -absoluteCurvature;
-}
-
-function findBrackets(samples, target) {
-  const brackets = [];
-
-  for (let index = 1; index < samples.length; index += 1) {
-    const previous = samples[index - 1];
-    const current = samples[index];
-
-    if (Math.abs(previous.value - target) === 0) {
-      brackets.push({ min: previous.eps0, max: previous.eps0 });
-      continue;
-    }
-
-    if ((previous.value - target) * (current.value - target) <= 0) {
-      brackets.push({
-        min: previous.eps0,
-        max: current.eps0,
-      });
-    }
-  }
-
-  const last = samples.at(-1);
-
-  if (last && Math.abs(last.value - target) === 0) {
-    brackets.push({ min: last.eps0, max: last.eps0 });
-  }
-
-  return brackets.filter(
-    (bracket, index) =>
-      index === 0 ||
-      bracket.min !== brackets[index - 1].min ||
-      bracket.max !== brackets[index - 1].max,
-  );
-}
-
-function bracketDistanceFromHint(bracket, eps0Hint) {
-  if (!Number.isFinite(eps0Hint)) {
-    return 0;
-  }
-
-  if (eps0Hint < bracket.min) {
-    return bracket.min - eps0Hint;
-  }
-
-  if (eps0Hint > bracket.max) {
-    return eps0Hint - bracket.max;
-  }
-
-  return 0;
 }
 
 function resolveConcreteCompressionEdge({ section, strainField }) {
@@ -396,21 +327,6 @@ function annotateEventPoint(point, stateKey, checkId) {
       eventMode: event.mode,
     },
   };
-}
-
-function appendUniquePoint(points, point) {
-  const previous = points.at(-1);
-
-  if (
-    previous &&
-    Math.abs(previous.absoluteCurvature - point.absoluteCurvature) <=
-      EVENT_CURVATURE_TOLERANCE
-  ) {
-    points[points.length - 1] = point;
-    return;
-  }
-
-  points.push(point);
 }
 
 function annotateMomentDropPoint(point, { referenceMoment, dropRatio }) {
@@ -642,13 +558,13 @@ function resolveUltimateDuctilityPoint({
     failurePoint == null
       ? null
       : {
-      absoluteCurvature: failurePoint.absoluteCurvature,
-      curvature: failurePoint.curvature,
-      Mx: failurePoint.Mx,
-      My: failurePoint.My,
-      source: "material-ultimate-strain",
-      interpolation: "solved-point",
-    };
+          absoluteCurvature: failurePoint.absoluteCurvature,
+          curvature: failurePoint.curvature,
+          Mx: failurePoint.Mx,
+          My: failurePoint.My,
+          source: "material-ultimate-strain",
+          interpolation: "solved-point",
+        };
 
   if (dropPoint && materialPoint) {
     return dropPoint.absoluteCurvature <= materialPoint.absoluteCurvature
@@ -1248,69 +1164,24 @@ export class RCMomentCurvatureAnalyzer {
       theta: direction.theta,
       compressedSide: resolvedCompressedSide,
     });
-    const resolvedPostUltimateMomentDrop =
-      postUltimateMomentDrop ??
-      postPeakMomentDrop ??
-      DEFAULT_POST_ULTIMATE_MOMENT_DROP;
-
-    if (
-      !Number.isFinite(resolvedPostUltimateMomentDrop) ||
-      resolvedPostUltimateMomentDrop <= 0 ||
-      resolvedPostUltimateMomentDrop >= 1
-    ) {
-      throw new Error(
-        "RCMomentCurvatureAnalyzer postUltimateMomentDrop must be between 0 and 1.",
-      );
-    }
-
-    if (
-      !Number.isFinite(maxPostUltimateCurvatureRatio) ||
-      maxPostUltimateCurvatureRatio <= 1
-    ) {
-      throw new Error(
-        "RCMomentCurvatureAnalyzer maxPostUltimateCurvatureRatio must be greater than 1.",
-      );
-    }
-
-    if (
-      !["retain", "linear-softening", "zero-stress"].includes(
-        postUltimateResponse,
-      )
-    ) {
-      throw new Error(
-        `Unsupported RC post-ultimate response: ${postUltimateResponse}.`,
-      );
-    }
-
-    if (
-      !Number.isFinite(postPeakCurvatureGrowthFactor) ||
-      postPeakCurvatureGrowthFactor <= 1
-    ) {
-      throw new Error(
-        "RCMomentCurvatureAnalyzer postPeakCurvatureGrowthFactor must be greater than 1.",
-      );
-    }
-
-    if (!Number.isInteger(maxPostPeakPoints) || maxPostPeakPoints < 1) {
-      throw new Error(
-        "RCMomentCurvatureAnalyzer maxPostPeakPoints must be a positive integer.",
-      );
-    }
-
-    const normalizedFractureEnergyDensity =
-      normalizePostUltimateFractureEnergyDensity(
-        postUltimateFractureEnergyDensity,
-      );
-
-    if (
-      postUltimateResponse === "linear-softening" &&
-      normalizedFractureEnergyDensity.concrete <= 0 &&
-      normalizedFractureEnergyDensity.steel <= 0
-    ) {
-      throw new Error(
-        "RCMomentCurvatureAnalyzer linear softening requires a positive postUltimateFractureEnergyDensity.",
-      );
-    }
+    const postUltimateOptions = resolvePostUltimateOptions({
+      postUltimateMomentDrop,
+      postPeakMomentDrop,
+      maxPostUltimateCurvatureRatio,
+      postUltimateResponse,
+      postUltimateFractureEnergyDensity,
+      postPeakCurvatureGrowthFactor,
+      maxPostPeakPoints,
+    });
+    const {
+      postUltimateMomentDrop: resolvedPostUltimateMomentDrop,
+      maxPostUltimateCurvatureRatio: resolvedMaxPostUltimateCurvatureRatio,
+      postUltimateResponse: resolvedPostUltimateResponse,
+      fractureEnergyDensity: normalizedFractureEnergyDensity,
+      postPeakCurvatureGrowthFactor:
+        resolvedPostPeakCurvatureGrowthFactor,
+      maxPostPeakPoints: resolvedMaxPostPeakPoints,
+    } = postUltimateOptions;
 
     const warnings = [];
     let balancedFailurePoint = null;
@@ -1358,7 +1229,7 @@ export class RCMomentCurvatureAnalyzer {
       balancedFailurePoint?.absoluteCurvature ?? initialCurvatureMax;
     const maximumAutomaticCurvature =
       Math.max(initialCurvatureMax, balancedCurvature) *
-      postPeakCurvatureGrowthFactor ** maxPostPeakPoints;
+      resolvedPostPeakCurvatureGrowthFactor ** resolvedMaxPostPeakPoints;
     const points = [];
 
     let previousPoint = null;
@@ -1394,7 +1265,7 @@ export class RCMomentCurvatureAnalyzer {
           includeConcreteTension,
           eps0Hint: previousPoint?.eps0 ?? null,
           postUltimateResponse: usePostUltimateResponse
-            ? postUltimateResponse
+            ? resolvedPostUltimateResponse
             : "retain",
           postUltimateFractureEnergyDensity:
             normalizedFractureEnergyDensity,
@@ -1506,7 +1377,7 @@ export class RCMomentCurvatureAnalyzer {
         postUltimateCurvatureLimit =
           phiMaterialUltimate != null &&
           phiMaterialUltimate > EVENT_CURVATURE_TOLERANCE
-            ? maxPostUltimateCurvatureRatio * phiMaterialUltimate
+            ? resolvedMaxPostUltimateCurvatureRatio * phiMaterialUltimate
             : null;
 
         if (includeFailurePoint) {
@@ -1557,7 +1428,7 @@ export class RCMomentCurvatureAnalyzer {
             referencePoint,
             includeConcreteTension,
             eps0Hint: intervalFailurePoint.eps0,
-            postUltimateResponse,
+            postUltimateResponse: resolvedPostUltimateResponse,
             postUltimateFractureEnergyDensity:
               normalizedFractureEnergyDensity,
           });
@@ -1607,7 +1478,7 @@ export class RCMomentCurvatureAnalyzer {
               postUltimateLowerPoint?.eps0 ??
               failurePoint?.eps0 ??
               null,
-            postUltimateResponse,
+            postUltimateResponse: resolvedPostUltimateResponse,
             postUltimateFractureEnergyDensity:
               normalizedFractureEnergyDensity,
           });
@@ -1640,7 +1511,7 @@ export class RCMomentCurvatureAnalyzer {
             compressedEdge,
             referencePoint,
             includeConcreteTension,
-            postUltimateResponse,
+            postUltimateResponse: resolvedPostUltimateResponse,
             postUltimateFractureEnergyDensity:
               normalizedFractureEnergyDensity,
             lowerPoint: postUltimateLowerPoint,
@@ -1695,7 +1566,7 @@ export class RCMomentCurvatureAnalyzer {
               referencePoint,
               includeConcreteTension,
               eps0Hint: previousPoint.eps0,
-              postUltimateResponse,
+              postUltimateResponse: resolvedPostUltimateResponse,
               postUltimateFractureEnergyDensity:
                 normalizedFractureEnergyDensity,
             });
@@ -1723,7 +1594,7 @@ export class RCMomentCurvatureAnalyzer {
         valueIndex === values.length - 1 &&
         automaticPostPeakExtension
       ) {
-        if (postPeakPointCount >= maxPostPeakPoints) {
+        if (postPeakPointCount >= resolvedMaxPostPeakPoints) {
           warnings.push(
             "Post-ultimate continuation reached maxPostPeakPoints before a termination criterion.",
           );
@@ -1732,7 +1603,7 @@ export class RCMomentCurvatureAnalyzer {
         }
 
         const nextCurvature = Math.max(
-          point.absoluteCurvature * postPeakCurvatureGrowthFactor,
+          point.absoluteCurvature * resolvedPostPeakCurvatureGrowthFactor,
           point.absoluteCurvature +
             initialCurvatureMax / Math.max(pointCount - 1, 1),
         );
@@ -1781,7 +1652,7 @@ export class RCMomentCurvatureAnalyzer {
       firstYieldType: firstYieldPoint?.firstYieldState?.eventType ?? null,
       maximumMomentPoint: maximum?.point ?? null,
       postUltimateMomentDrop: resolvedPostUltimateMomentDrop,
-      maxPostUltimateCurvatureRatio,
+      maxPostUltimateCurvatureRatio: resolvedMaxPostUltimateCurvatureRatio,
       postUltimateCurvatureLimit,
       postUltimateTerminationReached:
         postUltimateTerminationPoint != null,
@@ -1795,9 +1666,9 @@ export class RCMomentCurvatureAnalyzer {
       postPeakDropReached: postPeakDropPoint != null,
       postPeakDropPoint,
       postUltimateModel: {
-        response: postUltimateResponse,
+        response: resolvedPostUltimateResponse,
         fractureEnergyDensity:
-          postUltimateResponse === "linear-softening"
+          resolvedPostUltimateResponse === "linear-softening"
             ? normalizedFractureEnergyDensity
             : {
                 concrete: 0,

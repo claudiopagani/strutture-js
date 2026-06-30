@@ -47,6 +47,7 @@ import "./reinforcedConcreteSectionBiaxialApplication.test.js";
 import "./reinforcedConcreteSectionServiceApplication.test.js";
 import "./reinforcedConcreteSectionUniaxialDomainApplication.test.js";
 import "./reinforcedConcreteMomentCurvature.test.js";
+import "./rcMomentCurvatureSampling.test.js";
 import "./rcConstitutiveLawsAndSolvers.test.js";
 import "./rcBiaxialDomainBuilder.test.js";
 import "./rcFiberAnalysis.test.js";

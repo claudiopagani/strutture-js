@@ -1,17 +1,22 @@
 import { VerificationResult } from "../../../core/results/VerificationResult.js";
-import { ConcreteNoTensionLaw } from "../../../domain/constitutive-laws/ConcreteNoTensionLaw.js";
-import { SteelElasticLaw } from "../../../domain/constitutive-laws/SteelElasticLaw.js";
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
-import { RCServiceStressSolver } from "../../reinforced-concrete-sections/analysis/RCServiceStressSolver.js";
-import { SectionFiberDiscretizer } from "../../reinforced-concrete-sections/analysis/SectionFiberDiscretizer.js";
-import { solveServiceStressWithFallbacks } from "../../reinforced-concrete-sections/analysis/solveServiceStressWithFallbacks.js";
+import {
+  DEFAULT_RC_SECTION_UNITS,
+  governingCheck,
+  isFinitePositive,
+  normalizeCombinationType,
+  round,
+} from "../../reinforced-concrete-sections/shared/rcCommon.js";
+import {
+  createRcServiceSectionSolverContext,
+  solveRcServiceSectionState,
+} from "../../reinforced-concrete-sections/shared/solveRcServiceSectionState.js";
 import {
   DEFAULT_RC_SLE_MODULAR_RATIO,
   resolveRcSleModularRatio,
 } from "../../reinforced-concrete-sections/serviceabilityDefaults.js";
 import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
-const DEFAULT_SECTION_UNITS = Object.freeze({ force: "N", length: "mm" });
 const SLENDERNESS_LIMITS = Object.freeze({
   simple_span: { k: 1, high: 14, low: 20 },
   continuous_end_span: { k: 1.3, high: 18, low: 26 },
@@ -19,17 +24,6 @@ const SLENDERNESS_LIMITS = Object.freeze({
   flat_slab: { k: 1.2, high: 17, low: 24 },
   cantilever: { k: 0.4, high: 6, low: 8 },
 });
-
-const round = (value, decimals = 6) =>
-  Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
-
-function isFinitePositive(value) {
-  return Number.isFinite(value) && value > 0;
-}
-
-function normalizeCombinationType(type) {
-  return String(type ?? "").toUpperCase().replaceAll("-", "_");
-}
 
 function isQuasiPermanent(type) {
   return normalizeCombinationType(type) === "SLE_QUASI_PERMANENT";
@@ -283,17 +277,8 @@ export class CrackedSectionDeflectionAnalysis {
 
     const resultResolver = createUnitResolver(
       analysisResult.units,
-      DEFAULT_SECTION_UNITS,
+      DEFAULT_RC_SECTION_UNITS,
     );
-    const discretizer = new SectionFiberDiscretizer();
-    const concreteMesh = discretizer.discretize(section, {
-      targetCount: mesh.targetFiberCount ?? 100,
-    });
-    const serviceSolver = new RCServiceStressSolver({
-      tolerance: solver.tolerance ?? 1e-2,
-      maxIterations: solver.maxIterations ?? 50,
-      finiteDifferenceStep: solver.finiteDifferenceStep ?? 1e-8,
-    });
     const mcr = crackingMoment({ section, concreteMaterial });
     const combinationOutputs = [];
     const checks = [];
@@ -309,11 +294,12 @@ export class CrackedSectionDeflectionAnalysis {
       const effectiveModularRatio = baseModularRatio * (1 + creepCoefficient);
       const effectiveConcreteModulus = es / effectiveModularRatio;
       const gross = transformedGrossInertiaY({ section, modularRatio: effectiveModularRatio });
-      const concreteLaw = new ConcreteNoTensionLaw({
-        ecm: effectiveConcreteModulus,
-      });
-      const steelLaw = new SteelElasticLaw({
-        Es: es,
+      const serviceContext = createRcServiceSectionSolverContext({
+        section,
+        reinforcementMaterial,
+        mesh,
+        solver,
+        modularRatio: effectiveModularRatio,
       });
       const rawPoints = deduplicateSamples(
         result.internalForces?.samples ?? [],
@@ -332,18 +318,21 @@ export class CrackedSectionDeflectionAnalysis {
         let zeta = 0;
 
         if (isFinitePositive(absM) && (!isFinitePositive(mcr) || absM > mcr)) {
-          const solved = solveServiceStressWithFallbacks({
-            serviceSolver,
+          const solved = solveRcServiceSectionState({
             section,
-            concreteFibers: concreteMesh.fibers,
-            concreteLaw,
-            steelLaw,
+            reinforcementMaterial,
+            concreteMesh: serviceContext.mesh,
+            serviceSolver: serviceContext.serviceSolver,
+            concreteLaw: serviceContext.concreteLaw,
+            steelLaw: serviceContext.steelLaw,
+            solver,
+            modularRatio: effectiveModularRatio,
             actions: {
               nEd,
               mxEd: mEd,
               myEd: 0,
             },
-          });
+          }).solved;
           solverConverged = solved.converged;
 
           if (solved.converged) {
@@ -449,17 +438,7 @@ export class CrackedSectionDeflectionAnalysis {
       checks.push(slenderness);
     }
 
-    const governingCheck = checks.reduce((selected, check) => {
-      if (!Number.isFinite(check.utilizationRatio)) {
-        return selected;
-      }
-
-      if (!selected || check.utilizationRatio > selected.utilizationRatio) {
-        return check;
-      }
-
-      return selected;
-    }, null);
+    const governing = governingCheck(checks);
 
     return new VerificationResult({
       applicationId: "rc-cracked-deflection",
@@ -469,9 +448,9 @@ export class CrackedSectionDeflectionAnalysis {
           : RESULT_STATUS.NOT_VERIFIED,
       summary:
         "RC service deflection from cracked/uncracked curvature integration.",
-      utilizationRatio: governingCheck?.utilizationRatio ?? null,
-      demand: governingCheck?.demand ?? null,
-      capacity: governingCheck?.capacity ?? null,
+      utilizationRatio: governing?.utilizationRatio ?? null,
+      demand: governing?.demand ?? null,
+      capacity: governing?.capacity ?? null,
       checks,
       outputs: {
         beamId,
@@ -495,7 +474,7 @@ export class CrackedSectionDeflectionAnalysis {
         code: this.code,
         beamId,
         method: "curvature-integration-tension-stiffening-mvp",
-        governingCheckId: governingCheck?.id ?? null,
+        governingCheckId: governing?.id ?? null,
         creepCoefficient: phi,
         includeShrinkage: false,
         ...this.metadata,
