@@ -137,6 +137,7 @@ export class RCSectionStateIntegrator {
     strainField,
     referencePoint = null,
     includeConcreteTension = true,
+    includeResponseDetails = true,
     postUltimateResponse = "zero-stress",
     postUltimateFractureEnergyDensity = null,
   } = {}) {
@@ -210,6 +211,203 @@ export class RCSectionStateIntegrator {
     let maxStrain = null;
     let postUltimateConcreteFiberCount = 0;
     let postUltimateSteelBarCount = 0;
+    const reinforcementBars = section.getReinforcementBars();
+
+    if (!includeResponseDetails) {
+      for (const fiber of concreteFibers) {
+        const strain = strainField.strainAt(fiber);
+        let stress = concreteLaw.stress(strain);
+        const strainLimit = resolveStrainLimit(concreteLaw, strain);
+        const strainUtilization =
+          strainLimit == null ? 0 : Math.abs(strain) / strainLimit;
+        const isPostUltimate =
+          postUltimateResponse !== "retain" &&
+          strainLimit != null &&
+          strainUtilization > 1;
+
+        if (isPostUltimate) {
+          postUltimateConcreteFiberCount += 1;
+
+          if (
+            postUltimateResponse === "zero-stress" ||
+            fractureEnergyDensity.concrete <= 0
+          ) {
+            stress = 0;
+          } else {
+            const limitStrain = Math.sign(strain || 1) * strainLimit;
+            const limitStress = Math.abs(concreteLaw.stress(limitStrain));
+
+            if (limitStress <= 0) {
+              stress = 0;
+            } else {
+              const terminalStrain =
+                strainLimit +
+                (2 * fractureEnergyDensity.concrete) / limitStress;
+              const stressReductionFactor = Math.max(
+                0,
+                (terminalStrain - Math.abs(strain)) /
+                  (terminalStrain - strainLimit),
+              );
+              stress *= stressReductionFactor;
+            }
+          }
+        }
+
+        if (!includeConcreteTension && stress > 0) {
+          stress = 0;
+        }
+
+        const force = stress * fiber.area;
+        const leverY = fiber.y - resolvedReferencePoint.y;
+        const leverZ = fiber.z - resolvedReferencePoint.z;
+        const mx = -force * leverY;
+        const my = force * leverZ;
+
+        axialForce += force;
+        momentX += mx;
+        momentY += my;
+        concreteAxialForce += force;
+        minStrain = minStrain == null ? strain : Math.min(minStrain, strain);
+        maxStrain = maxStrain == null ? strain : Math.max(maxStrain, strain);
+
+        if (stress < 0) {
+          concreteCompression = accumulateExtreme(
+            concreteCompression,
+            { value: stress, y: fiber.y, z: fiber.z, strain },
+            (candidate, current) => candidate < current,
+          );
+        } else if (stress > 0) {
+          concreteTension = accumulateExtreme(
+            concreteTension,
+            { value: stress, y: fiber.y, z: fiber.z, strain },
+            (candidate, current) => candidate > current,
+          );
+        }
+      }
+
+      for (const bar of reinforcementBars) {
+        const strain = strainField.strainAt(bar);
+        let stress = steelLaw.stress(strain);
+        const strainLimit = resolveStrainLimit(steelLaw, strain);
+        const strainUtilization =
+          strainLimit == null ? 0 : Math.abs(strain) / strainLimit;
+        const isPostUltimate =
+          postUltimateResponse !== "retain" &&
+          strainLimit != null &&
+          strainUtilization > 1;
+
+        if (isPostUltimate) {
+          postUltimateSteelBarCount += 1;
+
+          if (
+            postUltimateResponse === "zero-stress" ||
+            fractureEnergyDensity.steel <= 0
+          ) {
+            stress = 0;
+          } else {
+            const limitStrain = Math.sign(strain || 1) * strainLimit;
+            const limitStress = Math.abs(steelLaw.stress(limitStrain));
+
+            if (limitStress <= 0) {
+              stress = 0;
+            } else {
+              const terminalStrain =
+                strainLimit +
+                (2 * fractureEnergyDensity.steel) / limitStress;
+              const stressReductionFactor = Math.max(
+                0,
+                (terminalStrain - Math.abs(strain)) /
+                  (terminalStrain - strainLimit),
+              );
+              stress *= stressReductionFactor;
+            }
+          }
+        }
+
+        const force = stress * bar.area;
+        const leverY = bar.y - resolvedReferencePoint.y;
+        const leverZ = bar.z - resolvedReferencePoint.z;
+        const mx = -force * leverY;
+        const my = force * leverZ;
+
+        axialForce += force;
+        momentX += mx;
+        momentY += my;
+        steelAxialForce += force;
+        minStrain = minStrain == null ? strain : Math.min(minStrain, strain);
+        maxStrain = maxStrain == null ? strain : Math.max(maxStrain, strain);
+
+        if (stress < 0) {
+          steelCompression = accumulateExtreme(
+            steelCompression,
+            { value: stress, id: bar.id, y: bar.y, z: bar.z, strain },
+            (candidate, current) => candidate < current,
+          );
+        } else if (stress > 0) {
+          steelTension = accumulateExtreme(
+            steelTension,
+            { value: stress, id: bar.id, y: bar.y, z: bar.z, strain },
+            (candidate, current) => candidate > current,
+          );
+        }
+
+        if (strain < 0) {
+          steelCompressionStrain = accumulateExtreme(
+            steelCompressionStrain,
+            { value: strain, stress, id: bar.id, y: bar.y, z: bar.z, strain },
+            (candidate, current) => candidate < current,
+          );
+        } else if (strain > 0) {
+          steelTensionStrain = accumulateExtreme(
+            steelTensionStrain,
+            { value: strain, stress, id: bar.id, y: bar.y, z: bar.z, strain },
+            (candidate, current) => candidate > current,
+          );
+        }
+      }
+
+      return {
+        N: axialForce,
+        Mx: momentX,
+        My: momentY,
+        referencePoint: { ...resolvedReferencePoint },
+        concrete: {
+          axialForce: concreteAxialForce,
+          fibers: [],
+        },
+        steel: {
+          axialForce: steelAxialForce,
+          bars: [],
+        },
+        postUltimate: {
+          response: postUltimateResponse,
+          fractureEnergyDensity:
+            postUltimateResponse === "linear-softening"
+              ? { ...fractureEnergyDensity }
+              : {
+                  concrete: 0,
+                  steel: 0,
+                },
+          fractureEnergyDensityUnits: "N/mm2",
+          fractureEnergyInterpretation: "energy-per-unit-volume",
+          concreteFiberCount: postUltimateConcreteFiberCount,
+          steelBarCount: postUltimateSteelBarCount,
+          active:
+            postUltimateConcreteFiberCount > 0 ||
+            postUltimateSteelBarCount > 0,
+        },
+        extremes: {
+          minStrain,
+          maxStrain,
+          maxConcreteCompression: concreteCompression,
+          maxConcreteTension: concreteTension,
+          maxSteelCompression: steelCompression,
+          maxSteelTension: steelTension,
+          maxSteelCompressionStrain: steelCompressionStrain,
+          maxSteelTensionStrain: steelTensionStrain,
+        },
+      };
+    }
 
     const concreteResponse = concreteFibers.map((fiber) => {
       const strain = strainField.strainAt(fiber);
@@ -275,7 +473,7 @@ export class RCSectionStateIntegrator {
       };
     });
 
-    const steelResponse = section.getReinforcementBars().map((bar) => {
+    const steelResponse = reinforcementBars.map((bar) => {
       const strain = strainField.strainAt(bar);
       const materialResponse = applyPostUltimateResponse({
         stress: steelLaw.stress(strain),

@@ -1,47 +1,124 @@
 # TODO OTTIMIZZAZIONE SCA
 
-Ottimizzazioni possibili, in ordine di impatto
-🔴 ALTO impatto — RCSectionStateIntegrator.evaluate() (allocazioni ridondanti)
-Problema: Il .map() sulle fibre crea un oggetto diagnosti co con 20+ proprietà per ogni fibra, a ogni chiamata. Di queste, solo force, mx, my servono all'integratore.
+Stato aggiornato dopo le prime ottimizzazioni sul calcolo momento-curvatura.
 
-Fix: Separare il percorso "calcolo tensioni" dal percorso "report diagnostico". In produzione, saltare la costruzione dell'oggetto diagnostico.
+## Fatto
 
-Guadagno stimato: 2-4x sul tempo di integrazione (è il collo di bottiglia più interno).
+### 1. Bundle esbuild
 
-🔴 ALTO impatto — Campionamento cieco in solveAtCurvature()
-Problema: 161–401 campioni ε₀ lineari vengono tutti valutati con integrazione completa prima di cercare bracket. La maggior parte sono lontani dalla radice.
+Stato: fatto in precedenza.
 
-Fix: Campionamento adattivo coarse-to-fine o early termination dopo aver trovato un numero sufficiente di bracket.
+Effetto: risoluzione moduli molto piu veloce lato consumer/bundle.
 
-Guadagno stimato: 1.5-2x su solveAtCurvature().
+### 2. RCSectionStateIntegrator.evaluate(): percorso leggero senza diagnostica fibra/barra
 
-🟡 MEDIO impatto — StrainField allocato per ogni valutazione
-Problema: new StrainField(eps0, kx, ky) è un'istanza di classe con soli 3 numeri, creata ~14.000 volte per analisi.
+Stato: fatto.
 
-Fix: Inlineare il calcolo dello strain o usare un oggetto mutabile riutilizzato.
+Implementazione:
+- `includeResponseDetails` e stato lasciato a `true` di default per compatibilita.
+- Le valutazioni interne di `RCMomentCurvatureAnalyzer.solveAtCurvature()` usano `includeResponseDetails: false`.
+- Il punto convergente viene rivalutato con diagnostica completa, quindi l'output pubblico conserva `concrete.fibers`, `steel.bars`, `extremes`, `postUltimate`, ecc.
 
-🟡 MEDIO impatto — IllinoisRootSolver accumula history
-Problema: Ogni iterazione pusha in un array diagnostico. In produzione non serve.
+Benchmark indicativo sulla fixture locale:
+- circa 126 fibre: 196 ms -> 90 ms
+- circa 984 fibre: 1585 ms -> 332 ms
 
-Fix: Rendere l'history opzionale (già fatto in parte, verificare).
+### 3. solveAtCurvature(): bracketing guidato da eps0Hint
 
-🟢 BASSO impatto — SectionFiberDiscretizer usa oggetti plain
-Problema: Le fibre sono oggetti JS con chiavi stringa. Per l'integratore, sarebbe più efficiente uno struct-of-arrays con Float64Array.
+Stato: fatto, con fallback conservativo.
 
-Fix: Convertire le fibre in typed array dopo la discretizzazione. Migliora la cache locality.
+Implementazione:
+- Cache delle valutazioni leggere per `eps0`.
+- Ricerca locale progressiva attorno a `eps0Hint`.
+- Fallback alla scansione lineare completa se il bracket locale non trova una radice equilibrata.
 
-Nota: È un refactor significativo, da fare solo se le ottimizzazioni sopra non bastano.
+Nota: non e un campionamento adattivo generale coarse-to-fine, ma elimina molte scansioni cieche quando il punto precedente fornisce un buon hint.
 
-🟢 BASSO impatto (ma UX importante) — Web Worker per la SPA
-Nella SPA React, l'analisi momento-curvatura (690ms in test, potenzialmente di più con sezioni complesse) blocca il thread UI. Spostare i calcoli pesanti in un Web Worker:
+## Resta da fare
 
-L'UI rimane reattiva durante il calcolo
-Si può mostrare una progress bar
-Il bundle ESM funziona anche in worker: new Worker(new URL('./worker.js', import.meta.url), { type: 'module' })
-Priorità consigliata
-Step	Cosa	Impatto	Rischio
-1	Bundle esbuild (✅ fatto)	Module resolution: -10x	Basso
-2	Separare integrazione da diagnostica in evaluate()	Calcolo: -2/4x	Medio (tocca il core)
-3	Campionamento adattivo in solveAtCurvature()	Calcolo: -1.5/2x	Medio
-4	Web Worker (solo SPA)	UX: UI non bloccante	Basso
-5	Typed arrays nelle fibre	Calcolo: -1.2/1.5x	Alto (refactor grosso)
+### 1. Estendere il percorso leggero ad altri solver RC
+
+Impatto atteso: medio-alto.
+
+Oggi il fast path e usato nel momento-curvatura. Restano candidati:
+- `RCUltimateSectionSolver`, durante campionamento profondita e iterazioni Illinois.
+- `RCServiceStressSolver`, durante Newton e differenze finite.
+- eventuali builder di domini ULS che chiamano ripetutamente l'integratore.
+
+Approccio consigliato: usare `includeResponseDetails: false` nelle iterazioni interne e rivalutare con dettagli completi solo il risultato finale.
+
+### 2. IllinoisRootSolver: history opzionale
+
+Impatto atteso: basso-medio.
+
+Problema: `IllinoisRootSolver.solve()` costruisce sempre `history`.
+
+Fix: aggiungere un'opzione tipo `includeHistory = true` o `collectHistory = true`, mantenendo il default compatibile. Nei loop prestazionali usare `false`.
+
+Rischio: basso.
+
+### 3. StrainField allocato per ogni valutazione
+
+Impatto atteso: medio-basso dopo il fast path.
+
+Problema: molte valutazioni creano `new StrainField(...)`.
+
+Possibili fix:
+- accettare nell'integratore anche `{ eps0, kappaY, kappaZ }` plain object con `strainAt` inline interno;
+- oppure riusare un oggetto mutabile solo nei loop interni.
+
+Rischio: basso-medio, ma da fare solo dopo un profiling aggiornato.
+
+### 4. Benchmark ripetibile di performance
+
+Impatto atteso: alto per evitare regressioni.
+
+Creare uno script dedicato, ad esempio `scripts/benchmark-rc-moment-curvature.js`, che misuri:
+- fibre 120, 300, 1000;
+- pointCount 15, 41;
+- postUltimateResponse `zero-stress` e `linear-softening`;
+- tempo medio su piu run;
+- numero chiamate integratore, fast/detail.
+
+Questo dovrebbe diventare il riferimento prima di interventi piu invasivi.
+
+### 5. Web Worker per la SPA
+
+Impatto atteso: UX alto, calcolo puro invariato.
+
+Serve se la SPA React blocca il thread UI durante analisi pesanti.
+
+Approccio:
+- spostare le analisi RC pesanti in un worker ESM;
+- serializzare input/output del modello;
+- progress bar opzionale;
+- cancellazione calcolo se l'utente cambia input.
+
+Rischio: basso-medio lato UI, nullo sul core se il worker chiama le API esistenti.
+
+### 6. Typed array / struct-of-arrays per le fibre
+
+Impatto atteso: basso-medio, ma rischio alto.
+
+Da fare solo se, dopo benchmark e fast path esteso, il collo di bottiglia resta la scansione delle fibre.
+
+Possibile strategia:
+- mantenere l'API pubblica `fibers` invariata;
+- generare internamente una vista ottimizzata con `Float64Array` per area/y/z;
+- usare la vista solo nei loop caldi dell'integratore.
+
+## Priorita consigliata
+
+1. Benchmark ripetibile.
+2. Estendere `includeResponseDetails: false` agli altri solver RC.
+3. Rendere opzionale `IllinoisRootSolver.history`.
+4. Valutare `StrainField` solo se il profiling lo conferma.
+5. Web Worker se il problema percepito e il blocco UI.
+6. Typed array solo come refactor finale.
+
+## Verifiche gia passate dopo gli interventi
+
+- `node scripts/check-syntax.js`
+- test RC mirati
+- `npm test` completo: 291 test passati
+- `npm run build`

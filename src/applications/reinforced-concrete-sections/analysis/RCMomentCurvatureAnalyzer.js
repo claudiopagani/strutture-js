@@ -784,7 +784,10 @@ export class RCMomentCurvatureAnalyzer {
     });
     const resolvedReferencePoint =
       referencePoint ?? section.getReferencePoint("concrete-centroid");
-    const evaluateAtEps0 = (eps0) => {
+    const evaluateAtEps0 = (
+      eps0,
+      { includeResponseDetails = false } = {},
+    ) => {
       const strainField = buildOrientedStrainField({
         eps0,
         curvature,
@@ -799,6 +802,7 @@ export class RCMomentCurvatureAnalyzer {
         strainField,
         referencePoint: resolvedReferencePoint,
         includeConcreteTension,
+        includeResponseDetails,
         postUltimateResponse,
         postUltimateFractureEnergyDensity,
       });
@@ -809,6 +813,16 @@ export class RCMomentCurvatureAnalyzer {
         state,
         residual: state.N - nEd,
       };
+    };
+    const fastEvaluations = new Map();
+    const evaluateFastAtEps0 = (eps0) => {
+      const key = eps0.toPrecision(17);
+
+      if (!fastEvaluations.has(key)) {
+        fastEvaluations.set(key, evaluateAtEps0(eps0));
+      }
+
+      return fastEvaluations.get(key);
     };
     const projectedBounds = getConcreteProjectedBounds(
       section,
@@ -836,15 +850,88 @@ export class RCMomentCurvatureAnalyzer {
       postUltimateResponse === "retain"
         ? this.eps0Samples
         : Math.max(this.eps0Samples, 401);
-    const eps0Samples = createLinearSamples({
-      minimum: sampleMinimum,
-      maximum: sampleMaximum,
-      count: axialSampleCount,
-    }).map((eps0) => ({
+    const sampleFromEps0 = (eps0) => ({
       eps0,
-      value: evaluateAtEps0(eps0).state.N,
-    }));
-    const brackets = findBrackets(eps0Samples, nEd);
+      value: evaluateFastAtEps0(eps0).state.N,
+    });
+    const samplesFromValues = (values) => {
+      const uniqueValues = new Map();
+
+      for (const value of values) {
+        if (value >= sampleMinimum && value <= sampleMaximum) {
+          uniqueValues.set(value.toPrecision(17), value);
+        }
+      }
+
+      return [...uniqueValues.values()]
+        .sort((first, second) => first - second)
+        .map(sampleFromEps0);
+    };
+    const findHintBrackets = () => {
+      if (!Number.isFinite(eps0Hint)) {
+        return [];
+      }
+
+      const sampleSpan = sampleMaximum - sampleMinimum;
+
+      if (!Number.isFinite(sampleSpan) || sampleSpan <= 0) {
+        return [];
+      }
+
+      const center = Math.max(
+        sampleMinimum,
+        Math.min(sampleMaximum, eps0Hint),
+      );
+      const values = [center];
+      let searchRadius = Math.max(
+        sampleSpan / Math.max(axialSampleCount - 1, 1),
+        1e-10,
+      );
+      let reachedMinimum = center === sampleMinimum;
+      let reachedMaximum = center === sampleMaximum;
+
+      for (let iteration = 0; iteration < 32; iteration += 1) {
+        if (!reachedMinimum) {
+          const lower = Math.max(sampleMinimum, center - searchRadius);
+          values.push(lower);
+          reachedMinimum = lower === sampleMinimum;
+        }
+
+        if (!reachedMaximum) {
+          const upper = Math.min(sampleMaximum, center + searchRadius);
+          values.push(upper);
+          reachedMaximum = upper === sampleMaximum;
+        }
+
+        const brackets = findBrackets(samplesFromValues(values), nEd);
+
+        if (brackets.length > 0) {
+          return brackets;
+        }
+
+        if (reachedMinimum && reachedMaximum) {
+          break;
+        }
+
+        searchRadius *= 2;
+      }
+
+      return [];
+    };
+    const findFullScanBrackets = () =>
+      findBrackets(
+        createLinearSamples({
+          minimum: sampleMinimum,
+          maximum: sampleMaximum,
+          count: axialSampleCount,
+        }).map(sampleFromEps0),
+        nEd,
+      );
+    const hintBrackets = findHintBrackets();
+    let brackets =
+      hintBrackets.length > 0 ? hintBrackets : findFullScanBrackets();
+    let bracketSearch = hintBrackets.length > 0 ? "hint" : "full-scan";
+
     if (brackets.length === 0) {
       throw new Error(
         "RCMomentCurvatureAnalyzer could not bracket the axial-equilibrium root for the requested curvature.",
@@ -852,55 +939,76 @@ export class RCMomentCurvatureAnalyzer {
     }
 
     const axialTolerance = Math.max(100, Math.abs(nEd) * 1e-6);
-    const orderedBrackets = [...brackets].sort(
-      (first, second) =>
-        bracketDistanceFromHint(first, eps0Hint) -
-        bracketDistanceFromHint(second, eps0Hint),
-    );
-    const solvedCandidates = [];
+    const solveCandidateBrackets = (candidateBrackets) => {
+      const orderedBrackets = [...candidateBrackets].sort(
+        (first, second) =>
+          bracketDistanceFromHint(first, eps0Hint) -
+          bracketDistanceFromHint(second, eps0Hint),
+      );
+      const solvedCandidates = [];
 
-    for (
-      let index = 0;
-      index < Math.min(orderedBrackets.length, 24);
-      index += 1
-    ) {
-      const candidateBracket = orderedBrackets[index];
-      const solved =
-        candidateBracket.min === candidateBracket.max
-          ? {
-              converged: true,
-              iterations: 0,
-              root: candidateBracket.min,
-              residual:
-                evaluateAtEps0(candidateBracket.min).residual,
-              bracket: candidateBracket,
-            }
-          : this.axialRootSolver.solve({
-              fn: (eps0) => evaluateAtEps0(eps0).state.N,
-              min: candidateBracket.min,
-              max: candidateBracket.max,
-              target: nEd,
-            });
-      const stateAtRoot = evaluateAtEps0(solved.root);
-      const candidate = {
-        bracket: candidateBracket,
-        solved,
-        stateAtRoot,
-        absoluteResidual: Math.abs(stateAtRoot.residual),
-        hintDistance: Number.isFinite(eps0Hint)
-          ? Math.abs(stateAtRoot.eps0 - eps0Hint)
-          : 0,
-      };
+      for (
+        let index = 0;
+        index < Math.min(orderedBrackets.length, 24);
+        index += 1
+      ) {
+        const candidateBracket = orderedBrackets[index];
+        const solved =
+          candidateBracket.min === candidateBracket.max
+            ? {
+                converged: true,
+                iterations: 0,
+                root: candidateBracket.min,
+                residual:
+                  evaluateFastAtEps0(candidateBracket.min).residual,
+                bracket: candidateBracket,
+              }
+            : this.axialRootSolver.solve({
+                fn: (eps0) => evaluateFastAtEps0(eps0).state.N,
+                min: candidateBracket.min,
+                max: candidateBracket.max,
+                target: nEd,
+              });
+        const stateAtRoot = evaluateAtEps0(solved.root, {
+          includeResponseDetails: true,
+        });
+        const candidate = {
+          bracket: candidateBracket,
+          solved,
+          stateAtRoot,
+          absoluteResidual: Math.abs(stateAtRoot.residual),
+          hintDistance: Number.isFinite(eps0Hint)
+            ? Math.abs(stateAtRoot.eps0 - eps0Hint)
+            : 0,
+        };
 
-      solvedCandidates.push(candidate);
+        solvedCandidates.push(candidate);
 
-      if (candidate.absoluteResidual <= axialTolerance) {
-        break;
+        if (candidate.absoluteResidual <= axialTolerance) {
+          break;
+        }
       }
-    }
-    const equilibratedCandidates = solvedCandidates.filter(
+
+      return solvedCandidates;
+    };
+    let solvedCandidates = solveCandidateBrackets(brackets);
+    let equilibratedCandidates = solvedCandidates.filter(
       (candidate) => candidate.absoluteResidual <= axialTolerance,
     );
+
+    if (equilibratedCandidates.length === 0 && bracketSearch === "hint") {
+      const fullScanBrackets = findFullScanBrackets();
+
+      if (fullScanBrackets.length > 0) {
+        brackets = fullScanBrackets;
+        bracketSearch = "full-scan";
+        solvedCandidates = solveCandidateBrackets(brackets);
+        equilibratedCandidates = solvedCandidates.filter(
+          (candidate) => candidate.absoluteResidual <= axialTolerance,
+        );
+      }
+    }
+
     const candidatesToRank =
       equilibratedCandidates.length > 0
         ? equilibratedCandidates

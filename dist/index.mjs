@@ -44463,6 +44463,7 @@ var RCSectionStateIntegrator = class {
     strainField,
     referencePoint = null,
     includeConcreteTension = true,
+    includeResponseDetails = true,
     postUltimateResponse = "zero-stress",
     postUltimateFractureEnergyDensity = null
   } = {}) {
@@ -44515,6 +44516,161 @@ var RCSectionStateIntegrator = class {
     let maxStrain = null;
     let postUltimateConcreteFiberCount = 0;
     let postUltimateSteelBarCount = 0;
+    const reinforcementBars2 = section.getReinforcementBars();
+    if (!includeResponseDetails) {
+      for (const fiber of concreteFibers) {
+        const strain = strainField.strainAt(fiber);
+        let stress = concreteLaw.stress(strain);
+        const strainLimit = resolveStrainLimit(concreteLaw, strain);
+        const strainUtilization = strainLimit == null ? 0 : Math.abs(strain) / strainLimit;
+        const isPostUltimate = postUltimateResponse !== "retain" && strainLimit != null && strainUtilization > 1;
+        if (isPostUltimate) {
+          postUltimateConcreteFiberCount += 1;
+          if (postUltimateResponse === "zero-stress" || fractureEnergyDensity.concrete <= 0) {
+            stress = 0;
+          } else {
+            const limitStrain = Math.sign(strain || 1) * strainLimit;
+            const limitStress = Math.abs(concreteLaw.stress(limitStrain));
+            if (limitStress <= 0) {
+              stress = 0;
+            } else {
+              const terminalStrain = strainLimit + 2 * fractureEnergyDensity.concrete / limitStress;
+              const stressReductionFactor = Math.max(
+                0,
+                (terminalStrain - Math.abs(strain)) / (terminalStrain - strainLimit)
+              );
+              stress *= stressReductionFactor;
+            }
+          }
+        }
+        if (!includeConcreteTension && stress > 0) {
+          stress = 0;
+        }
+        const force = stress * fiber.area;
+        const leverY = fiber.y - resolvedReferencePoint.y;
+        const leverZ = fiber.z - resolvedReferencePoint.z;
+        const mx = -force * leverY;
+        const my = force * leverZ;
+        axialForce += force;
+        momentX += mx;
+        momentY += my;
+        concreteAxialForce += force;
+        minStrain = minStrain == null ? strain : Math.min(minStrain, strain);
+        maxStrain = maxStrain == null ? strain : Math.max(maxStrain, strain);
+        if (stress < 0) {
+          concreteCompression = accumulateExtreme(
+            concreteCompression,
+            { value: stress, y: fiber.y, z: fiber.z, strain },
+            (candidate, current) => candidate < current
+          );
+        } else if (stress > 0) {
+          concreteTension = accumulateExtreme(
+            concreteTension,
+            { value: stress, y: fiber.y, z: fiber.z, strain },
+            (candidate, current) => candidate > current
+          );
+        }
+      }
+      for (const bar of reinforcementBars2) {
+        const strain = strainField.strainAt(bar);
+        let stress = steelLaw.stress(strain);
+        const strainLimit = resolveStrainLimit(steelLaw, strain);
+        const strainUtilization = strainLimit == null ? 0 : Math.abs(strain) / strainLimit;
+        const isPostUltimate = postUltimateResponse !== "retain" && strainLimit != null && strainUtilization > 1;
+        if (isPostUltimate) {
+          postUltimateSteelBarCount += 1;
+          if (postUltimateResponse === "zero-stress" || fractureEnergyDensity.steel <= 0) {
+            stress = 0;
+          } else {
+            const limitStrain = Math.sign(strain || 1) * strainLimit;
+            const limitStress = Math.abs(steelLaw.stress(limitStrain));
+            if (limitStress <= 0) {
+              stress = 0;
+            } else {
+              const terminalStrain = strainLimit + 2 * fractureEnergyDensity.steel / limitStress;
+              const stressReductionFactor = Math.max(
+                0,
+                (terminalStrain - Math.abs(strain)) / (terminalStrain - strainLimit)
+              );
+              stress *= stressReductionFactor;
+            }
+          }
+        }
+        const force = stress * bar.area;
+        const leverY = bar.y - resolvedReferencePoint.y;
+        const leverZ = bar.z - resolvedReferencePoint.z;
+        const mx = -force * leverY;
+        const my = force * leverZ;
+        axialForce += force;
+        momentX += mx;
+        momentY += my;
+        steelAxialForce += force;
+        minStrain = minStrain == null ? strain : Math.min(minStrain, strain);
+        maxStrain = maxStrain == null ? strain : Math.max(maxStrain, strain);
+        if (stress < 0) {
+          steelCompression = accumulateExtreme(
+            steelCompression,
+            { value: stress, id: bar.id, y: bar.y, z: bar.z, strain },
+            (candidate, current) => candidate < current
+          );
+        } else if (stress > 0) {
+          steelTension = accumulateExtreme(
+            steelTension,
+            { value: stress, id: bar.id, y: bar.y, z: bar.z, strain },
+            (candidate, current) => candidate > current
+          );
+        }
+        if (strain < 0) {
+          steelCompressionStrain = accumulateExtreme(
+            steelCompressionStrain,
+            { value: strain, stress, id: bar.id, y: bar.y, z: bar.z, strain },
+            (candidate, current) => candidate < current
+          );
+        } else if (strain > 0) {
+          steelTensionStrain = accumulateExtreme(
+            steelTensionStrain,
+            { value: strain, stress, id: bar.id, y: bar.y, z: bar.z, strain },
+            (candidate, current) => candidate > current
+          );
+        }
+      }
+      return {
+        N: axialForce,
+        Mx: momentX,
+        My: momentY,
+        referencePoint: { ...resolvedReferencePoint },
+        concrete: {
+          axialForce: concreteAxialForce,
+          fibers: []
+        },
+        steel: {
+          axialForce: steelAxialForce,
+          bars: []
+        },
+        postUltimate: {
+          response: postUltimateResponse,
+          fractureEnergyDensity: postUltimateResponse === "linear-softening" ? { ...fractureEnergyDensity } : {
+            concrete: 0,
+            steel: 0
+          },
+          fractureEnergyDensityUnits: "N/mm2",
+          fractureEnergyInterpretation: "energy-per-unit-volume",
+          concreteFiberCount: postUltimateConcreteFiberCount,
+          steelBarCount: postUltimateSteelBarCount,
+          active: postUltimateConcreteFiberCount > 0 || postUltimateSteelBarCount > 0
+        },
+        extremes: {
+          minStrain,
+          maxStrain,
+          maxConcreteCompression: concreteCompression,
+          maxConcreteTension: concreteTension,
+          maxSteelCompression: steelCompression,
+          maxSteelTension: steelTension,
+          maxSteelCompressionStrain: steelCompressionStrain,
+          maxSteelTensionStrain: steelTensionStrain
+        }
+      };
+    }
     const concreteResponse = concreteFibers.map((fiber) => {
       const strain = strainField.strainAt(fiber);
       const materialResponse = applyPostUltimateResponse({
@@ -44571,7 +44727,7 @@ var RCSectionStateIntegrator = class {
         my
       };
     });
-    const steelResponse = section.getReinforcementBars().map((bar) => {
+    const steelResponse = reinforcementBars2.map((bar) => {
       const strain = strainField.strainAt(bar);
       const materialResponse = applyPostUltimateResponse({
         stress: steelLaw.stress(strain),
@@ -46342,7 +46498,7 @@ var RCMomentCurvatureAnalyzer = class _RCMomentCurvatureAnalyzer {
       compressedSide: resolvedCompressedSide
     });
     const resolvedReferencePoint = referencePoint != null ? referencePoint : section.getReferencePoint("concrete-centroid");
-    const evaluateAtEps0 = (eps0) => {
+    const evaluateAtEps0 = (eps0, { includeResponseDetails = false } = {}) => {
       const strainField = buildOrientedStrainField({
         eps0,
         curvature,
@@ -46357,6 +46513,7 @@ var RCMomentCurvatureAnalyzer = class _RCMomentCurvatureAnalyzer {
         strainField,
         referencePoint: resolvedReferencePoint,
         includeConcreteTension,
+        includeResponseDetails,
         postUltimateResponse,
         postUltimateFractureEnergyDensity
       });
@@ -46366,6 +46523,14 @@ var RCMomentCurvatureAnalyzer = class _RCMomentCurvatureAnalyzer {
         state,
         residual: state.N - nEd
       };
+    };
+    const fastEvaluations = /* @__PURE__ */ new Map();
+    const evaluateFastAtEps0 = (eps0) => {
+      const key = eps0.toPrecision(17);
+      if (!fastEvaluations.has(key)) {
+        fastEvaluations.set(key, evaluateAtEps0(eps0));
+      }
+      return fastEvaluations.get(key);
     };
     const projectedBounds = getConcreteProjectedBounds(
       section,
@@ -46384,55 +46549,128 @@ var RCMomentCurvatureAnalyzer = class _RCMomentCurvatureAnalyzer {
       Number.isFinite(eps0Hint) ? eps0Hint + 0.02 : Number.NEGATIVE_INFINITY
     );
     const axialSampleCount = postUltimateResponse === "retain" ? this.eps0Samples : Math.max(this.eps0Samples, 401);
-    const eps0Samples = createLinearSamples({
-      minimum: sampleMinimum,
-      maximum: sampleMaximum,
-      count: axialSampleCount
-    }).map((eps0) => ({
+    const sampleFromEps0 = (eps0) => ({
       eps0,
-      value: evaluateAtEps0(eps0).state.N
-    }));
-    const brackets = findBrackets(eps0Samples, nEd);
+      value: evaluateFastAtEps0(eps0).state.N
+    });
+    const samplesFromValues = (values) => {
+      const uniqueValues2 = /* @__PURE__ */ new Map();
+      for (const value of values) {
+        if (value >= sampleMinimum && value <= sampleMaximum) {
+          uniqueValues2.set(value.toPrecision(17), value);
+        }
+      }
+      return [...uniqueValues2.values()].sort((first, second) => first - second).map(sampleFromEps0);
+    };
+    const findHintBrackets = () => {
+      if (!Number.isFinite(eps0Hint)) {
+        return [];
+      }
+      const sampleSpan = sampleMaximum - sampleMinimum;
+      if (!Number.isFinite(sampleSpan) || sampleSpan <= 0) {
+        return [];
+      }
+      const center = Math.max(
+        sampleMinimum,
+        Math.min(sampleMaximum, eps0Hint)
+      );
+      const values = [center];
+      let searchRadius = Math.max(
+        sampleSpan / Math.max(axialSampleCount - 1, 1),
+        1e-10
+      );
+      let reachedMinimum = center === sampleMinimum;
+      let reachedMaximum = center === sampleMaximum;
+      for (let iteration = 0; iteration < 32; iteration += 1) {
+        if (!reachedMinimum) {
+          const lower = Math.max(sampleMinimum, center - searchRadius);
+          values.push(lower);
+          reachedMinimum = lower === sampleMinimum;
+        }
+        if (!reachedMaximum) {
+          const upper = Math.min(sampleMaximum, center + searchRadius);
+          values.push(upper);
+          reachedMaximum = upper === sampleMaximum;
+        }
+        const brackets2 = findBrackets(samplesFromValues(values), nEd);
+        if (brackets2.length > 0) {
+          return brackets2;
+        }
+        if (reachedMinimum && reachedMaximum) {
+          break;
+        }
+        searchRadius *= 2;
+      }
+      return [];
+    };
+    const findFullScanBrackets = () => findBrackets(
+      createLinearSamples({
+        minimum: sampleMinimum,
+        maximum: sampleMaximum,
+        count: axialSampleCount
+      }).map(sampleFromEps0),
+      nEd
+    );
+    const hintBrackets = findHintBrackets();
+    let brackets = hintBrackets.length > 0 ? hintBrackets : findFullScanBrackets();
+    let bracketSearch = hintBrackets.length > 0 ? "hint" : "full-scan";
     if (brackets.length === 0) {
       throw new Error(
         "RCMomentCurvatureAnalyzer could not bracket the axial-equilibrium root for the requested curvature."
       );
     }
     const axialTolerance = Math.max(100, Math.abs(nEd) * 1e-6);
-    const orderedBrackets = [...brackets].sort(
-      (first, second) => bracketDistanceFromHint(first, eps0Hint) - bracketDistanceFromHint(second, eps0Hint)
-    );
-    const solvedCandidates = [];
-    for (let index = 0; index < Math.min(orderedBrackets.length, 24); index += 1) {
-      const candidateBracket = orderedBrackets[index];
-      const solved2 = candidateBracket.min === candidateBracket.max ? {
-        converged: true,
-        iterations: 0,
-        root: candidateBracket.min,
-        residual: evaluateAtEps0(candidateBracket.min).residual,
-        bracket: candidateBracket
-      } : this.axialRootSolver.solve({
-        fn: (eps0) => evaluateAtEps0(eps0).state.N,
-        min: candidateBracket.min,
-        max: candidateBracket.max,
-        target: nEd
-      });
-      const stateAtRoot2 = evaluateAtEps0(solved2.root);
-      const candidate = {
-        bracket: candidateBracket,
-        solved: solved2,
-        stateAtRoot: stateAtRoot2,
-        absoluteResidual: Math.abs(stateAtRoot2.residual),
-        hintDistance: Number.isFinite(eps0Hint) ? Math.abs(stateAtRoot2.eps0 - eps0Hint) : 0
-      };
-      solvedCandidates.push(candidate);
-      if (candidate.absoluteResidual <= axialTolerance) {
-        break;
+    const solveCandidateBrackets = (candidateBrackets) => {
+      const orderedBrackets = [...candidateBrackets].sort(
+        (first, second) => bracketDistanceFromHint(first, eps0Hint) - bracketDistanceFromHint(second, eps0Hint)
+      );
+      const solvedCandidates2 = [];
+      for (let index = 0; index < Math.min(orderedBrackets.length, 24); index += 1) {
+        const candidateBracket = orderedBrackets[index];
+        const solved2 = candidateBracket.min === candidateBracket.max ? {
+          converged: true,
+          iterations: 0,
+          root: candidateBracket.min,
+          residual: evaluateFastAtEps0(candidateBracket.min).residual,
+          bracket: candidateBracket
+        } : this.axialRootSolver.solve({
+          fn: (eps0) => evaluateFastAtEps0(eps0).state.N,
+          min: candidateBracket.min,
+          max: candidateBracket.max,
+          target: nEd
+        });
+        const stateAtRoot2 = evaluateAtEps0(solved2.root, {
+          includeResponseDetails: true
+        });
+        const candidate = {
+          bracket: candidateBracket,
+          solved: solved2,
+          stateAtRoot: stateAtRoot2,
+          absoluteResidual: Math.abs(stateAtRoot2.residual),
+          hintDistance: Number.isFinite(eps0Hint) ? Math.abs(stateAtRoot2.eps0 - eps0Hint) : 0
+        };
+        solvedCandidates2.push(candidate);
+        if (candidate.absoluteResidual <= axialTolerance) {
+          break;
+        }
       }
-    }
-    const equilibratedCandidates = solvedCandidates.filter(
+      return solvedCandidates2;
+    };
+    let solvedCandidates = solveCandidateBrackets(brackets);
+    let equilibratedCandidates = solvedCandidates.filter(
       (candidate) => candidate.absoluteResidual <= axialTolerance
     );
+    if (equilibratedCandidates.length === 0 && bracketSearch === "hint") {
+      const fullScanBrackets = findFullScanBrackets();
+      if (fullScanBrackets.length > 0) {
+        brackets = fullScanBrackets;
+        bracketSearch = "full-scan";
+        solvedCandidates = solveCandidateBrackets(brackets);
+        equilibratedCandidates = solvedCandidates.filter(
+          (candidate) => candidate.absoluteResidual <= axialTolerance
+        );
+      }
+    }
     const candidatesToRank = equilibratedCandidates.length > 0 ? equilibratedCandidates : solvedCandidates;
     const selectedCandidate = candidatesToRank.reduce(
       (selected, candidate) => {
