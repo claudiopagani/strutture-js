@@ -1,133 +1,47 @@
-# TODO
+# TODO OTTIMIZZAZIONE SCA
 
-Piano di azione emerso dalla review del 2026-04-25.
+Ottimizzazioni possibili, in ordine di impatto
+🔴 ALTO impatto — RCSectionStateIntegrator.evaluate() (allocazioni ridondanti)
+Problema: Il .map() sulle fibre crea un oggetto diagnosti co con 20+ proprietà per ogni fibra, a ogni chiamata. Di queste, solo force, mx, my servono all'integratore.
 
-Scelte confermate:
+Fix: Separare il percorso "calcolo tensioni" dal percorso "report diagnostico". In produzione, saltare la costruzione dell'oggetto diagnostico.
 
-- Niente GitHub Actions.
-- Niente migrazione a TypeScript.
-- Per contratti e autocomplete usare JSDoc e `// @ts-check` in modo graduale, solo dove porta valore.
+Guadagno stimato: 2-4x sul tempo di integrazione (è il collo di bottiglia più interno).
 
-## 1. Fix correttivi prioritari
+🔴 ALTO impatto — Campionamento cieco in solveAtCurvature()
+Problema: 161–401 campioni ε₀ lineari vengono tutti valutati con integrazione completa prima di cercare bracket. La maggior parte sono lontani dalla radice.
 
-- [x] Correggere la conversione di `residualPierWarningThreshold`.
-  File: `src/applications/masonry-wall-openings/models/MasonryWallOpeningsModel.js`
-  Problema: la soglia viene convertita in metri, ma `...settings` puo sovrascriverla con il valore originale in unita utente.
-  Azione: applicare `...settings` prima dei default normalizzati oppure riassegnare `residualPierWarningThreshold` convertito dopo lo spread.
-  Test: costruire un modello con `units: { force: "N", length: "mm" }` e `residualPierWarningThreshold: 500`; il valore interno atteso deve essere `0.5`.
+Fix: Campionamento adattivo coarse-to-fine o early termination dopo aver trovato un numero sufficiente di bracket.
 
-- [x] Correggere la conversione di `warpingConstant` negli override dei profili in acciaio.
-  File: `src/domain/geometry/SteelProfileSection.js`
-  Problema: `warpingConstant` ha dimensione `length^6`, ma oggi un override utente viene usato direttamente senza conversione.
-  Azione: aggiungere `warpingConstant` a `convertOverrides()` con `resolver.convert(value, { lengthExponent: 6 })` e usare `resolvedOverrides.warpingConstant` nel costruttore.
-  Test: creare un profilo con override `warpingConstant` e unita non interne, verificando il valore convertito in `N/mm` + `mm`.
+Guadagno stimato: 1.5-2x su solveAtCurvature().
 
-## 2. Audit unita e normalizzazione
+🟡 MEDIO impatto — StrainField allocato per ogni valutazione
+Problema: new StrainField(eps0, kx, ky) è un'istanza di classe con soli 3 numeri, creata ~14.000 volte per analisi.
 
-- [x] Cercare altri pattern in cui un valore normalizzato viene poi sovrascritto da uno spread dell'input originale.
-- [x] Aggiungere regression test mirati per conversioni con `mm`, `cm`, `m`, `N` e `kN` sui model pubblici piu usati.
-- [x] Estrarre helper piccoli per conversioni ripetute di proprieta strutturali, soprattutto dove si mappano area, inerzia, modulo resistente, rigidezza e carichi.
-- [x] Documentare nei model principali quali campi sono in unita utente in ingresso e quali sono in unita interne dopo il costruttore.
+Fix: Inlineare il calcolo dello strain o usare un oggetto mutabile riutilizzato.
 
-## 3. Status dei risultati
+🟡 MEDIO impatto — IllinoisRootSolver accumula history
+Problema: Ogni iterazione pusha in un array diagnostico. In produzione non serve.
 
-- [x] Centralizzare gli status in un modulo core, ad esempio `src/core/results/resultStatus.js`.
-- [x] Coprire almeno questi valori: `ok`, `not-verified`, `not-supported`, `not-analyzed`, `not-implemented`, `failed`.
-- [x] Sostituire progressivamente le stringhe sparse nei moduli con costanti esportate.
-- [x] Aggiornare i test di `CalculationResult`, `VerificationResult` e application registry per usare gli status centralizzati.
+Fix: Rendere l'history opzionale (già fatto in parte, verificare).
 
-## 4. Refactor di `SingleBeamAnalysis`
+🟢 BASSO impatto — SectionFiberDiscretizer usa oggetti plain
+Problema: Le fibre sono oggetti JS con chiavi stringa. Per l'integratore, sarebbe più efficiente uno struct-of-arrays con Float64Array.
 
-Obiettivo: ridurre il file monolitico senza cambiare API pubblica o risultati numerici.
+Fix: Convertire le fibre in typed array dopo la discretizzazione. Migliora la cache locality.
 
-- [x] Estrarre normalizzazione input e carichi in un modulo dedicato.
-- [x] Estrarre gestione stazioni/discretizzazione/verifica in un modulo dedicato.
-- [x] Estrarre creazione inviluppi e selezione estremi in un modulo dedicato.
-- [x] Estrarre sampling dei risultati FEM e conversione output in un modulo dedicato.
-- [x] Tenere `SingleBeamAnalysis` come orchestratore pubblico compatibile con l'API attuale.
-- [x] Dopo ogni step, eseguire `npm test` e `npm run validation`.
+Nota: È un refactor significativo, da fare solo se le ottimizzazioni sopra non bastano.
 
-## 5. API pubblica e packaging
+🟢 BASSO impatto (ma UX importante) — Web Worker per la SPA
+Nella SPA React, l'analisi momento-curvatura (690ms in test, potenzialmente di più con sezioni complesse) blocca il thread UI. Spostare i calcoli pesanti in un Web Worker:
 
-- [x] Aggiungere `exports` in `package.json` mantenendo `main` per compatibilita.
-- [x] Esportare almeno:
-  - `.` -> `./src/index.js`
-  - `./applications` -> `./src/applications/index.js`
-  - `./norms/ntc2018` -> `./src/norms/ntc2018/index.js`
-  - eventuali subpath di dominio solo se hanno barrel stabili.
-- [x] Valutare un barrel `src/domain/index.js` solo se riduce davvero il rumore degli import.
-- [x] Aggiungere test di smoke sugli import pubblici principali.
-
-## 6. JSDoc senza migrazione TypeScript
-
-- [x] Aggiungere typedef JSDoc per i DTO pubblici piu grandi:
-  - `SingleBeamDesignModel`
-  - `MasonryWallOpeningsModel`
-  - `ReinforcedConcreteSectionModel`
-  - report DTO delle travi
-- [x] Abilitare `// @ts-check` solo su file con contratti stabili e basso rischio.
-- [x] Usare JSDoc per descrivere shape, unita attese e campi opzionali, non per riscrivere l'architettura.
-- [x] Evitare build step TypeScript, file `.ts` e migrazioni massive.
-
-## 7. Quality gate locale
-
-- [x] Aggiungere uno script `check` in `package.json`: `npm test && npm run validation`.
-- [x] Valutare uno script locale di syntax check sui file JS, senza introdurre rumore nella pipeline: aggiunto `npm run syntax` con `node --check`.
-- [x] Valutare ESLint/Prettier solo se si accetta di introdurre devDependency e una regola di formatting condivisa: rimandati per evitare nuove dipendenze e churn di formatting.
-- [x] Tenere la verifica minima sempre disponibile con comandi Node standard.
-
-## 8. Campagna di validazione
-
-- [x] Espandere `validation/` oltre i casi trave esistenti con una prima tranche di casi in cemento armato.
-- [x] Aggiungere benchmark esterni o workbook di riferimento per:
-  - [x] acciaio: prima tranche con SCI P364 per classificazione, resistenze e instabilita;
-  - [x] cemento armato: prima tranche con relazioni locali, JRC EC2 worked examples, SLU/SLE carichi, pressione fondazione e interazione N-M;
-  - [x] muratura: prima tranche con curve di capacita, aperture e report cerchiature derivati da input MATLAB;
-  - [x] legno/compositi: prima tranche con worked example EC5, workbook gamma method, deformazioni e connettori;
-  - [x] XLAM: prima tranche con relazione locale per flessione, vibrazioni e deformazioni.
-- [x] Per ogni caso indicare fonte, ipotesi, tolleranza e grandezze confrontate.
-- [x] Mantenere il report Markdown della campagna come artefatto leggibile.
-
-## 9. Documentazione tecnica
-
-- [x] Documentare il ciclo consigliato: `npm test`, `npm run validation`, `npm run check`.
-- [x] Aggiungere una pagina breve sugli status dei risultati e sul significato applicativo di ciascuno.
-- [x] Aggiornare la documentazione dei model quando cambiano contratti, unita o DTO: nessun contratto model cambiato in questa tranche; aggiornata la documentazione del contratto di validazione/report.
-- [x] Separare chiaramente limiti implementativi, ipotesi normative e scelte numeriche.
-
-## 10. Ordine suggerito
-
-1. Fix conversioni unita.
-2. Script `check` locale.
-3. Status centralizzati.
-4. JSDoc mirato sui DTO piu usati.
-5. API `exports`.
-6. Refactor graduale di `SingleBeamAnalysis`.
-7. Espansione campagna di validazione.
-8. Documentazione di supporto.
-
----
-
-## Giro 2 - Review first principles del 2026-04-30
-
-Esito del nuovo passaggio indipendente:
-
-- build, syntax check, test e validation campaign sono verdi;
-- i rischi residui piu utili da chiudere non sono nuove feature grandi, ma contratti pubblici che devono fallire in modo esplicito quando ricevono dati ambigui;
-- la coerenza fra registry, status e verifiche SLE va mantenuta come barriera di sicurezza.
-
-### 1. Contratto status risultati
-
-- [x] Validare `CalculationResult.status` contro gli status pubblici centralizzati.
-- [x] Aggiungere regressione che rifiuta uno status libero come `error`.
-
-### 2. Registry applicativo
-
-- [x] Impedire la registrazione silenziosa di due applicazioni con lo stesso `id`.
-- [x] Verificare nei test che l'ordine/id del registry di default resti allineato a `APPLICATION_CATALOG`.
-
-### 3. Verifica legno SLE
-
-- [x] Evitare che `TimberBeamVerification` usi risultati ULS come fallback per la verifica di freccia SLE.
-- [x] Esporre `serviceability.status = not-analyzed` quando mancano combinazioni SLE.
-- [x] Aggiungere un test ULS-only che confermi assenza di check `timber-deflection` e warning esplicito.
+L'UI rimane reattiva durante il calcolo
+Si può mostrare una progress bar
+Il bundle ESM funziona anche in worker: new Worker(new URL('./worker.js', import.meta.url), { type: 'module' })
+Priorità consigliata
+Step	Cosa	Impatto	Rischio
+1	Bundle esbuild (✅ fatto)	Module resolution: -10x	Basso
+2	Separare integrazione da diagnostica in evaluate()	Calcolo: -2/4x	Medio (tocca il core)
+3	Campionamento adattivo in solveAtCurvature()	Calcolo: -1.5/2x	Medio
+4	Web Worker (solo SPA)	UX: UI non bloccante	Basso
+5	Typed arrays nelle fibre	Calcolo: -1.2/1.5x	Alto (refactor grosso)
