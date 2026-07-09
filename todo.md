@@ -34,32 +34,46 @@ Implementazione:
 
 Nota: non e un campionamento adattivo generale coarse-to-fine, ma elimina molte scansioni cieche quando il punto precedente fornisce un buon hint.
 
+### 4. Benchmark ripetibile di performance
+
+Stato: fatto.
+
+Implementazione:
+- aggiunto `scripts/benchmark-rc-moment-curvature.js`;
+- aggiunto script npm `benchmark:rc-moment-curvature`;
+- configurazioni coperte: fibre 120/300/1000, pointCount 15/41, `zero-stress` e `linear-softening`;
+- output: tempo medio, chiamate integratore, chiamate fast/detail, punti analizzati/generati.
+
+Uso:
+
+```bash
+npm run benchmark:rc-moment-curvature -- --runs=3
+```
+
+### 5. Estendere il percorso leggero ad altri solver RC
+
+Stato: fatto per i solver principali.
+
+Implementazione:
+- `RCUltimateSectionSolver` usa stati leggeri durante campionamento profondita e iterazioni Illinois, poi rivaluta il risultato finale con dettagli completi.
+- `RCServiceStressSolver` usa stati leggeri durante Newton e differenze finite, poi rivaluta lo stato finale con dettagli completi.
+
+Da monitorare: eventuali builder di dominio ULS traggono beneficio indirettamente da `RCUltimateSectionSolver`.
+
+### 6. IllinoisRootSolver: history opzionale
+
+Stato: fatto.
+
+Implementazione:
+- aggiunto `includeHistory`, default `true` per compatibilita;
+- i loop prestazionali RC passano `includeHistory: false`;
+- aggiunto test dedicato.
+
 ## Resta da fare
 
-### 1. Estendere il percorso leggero ad altri solver RC
+### 1. StrainField allocato per ogni valutazione
 
-Impatto atteso: medio-alto.
-
-Oggi il fast path e usato nel momento-curvatura. Restano candidati:
-- `RCUltimateSectionSolver`, durante campionamento profondita e iterazioni Illinois.
-- `RCServiceStressSolver`, durante Newton e differenze finite.
-- eventuali builder di domini ULS che chiamano ripetutamente l'integratore.
-
-Approccio consigliato: usare `includeResponseDetails: false` nelle iterazioni interne e rivalutare con dettagli completi solo il risultato finale.
-
-### 2. IllinoisRootSolver: history opzionale
-
-Impatto atteso: basso-medio.
-
-Problema: `IllinoisRootSolver.solve()` costruisce sempre `history`.
-
-Fix: aggiungere un'opzione tipo `includeHistory = true` o `collectHistory = true`, mantenendo il default compatibile. Nei loop prestazionali usare `false`.
-
-Rischio: basso.
-
-### 3. StrainField allocato per ogni valutazione
-
-Impatto atteso: medio-basso dopo il fast path.
+Impatto atteso: da rivalutare con benchmark/profiling aggiornato.
 
 Problema: molte valutazioni creano `new StrainField(...)`.
 
@@ -69,20 +83,7 @@ Possibili fix:
 
 Rischio: basso-medio, ma da fare solo dopo un profiling aggiornato.
 
-### 4. Benchmark ripetibile di performance
-
-Impatto atteso: alto per evitare regressioni.
-
-Creare uno script dedicato, ad esempio `scripts/benchmark-rc-moment-curvature.js`, che misuri:
-- fibre 120, 300, 1000;
-- pointCount 15, 41;
-- postUltimateResponse `zero-stress` e `linear-softening`;
-- tempo medio su piu run;
-- numero chiamate integratore, fast/detail.
-
-Questo dovrebbe diventare il riferimento prima di interventi piu invasivi.
-
-### 5. Web Worker per la SPA
+### 2. Web Worker per la SPA
 
 Impatto atteso: UX alto, calcolo puro invariato.
 
@@ -96,7 +97,13 @@ Approccio:
 
 Rischio: basso-medio lato UI, nullo sul core se il worker chiama le API esistenti.
 
-### 6. Typed array / struct-of-arrays per le fibre
+APPUNTI DA CHIEDERE A CODEX SU ABPINGEGNERIA
+“Benchmark su casi reali della SPA” vuol dire: non solo la sezione rettangolare sintetica dello script, ma uno o due input realmente prodotti dall’interfaccia. Non devi per forza darmi file se sono già nel repo. Se invece la SPA sta altrove, sarebbe utile uno di questi:
+il JSON/model che la SPA passa a strutture-js;
+un esempio di trave RC con analysisResult FEM e impostazioni SLE/deflection;
+oppure il file/component/worker della SPA dove viene chiamata la libreria.
+
+### 3. Typed array / struct-of-arrays per le fibre
 
 Impatto atteso: basso-medio, ma rischio alto.
 
@@ -109,12 +116,10 @@ Possibile strategia:
 
 ## Priorita consigliata
 
-1. Benchmark ripetibile.
-2. Estendere `includeResponseDetails: false` agli altri solver RC.
-3. Rendere opzionale `IllinoisRootSolver.history`.
-4. Valutare `StrainField` solo se il profiling lo conferma.
-5. Web Worker se il problema percepito e il blocco UI.
-6. Typed array solo come refactor finale.
+1. Eseguire benchmark su casi reali della SPA.
+2. Valutare `StrainField` solo se il profiling lo conferma.
+3. Web Worker se il problema percepito e il blocco UI.
+4. Typed array solo come refactor finale.
 
 ## Verifiche gia passate dopo gli interventi
 
@@ -122,3 +127,4 @@ Possibile strategia:
 - test RC mirati
 - `npm test` completo: 291 test passati
 - `npm run build`
+- `npm run benchmark:rc-moment-curvature -- --runs=1`

@@ -216,7 +216,10 @@ export class RCUltimateSectionSolver {
       referencePoint ?? section.getReferencePoint("concrete-centroid");
     const reinforcementBars = section.getReinforcementBars();
 
-    const evaluateConcreteFailureAtDepth = (neutralAxisDepth) => {
+    const evaluateConcreteFailureAtDepth = (
+      neutralAxisDepth,
+      { includeResponseDetails = false } = {},
+    ) => {
       const strainField = buildStrainFieldForOrientedFailure({
         section,
         theta: normalizedTheta,
@@ -232,6 +235,7 @@ export class RCUltimateSectionSolver {
         strainField,
         referencePoint: resolvedReferencePoint,
         includeConcreteTension: false,
+        includeResponseDetails,
         postUltimateResponse: "retain",
       });
 
@@ -281,7 +285,9 @@ export class RCUltimateSectionSolver {
       }));
 
       if (bracket.min === bracket.max) {
-        const direct = evaluateAtDepth(bracket.min);
+        const direct = evaluateAtDepth(bracket.min, {
+          includeResponseDetails: true,
+        });
 
         return {
           converged: true,
@@ -311,8 +317,11 @@ export class RCUltimateSectionSolver {
         min: bracket.min,
         max: bracket.max,
         target: nEd,
+        includeHistory: false,
       });
-      const solved = evaluateAtDepth(root.root);
+      const solved = evaluateAtDepth(root.root, {
+        includeResponseDetails: true,
+      });
 
       return {
         converged: root.converged,
@@ -363,7 +372,10 @@ export class RCUltimateSectionSolver {
       const minimumDepth = Math.max(characteristicLength * 1e-4, 1e-6);
       const maximumDepth = maximumTensionDistance * (1 - 1e-6);
 
-      const evaluateSteelFailureAtDepth = (neutralAxisDepth) => {
+      const evaluateSteelFailureAtDepth = (
+        neutralAxisDepth,
+        { includeResponseDetails = false } = {},
+      ) => {
         const strainField = buildStrainFieldForOrientedSteelTensionFailure({
           section,
           theta: normalizedTheta,
@@ -380,6 +392,7 @@ export class RCUltimateSectionSolver {
           strainField,
           referencePoint: resolvedReferencePoint,
           includeConcreteTension: false,
+          includeResponseDetails,
           postUltimateResponse: "retain",
         });
 

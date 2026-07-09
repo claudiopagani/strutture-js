@@ -968,6 +968,7 @@ export class RCMomentCurvatureAnalyzer {
                 min: candidateBracket.min,
                 max: candidateBracket.max,
                 target: nEd,
+                includeHistory: false,
               });
         const stateAtRoot = evaluateAtEps0(solved.root, {
           includeResponseDetails: true,

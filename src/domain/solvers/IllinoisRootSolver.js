@@ -12,7 +12,7 @@ export class IllinoisRootSolver {
     this.maxIterations = maxIterations;
   }
 
-  solve({ fn, min, max, target = 0 } = {}) {
+  solve({ fn, min, max, target = 0, includeHistory = true } = {}) {
     if (typeof fn !== "function") {
       throw new Error("IllinoisRootSolver requires a fn callback.");
     }
@@ -39,10 +39,13 @@ export class IllinoisRootSolver {
     let b = max;
     let fa = evaluate(a);
     let fb = evaluate(b);
-    const history = [
-      { x: a, value: fa + target, residual: fa },
-      { x: b, value: fb + target, residual: fb },
-    ];
+    const history = includeHistory
+      ? [
+          { x: a, value: fa + target, residual: fa },
+          { x: b, value: fb + target, residual: fb },
+        ]
+      : null;
+    const historyResult = () => (includeHistory ? { history } : {});
 
     if (Math.abs(fa) <= this.tolerance) {
       return {
@@ -52,7 +55,7 @@ export class IllinoisRootSolver {
         value: fa + target,
         residual: fa,
         bracket: { min: a, max: b },
-        history,
+        ...historyResult(),
       };
     }
 
@@ -64,7 +67,7 @@ export class IllinoisRootSolver {
         value: fb + target,
         residual: fb,
         bracket: { min: a, max: b },
-        history,
+        ...historyResult(),
       };
     }
 
@@ -79,7 +82,9 @@ export class IllinoisRootSolver {
     for (let iteration = 1; iteration <= this.maxIterations; iteration += 1) {
       x = (a * fb - b * fa) / (fb - fa);
       fx = evaluate(x);
-      history.push({ x, value: fx + target, residual: fx });
+      if (includeHistory) {
+        history.push({ x, value: fx + target, residual: fx });
+      }
 
       if (Math.abs(fx) <= this.tolerance || Math.abs(b - a) <= this.tolerance) {
         return {
@@ -89,7 +94,7 @@ export class IllinoisRootSolver {
           value: fx + target,
           residual: fx,
           bracket: { min: a, max: b },
-          history,
+          ...historyResult(),
         };
       }
 
@@ -119,7 +124,7 @@ export class IllinoisRootSolver {
           value: fx + target,
           residual: fx,
           bracket: { min: a, max: b },
-          history,
+          ...historyResult(),
         };
       }
     }
@@ -131,7 +136,7 @@ export class IllinoisRootSolver {
       value: fx + target,
       residual: fx,
       bracket: { min: a, max: b },
-      history,
+      ...historyResult(),
     };
   }
 }

@@ -28242,7 +28242,7 @@ var IllinoisRootSolver = class {
     this.tolerance = tolerance;
     this.maxIterations = maxIterations;
   }
-  solve({ fn, min, max, target = 0 } = {}) {
+  solve({ fn, min, max, target = 0, includeHistory = true } = {}) {
     if (typeof fn !== "function") {
       throw new Error("IllinoisRootSolver requires a fn callback.");
     }
@@ -28263,10 +28263,11 @@ var IllinoisRootSolver = class {
     let b = max;
     let fa = evaluate(a);
     let fb = evaluate(b);
-    const history = [
+    const history = includeHistory ? [
       { x: a, value: fa + target, residual: fa },
       { x: b, value: fb + target, residual: fb }
-    ];
+    ] : null;
+    const historyResult = () => includeHistory ? { history } : {};
     if (Math.abs(fa) <= this.tolerance) {
       return {
         converged: true,
@@ -28275,7 +28276,7 @@ var IllinoisRootSolver = class {
         value: fa + target,
         residual: fa,
         bracket: { min: a, max: b },
-        history
+        ...historyResult()
       };
     }
     if (Math.abs(fb) <= this.tolerance) {
@@ -28286,7 +28287,7 @@ var IllinoisRootSolver = class {
         value: fb + target,
         residual: fb,
         bracket: { min: a, max: b },
-        history
+        ...historyResult()
       };
     }
     if (fa * fb > 0) {
@@ -28298,7 +28299,9 @@ var IllinoisRootSolver = class {
     for (let iteration = 1; iteration <= this.maxIterations; iteration += 1) {
       x = (a * fb - b * fa) / (fb - fa);
       fx = evaluate(x);
-      history.push({ x, value: fx + target, residual: fx });
+      if (includeHistory) {
+        history.push({ x, value: fx + target, residual: fx });
+      }
       if (Math.abs(fx) <= this.tolerance || Math.abs(b - a) <= this.tolerance) {
         return {
           converged: true,
@@ -28307,7 +28310,7 @@ var IllinoisRootSolver = class {
           value: fx + target,
           residual: fx,
           bracket: { min: a, max: b },
-          history
+          ...historyResult()
         };
       }
       if (fa * fx < 0) {
@@ -28332,7 +28335,7 @@ var IllinoisRootSolver = class {
           value: fx + target,
           residual: fx,
           bracket: { min: a, max: b },
-          history
+          ...historyResult()
         };
       }
     }
@@ -28343,7 +28346,7 @@ var IllinoisRootSolver = class {
       value: fx + target,
       residual: fx,
       bracket: { min: a, max: b },
-      history
+      ...historyResult()
     };
   }
 };
@@ -44915,7 +44918,7 @@ var RCServiceStressSolver = class {
       (_f = initialGuess.kappaY) != null ? _f : 0,
       (_g = initialGuess.kappaZ) != null ? _g : 0
     ];
-    const evaluate = ([eps0, kappaY, kappaZ]) => {
+    const evaluate = ([eps0, kappaY, kappaZ], { includeResponseDetails = false } = {}) => {
       const strainField = new StrainField({ eps0, kappaY, kappaZ });
       const state = this.sectionIntegrator.evaluate({
         section,
@@ -44924,7 +44927,8 @@ var RCServiceStressSolver = class {
         steelLaw,
         strainField,
         referencePoint: resolvedReferencePoint,
-        includeConcreteTension: false
+        includeConcreteTension: false,
+        includeResponseDetails
       });
       const residual = [state.N - nEd, state.Mx - mxEd, state.My - myEd];
       return {
@@ -44946,15 +44950,18 @@ var RCServiceStressSolver = class {
     ];
     for (let iteration = 1; iteration <= this.maxIterations; iteration += 1) {
       if (current.norm <= this.tolerance) {
+        const detailed2 = evaluate(variables, {
+          includeResponseDetails: true
+        });
         return {
           converged: true,
           iterations: iteration - 1,
-          strainField: current.strainField,
-          state: current.state,
+          strainField: detailed2.strainField,
+          state: detailed2.state,
           residual: {
-            n: current.residual[0],
-            mx: current.residual[1],
-            my: current.residual[2]
+            n: detailed2.residual[0],
+            mx: detailed2.residual[1],
+            my: detailed2.residual[2]
           },
           history
         };
@@ -44999,15 +45006,18 @@ var RCServiceStressSolver = class {
       }
       current = candidate;
     }
+    const detailed = evaluate(variables, {
+      includeResponseDetails: true
+    });
     return {
       converged: current.norm <= this.tolerance,
       iterations: history.length - 1,
-      strainField: current.strainField,
-      state: current.state,
+      strainField: detailed.strainField,
+      state: detailed.state,
       residual: {
-        n: current.residual[0],
-        mx: current.residual[1],
-        my: current.residual[2]
+        n: detailed.residual[0],
+        mx: detailed.residual[1],
+        my: detailed.residual[2]
       },
       history
     };
@@ -46637,7 +46647,8 @@ var RCMomentCurvatureAnalyzer = class _RCMomentCurvatureAnalyzer {
           fn: (eps0) => evaluateFastAtEps0(eps0).state.N,
           min: candidateBracket.min,
           max: candidateBracket.max,
-          target: nEd
+          target: nEd,
+          includeHistory: false
         });
         const stateAtRoot2 = evaluateAtEps0(solved2.root, {
           includeResponseDetails: true
@@ -47847,7 +47858,7 @@ var RCUltimateSectionSolver = class {
     const ultimateSteelTensionStrain = resolveSteelUltimateTensionStrain2(steelLaw);
     const resolvedReferencePoint = referencePoint != null ? referencePoint : section.getReferencePoint("concrete-centroid");
     const reinforcementBars2 = section.getReinforcementBars();
-    const evaluateConcreteFailureAtDepth = (neutralAxisDepth) => {
+    const evaluateConcreteFailureAtDepth = (neutralAxisDepth, { includeResponseDetails = false } = {}) => {
       const strainField = buildStrainFieldForOrientedFailure({
         section,
         theta: normalizedTheta,
@@ -47863,6 +47874,7 @@ var RCUltimateSectionSolver = class {
         strainField,
         referencePoint: resolvedReferencePoint,
         includeConcreteTension: false,
+        includeResponseDetails,
         postUltimateResponse: "retain"
       });
       return {
@@ -47904,7 +47916,9 @@ var RCUltimateSectionSolver = class {
         residual: sample.residual
       }));
       if (bracket.min === bracket.max) {
-        const direct = evaluateAtDepth(bracket.min);
+        const direct = evaluateAtDepth(bracket.min, {
+          includeResponseDetails: true
+        });
         return {
           converged: true,
           theta: normalizedTheta,
@@ -47931,9 +47945,12 @@ var RCUltimateSectionSolver = class {
         fn: (neutralAxisDepth) => evaluateAtDepth(neutralAxisDepth).state.N,
         min: bracket.min,
         max: bracket.max,
-        target: nEd
+        target: nEd,
+        includeHistory: false
       });
-      const solved = evaluateAtDepth(root.root);
+      const solved = evaluateAtDepth(root.root, {
+        includeResponseDetails: true
+      });
       return {
         converged: root.converged,
         theta: normalizedTheta,
@@ -47975,7 +47992,7 @@ var RCUltimateSectionSolver = class {
       const maximumTensionDistance = sideSign * (compressedEdgeProjection - tensionBarProjection);
       const minimumDepth = Math.max(characteristicLength * 1e-4, 1e-6);
       const maximumDepth = maximumTensionDistance * (1 - 1e-6);
-      const evaluateSteelFailureAtDepth = (neutralAxisDepth) => {
+      const evaluateSteelFailureAtDepth = (neutralAxisDepth, { includeResponseDetails = false } = {}) => {
         const strainField = buildStrainFieldForOrientedSteelTensionFailure({
           section,
           theta: normalizedTheta,
@@ -47992,6 +48009,7 @@ var RCUltimateSectionSolver = class {
           strainField,
           referencePoint: resolvedReferencePoint,
           includeConcreteTension: false,
+          includeResponseDetails,
           postUltimateResponse: "retain"
         });
         return {

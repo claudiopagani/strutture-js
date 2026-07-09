@@ -99,7 +99,10 @@ export class RCServiceStressSolver {
       initialGuess.kappaZ ?? 0,
     ];
 
-    const evaluate = ([eps0, kappaY, kappaZ]) => {
+    const evaluate = (
+      [eps0, kappaY, kappaZ],
+      { includeResponseDetails = false } = {},
+    ) => {
       const strainField = new StrainField({ eps0, kappaY, kappaZ });
       const state = this.sectionIntegrator.evaluate({
         section,
@@ -109,6 +112,7 @@ export class RCServiceStressSolver {
         strainField,
         referencePoint: resolvedReferencePoint,
         includeConcreteTension: false,
+        includeResponseDetails,
       });
       const residual = [state.N - nEd, state.Mx - mxEd, state.My - myEd];
 
@@ -133,15 +137,19 @@ export class RCServiceStressSolver {
 
     for (let iteration = 1; iteration <= this.maxIterations; iteration += 1) {
       if (current.norm <= this.tolerance) {
+        const detailed = evaluate(variables, {
+          includeResponseDetails: true,
+        });
+
         return {
           converged: true,
           iterations: iteration - 1,
-          strainField: current.strainField,
-          state: current.state,
+          strainField: detailed.strainField,
+          state: detailed.state,
           residual: {
-            n: current.residual[0],
-            mx: current.residual[1],
-            my: current.residual[2],
+            n: detailed.residual[0],
+            mx: detailed.residual[1],
+            my: detailed.residual[2],
           },
           history,
         };
@@ -198,15 +206,19 @@ export class RCServiceStressSolver {
       current = candidate;
     }
 
+    const detailed = evaluate(variables, {
+      includeResponseDetails: true,
+    });
+
     return {
       converged: current.norm <= this.tolerance,
       iterations: history.length - 1,
-      strainField: current.strainField,
-      state: current.state,
+      strainField: detailed.strainField,
+      state: detailed.state,
       residual: {
-        n: current.residual[0],
-        mx: current.residual[1],
-        my: current.residual[2],
+        n: detailed.residual[0],
+        mx: detailed.residual[1],
+        my: detailed.residual[2],
       },
       history,
     };

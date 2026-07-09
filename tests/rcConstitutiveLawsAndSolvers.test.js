@@ -114,6 +114,24 @@ test("illinois root solver converges on a smooth scalar function", () => {
   assert.equal(result.converged, true);
   approx(result.root, Math.sqrt(2), 1e-8);
   assert.ok(result.iterations > 0);
+  assert.ok(Array.isArray(result.history));
+});
+
+test("illinois root solver can skip diagnostic history", () => {
+  const solver = new IllinoisRootSolver({
+    tolerance: 1e-10,
+    maxIterations: 50,
+  });
+  const result = solver.solve({
+    fn: (x) => x ** 2 - 2,
+    min: 1,
+    max: 2,
+    includeHistory: false,
+  });
+
+  assert.equal(result.converged, true);
+  approx(result.root, Math.sqrt(2), 1e-8);
+  assert.equal("history" in result, false);
 });
 
 test("reinforced concrete section exposes geometry support helpers", () => {
