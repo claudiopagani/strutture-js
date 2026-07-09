@@ -2,20 +2,24 @@
   "name": "strutture-js",
   "version": "0.3.1",
   "type": "module",
+  "sideEffects": false,
   "description": "Codebase condivisa OOP per entita di calcolo strutturale in ingegneria civile.",
   "license": "MIT",
-  "main": "src/index.js",
+  "main": "dist/index.mjs",
   "exports": {
-    ".": "./src/index.js",
+    ".": "./dist/index.mjs",
     "./applications": "./src/applications/index.js",
     "./norms/italian-historical": "./src/norms/italian-historical/index.js",
     "./norms/ntc2018": "./src/norms/ntc2018/index.js"
   },
   "files": [
+    "dist",
     "src",
     "README.md"
   ],
   "scripts": {
+    "build": "node scripts/build.js",
+    "prepare": "npm run build",
     "test": "node --test tests/run-tests.js",
     "check": "npm test && npm run validation",
     "syntax": "node scripts/check-syntax.js",
@@ -31,5 +35,8 @@
     "example:beam-reports:write": "node examples/write-beam-reports.js",
     "example:masonry-wall-openings:cerchiature": "node examples/write-masonry-wall-openings-cerchiature-reports.js",
     "validation": "node validation/run-validation.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.1"
   }
 }
