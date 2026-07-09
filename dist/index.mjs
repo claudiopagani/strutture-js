@@ -1,4 +1,13 @@
 // strutture-js v0.3.1 — bundled ESM
+var __defProp = Object.defineProperty;
+var __typeError = (msg) => {
+  throw TypeError(msg);
+};
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+var __accessCheck = (obj, member, msg) => member.has(obj) || __typeError("Cannot " + msg);
+var __privateAdd = (obj, member, value) => member.has(obj) ? __typeError("Cannot add the same private member more than once") : member instanceof WeakSet ? member.add(obj) : member.set(obj, value);
+var __privateMethod = (obj, member, method) => (__accessCheck(obj, member, "access private method"), method);
 
 // src/domain/units/UnitSystem.js
 var FORCE_UNIT_FACTORS = Object.freeze({
@@ -20387,6 +20396,7 @@ var BeamElement = class extends StructuralElement {
 };
 
 // src/domain/elements/BeamSystem.js
+var _BeamSystem_instances, addDistinctNodes_fn;
 var BeamSystem = class {
   constructor({
     id,
@@ -20395,6 +20405,7 @@ var BeamSystem = class {
     nodes = [],
     metadata = {}
   }) {
+    __privateAdd(this, _BeamSystem_instances);
     if (!id) {
       throw new Error("A beam system id is required.");
     }
@@ -20406,22 +20417,15 @@ var BeamSystem = class {
   }
   addBeam(beam) {
     this.beams.push(beam);
-    this.#addDistinctNodes([beam.startNode, beam.endNode]);
+    __privateMethod(this, _BeamSystem_instances, addDistinctNodes_fn).call(this, [beam.startNode, beam.endNode]);
     return this;
   }
   addNode(node) {
-    this.#addDistinctNodes([node]);
+    __privateMethod(this, _BeamSystem_instances, addDistinctNodes_fn).call(this, [node]);
     return this;
   }
   totalLength() {
     return this.beams.reduce((acc, beam) => acc + beam.length(), 0);
-  }
-  #addDistinctNodes(nodes) {
-    for (const node of nodes) {
-      if (!this.nodes.some((item) => item.id === node.id)) {
-        this.nodes.push(node);
-      }
-    }
   }
   toJSON() {
     return {
@@ -20432,6 +20436,14 @@ var BeamSystem = class {
       totalLength: this.totalLength(),
       metadata: { ...this.metadata }
     };
+  }
+};
+_BeamSystem_instances = new WeakSet();
+addDistinctNodes_fn = function(nodes) {
+  for (const node of nodes) {
+    if (!this.nodes.some((item) => item.id === node.id)) {
+      this.nodes.push(node);
+    }
   }
 };
 
@@ -23480,9 +23492,7 @@ function createEnvelopes(loadCases, combinations) {
 }
 
 // src/domain/loads/Load.js
-var Load = class _Load {
-  static DIMENSIONS = ["point", "line", "area", "volume"];
-  static nextAutoId = 1;
+var _Load = class _Load {
   constructor({
     id = null,
     name = null,
@@ -23550,6 +23560,9 @@ var Load = class _Load {
     };
   }
 };
+__publicField(_Load, "DIMENSIONS", ["point", "line", "area", "volume"]);
+__publicField(_Load, "nextAutoId", 1);
+var Load = _Load;
 
 // src/domain/loads/LineLoad.js
 var LineLoad = class extends Load {
@@ -26121,8 +26134,7 @@ var AreaLoad = class extends Load {
 };
 
 // src/domain/slabs/SlabLoad.js
-var SlabLoad = class _SlabLoad extends AreaLoad {
-  static nextId = 1;
+var _SlabLoad = class _SlabLoad extends AreaLoad {
   constructor({
     description,
     loadGroup,
@@ -26164,6 +26176,8 @@ var SlabLoad = class _SlabLoad extends AreaLoad {
     };
   }
 };
+__publicField(_SlabLoad, "nextId", 1);
+var SlabLoad = _SlabLoad;
 
 // src/domain/slabs/SurfaceLoad.js
 var SurfaceLoad = class extends SlabLoad {
@@ -26307,8 +26321,7 @@ var LinearLoadFromVolumeWeight = class extends SlabLoad {
 };
 
 // src/domain/slabs/VariableLoad.js
-var VariableLoad = class _VariableLoad extends SlabLoad {
-  static nextVariableId = 1;
+var _VariableLoad = class _VariableLoad extends SlabLoad {
   constructor({
     description,
     value,
@@ -26352,6 +26365,8 @@ var VariableLoad = class _VariableLoad extends SlabLoad {
     };
   }
 };
+__publicField(_VariableLoad, "nextVariableId", 1);
+var VariableLoad = _VariableLoad;
 
 // src/domain/slabs/FloorSlab.js
 var FloorSlab = class _FloorSlab {

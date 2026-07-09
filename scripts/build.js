@@ -7,7 +7,7 @@ await esbuild.build({
     entryPoints: ["src/index.js"],
     bundle: true,
     format: "esm",
-    target: "es2022",
+    target: "es2020",
     outfile: "dist/index.mjs",
     banner: {
         js: `// ${pkg.name} v${pkg.version} — bundled ESM`,
