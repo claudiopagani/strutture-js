@@ -157,6 +157,52 @@ test("rc section state integrator returns near-zero moments for uniform strain o
   assert.ok(result.extremes.maxConcreteCompression.value < 0);
 });
 
+test("rc section state integrator accepts affine strain coefficients", () => {
+  const section = createDemoSection();
+  const discretizer = new SectionFiberDiscretizer();
+  const mesh = discretizer.discretize(section, { targetCount: 100 });
+  const integrator = new RCSectionStateIntegrator();
+  const concreteLaw = new ConcreteNoTensionLaw({
+    ecm: section.concreteMaterial.elasticModulus,
+    compressionCap: section.concreteMaterial.fcd,
+  });
+  const steelLaw = new SteelElasticPerfectlyPlasticLaw({
+    Es: section.reinforcementMaterial.elasticModulus,
+    fyd: section.reinforcementMaterial.fyd,
+    esu: 0.01,
+  });
+  const classResult = integrator.evaluate({
+    section,
+    concreteFibers: mesh.fibers,
+    concreteLaw,
+    steelLaw,
+    strainField: new StrainField({
+      eps0: -0.0002,
+      kappaY: 0,
+      kappaZ: 0.000001,
+    }),
+    includeConcreteTension: false,
+    includeResponseDetails: false,
+  });
+  const coefficientsResult = integrator.evaluate({
+    section,
+    concreteFibers: mesh.fibers,
+    concreteLaw,
+    steelLaw,
+    strainField: {
+      eps0: -0.0002,
+      kappaY: 0,
+      kappaZ: 0.000001,
+    },
+    includeConcreteTension: false,
+    includeResponseDetails: false,
+  });
+
+  approx(coefficientsResult.N, classResult.N);
+  approx(coefficientsResult.Mx, classResult.Mx);
+  approx(coefficientsResult.My, classResult.My);
+});
+
 test("rc section state integrator develops bending moment under linear strain profile", () => {
   const section = createDemoSection();
   const discretizer = new SectionFiberDiscretizer();

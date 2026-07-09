@@ -1,4 +1,4 @@
-// strutture-js v0.3.4 — bundled ESM
+// strutture-js v0.3.5 — bundled ESM
 var __defProp = Object.defineProperty;
 var __typeError = (msg) => {
   throw TypeError(msg);
@@ -44211,6 +44211,18 @@ function resolveServiceStressSolverActions(actions = {}) {
 // src/applications/reinforced-concrete-sections/analysis/RCSectionStrainExtremes.js
 var TWO_PI = 2 * Math.PI;
 var ANGLE_TOLERANCE = 1e-14;
+function hasStrainFieldCoefficients(strainField) {
+  return strainField != null && Number.isFinite(strainField.eps0) && Number.isFinite(strainField.kappaY) && Number.isFinite(strainField.kappaZ);
+}
+function strainAtPoint(strainField, point) {
+  if (!Number.isFinite(point == null ? void 0 : point.y) || !Number.isFinite(point == null ? void 0 : point.z)) {
+    throw new Error("StrainField strainAt requires finite y and z coordinates.");
+  }
+  if (hasStrainFieldCoefficients(strainField)) {
+    return strainField.eps0 + strainField.kappaY * point.z - strainField.kappaZ * point.y;
+  }
+  return strainField.strainAt(point);
+}
 function normalizeNeutralAxisAngle(theta) {
   if (!Number.isFinite(theta)) {
     throw new Error("Neutral-axis theta must be finite.");
@@ -44276,7 +44288,7 @@ function getConcreteProjectedBounds(section, theta) {
 }
 function resolveConcreteStrainExtremes({ section, strainField }) {
   var _a, _b;
-  if (!strainField || typeof strainField.strainAt !== "function") {
+  if (!hasStrainFieldCoefficients(strainField) && typeof (strainField == null ? void 0 : strainField.strainAt) !== "function") {
     throw new Error(
       "resolveConcreteStrainExtremes requires a strain field."
     );
@@ -44289,7 +44301,7 @@ function resolveConcreteStrainExtremes({ section, strainField }) {
   }
   const strainedPoints = outlinePoints.map((point) => ({
     ...point,
-    strain: strainField.strainAt(point)
+    strain: strainAtPoint(strainField, point)
   }));
   const minimum = strainedPoints.reduce(
     (current, point) => current == null || point.strain < current.strain ? point : current,
@@ -44315,20 +44327,36 @@ function resolveConcreteStrainExtremes({ section, strainField }) {
 }
 
 // src/applications/reinforced-concrete-sections/analysis/StrainField.js
+function createAffineStrainField({ eps0 = 0, kappaY = 0, kappaZ = 0 } = {}) {
+  if (!Number.isFinite(eps0) || !Number.isFinite(kappaY) || !Number.isFinite(kappaZ)) {
+    throw new Error("StrainField requires finite eps0, kappaY and kappaZ values.");
+  }
+  return { eps0, kappaY, kappaZ };
+}
+function hasStrainFieldCoefficients2(strainField) {
+  return strainField != null && Number.isFinite(strainField.eps0) && Number.isFinite(strainField.kappaY) && Number.isFinite(strainField.kappaZ);
+}
+function strainAtPoint2(strainField, point) {
+  if (!Number.isFinite(point == null ? void 0 : point.y) || !Number.isFinite(point == null ? void 0 : point.z)) {
+    throw new Error("StrainField strainAt requires finite y and z coordinates.");
+  }
+  if (hasStrainFieldCoefficients2(strainField)) {
+    return strainField.eps0 + strainField.kappaY * point.z - strainField.kappaZ * point.y;
+  }
+  if (strainField && typeof strainField.strainAt === "function") {
+    return strainField.strainAt(point);
+  }
+  throw new Error("StrainField strainAt requires a strain field.");
+}
 var StrainField = class _StrainField {
   constructor({ eps0 = 0, kappaY = 0, kappaZ = 0 } = {}) {
-    if (!Number.isFinite(eps0) || !Number.isFinite(kappaY) || !Number.isFinite(kappaZ)) {
-      throw new Error("StrainField requires finite eps0, kappaY and kappaZ values.");
-    }
-    this.eps0 = eps0;
-    this.kappaY = kappaY;
-    this.kappaZ = kappaZ;
+    const coefficients = createAffineStrainField({ eps0, kappaY, kappaZ });
+    this.eps0 = coefficients.eps0;
+    this.kappaY = coefficients.kappaY;
+    this.kappaZ = coefficients.kappaZ;
   }
   strainAt({ y, z }) {
-    if (!Number.isFinite(y) || !Number.isFinite(z)) {
-      throw new Error("StrainField strainAt requires finite y and z coordinates.");
-    }
-    return this.eps0 + this.kappaY * z - this.kappaZ * y;
+    return strainAtPoint2(this, { y, z });
   }
   static fromNeutralAxis({
     theta,
@@ -44358,7 +44386,9 @@ function accumulateExtreme(current, candidate, comparator) {
 }
 function resolveStrainLimit(law, strain) {
   var _a, _b;
-  const limits = (_b = (_a = law == null ? void 0 : law.strainLimits) == null ? void 0 : _a.call(law)) != null ? _b : {};
+  return resolveStrainLimitFromLimits((_b = (_a = law == null ? void 0 : law.strainLimits) == null ? void 0 : _a.call(law)) != null ? _b : {}, strain);
+}
+function resolveStrainLimitFromLimits(limits, strain) {
   const rawLimit = strain >= 0 ? limits.tension : limits.compression;
   return Number.isFinite(rawLimit) && rawLimit !== 0 ? Math.abs(rawLimit) : null;
 }
@@ -44470,6 +44500,7 @@ var RCSectionStateIntegrator = class {
     postUltimateResponse = "zero-stress",
     postUltimateFractureEnergyDensity = null
   } = {}) {
+    var _a, _b, _c, _d;
     if (!(section == null ? void 0 : section.concreteSection)) {
       throw new Error("RCSectionStateIntegrator requires a reinforced concrete section.");
     }
@@ -44482,9 +44513,14 @@ var RCSectionStateIntegrator = class {
     if (!steelLaw || typeof steelLaw.stress !== "function") {
       throw new Error("RCSectionStateIntegrator requires a steelLaw with a stress method.");
     }
-    if (!strainField || typeof strainField.strainAt !== "function") {
+    const useAffineStrainField = hasStrainFieldCoefficients2(strainField);
+    const fallbackStrainAt = !useAffineStrainField && typeof (strainField == null ? void 0 : strainField.strainAt) === "function" ? strainField.strainAt.bind(strainField) : null;
+    if (!useAffineStrainField && typeof fallbackStrainAt !== "function") {
       throw new Error("RCSectionStateIntegrator requires a strainField with a strainAt method.");
     }
+    const eps0 = useAffineStrainField ? strainField.eps0 : 0;
+    const kappaY = useAffineStrainField ? strainField.kappaY : 0;
+    const kappaZ = useAffineStrainField ? strainField.kappaZ : 0;
     if (!["retain", "linear-softening", "zero-stress"].includes(
       postUltimateResponse
     )) {
@@ -44521,10 +44557,15 @@ var RCSectionStateIntegrator = class {
     let postUltimateSteelBarCount = 0;
     const reinforcementBars2 = section.getReinforcementBars();
     if (!includeResponseDetails) {
+      const concreteStrainLimits = (_b = (_a = concreteLaw.strainLimits) == null ? void 0 : _a.call(concreteLaw)) != null ? _b : {};
+      const steelStrainLimits = (_d = (_c = steelLaw.strainLimits) == null ? void 0 : _c.call(steelLaw)) != null ? _d : {};
       for (const fiber of concreteFibers) {
-        const strain = strainField.strainAt(fiber);
+        const strain = useAffineStrainField ? eps0 + kappaY * fiber.z - kappaZ * fiber.y : fallbackStrainAt(fiber);
         let stress = concreteLaw.stress(strain);
-        const strainLimit = resolveStrainLimit(concreteLaw, strain);
+        const strainLimit = resolveStrainLimitFromLimits(
+          concreteStrainLimits,
+          strain
+        );
         const strainUtilization = strainLimit == null ? 0 : Math.abs(strain) / strainLimit;
         const isPostUltimate = postUltimateResponse !== "retain" && strainLimit != null && strainUtilization > 1;
         if (isPostUltimate) {
@@ -44575,9 +44616,12 @@ var RCSectionStateIntegrator = class {
         }
       }
       for (const bar of reinforcementBars2) {
-        const strain = strainField.strainAt(bar);
+        const strain = useAffineStrainField ? eps0 + kappaY * bar.z - kappaZ * bar.y : fallbackStrainAt(bar);
         let stress = steelLaw.stress(strain);
-        const strainLimit = resolveStrainLimit(steelLaw, strain);
+        const strainLimit = resolveStrainLimitFromLimits(
+          steelStrainLimits,
+          strain
+        );
         const strainUtilization = strainLimit == null ? 0 : Math.abs(strain) / strainLimit;
         const isPostUltimate = postUltimateResponse !== "retain" && strainLimit != null && strainUtilization > 1;
         if (isPostUltimate) {
@@ -44675,7 +44719,7 @@ var RCSectionStateIntegrator = class {
       };
     }
     const concreteResponse = concreteFibers.map((fiber) => {
-      const strain = strainField.strainAt(fiber);
+      const strain = useAffineStrainField ? eps0 + kappaY * fiber.z - kappaZ * fiber.y : fallbackStrainAt(fiber);
       const materialResponse = applyPostUltimateResponse({
         stress: concreteLaw.stress(strain),
         strain,
@@ -44731,7 +44775,7 @@ var RCSectionStateIntegrator = class {
       };
     });
     const steelResponse = reinforcementBars2.map((bar) => {
-      const strain = strainField.strainAt(bar);
+      const strain = useAffineStrainField ? eps0 + kappaY * bar.z - kappaZ * bar.y : fallbackStrainAt(bar);
       const materialResponse = applyPostUltimateResponse({
         stress: steelLaw.stress(strain),
         strain,
@@ -44919,7 +44963,8 @@ var RCServiceStressSolver = class {
       (_g = initialGuess.kappaZ) != null ? _g : 0
     ];
     const evaluate = ([eps0, kappaY, kappaZ], { includeResponseDetails = false } = {}) => {
-      const strainField = new StrainField({ eps0, kappaY, kappaZ });
+      const coefficients = { eps0, kappaY, kappaZ };
+      const strainField = includeResponseDetails ? new StrainField(coefficients) : createAffineStrainField(coefficients);
       const state = this.sectionIntegrator.evaluate({
         section,
         concreteFibers,
@@ -45976,16 +46021,18 @@ function buildOrientedStrainField({
   eps0,
   curvature,
   theta,
-  compressedSide
+  compressedSide,
+  includeResponseDetails = false
 }) {
   const absoluteCurvature = Math.abs(curvature);
   const direction = neutralAxisDirection(theta);
   const sideSign = compressedSide === "positive" ? 1 : -1;
-  return new StrainField({
+  const coefficients = {
     eps0,
     kappaY: sideSign * absoluteCurvature * direction.sin,
     kappaZ: sideSign * absoluteCurvature * direction.cos
-  });
+  };
+  return includeResponseDetails ? new StrainField(coefficients) : createAffineStrainField(coefficients);
 }
 function signedEngineeringCurvature({
   curvature,
@@ -46513,7 +46560,8 @@ var RCMomentCurvatureAnalyzer = class _RCMomentCurvatureAnalyzer {
         eps0,
         curvature,
         theta: direction.theta,
-        compressedSide: resolvedCompressedSide
+        compressedSide: resolvedCompressedSide,
+        includeResponseDetails
       });
       const state = this.sectionIntegrator.evaluate({
         section,
@@ -47722,7 +47770,8 @@ function buildStrainFieldForOrientedFailure({
   theta,
   neutralAxisDepth,
   ultimateCompressionStrain,
-  compressedSide
+  compressedSide,
+  includeResponseDetails = false
 }) {
   if (!Number.isFinite(theta)) {
     throw new Error("Theta must be finite.");
@@ -47741,11 +47790,12 @@ function buildStrainFieldForOrientedFailure({
   const compressedEdgeProjection = compressedSide === "positive" ? maxProjection : minProjection;
   const neutralAxisProjection2 = compressedEdgeProjection - sideSign * neutralAxisDepth;
   const curvature = ultimateCompressionStrain / neutralAxisDepth;
-  return new StrainField({
+  const coefficients = {
     eps0: sideSign * curvature * neutralAxisProjection2,
     kappaY: sideSign * curvature * direction.sin,
     kappaZ: sideSign * curvature * direction.cos
-  });
+  };
+  return includeResponseDetails ? new StrainField(coefficients) : createAffineStrainField(coefficients);
 }
 function buildStrainFieldForOrientedSteelTensionFailure({
   section,
@@ -47753,7 +47803,8 @@ function buildStrainFieldForOrientedSteelTensionFailure({
   neutralAxisDepth,
   ultimateTensionStrain,
   compressedSide,
-  reinforcementBars: reinforcementBars2
+  reinforcementBars: reinforcementBars2,
+  includeResponseDetails = false
 }) {
   if (!Number.isFinite(theta)) {
     throw new Error("Theta must be finite.");
@@ -47784,11 +47835,12 @@ function buildStrainFieldForOrientedSteelTensionFailure({
     throw new Error("Steel tension failure requires the neutral axis before the tension reinforcement.");
   }
   const curvature = ultimateTensionStrain / tensionDistance;
-  return new StrainField({
+  const coefficients = {
     eps0: sideSign * curvature * neutralAxisProjection2,
     kappaY: sideSign * curvature * direction.sin,
     kappaZ: sideSign * curvature * direction.cos
-  });
+  };
+  return includeResponseDetails ? new StrainField(coefficients) : createAffineStrainField(coefficients);
 }
 function createDepthSamples(height, { minDepthFactor = 1e-4, maxDepthFactor = 5, steps = 80 } = {}) {
   const minDepth = Math.max(height * minDepthFactor, 1e-6);
@@ -47864,7 +47916,8 @@ var RCUltimateSectionSolver = class {
         theta: normalizedTheta,
         neutralAxisDepth,
         ultimateCompressionStrain,
-        compressedSide
+        compressedSide,
+        includeResponseDetails
       });
       const state = this.sectionIntegrator.evaluate({
         section,
@@ -47999,7 +48052,8 @@ var RCUltimateSectionSolver = class {
           neutralAxisDepth,
           ultimateTensionStrain: ultimateSteelTensionStrain,
           compressedSide,
-          reinforcementBars: reinforcementBars2
+          reinforcementBars: reinforcementBars2,
+          includeResponseDetails
         });
         const state = this.sectionIntegrator.evaluate({
           section,

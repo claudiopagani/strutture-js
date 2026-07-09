@@ -1,3 +1,5 @@
+import { hasStrainFieldCoefficients } from "./StrainField.js";
+
 function accumulateExtreme(current, candidate, comparator) {
   if (current == null) {
     return candidate;
@@ -7,7 +9,10 @@ function accumulateExtreme(current, candidate, comparator) {
 }
 
 function resolveStrainLimit(law, strain) {
-  const limits = law?.strainLimits?.() ?? {};
+  return resolveStrainLimitFromLimits(law?.strainLimits?.() ?? {}, strain);
+}
+
+function resolveStrainLimitFromLimits(limits, strain) {
   const rawLimit = strain >= 0 ? limits.tension : limits.compression;
 
   return Number.isFinite(rawLimit) && rawLimit !== 0
@@ -157,9 +162,19 @@ export class RCSectionStateIntegrator {
       throw new Error("RCSectionStateIntegrator requires a steelLaw with a stress method.");
     }
 
-    if (!strainField || typeof strainField.strainAt !== "function") {
+    const useAffineStrainField = hasStrainFieldCoefficients(strainField);
+    const fallbackStrainAt =
+      !useAffineStrainField && typeof strainField?.strainAt === "function"
+        ? strainField.strainAt.bind(strainField)
+        : null;
+
+    if (!useAffineStrainField && typeof fallbackStrainAt !== "function") {
       throw new Error("RCSectionStateIntegrator requires a strainField with a strainAt method.");
     }
+
+    const eps0 = useAffineStrainField ? strainField.eps0 : 0;
+    const kappaY = useAffineStrainField ? strainField.kappaY : 0;
+    const kappaZ = useAffineStrainField ? strainField.kappaZ : 0;
 
     if (
       !["retain", "linear-softening", "zero-stress"].includes(
@@ -214,10 +229,18 @@ export class RCSectionStateIntegrator {
     const reinforcementBars = section.getReinforcementBars();
 
     if (!includeResponseDetails) {
+      const concreteStrainLimits = concreteLaw.strainLimits?.() ?? {};
+      const steelStrainLimits = steelLaw.strainLimits?.() ?? {};
+
       for (const fiber of concreteFibers) {
-        const strain = strainField.strainAt(fiber);
+        const strain = useAffineStrainField
+          ? eps0 + kappaY * fiber.z - kappaZ * fiber.y
+          : fallbackStrainAt(fiber);
         let stress = concreteLaw.stress(strain);
-        const strainLimit = resolveStrainLimit(concreteLaw, strain);
+        const strainLimit = resolveStrainLimitFromLimits(
+          concreteStrainLimits,
+          strain,
+        );
         const strainUtilization =
           strainLimit == null ? 0 : Math.abs(strain) / strainLimit;
         const isPostUltimate =
@@ -286,9 +309,14 @@ export class RCSectionStateIntegrator {
       }
 
       for (const bar of reinforcementBars) {
-        const strain = strainField.strainAt(bar);
+        const strain = useAffineStrainField
+          ? eps0 + kappaY * bar.z - kappaZ * bar.y
+          : fallbackStrainAt(bar);
         let stress = steelLaw.stress(strain);
-        const strainLimit = resolveStrainLimit(steelLaw, strain);
+        const strainLimit = resolveStrainLimitFromLimits(
+          steelStrainLimits,
+          strain,
+        );
         const strainUtilization =
           strainLimit == null ? 0 : Math.abs(strain) / strainLimit;
         const isPostUltimate =
@@ -410,7 +438,9 @@ export class RCSectionStateIntegrator {
     }
 
     const concreteResponse = concreteFibers.map((fiber) => {
-      const strain = strainField.strainAt(fiber);
+      const strain = useAffineStrainField
+        ? eps0 + kappaY * fiber.z - kappaZ * fiber.y
+        : fallbackStrainAt(fiber);
       const materialResponse = applyPostUltimateResponse({
         stress: concreteLaw.stress(strain),
         strain,
@@ -474,7 +504,9 @@ export class RCSectionStateIntegrator {
     });
 
     const steelResponse = reinforcementBars.map((bar) => {
-      const strain = strainField.strainAt(bar);
+      const strain = useAffineStrainField
+        ? eps0 + kappaY * bar.z - kappaZ * bar.y
+        : fallbackStrainAt(bar);
       const materialResponse = applyPostUltimateResponse({
         stress: steelLaw.stress(strain),
         strain,

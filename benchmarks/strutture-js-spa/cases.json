@@ -1,0 +1,244 @@
+{
+  "schemaVersion": 1,
+  "name": "strutture-js real SPA cases for ABP SCA",
+  "notes": [
+    "These fixtures are UI/project states produced by the SCA SPA shape, then expanded by the runner and sent through the same adapters used by React.",
+    "This repository does not contain a saved FEM analysisResult for RC beam deflection. The SLE deflection case therefore uses the SPA's current simplified deflection inputs: span, service moment and structural-system coefficient."
+  ],
+  "callSites": [
+    "src/components/app/sca/hooks/useScaBuilds.js",
+    "src/components/app/sca/adapter/buildStruttureModel.js",
+    "src/components/app/sca/adapter/runRcSectionAnalysis.js",
+    "src/components/app/sca/adapter/analysis/ultimate.js",
+    "src/components/app/sca/adapter/analysis/serviceStress.js",
+    "src/components/app/sca/adapter/analysis/serviceDeflection.js"
+  ],
+  "baseProjectState": {
+    "sectionType": "rectangular",
+    "sectionInputs": {
+      "rectangular": {
+        "shearEnabled": true,
+        "shearDiameterMm": "8",
+        "shearSpacingCm": "20",
+        "shearLegsY": "2",
+        "shearLegsZ": "2",
+        "widthCm": "30",
+        "heightCm": "50",
+        "axisDistanceMm": "40",
+        "bottomCount": "3",
+        "bottomDiameterMm": "16",
+        "bottomAxisDistanceMm": "40",
+        "topCount": "2",
+        "topDiameterMm": "14",
+        "topAxisDistanceMm": "40"
+      },
+      "tBeam": {
+        "shearEnabled": true,
+        "shearDiameterMm": "8",
+        "shearSpacingCm": "20",
+        "shearLegsY": "2",
+        "shearLegsZ": "2",
+        "flangeWidthCm": "80",
+        "flangeThicknessCm": "12",
+        "webWidthCm": "30",
+        "webHeightCm": "48",
+        "axisDistanceMm": "40",
+        "bottomCount": "3",
+        "bottomDiameterMm": "16",
+        "topCount": "4",
+        "topDiameterMm": "12"
+      },
+      "invertedT": {
+        "shearEnabled": true,
+        "shearDiameterMm": "8",
+        "shearSpacingCm": "20",
+        "shearLegsY": "2",
+        "shearLegsZ": "2",
+        "flangeWidthCm": "80",
+        "flangeThicknessCm": "18",
+        "webWidthCm": "30",
+        "webHeightCm": "42",
+        "axisDistanceMm": "45",
+        "bottomCount": "4",
+        "bottomDiameterMm": "16",
+        "topCount": "2",
+        "topDiameterMm": "14"
+      },
+      "circular": {
+        "shearEnabled": true,
+        "shearDiameterMm": "8",
+        "shearSpacingCm": "20",
+        "shearLegsY": "2",
+        "shearLegsZ": "2",
+        "diameterCm": "50",
+        "axisDistanceMm": "45",
+        "barCount": "8",
+        "barDiameterMm": "16"
+      },
+      "generic": {
+        "shearEnabled": true,
+        "shearDiameterMm": "8",
+        "shearSpacingCm": "20",
+        "shearLegsY": "2",
+        "shearLegsZ": "2",
+        "barSizeMode": "diameter",
+        "points": [
+          { "id": "p1", "yCm": "0", "zCm": "0" },
+          { "id": "p2", "yCm": "0", "zCm": "30" },
+          { "id": "p3", "yCm": "50", "zCm": "30" },
+          { "id": "p4", "yCm": "50", "zCm": "0" }
+        ],
+        "bars": [
+          { "id": "b1", "yCm": "4", "zCm": "5", "diameterMm": "16", "areaMm2": "201,1" },
+          { "id": "b2", "yCm": "4", "zCm": "25", "diameterMm": "16", "areaMm2": "201,1" },
+          { "id": "b3", "yCm": "46", "zCm": "5", "diameterMm": "14", "areaMm2": "153,9" },
+          { "id": "b4", "yCm": "46", "zCm": "25", "diameterMm": "14", "areaMm2": "153,9" }
+        ]
+      }
+    },
+    "materialState": {
+      "concrete": {
+        "mode": "catalog",
+        "catalogKey": "C25/30",
+        "existing": false,
+        "knowledgeLevel": "LC1",
+        "confidenceFactor": "1,35",
+        "gammaC": "1,5",
+        "alphaCc": "0,85",
+        "custom": {
+          "name": "Custom",
+          "strengthClass": "Custom",
+          "fck": "25",
+          "fctm": "2,6",
+          "elasticModulus": "31000",
+          "epsilonCuPermille": "3,5",
+          "density": "2500"
+        }
+      },
+      "steel": {
+        "mode": "catalog",
+        "catalogSource": "ntc2018",
+        "catalogKey": "B450C",
+        "historicalCatalogKey": "FeB44k",
+        "existing": false,
+        "knowledgeLevel": "LC1",
+        "confidenceFactor": "1,35",
+        "gammaS": "1,15",
+        "custom": {
+          "name": "Custom",
+          "grade": "Custom",
+          "fyk": "450",
+          "ftk": "540",
+          "elasticModulus": "210000",
+          "epsilonUdPermille": "67,5",
+          "density": "7850"
+        }
+      }
+    },
+    "analysisState": {
+      "type": "mrd",
+      "mrdMode": "positive",
+      "nEdCompressionKn": "0",
+      "mEdKnm": "",
+      "mxEdKnm": "120",
+      "myEdKnm": "0",
+      "thetaPreset": "zzPositive",
+      "angleDeg": "0",
+      "pointCount": "20",
+      "momentCurvaturePointCount": "20",
+      "angleCount": "40",
+      "modularRatio": "15",
+      "targetFiberCount": "200",
+      "serviceCombination": "rare",
+      "serviceRebarSensitivity": "ordinary",
+      "serviceExposureCondition": "ordinary",
+      "serviceClearSpacingMm": "",
+      "serviceCrackWidthEnabled": false,
+      "serviceCrackLoadDuration": "long",
+      "serviceCrackBondType": "improved",
+      "deflectionSpanM": "5",
+      "deflectionMEdKnm": "120",
+      "deflectionStructuralSystem": "simpleBeam"
+    },
+    "shearOverrides": {},
+    "useCosenzaShear": false,
+    "verificationPoints": {
+      "mnDomain": [],
+      "biaxialDomain": []
+    }
+  },
+  "cases": [
+    {
+      "id": "sca-tbeam-biaxial-domain-public",
+      "title": "T-beam biaxial ULS domain through the public strutture-js workflow",
+      "projectPatch": {
+        "sectionType": "tBeam",
+        "analysisState": {
+          "type": "biaxialDomain",
+          "nEdCompressionKn": "350",
+          "angleCount": "40",
+          "targetFiberCount": "350"
+        }
+      },
+      "publicWorkflowAnalysisType": "uls-biaxial-domain",
+      "includeShear": false,
+      "hotPaths": [
+        "ReinforcedConcreteSectionApplication.run",
+        "ReinforcedConcreteSectionModel",
+        "RCBiaxialDomainBuilder",
+        "RCUltimateSectionSolver",
+        "SectionFiberDiscretizer"
+      ]
+    },
+    {
+      "id": "sca-rect-service-stress-crack-width",
+      "title": "Rectangular RC beam, SLE service stress with direct crack-width checks",
+      "projectPatch": {
+        "sectionType": "rectangular",
+        "analysisState": {
+          "type": "serviceStress",
+          "nEdCompressionKn": "0",
+          "mxEdKnm": "120",
+          "myEdKnm": "0",
+          "modularRatio": "15",
+          "targetFiberCount": "180",
+          "serviceCombination": "frequent",
+          "serviceRebarSensitivity": "ordinary",
+          "serviceExposureCondition": "ordinary",
+          "serviceCrackWidthEnabled": true,
+          "serviceCrackLoadDuration": "long",
+          "serviceCrackBondType": "improved"
+        }
+      },
+      "includeShear": false,
+      "hotPaths": [
+        "RCServiceStressSolver",
+        "solveServiceStressWithFallbacks",
+        "SectionFiberDiscretizer",
+        "SPA direct crack-width adapter"
+      ]
+    },
+    {
+      "id": "sca-rect-service-deflection",
+      "title": "Rectangular RC beam, SLE simplified deflection settings from the SPA",
+      "projectPatch": {
+        "sectionType": "rectangular",
+        "analysisState": {
+          "type": "serviceDeflection",
+          "deflectionSpanM": "5",
+          "deflectionMEdKnm": "120",
+          "deflectionStructuralSystem": "simpleBeam"
+        }
+      },
+      "includeShear": false,
+      "hotPaths": [
+        "calculateSectionMassProperties",
+        "SPA serviceDeflection adapter"
+      ],
+      "notes": [
+        "No FEM analysisResult is present in this repo for this workflow.",
+        "deflectionMEdKnm is the service moment value entered in the UI."
+      ]
+    }
+  ]
+}

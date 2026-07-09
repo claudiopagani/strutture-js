@@ -1,6 +1,27 @@
 const TWO_PI = 2 * Math.PI;
 const ANGLE_TOLERANCE = 1e-14;
 
+function hasStrainFieldCoefficients(strainField) {
+  return (
+    strainField != null &&
+    Number.isFinite(strainField.eps0) &&
+    Number.isFinite(strainField.kappaY) &&
+    Number.isFinite(strainField.kappaZ)
+  );
+}
+
+function strainAtPoint(strainField, point) {
+  if (!Number.isFinite(point?.y) || !Number.isFinite(point?.z)) {
+    throw new Error("StrainField strainAt requires finite y and z coordinates.");
+  }
+
+  if (hasStrainFieldCoefficients(strainField)) {
+    return strainField.eps0 + strainField.kappaY * point.z - strainField.kappaZ * point.y;
+  }
+
+  return strainField.strainAt(point);
+}
+
 export function normalizeNeutralAxisAngle(theta) {
   if (!Number.isFinite(theta)) {
     throw new Error("Neutral-axis theta must be finite.");
@@ -89,7 +110,10 @@ export function getConcreteProjectedBounds(section, theta) {
 }
 
 export function resolveConcreteStrainExtremes({ section, strainField }) {
-  if (!strainField || typeof strainField.strainAt !== "function") {
+  if (
+    !hasStrainFieldCoefficients(strainField) &&
+    typeof strainField?.strainAt !== "function"
+  ) {
     throw new Error(
       "resolveConcreteStrainExtremes requires a strain field.",
     );
@@ -105,7 +129,7 @@ export function resolveConcreteStrainExtremes({ section, strainField }) {
 
   const strainedPoints = outlinePoints.map((point) => ({
     ...point,
-    strain: strainField.strainAt(point),
+    strain: strainAtPoint(strainField, point),
   }));
   const minimum = strainedPoints.reduce((current, point) =>
     current == null || point.strain < current.strain ? point : current,

@@ -21,7 +21,10 @@ import {
   projectionAt,
   resolveConcreteStrainExtremes,
 } from "./RCSectionStrainExtremes.js";
-import { StrainField } from "./StrainField.js";
+import {
+  StrainField,
+  createAffineStrainField,
+} from "./StrainField.js";
 
 const DEFAULT_EPS0_MIN = -0.08;
 const DEFAULT_EPS0_MAX = 0.08;
@@ -115,16 +118,20 @@ function buildOrientedStrainField({
   curvature,
   theta,
   compressedSide,
+  includeResponseDetails = false,
 }) {
   const absoluteCurvature = Math.abs(curvature);
   const direction = neutralAxisDirection(theta);
   const sideSign = compressedSide === "positive" ? 1 : -1;
-
-  return new StrainField({
+  const coefficients = {
     eps0,
     kappaY: sideSign * absoluteCurvature * direction.sin,
     kappaZ: sideSign * absoluteCurvature * direction.cos,
-  });
+  };
+
+  return includeResponseDetails
+    ? new StrainField(coefficients)
+    : createAffineStrainField(coefficients);
 }
 
 function signedEngineeringCurvature({
@@ -793,6 +800,7 @@ export class RCMomentCurvatureAnalyzer {
         curvature,
         theta: direction.theta,
         compressedSide: resolvedCompressedSide,
+        includeResponseDetails,
       });
       const state = this.sectionIntegrator.evaluate({
         section,

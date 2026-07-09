@@ -1,4 +1,7 @@
-import { StrainField } from "./StrainField.js";
+import {
+  StrainField,
+  createAffineStrainField,
+} from "./StrainField.js";
 import { RCSectionStateIntegrator } from "./RCSectionStateIntegrator.js";
 
 function solveLinearSystem3x3(matrix, vector) {
@@ -103,7 +106,10 @@ export class RCServiceStressSolver {
       [eps0, kappaY, kappaZ],
       { includeResponseDetails = false } = {},
     ) => {
-      const strainField = new StrainField({ eps0, kappaY, kappaZ });
+      const coefficients = { eps0, kappaY, kappaZ };
+      const strainField = includeResponseDetails
+        ? new StrainField(coefficients)
+        : createAffineStrainField(coefficients);
       const state = this.sectionIntegrator.evaluate({
         section,
         concreteFibers,

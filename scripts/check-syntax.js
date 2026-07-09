@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 
-const ROOT_DIRECTORIES = ['src', 'tests', 'examples', 'validation', 'scripts'];
+const ROOT_DIRECTORIES = ['src', 'tests', 'examples', 'validation', 'scripts', 'benchmarks'];
 const rootPath = process.cwd();
 
 async function collectJavaScriptFiles(directoryPath) {
@@ -17,7 +17,7 @@ async function collectJavaScriptFiles(directoryPath) {
       continue;
     }
 
-    if (entry.isFile() && entry.name.endsWith('.js')) {
+    if (entry.isFile() && (entry.name.endsWith('.js') || entry.name.endsWith('.mjs'))) {
       files.push(entryPath);
     }
   }

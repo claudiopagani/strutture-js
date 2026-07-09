@@ -1,5 +1,8 @@
 import { IllinoisRootSolver } from "../../../domain/solvers/IllinoisRootSolver.js";
-import { StrainField } from "./StrainField.js";
+import {
+  StrainField,
+  createAffineStrainField,
+} from "./StrainField.js";
 import { RCSectionStateIntegrator } from "./RCSectionStateIntegrator.js";
 import {
   getConcreteProjectedBounds,
@@ -34,6 +37,7 @@ function buildStrainFieldForOrientedFailure({
   neutralAxisDepth,
   ultimateCompressionStrain,
   compressedSide,
+  includeResponseDetails = false,
 }) {
   if (!Number.isFinite(theta)) {
     throw new Error("Theta must be finite.");
@@ -58,11 +62,15 @@ function buildStrainFieldForOrientedFailure({
     compressedEdgeProjection - sideSign * neutralAxisDepth;
   const curvature = ultimateCompressionStrain / neutralAxisDepth;
 
-  return new StrainField({
+  const coefficients = {
     eps0: sideSign * curvature * neutralAxisProjection,
     kappaY: sideSign * curvature * direction.sin,
     kappaZ: sideSign * curvature * direction.cos,
-  });
+  };
+
+  return includeResponseDetails
+    ? new StrainField(coefficients)
+    : createAffineStrainField(coefficients);
 }
 
 function buildStrainFieldForOrientedSteelTensionFailure({
@@ -72,6 +80,7 @@ function buildStrainFieldForOrientedSteelTensionFailure({
   ultimateTensionStrain,
   compressedSide,
   reinforcementBars,
+  includeResponseDetails = false,
 }) {
   if (!Number.isFinite(theta)) {
     throw new Error("Theta must be finite.");
@@ -116,11 +125,15 @@ function buildStrainFieldForOrientedSteelTensionFailure({
 
   const curvature = ultimateTensionStrain / tensionDistance;
 
-  return new StrainField({
+  const coefficients = {
     eps0: sideSign * curvature * neutralAxisProjection,
     kappaY: sideSign * curvature * direction.sin,
     kappaZ: sideSign * curvature * direction.cos,
-  });
+  };
+
+  return includeResponseDetails
+    ? new StrainField(coefficients)
+    : createAffineStrainField(coefficients);
 }
 
 function createDepthSamples(height, { minDepthFactor = 1e-4, maxDepthFactor = 5, steps = 80 } = {}) {
@@ -226,6 +239,7 @@ export class RCUltimateSectionSolver {
         neutralAxisDepth,
         ultimateCompressionStrain,
         compressedSide,
+        includeResponseDetails,
       });
       const state = this.sectionIntegrator.evaluate({
         section,
@@ -383,6 +397,7 @@ export class RCUltimateSectionSolver {
           ultimateTensionStrain: ultimateSteelTensionStrain,
           compressedSide,
           reinforcementBars,
+          includeResponseDetails,
         });
         const state = this.sectionIntegrator.evaluate({
           section,

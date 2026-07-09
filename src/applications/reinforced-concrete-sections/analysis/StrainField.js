@@ -1,22 +1,49 @@
 import { neutralAxisDirection } from "./RCSectionStrainExtremes.js";
 
+export function createAffineStrainField({ eps0 = 0, kappaY = 0, kappaZ = 0 } = {}) {
+  if (!Number.isFinite(eps0) || !Number.isFinite(kappaY) || !Number.isFinite(kappaZ)) {
+    throw new Error("StrainField requires finite eps0, kappaY and kappaZ values.");
+  }
+
+  return { eps0, kappaY, kappaZ };
+}
+
+export function hasStrainFieldCoefficients(strainField) {
+  return (
+    strainField != null &&
+    Number.isFinite(strainField.eps0) &&
+    Number.isFinite(strainField.kappaY) &&
+    Number.isFinite(strainField.kappaZ)
+  );
+}
+
+export function strainAtPoint(strainField, point) {
+  if (!Number.isFinite(point?.y) || !Number.isFinite(point?.z)) {
+    throw new Error("StrainField strainAt requires finite y and z coordinates.");
+  }
+
+  if (hasStrainFieldCoefficients(strainField)) {
+    return strainField.eps0 + strainField.kappaY * point.z - strainField.kappaZ * point.y;
+  }
+
+  if (strainField && typeof strainField.strainAt === "function") {
+    return strainField.strainAt(point);
+  }
+
+  throw new Error("StrainField strainAt requires a strain field.");
+}
+
 export class StrainField {
   constructor({ eps0 = 0, kappaY = 0, kappaZ = 0 } = {}) {
-    if (!Number.isFinite(eps0) || !Number.isFinite(kappaY) || !Number.isFinite(kappaZ)) {
-      throw new Error("StrainField requires finite eps0, kappaY and kappaZ values.");
-    }
+    const coefficients = createAffineStrainField({ eps0, kappaY, kappaZ });
 
-    this.eps0 = eps0;
-    this.kappaY = kappaY;
-    this.kappaZ = kappaZ;
+    this.eps0 = coefficients.eps0;
+    this.kappaY = coefficients.kappaY;
+    this.kappaZ = coefficients.kappaZ;
   }
 
   strainAt({ y, z }) {
-    if (!Number.isFinite(y) || !Number.isFinite(z)) {
-      throw new Error("StrainField strainAt requires finite y and z coordinates.");
-    }
-
-    return this.eps0 + this.kappaY * z - this.kappaZ * y;
+    return strainAtPoint(this, { y, z });
   }
 
   static fromNeutralAxis({
