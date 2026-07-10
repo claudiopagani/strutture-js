@@ -45571,7 +45571,8 @@ var SectionMomentCurvatureCurve = class {
     const crackedKappa = solved.converged ? Math.sign(signedM || 1) * Math.abs((_b = (_a = solved.strainField) == null ? void 0 : _a.kappaZ) != null ? _b : 0) : uncrackedKappa;
     const zeta = isFinitePositive3(this._mcr) ? Math.max(0, 1 - this._beta * (this._mcr / absM) ** 2) : 1;
     const meanKappa = zeta * crackedKappa + (1 - zeta) * uncrackedKappa;
-    const eiSec = isFinitePositive3(Math.abs(meanKappa)) && (!isFinitePositive3(this._mcr) || absM / this._mcr > 0.01) ? absM / Math.abs(meanKappa) : this._grossEI;
+    const rawEiSec = isFinitePositive3(Math.abs(meanKappa)) && (!isFinitePositive3(this._mcr) || absM / this._mcr > 0.01) ? absM / Math.abs(meanKappa) : this._grossEI;
+    const eiSec = Math.min(rawEiSec, this._grossEI);
     return {
       m: absM,
       kappa: meanKappa,

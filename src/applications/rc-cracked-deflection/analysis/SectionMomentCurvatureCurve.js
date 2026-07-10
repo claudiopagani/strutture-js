@@ -280,11 +280,12 @@ export class SectionMomentCurvatureCurve {
     const meanKappa = zeta * crackedKappa + (1 - zeta) * uncrackedKappa;
 
     // Guard: at very low moments near M=0, use gross EI.
-    const eiSec =
+    const rawEiSec =
       isFinitePositive(Math.abs(meanKappa)) &&
       (!isFinitePositive(this._mcr) || absM / this._mcr > 0.01)
         ? absM / Math.abs(meanKappa)
         : this._grossEI;
+    const eiSec = Math.min(rawEiSec, this._grossEI);
 
     return {
       m: absM,
