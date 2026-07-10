@@ -14,6 +14,7 @@ import {
   ReinforcementBar,
   SteelMaterial,
   TSection,
+  runScaRcDeflectionAnalysis,
 } from "../../src/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -338,7 +339,36 @@ function modelFromSpaDump(benchmarkCase) {
   };
 }
 
+function serviceDeflectionSubjectFromSpaDump(benchmarkCase) {
+  return {
+    inputFactory: () => {
+      const section = reviveRcSection(
+        benchmarkCase.section,
+        benchmarkCase.materials,
+      );
+
+      return {
+        sectionBuild: {
+          section,
+          materials: {
+            concreteMaterial: section.concreteMaterial,
+            reinforcementMaterial: section.reinforcementMaterial,
+          },
+        },
+        analysisState: benchmarkCase.projectState.analysisState,
+        performanceProfile: "interactive",
+      };
+    },
+    runAnalysis: (input) => runScaRcDeflectionAnalysis(input),
+    sourceKind: "sca-service-deflection-adapter",
+  };
+}
+
 function subjectForCase(benchmarkCase) {
+  if (benchmarkCase.projectState?.analysisState?.type === "serviceDeflection") {
+    return serviceDeflectionSubjectFromSpaDump(benchmarkCase);
+  }
+
   if (benchmarkCase.publicWorkflowModel) {
     return {
       modelFactory: () => revivePublicModel(benchmarkCase.publicWorkflowModel),
@@ -424,7 +454,7 @@ function summarizeResult(result) {
 function benchmarkOneCase({ benchmarkCase, options }) {
   const subject = subjectForCase(benchmarkCase);
 
-  if (!subject.modelFactory) {
+  if (!subject.modelFactory && !subject.inputFactory) {
     return {
       id: benchmarkCase.id,
       title: benchmarkCase.title,
@@ -433,9 +463,14 @@ function benchmarkOneCase({ benchmarkCase, options }) {
     };
   }
 
-  const application = new ReinforcedConcreteSectionApplication();
-  const cachedModel = subject.modelFactory();
-  const initial = application.run({ model: cachedModel });
+  const application = subject.runAnalysis
+    ? null
+    : new ReinforcedConcreteSectionApplication();
+  const inputFactory = subject.inputFactory ?? subject.modelFactory;
+  const runAnalysis =
+    subject.runAnalysis ?? ((model) => application.run({ model }));
+  const cachedInput = inputFactory();
+  const initial = runAnalysis(cachedInput);
 
   return {
     id: benchmarkCase.id,
@@ -447,17 +482,17 @@ function benchmarkOneCase({ benchmarkCase, options }) {
       modelBuild: measure({
         iterations: options.iterations,
         warmup: options.warmup,
-        fn: () => subject.modelFactory(),
+        fn: () => inputFactory(),
       }),
       analysisOnly: measure({
         iterations: options.iterations,
         warmup: options.warmup,
-        fn: () => application.run({ model: cachedModel }),
+        fn: () => runAnalysis(cachedInput),
       }),
       modelBuildAndAnalysis: measure({
         iterations: options.iterations,
         warmup: options.warmup,
-        fn: () => application.run({ model: subject.modelFactory() }),
+        fn: () => runAnalysis(inputFactory()),
       }),
     },
   };

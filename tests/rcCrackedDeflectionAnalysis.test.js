@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   CrackedSectionDeflectionAnalysis,
+  runScaRcDeflectionAnalysis,
   SingleBeamAnalysis,
 } from "../src/index.js";
 import { createRcElasticBeamReportModel } from "../examples/beam-report-fixtures.js";
@@ -86,4 +87,62 @@ test("RC cracked deflection validation applies configurable creep and excludes s
       warning.includes("Shrinkage curvature is intentionally excluded"),
     ),
   );
+});
+
+test("RC cracked deflection production profile limits station solves and output payload", () => {
+  const model = createRcElasticBeamReportModel();
+  const analysisResult = new SingleBeamAnalysis().analyze(model.beamInput);
+  const result = new CrackedSectionDeflectionAnalysis().analyze({
+    beamId: model.id,
+    analysisResult,
+    section: model.section,
+    concreteMaterial: model.section.concreteMaterial,
+    reinforcementMaterial: model.section.reinforcementMaterial,
+    performanceProfile: "production",
+  });
+
+  assert.equal(result.status, "ok");
+  assert.equal(result.outputs.performance.profile, "production");
+  assert.equal(result.outputs.performance.maxStationsPerCombination, 33);
+  assert.ok(result.outputs.performance.inputStationCount >= result.outputs.performance.analyzedStationCount);
+  assert.ok(result.outputs.performance.returnedPointCount >= result.outputs.combinations.length);
+
+  for (const combination of result.outputs.combinations) {
+    assert.ok(combination.analyzedPointCount <= 33);
+    assert.ok(combination.returnedPointCount <= 65);
+    assert.equal(combination.points.length, combination.returnedPointCount);
+  }
+});
+
+test("SCA deflection adapter builds a UI DTO from span and service moment", () => {
+  const model = createRcElasticBeamReportModel();
+  const result = runScaRcDeflectionAnalysis({
+    sectionBuild: {
+      section: model.section,
+      materials: {
+        concreteMaterial: model.section.concreteMaterial,
+        reinforcementMaterial: model.section.reinforcementMaterial,
+      },
+    },
+    analysisState: {
+      serviceCombination: "quasiPermanent",
+      deflectionSpanM: "5",
+      deflectionMEdKnm: "120",
+      deflectionStructuralSystem: "simpleBeam",
+      deflectionLimitRatio: "250",
+      modularRatio: "15",
+    },
+  });
+
+  assert.equal(result.kind, "serviceDeflection");
+  assert.equal(result.applicationId, "rc-cracked-deflection");
+  assert.ok(["ok", "not-verified"].includes(result.status));
+  assert.equal(result.outputs.source, "synthetic-service-moment-profile");
+  assert.equal(result.outputs.performance.profile, "interactive");
+  assert.equal(result.outputs.performance.maxStationsPerCombination, 17);
+  assert.ok(result.outputs.maxAbsDeflection > 0);
+  assert.ok(result.outputs.deflectionLimit > 0);
+  assert.ok(result.outputs.points.length > 2);
+  assert.ok(result.outputs.points.length <= 33);
+  assert.equal(result.outputs.combination.combinationType, "SLE_QUASI_PERMANENT");
 });

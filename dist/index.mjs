@@ -45367,8 +45367,81 @@ var SLENDERNESS_LIMITS = Object.freeze({
   flat_slab: { k: 1.2, high: 17, low: 24 },
   cantilever: { k: 0.4, high: 6, low: 8 }
 });
+var RC_DEFLECTION_PERFORMANCE_PROFILES = Object.freeze({
+  interactive: Object.freeze({
+    targetFiberCount: 80,
+    solverTolerance: 0.05,
+    solverMaxIterations: 35,
+    maxStationsPerCombination: 17,
+    maxOutputPointsPerCombination: 33
+  }),
+  production: Object.freeze({
+    targetFiberCount: 120,
+    solverTolerance: 0.01,
+    solverMaxIterations: 50,
+    maxStationsPerCombination: 33,
+    maxOutputPointsPerCombination: 65
+  }),
+  accurate: Object.freeze({
+    targetFiberCount: 300,
+    solverTolerance: 1e-3,
+    solverMaxIterations: 80,
+    maxStationsPerCombination: null,
+    maxOutputPointsPerCombination: null
+  })
+});
 function isQuasiPermanent(type) {
   return normalizeCombinationType3(type) === "SLE_QUASI_PERMANENT";
+}
+function resolvePerformanceProfile(name) {
+  var _a;
+  if (name == null || name === false) {
+    return null;
+  }
+  return (_a = RC_DEFLECTION_PERFORMANCE_PROFILES[name]) != null ? _a : null;
+}
+function resolveAnalysisOptions({
+  performanceProfile,
+  serviceability,
+  mesh,
+  solver,
+  sampling,
+  output
+}) {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B;
+  const profile = (_c = resolvePerformanceProfile(
+    (_b = performanceProfile != null ? performanceProfile : (_a = serviceability.deflection) == null ? void 0 : _a.performanceProfile) != null ? _b : serviceability.performanceProfile
+  )) != null ? _c : {};
+  const resolvedMesh = {
+    ...mesh,
+    targetFiberCount: (_e = (_d = mesh == null ? void 0 : mesh.targetFiberCount) != null ? _d : profile.targetFiberCount) != null ? _e : 100
+  };
+  const resolvedSolver = {
+    ...solver,
+    tolerance: (_g = (_f = solver == null ? void 0 : solver.tolerance) != null ? _f : profile.solverTolerance) != null ? _g : 0.01,
+    maxIterations: (_i = (_h = solver == null ? void 0 : solver.maxIterations) != null ? _h : profile.solverMaxIterations) != null ? _i : 50
+  };
+  const resolvedSampling = {
+    ...sampling,
+    maxStationsPerCombination: (_p = (_o = (_n = (_l = (_j = sampling == null ? void 0 : sampling.maxStationsPerCombination) != null ? _j : sampling == null ? void 0 : sampling.maxStations) != null ? _l : (_k = serviceability.deflection) == null ? void 0 : _k.maxStationsPerCombination) != null ? _n : (_m = serviceability.deflection) == null ? void 0 : _m.maxStations) != null ? _o : profile.maxStationsPerCombination) != null ? _p : null
+  };
+  const resolvedOutput = {
+    ...output,
+    maxPointsPerCombination: (_w = (_v = (_u = (_s = (_q = output == null ? void 0 : output.maxPointsPerCombination) != null ? _q : output == null ? void 0 : output.maxPoints) != null ? _s : (_r = serviceability.deflection) == null ? void 0 : _r.maxOutputPointsPerCombination) != null ? _u : (_t = serviceability.deflection) == null ? void 0 : _t.maxOutputPoints) != null ? _v : profile.maxOutputPointsPerCombination) != null ? _w : null,
+    includePointDetails: (_z = (_y = output == null ? void 0 : output.includePointDetails) != null ? _y : (_x = serviceability.deflection) == null ? void 0 : _x.includePointDetails) != null ? _z : false
+  };
+  return {
+    profileName: (_B = (_A = Object.entries(RC_DEFLECTION_PERFORMANCE_PROFILES).find(
+      ([, value]) => value === profile
+    )) == null ? void 0 : _A[0]) != null ? _B : null,
+    mesh: resolvedMesh,
+    solver: resolvedSolver,
+    sampling: resolvedSampling,
+    output: resolvedOutput
+  };
+}
+function numericCacheKey(value) {
+  return Number.isFinite(value) ? value.toPrecision(12) : String(value);
 }
 function transformedGrossInertiaY({ section, modularRatio }) {
   const concrete = section.concreteSection;
@@ -45415,6 +45488,47 @@ function deduplicateSamples(samples, resolver) {
   }
   return [...byStation.values()].sort((a, b) => a.x - b.x);
 }
+function addSampleIndex(indices, index, length) {
+  const bounded = Math.max(0, Math.min(length - 1, index));
+  indices.add(bounded);
+}
+function selectAnalysisSamples(samples, { maxStationsPerCombination = null } = {}) {
+  if (!Number.isInteger(maxStationsPerCombination) || maxStationsPerCombination <= 0 || samples.length <= maxStationsPerCombination) {
+    return samples;
+  }
+  const target = Math.max(3, maxStationsPerCombination);
+  const indices = /* @__PURE__ */ new Set();
+  const lastIndex = samples.length - 1;
+  addSampleIndex(indices, 0, samples.length);
+  addSampleIndex(indices, lastIndex, samples.length);
+  const maxMomentIndex = samples.reduce((selected, item, index) => {
+    var _a, _b, _c, _d, _e;
+    const selectedMoment = Math.abs((_c = (_b = (_a = samples[selected]) == null ? void 0 : _a.sample) == null ? void 0 : _b.m) != null ? _c : 0);
+    const currentMoment = Math.abs((_e = (_d = item.sample) == null ? void 0 : _d.m) != null ? _e : 0);
+    return currentMoment > selectedMoment ? index : selected;
+  }, 0);
+  const maxAxialIndex = samples.reduce((selected, item, index) => {
+    var _a, _b, _c, _d, _e;
+    const selectedAxial = Math.abs((_c = (_b = (_a = samples[selected]) == null ? void 0 : _a.sample) == null ? void 0 : _b.n) != null ? _c : 0);
+    const currentAxial = Math.abs((_e = (_d = item.sample) == null ? void 0 : _d.n) != null ? _e : 0);
+    return currentAxial > selectedAxial ? index : selected;
+  }, 0);
+  addSampleIndex(indices, maxMomentIndex, samples.length);
+  addSampleIndex(indices, maxAxialIndex, samples.length);
+  for (let index = 0; indices.size < target && index < target; index += 1) {
+    addSampleIndex(
+      indices,
+      Math.round(index * lastIndex / Math.max(1, target - 1)),
+      samples.length
+    );
+  }
+  if (indices.size < target) {
+    for (let index = 1; indices.size < target && index < lastIndex; index += 1) {
+      addSampleIndex(indices, index, samples.length);
+    }
+  }
+  return [...indices].sort((a, b) => a - b).map((index) => samples[index]);
+}
 function integrateCurvature(points, supports = []) {
   if (points.length < 2) {
     return points.map((point) => ({
@@ -45446,6 +45560,50 @@ function integrateCurvature(points, supports = []) {
     rotation: rotations[index] + correction,
     deflection: rawDeflections[index] + correction * (point.x - points[0].x)
   }));
+}
+function selectOutputPoints(points, { maxPointsPerCombination = null } = {}) {
+  if (!Number.isInteger(maxPointsPerCombination) || maxPointsPerCombination <= 0 || points.length <= maxPointsPerCombination) {
+    return points;
+  }
+  const target = Math.max(3, maxPointsPerCombination);
+  const indices = /* @__PURE__ */ new Set();
+  const lastIndex = points.length - 1;
+  addSampleIndex(indices, 0, points.length);
+  addSampleIndex(indices, lastIndex, points.length);
+  const governingIndex = points.reduce((selected, point, index) => {
+    var _a, _b, _c;
+    const selectedDeflection = Math.abs((_b = (_a = points[selected]) == null ? void 0 : _a.deflection) != null ? _b : 0);
+    const currentDeflection = Math.abs((_c = point.deflection) != null ? _c : 0);
+    return currentDeflection > selectedDeflection ? index : selected;
+  }, 0);
+  addSampleIndex(indices, governingIndex, points.length);
+  for (let index = 0; indices.size < target && index < target; index += 1) {
+    addSampleIndex(
+      indices,
+      Math.round(index * lastIndex / Math.max(1, target - 1)),
+      points.length
+    );
+  }
+  return [...indices].sort((a, b) => a - b).map((index) => points[index]);
+}
+function summarizeCurvaturePoint(point, { includePointDetails = false } = {}) {
+  const summary = {
+    station: round2(point.station),
+    mEd: round2(point.mEd),
+    zeta: round2(point.zeta),
+    curvature: round2(point.curvature, 12),
+    rotation: round2(point.rotation, 12),
+    deflection: round2(point.deflection),
+    cracked: point.cracked
+  };
+  if (includePointDetails) {
+    summary.x = round2(point.x);
+    summary.nEd = round2(point.nEd);
+    summary.mcr = round2(point.mcr);
+    summary.uncrackedCurvature = round2(point.uncrackedCurvature, 12);
+    summary.crackedCurvature = round2(point.crackedCurvature, 12);
+  }
+  return summary;
 }
 function utilizationCheck2({ demand, capacity, metadata }) {
   const utilizationRatio = isFinitePositive3(capacity) ? demand / capacity : null;
@@ -45506,7 +45664,10 @@ var CrackedSectionDeflectionAnalysis = class {
     reinforcementMaterial = section == null ? void 0 : section.reinforcementMaterial,
     serviceability = {},
     mesh = { targetFiberCount: 100 },
-    solver = { tolerance: 0.01, maxIterations: 50 }
+    solver = { tolerance: 0.01, maxIterations: 50 },
+    performanceProfile = null,
+    sampling = {},
+    output = {}
   } = {}) {
     var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E;
     if (!analysisResult || !(section == null ? void 0 : section.concreteSection)) {
@@ -45536,6 +45697,14 @@ var CrackedSectionDeflectionAnalysis = class {
     const limitRatio = (_j = (_i = (_h = serviceability.deflection) == null ? void 0 : _h.limitRatio) != null ? _i : serviceability.deflectionLimitRatio) != null ? _j : 250;
     const betaShortTerm = (_l = (_k = serviceability.deflection) == null ? void 0 : _k.betaShortTerm) != null ? _l : 1;
     const betaLongTerm = (_n = (_m = serviceability.deflection) == null ? void 0 : _m.betaLongTerm) != null ? _n : 0.5;
+    const analysisOptions = resolveAnalysisOptions({
+      performanceProfile,
+      serviceability,
+      mesh,
+      solver,
+      sampling,
+      output
+    });
     const warnings = [];
     const assumptions = [
       "Curvatures are integrated numerically along FEM service-combination stations.",
@@ -45571,7 +45740,41 @@ var CrackedSectionDeflectionAnalysis = class {
     const mcr = crackingMoment({ section, concreteMaterial });
     const combinationOutputs = [];
     const checks = [];
+    const serviceContextCache = /* @__PURE__ */ new Map();
+    const solvedCurvatureCache = /* @__PURE__ */ new Map();
+    const performance = {
+      profile: analysisOptions.profileName,
+      targetFiberCount: analysisOptions.mesh.targetFiberCount,
+      solverTolerance: analysisOptions.solver.tolerance,
+      solverMaxIterations: analysisOptions.solver.maxIterations,
+      maxStationsPerCombination: analysisOptions.sampling.maxStationsPerCombination,
+      maxOutputPointsPerCombination: analysisOptions.output.maxPointsPerCombination,
+      inputStationCount: 0,
+      analyzedStationCount: 0,
+      returnedPointCount: 0,
+      serviceSolveCount: 0,
+      serviceSolveCacheHits: 0
+    };
     let globalSpan = null;
+    const getServiceContext = (effectiveModularRatio) => {
+      const key = numericCacheKey(effectiveModularRatio);
+      if (!serviceContextCache.has(key)) {
+        serviceContextCache.set(key, {
+          gross: transformedGrossInertiaY({
+            section,
+            modularRatio: effectiveModularRatio
+          }),
+          context: createRcServiceSectionSolverContext({
+            section,
+            reinforcementMaterial,
+            mesh: analysisOptions.mesh,
+            solver: analysisOptions.solver,
+            modularRatio: effectiveModularRatio
+          })
+        });
+      }
+      return serviceContextCache.get(key);
+    };
     for (const result of Object.values((_o = analysisResult.combinations) != null ? _o : {})) {
       if (String((_q = (_p = result.context) == null ? void 0 : _p.limitState) != null ? _q : "").toUpperCase() !== "SLE") {
         continue;
@@ -45580,19 +45783,20 @@ var CrackedSectionDeflectionAnalysis = class {
       const creepCoefficient = isQuasiPermanent(combinationType) ? phi : 0;
       const effectiveModularRatio = baseModularRatio * (1 + creepCoefficient);
       const effectiveConcreteModulus = es / effectiveModularRatio;
-      const gross = transformedGrossInertiaY({ section, modularRatio: effectiveModularRatio });
-      const serviceContext = createRcServiceSectionSolverContext({
-        section,
-        reinforcementMaterial,
-        mesh,
-        solver,
-        modularRatio: effectiveModularRatio
-      });
+      const serviceArtifacts = getServiceContext(effectiveModularRatio);
+      const gross = serviceArtifacts.gross;
+      const serviceContext = serviceArtifacts.context;
       const rawPoints = deduplicateSamples(
         (_u = (_t = result.internalForces) == null ? void 0 : _t.samples) != null ? _u : [],
         resultResolver
       );
-      const curvaturePoints = rawPoints.map(({ x, sample }) => {
+      const analysisPoints = selectAnalysisSamples(
+        rawPoints,
+        analysisOptions.sampling
+      );
+      performance.inputStationCount += rawPoints.length;
+      performance.analyzedStationCount += analysisPoints.length;
+      const curvaturePoints = analysisPoints.map(({ x, sample }) => {
         var _a2, _b2;
         const mEd = resultResolver.moment((_a2 = sample.m) != null ? _a2 : 0);
         const nEd = resultResolver.force((_b2 = sample.n) != null ? _b2 : 0);
@@ -45602,21 +45806,33 @@ var CrackedSectionDeflectionAnalysis = class {
         let solverConverged = true;
         let zeta = 0;
         if (isFinitePositive3(absM) && (!isFinitePositive3(mcr) || absM > mcr)) {
-          const solved = solveRcServiceSectionState({
-            section,
-            reinforcementMaterial,
-            concreteMesh: serviceContext.mesh,
-            serviceSolver: serviceContext.serviceSolver,
-            concreteLaw: serviceContext.concreteLaw,
-            steelLaw: serviceContext.steelLaw,
-            solver,
-            modularRatio: effectiveModularRatio,
-            actions: {
-              nEd,
-              mxEd: mEd,
-              myEd: 0
-            }
-          }).solved;
+          const solveCacheKey = [
+            numericCacheKey(effectiveModularRatio),
+            numericCacheKey(nEd),
+            numericCacheKey(mEd)
+          ].join("|");
+          let solved = solvedCurvatureCache.get(solveCacheKey);
+          if (solved) {
+            performance.serviceSolveCacheHits += 1;
+          } else {
+            solved = solveRcServiceSectionState({
+              section,
+              reinforcementMaterial,
+              concreteMesh: serviceContext.mesh,
+              serviceSolver: serviceContext.serviceSolver,
+              concreteLaw: serviceContext.concreteLaw,
+              steelLaw: serviceContext.steelLaw,
+              solver: analysisOptions.solver,
+              modularRatio: effectiveModularRatio,
+              actions: {
+                nEd,
+                mxEd: mEd,
+                myEd: 0
+              }
+            }).solved;
+            solvedCurvatureCache.set(solveCacheKey, solved);
+            performance.serviceSolveCount += 1;
+          }
           solverConverged = solved.converged;
           if (solved.converged) {
             crackedCurvature = Math.sign(mEd || 1) * Math.abs(solved.strainField.kappaZ);
@@ -45674,6 +45890,7 @@ var CrackedSectionDeflectionAnalysis = class {
           })
         );
       }
+      const outputPoints = selectOutputPoints(integrated, analysisOptions.output);
       combinationOutputs.push({
         resultId: result.id,
         combinationType,
@@ -45687,15 +45904,14 @@ var CrackedSectionDeflectionAnalysis = class {
         maxAbsDeflection: round2(Math.abs((_A = governing2 == null ? void 0 : governing2.deflection) != null ? _A : 0)),
         governingStation: round2(governing2 == null ? void 0 : governing2.station),
         mcr: round2(mcr),
-        points: integrated.map((point) => ({
-          station: round2(point.station),
-          mEd: round2(point.mEd),
-          zeta: round2(point.zeta),
-          curvature: round2(point.curvature, 12),
-          deflection: round2(point.deflection),
-          cracked: point.cracked
-        }))
+        inputPointCount: rawPoints.length,
+        analyzedPointCount: analysisPoints.length,
+        returnedPointCount: outputPoints.length,
+        points: outputPoints.map(
+          (point) => summarizeCurvaturePoint(point, analysisOptions.output)
+        )
       });
+      performance.returnedPointCount += combinationOutputs[combinationOutputs.length - 1].returnedPointCount;
     }
     const slenderness = slendernessCheck({
       span: globalSpan,
@@ -45718,6 +45934,7 @@ var CrackedSectionDeflectionAnalysis = class {
         beamId,
         creepCoefficient: phi,
         includeShrinkage: false,
+        performance,
         simplifiedSlenderness: slenderness ? {
           demand: slenderness.demand,
           capacity: slenderness.capacity,
@@ -45818,6 +46035,309 @@ var CrackedSectionBeamModel = class {
     this.metadata = { ...metadata };
   }
 };
+
+// src/applications/rc-cracked-deflection/adapters/scaRcDeflectionAdapter.js
+var BEAM_UNITS = Object.freeze({ force: "kN", length: "m" });
+var SCA_DEFLECTION_SYSTEMS = Object.freeze({
+  simpleBeam: Object.freeze({
+    id: "simpleBeam",
+    slendernessSystem: "simple_span",
+    momentShape: "simple-span-parabolic",
+    supports: [
+      { id: "start", station: 0, restraints: { ux: true, uy: true, rz: false } },
+      { id: "end", station: 1, restraints: { ux: false, uy: true, rz: false } }
+    ]
+  }),
+  simple_span: Object.freeze({
+    id: "simple_span",
+    slendernessSystem: "simple_span",
+    momentShape: "simple-span-parabolic",
+    supports: [
+      { id: "start", station: 0, restraints: { ux: true, uy: true, rz: false } },
+      { id: "end", station: 1, restraints: { ux: false, uy: true, rz: false } }
+    ]
+  }),
+  cantilever: Object.freeze({
+    id: "cantilever",
+    slendernessSystem: "cantilever",
+    momentShape: "cantilever-linear",
+    supports: [
+      { id: "fixed", station: 0, restraints: { ux: true, uy: true, rz: true } }
+    ]
+  }),
+  continuousEndSpan: Object.freeze({
+    id: "continuousEndSpan",
+    slendernessSystem: "continuous_end_span",
+    momentShape: "simple-span-parabolic",
+    supports: [
+      { id: "start", station: 0, restraints: { ux: true, uy: true, rz: false } },
+      { id: "end", station: 1, restraints: { ux: false, uy: true, rz: false } }
+    ]
+  }),
+  continuousInternalSpan: Object.freeze({
+    id: "continuousInternalSpan",
+    slendernessSystem: "continuous_internal_span",
+    momentShape: "simple-span-parabolic",
+    supports: [
+      { id: "start", station: 0, restraints: { ux: true, uy: true, rz: false } },
+      { id: "end", station: 1, restraints: { ux: false, uy: true, rz: false } }
+    ]
+  })
+});
+function parseLocaleNumber(value, fallback = null) {
+  if (value == null || value === "") {
+    return fallback;
+  }
+  const parsed = typeof value === "number" ? value : Number.parseFloat(String(value).trim().replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+function parsePositiveInteger(value, fallback) {
+  const parsed = typeof value === "number" ? value : Number.parseInt(String(value != null ? value : "").trim(), 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+function resolveCombinationType(value) {
+  const normalized = String(value != null ? value : "rare").trim().toLowerCase();
+  if (["quasipermanent", "quasi-permanent", "quasi_permanent", "qp"].includes(normalized)) {
+    return "SLE_QUASI_PERMANENT";
+  }
+  if (["frequent", "frequente"].includes(normalized)) {
+    return "SLE_FREQUENT";
+  }
+  return "SLE_RARE";
+}
+function resolveDeflectionSystem(value) {
+  var _a;
+  return (_a = SCA_DEFLECTION_SYSTEMS[value]) != null ? _a : SCA_DEFLECTION_SYSTEMS.simpleBeam;
+}
+function supportStationsForSpan(system, span) {
+  return system.supports.map((support) => ({
+    ...support,
+    station: support.station * span,
+    restraints: { ...support.restraints }
+  }));
+}
+function momentAtRatio({ ratio, maxMoment, momentShape }) {
+  if (momentShape === "cantilever-linear") {
+    return maxMoment * (1 - ratio);
+  }
+  return maxMoment * 4 * ratio * (1 - ratio);
+}
+function createScaServiceDeflectionAnalysisResult({
+  spanM,
+  maxMomentKnm,
+  axialForceKn = 0,
+  structuralSystem = "simpleBeam",
+  stationCount = 17,
+  combinationType = "SLE_RARE",
+  id = "sca-service-deflection"
+} = {}) {
+  if (!Number.isFinite(spanM) || spanM <= 0) {
+    throw new Error("SCA service deflection requires a positive spanM.");
+  }
+  if (!Number.isFinite(maxMomentKnm)) {
+    throw new Error("SCA service deflection requires a finite maxMomentKnm.");
+  }
+  const system = resolveDeflectionSystem(structuralSystem);
+  const count = Math.max(3, stationCount);
+  const samples = Array.from({ length: count }, (_, index) => {
+    const ratio = index / Math.max(1, count - 1);
+    return {
+      station: spanM * ratio,
+      n: axialForceKn,
+      m: momentAtRatio({
+        ratio,
+        maxMoment: maxMomentKnm,
+        momentShape: system.momentShape
+      })
+    };
+  });
+  return {
+    units: BEAM_UNITS,
+    combinations: {
+      [id]: {
+        id,
+        resultType: "sca-service-moment-profile",
+        units: BEAM_UNITS,
+        context: {
+          limitState: "SLE",
+          combinationType
+        },
+        geometry: {
+          length: spanM
+        },
+        supports: supportStationsForSpan(system, spanM),
+        internalForces: {
+          samples
+        }
+      }
+    },
+    metadata: {
+      source: "sca-service-deflection-adapter",
+      structuralSystem: system.id,
+      momentShape: system.momentShape,
+      maxMomentKnm,
+      spanM,
+      stationCount: count
+    }
+  };
+}
+function buildServiceability({ analysisState = {}, serviceability = {} }) {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m;
+  const system = resolveDeflectionSystem(
+    analysisState.deflectionStructuralSystem
+  );
+  const deflection = {
+    ...(_a = serviceability.deflection) != null ? _a : {},
+    slendernessSystem: (_d = (_c = (_b = serviceability.deflection) == null ? void 0 : _b.slendernessSystem) != null ? _c : serviceability.slendernessSystem) != null ? _d : system.slendernessSystem,
+    modularRatio: parseLocaleNumber(
+      analysisState.modularRatio,
+      (_g = (_f = (_e = serviceability.deflection) == null ? void 0 : _e.modularRatio) != null ? _f : serviceability.modularRatio) != null ? _g : DEFAULT_RC_SLE_MODULAR_RATIO
+    ),
+    creepCoefficient: parseLocaleNumber(
+      analysisState.deflectionCreepCoefficient,
+      (_j = (_i = (_h = serviceability.deflection) == null ? void 0 : _h.creepCoefficient) != null ? _i : serviceability.creepCoefficient) != null ? _j : 2
+    ),
+    limitRatio: parseLocaleNumber(
+      analysisState.deflectionLimitRatio,
+      (_m = (_l = (_k = serviceability.deflection) == null ? void 0 : _k.limitRatio) != null ? _l : serviceability.deflectionLimitRatio) != null ? _m : 250
+    )
+  };
+  return {
+    ...serviceability,
+    deflection
+  };
+}
+function summarizeForSca({ result, source, analysisState }) {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o;
+  const combinations = (_b = (_a = result.outputs) == null ? void 0 : _a.combinations) != null ? _b : [];
+  const primaryCombination = (_d = (_c = combinations.find(
+    (combination) => combination.combinationType === resolveCombinationType(analysisState.serviceCombination)
+  )) != null ? _c : combinations[0]) != null ? _d : null;
+  return {
+    kind: "serviceDeflection",
+    applicationId: result.applicationId,
+    status: result.status,
+    summary: result.summary,
+    utilizationRatio: result.utilizationRatio,
+    demand: result.demand,
+    capacity: result.capacity,
+    checks: result.checks,
+    outputs: {
+      ...result.outputs,
+      analysisType: "serviceDeflection",
+      source,
+      combination: primaryCombination,
+      points: (_e = primaryCombination == null ? void 0 : primaryCombination.points) != null ? _e : [],
+      maxAbsDeflection: (_f = primaryCombination == null ? void 0 : primaryCombination.maxAbsDeflection) != null ? _f : null,
+      governingStation: (_g = primaryCombination == null ? void 0 : primaryCombination.governingStation) != null ? _g : null,
+      deflectionLimit: (_h = primaryCombination == null ? void 0 : primaryCombination.deflectionLimit) != null ? _h : null,
+      mcr: (_i = primaryCombination == null ? void 0 : primaryCombination.mcr) != null ? _i : null,
+      fiberCount: (_l = (_k = (_j = result.outputs) == null ? void 0 : _j.performance) == null ? void 0 : _k.targetFiberCount) != null ? _l : null,
+      targetFiberCount: (_o = (_n = (_m = result.outputs) == null ? void 0 : _m.performance) == null ? void 0 : _n.targetFiberCount) != null ? _o : null
+    },
+    warnings: result.warnings,
+    assumptions: result.assumptions,
+    metadata: {
+      ...result.metadata,
+      analysisType: "serviceDeflection",
+      source
+    }
+  };
+}
+function runScaRcDeflectionAnalysis({
+  sectionBuild = null,
+  analysisState = {},
+  analysisResult = null,
+  section = ((_a) => (_a = sectionBuild == null ? void 0 : sectionBuild.section) != null ? _a : null)(),
+  concreteMaterial = ((_c) => (_c = ((_b) => (_b = sectionBuild == null ? void 0 : sectionBuild.materials) == null ? void 0 : _b.concreteMaterial)()) != null ? _c : section == null ? void 0 : section.concreteMaterial)(),
+  reinforcementMaterial = ((_e) => (_e = ((_d) => (_d = sectionBuild == null ? void 0 : sectionBuild.materials) == null ? void 0 : _d.reinforcementMaterial)()) != null ? _e : section == null ? void 0 : section.reinforcementMaterial)(),
+  serviceability = {},
+  mesh = null,
+  solver = null,
+  performanceProfile = "interactive",
+  stationCount = null,
+  output = null,
+  code = "NTC2018"
+} = {}) {
+  var _a2, _b2, _c2;
+  if (!(section == null ? void 0 : section.concreteSection)) {
+    return {
+      kind: "serviceDeflection",
+      applicationId: "rc-cracked-deflection",
+      status: RESULT_STATUS.NOT_IMPLEMENTED,
+      summary: "SCA service deflection requires a reinforced concrete section.",
+      checks: [],
+      outputs: {},
+      warnings: [
+        "No reinforced concrete section was provided to the SCA deflection adapter."
+      ],
+      assumptions: [],
+      metadata: { source: "sca-service-deflection-adapter" }
+    };
+  }
+  const spanM = parseLocaleNumber(analysisState.deflectionSpanM, null);
+  const maxMomentKnm = parseLocaleNumber(
+    (_b2 = (_a2 = analysisState.deflectionMEdKnm) != null ? _a2 : analysisState.mxEdKnm) != null ? _b2 : analysisState.mEdKnm,
+    null
+  );
+  const compressionKn = parseLocaleNumber(analysisState.nEdCompressionKn, 0);
+  const combinationType = resolveCombinationType(
+    analysisState.serviceCombination
+  );
+  if (!analysisResult && (!Number.isFinite(spanM) || spanM <= 0 || !Number.isFinite(maxMomentKnm))) {
+    return {
+      kind: "serviceDeflection",
+      applicationId: "rc-cracked-deflection",
+      status: RESULT_STATUS.NOT_ANALYZED,
+      summary: "SCA service deflection requires span and service moment inputs.",
+      checks: [],
+      outputs: {},
+      warnings: [
+        "No beam analysis result was provided and the simplified SCA deflection inputs are incomplete."
+      ],
+      assumptions: [],
+      metadata: { source: "sca-service-deflection-adapter" }
+    };
+  }
+  const syntheticAnalysisResult = analysisResult != null ? analysisResult : createScaServiceDeflectionAnalysisResult({
+    spanM,
+    maxMomentKnm,
+    axialForceKn: -compressionKn,
+    structuralSystem: analysisState.deflectionStructuralSystem,
+    stationCount: stationCount != null ? stationCount : parsePositiveInteger(analysisState.deflectionStationCount, 17),
+    combinationType
+  });
+  const targetFiberCount = parsePositiveInteger(
+    analysisState.targetFiberCount,
+    null
+  );
+  const meshOptions = {
+    ...targetFiberCount == null ? {} : { targetFiberCount },
+    ...mesh != null ? mesh : {}
+  };
+  const result = new CrackedSectionDeflectionAnalysis({
+    code,
+    metadata: {
+      source: "sca-service-deflection-adapter"
+    }
+  }).analyze({
+    beamId: (_c2 = analysisState.id) != null ? _c2 : "sca-service-deflection",
+    analysisResult: syntheticAnalysisResult,
+    section,
+    concreteMaterial,
+    reinforcementMaterial,
+    serviceability: buildServiceability({ analysisState, serviceability }),
+    mesh: meshOptions,
+    solver: solver != null ? solver : {},
+    performanceProfile,
+    output: output != null ? output : {}
+  });
+  return summarizeForSca({
+    result,
+    source: analysisResult ? "beam-analysis-result" : "synthetic-service-moment-profile",
+    analysisState
+  });
+}
 
 // src/applications/reinforced-concrete-sections/analysis/moment-curvature/MomentCurvaturePostUltimateOptions.js
 var DEFAULT_POST_ULTIMATE_MOMENT_DROP = 0.15;
@@ -56471,6 +56991,7 @@ export {
   RCServiceStressSolver,
   RCUltimateSectionSolver,
   RCUniaxialDomainBuilder,
+  RC_DEFLECTION_PERFORMANCE_PROFILES,
   RCrackedDeflectionApplication,
   RESULT_STATUS,
   RESULT_STATUS_FAILED,
@@ -56603,6 +57124,7 @@ export {
   createNTC2018VariableAction,
   createNTC2018WindAction,
   createReinforcedConcreteBeamSectionProvider,
+  createScaServiceDeflectionAnalysisResult,
   createSteelBeamSectionProvider,
   createSteelCompoundProfileSection,
   createSteelProfileSection,
@@ -56653,6 +57175,7 @@ export {
   resolvePrincipalSectionFrame,
   rotateSecondMoments,
   round2 as round,
+  runScaRcDeflectionAnalysis,
   sanitizeAlignmentOpenings,
   selectNTC2018ExistingMasonryParameterLevel,
   selectNTC2018ExistingMasonryTypology,
