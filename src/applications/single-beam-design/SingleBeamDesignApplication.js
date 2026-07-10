@@ -60,6 +60,13 @@ function runVerification({ model, analysisResult }) {
   const input = {
     verificationStations: model.beamInput?.verificationStations ?? null,
     ...(verification.input ?? {}),
+    beamModel:
+      verification.input?.beamModel ??
+      (model.beamInput
+        ? {
+            ...model.toAnalysisInput(),
+          }
+        : null),
     analysisResult,
   };
 

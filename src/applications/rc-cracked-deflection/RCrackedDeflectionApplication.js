@@ -37,6 +37,12 @@ export class RCrackedDeflectionApplication extends StructuralApplication {
       serviceability: input.serviceability ?? input.model?.serviceability ?? {},
       mesh: input.mesh ?? input.model?.mesh ?? { targetFiberCount: 100 },
       solver: input.solver ?? input.model?.solver ?? { tolerance: 1e-2, maxIterations: 50 },
+      beamModel:
+        input.beamModel ??
+        input.model?.beamModel ??
+        input.model?.beamInput ??
+        null,
+      hyperstatic: input.hyperstatic ?? input.model?.hyperstatic ?? null,
     });
 
     if (analysis.status !== RESULT_STATUS.NOT_IMPLEMENTED) {

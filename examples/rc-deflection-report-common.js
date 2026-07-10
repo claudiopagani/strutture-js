@@ -512,6 +512,7 @@ export function writeRcDeflectionReport({
     reinforcementMaterial: model.reinforcementMaterial,
     serviceability: model.serviceability,
     mesh: { targetFiberCount: 300 },
+    beamModel: model.beamInput,
   });
   const appCombination = appResult.outputs.combinations.find(
     (combination) => combination.combinationType === "SLE_QUASI_PERMANENT",

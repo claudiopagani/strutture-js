@@ -12,10 +12,16 @@ import {
   solveRcServiceSectionState,
 } from "../../reinforced-concrete-sections/shared/solveRcServiceSectionState.js";
 import {
+  SingleBeamModel,
+  resolveBeamSupportPreset,
+} from "../../../domain/beams/SingleBeamInput.js";
+import {
   DEFAULT_RC_SLE_MODULAR_RATIO,
   resolveRcSleModularRatio,
 } from "../../reinforced-concrete-sections/serviceabilityDefaults.js";
 import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
+import { SectionMomentCurvatureCurve } from "./SectionMomentCurvatureCurve.js";
+import { HyperstaticDeflectionIteration } from "./HyperstaticDeflectionIteration.js";
 
 const SLENDERNESS_LIMITS = Object.freeze({
   simple_span: { k: 1, high: 14, low: 20 },
@@ -77,21 +83,12 @@ function resolveAnalysisOptions({
     ) ?? {};
   const resolvedMesh = {
     ...mesh,
-    targetFiberCount:
-      mesh?.targetFiberCount ??
-      profile.targetFiberCount ??
-      100,
+    targetFiberCount: mesh?.targetFiberCount ?? profile.targetFiberCount ?? 100,
   };
   const resolvedSolver = {
     ...solver,
-    tolerance:
-      solver?.tolerance ??
-      profile.solverTolerance ??
-      1e-2,
-    maxIterations:
-      solver?.maxIterations ??
-      profile.solverMaxIterations ??
-      50,
+    tolerance: solver?.tolerance ?? profile.solverTolerance ?? 1e-2,
+    maxIterations: solver?.maxIterations ?? profile.solverMaxIterations ?? 50,
   };
   const resolvedSampling = {
     ...sampling,
@@ -144,8 +141,7 @@ function transformedGrossInertiaY({ section, modularRatio }) {
     y: bar.y,
   }));
   const totalArea =
-    concreteArea +
-    transformedBars.reduce((sum, bar) => sum + bar.area, 0);
+    concreteArea + transformedBars.reduce((sum, bar) => sum + bar.area, 0);
   const centroid =
     (concreteArea * concreteCentroid +
       transformedBars.reduce((sum, bar) => sum + bar.area * bar.y, 0)) /
@@ -199,12 +195,51 @@ function deduplicateSamples(samples, resolver) {
   return [...byStation.values()].sort((a, b) => a.x - b.x);
 }
 
+function convertSupportStations(supports, resolver) {
+  return (supports ?? []).map((support) => ({
+    ...support,
+    station: Number.isFinite(support.station)
+      ? resolver.length(support.station)
+      : support.station,
+  }));
+}
+
+function convertCompatibleDisplacements(samples, resolver) {
+  return (samples ?? []).map((sample) => ({
+    ...sample,
+    x: Number.isFinite(sample.x) ? resolver.length(sample.x) : sample.x,
+    station: Number.isFinite(sample.station)
+      ? resolver.length(sample.station)
+      : sample.station,
+    deflection: Number.isFinite(sample.deflection)
+      ? resolver.length(sample.deflection)
+      : sample.deflection,
+  }));
+}
+
+function maxAbsSampleAction(samples, key, resolver) {
+  return (samples ?? []).reduce((max, sample) => {
+    const rawValue = sample?.[key] ?? 0;
+    const value =
+      key === "m"
+        ? resolver.moment(rawValue)
+        : key === "n" || key === "v"
+          ? resolver.force(rawValue)
+          : rawValue;
+
+    return Math.max(max, Math.abs(value));
+  }, 0);
+}
+
 function addSampleIndex(indices, index, length) {
   const bounded = Math.max(0, Math.min(length - 1, index));
   indices.add(bounded);
 }
 
-function selectAnalysisSamples(samples, { maxStationsPerCombination = null } = {}) {
+function selectAnalysisSamples(
+  samples,
+  { maxStationsPerCombination = null } = {},
+) {
   if (
     !Number.isInteger(maxStationsPerCombination) ||
     maxStationsPerCombination <= 0 ||
@@ -245,17 +280,23 @@ function selectAnalysisSamples(samples, { maxStationsPerCombination = null } = {
   }
 
   if (indices.size < target) {
-    for (let index = 1; indices.size < target && index < lastIndex; index += 1) {
+    for (
+      let index = 1;
+      indices.size < target && index < lastIndex;
+      index += 1
+    ) {
       addSampleIndex(indices, index, samples.length);
     }
   }
 
-  return [...indices]
-    .sort((a, b) => a - b)
-    .map((index) => samples[index]);
+  return [...indices].sort((a, b) => a - b).map((index) => samples[index]);
 }
 
-function integrateCurvature(points, supports = []) {
+function integrateCurvature(
+  points,
+  supports = [],
+  { displacementSamples = null } = {},
+) {
   if (points.length < 2) {
     return points.map((point) => ({
       ...point,
@@ -272,7 +313,8 @@ function integrateCurvature(points, supports = []) {
     const current = points[index];
     const dx = current.x - previous.x;
     const rotation =
-      rotations[index - 1] + 0.5 * (previous.curvature + current.curvature) * dx;
+      rotations[index - 1] +
+      0.5 * (previous.curvature + current.curvature) * dx;
     const deflection =
       rawDeflections[index - 1] + 0.5 * (rotations[index - 1] + rotation) * dx;
 
@@ -280,19 +322,290 @@ function integrateCurvature(points, supports = []) {
     rawDeflections.push(deflection);
   }
 
-  const span = points[points.length - 1].x - points[0].x;
-  const verticalSupports = supports.filter((support) => support.restraints?.uy);
-  const hasTwoVerticalSupports = verticalSupports.length >= 2;
-  const correction =
-    hasTwoVerticalSupports && span > 0
-      ? -rawDeflections[rawDeflections.length - 1] / span
-      : 0;
+  const compatibleDisplacements = _interpolateCompatibleDisplacements(
+    points,
+    displacementSamples,
+  );
 
+  if (compatibleDisplacements) {
+    return points.map((point, index) => ({
+      ...point,
+      rotation: compatibleDisplacements[index].rotation ?? rotations[index],
+      deflection: compatibleDisplacements[index].deflection,
+    }));
+  }
+
+  // Collect vertical support stations (sorted, unique).
+  const verticalSupports = supports.filter((support) => support.restraints?.uy);
+  const supportStations = [
+    ...new Set(
+      verticalSupports
+        .map((s) => (Number.isFinite(s.station) ? s.station : null))
+        .filter((v) => v != null),
+    ),
+  ].sort((a, b) => a - b);
+
+  // Two-support case: single linear correction (backward-compatible).
+  if (supportStations.length === 2) {
+    return _linearSupportCorrection(
+      points,
+      rotations,
+      rawDeflections,
+      supportStations[0],
+      supportStations[1],
+    );
+  }
+
+  // Multi-support case: smooth global correction through all vertical supports.
+  if (supportStations.length > 2) {
+    return _smoothSupportCorrection(
+      points,
+      rotations,
+      rawDeflections,
+      supportStations,
+    );
+  }
+
+  // No or one vertical support: return raw.
   return points.map((point, index) => ({
     ...point,
-    rotation: rotations[index] + correction,
-    deflection: rawDeflections[index] + correction * (point.x - points[0].x),
+    rotation: rotations[index],
+    deflection: rawDeflections[index],
   }));
+}
+
+function _linearSupportCorrection(
+  points,
+  rotations,
+  rawDeflections,
+  x0,
+  x1,
+) {
+  const spanLen = x1 - x0;
+  if (spanLen <= 0) {
+    return points.map((point, index) => ({
+      ...point,
+      rotation: rotations[index],
+      deflection: rawDeflections[index],
+    }));
+  }
+
+  const rawV0 = _interpolateRawDeflection(points, rawDeflections, x0);
+  const rawV1 = _interpolateRawDeflection(points, rawDeflections, x1);
+  const correctionSlope = (rawV1 - rawV0) / spanLen;
+
+  return points.map((point, index) => {
+    const t = (point.x - x0) / spanLen;
+    const localCorrection = -(rawV0 * (1 - t) + rawV1 * t);
+
+    return {
+      ...point,
+      rotation: rotations[index] - correctionSlope,
+      deflection: rawDeflections[index] + localCorrection,
+    };
+  });
+}
+
+function _smoothSupportCorrection(
+  points,
+  rotations,
+  rawDeflections,
+  supportStations,
+) {
+  const correctionValues = supportStations.map(
+    (x) => -_interpolateRawDeflection(points, rawDeflections, x),
+  );
+  const correctionSpline = _createNaturalCubicSpline(
+    supportStations,
+    correctionValues,
+  );
+
+  return points.map((point, index) => {
+    const correction = correctionSpline.evaluate(point.x);
+
+    return {
+      ...point,
+      rotation: rotations[index] + correction.slope,
+      deflection: rawDeflections[index] + correction.value,
+    };
+  });
+}
+
+function _interpolateRawDeflection(points, rawDeflections, x) {
+  if (points.length === 0) return 0;
+  if (x <= points[0].x) return rawDeflections[0];
+  if (x >= points[points.length - 1].x)
+    return rawDeflections[rawDeflections.length - 1];
+
+  let lo = 0;
+  let hi = points.length - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >>> 1;
+    if (points[mid].x <= x) {
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+  }
+
+  const t = (x - points[lo].x) / (points[hi].x - points[lo].x);
+  return rawDeflections[lo] + t * (rawDeflections[hi] - rawDeflections[lo]);
+}
+
+function _interpolateCompatibleDisplacements(points, samples) {
+  const sorted = (samples ?? [])
+    .filter(
+      (sample) =>
+        Number.isFinite(sample.x) && Number.isFinite(sample.deflection),
+    )
+    .sort((a, b) => a.x - b.x);
+
+  if (sorted.length < 2) {
+    return null;
+  }
+
+  return points.map((point) => {
+    if (point.x <= sorted[0].x) {
+      return {
+        deflection: sorted[0].deflection,
+        rotation: sorted[0].rotation,
+      };
+    }
+
+    const last = sorted[sorted.length - 1];
+    if (point.x >= last.x) {
+      return {
+        deflection: last.deflection,
+        rotation: last.rotation,
+      };
+    }
+
+    let lo = 0;
+    let hi = sorted.length - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >>> 1;
+      if (sorted[mid].x <= point.x) {
+        lo = mid;
+      } else {
+        hi = mid;
+      }
+    }
+
+    const left = sorted[lo];
+    const right = sorted[hi];
+    const span = right.x - left.x;
+    const t = span > 0 ? (point.x - left.x) / span : 0;
+    const rotation =
+      Number.isFinite(left.rotation) && Number.isFinite(right.rotation)
+        ? left.rotation + t * (right.rotation - left.rotation)
+        : null;
+
+    return {
+      deflection: left.deflection + t * (right.deflection - left.deflection),
+      rotation,
+    };
+  });
+}
+
+function _createNaturalCubicSpline(xs, ys) {
+  if (xs.length !== ys.length || xs.length < 2) {
+    throw new Error("Natural cubic spline requires matching x/y arrays.");
+  }
+
+  if (xs.length === 2) {
+    const span = xs[1] - xs[0];
+    const slope = span > 0 ? (ys[1] - ys[0]) / span : 0;
+
+    return {
+      evaluate(x) {
+        return {
+          value: ys[0] + slope * (x - xs[0]),
+          slope,
+        };
+      },
+    };
+  }
+
+  const n = xs.length;
+  const h = [];
+  for (let i = 0; i < n - 1; i += 1) {
+    h.push(xs[i + 1] - xs[i]);
+    if (h[i] <= 0) {
+      throw new Error("Natural cubic spline requires increasing x values.");
+    }
+  }
+
+  const lower = new Array(n - 2).fill(0);
+  const diag = new Array(n - 2).fill(0);
+  const upper = new Array(n - 2).fill(0);
+  const rhs = new Array(n - 2).fill(0);
+
+  for (let i = 1; i <= n - 2; i += 1) {
+    const row = i - 1;
+    lower[row] = h[i - 1];
+    diag[row] = 2 * (h[i - 1] + h[i]);
+    upper[row] = h[i];
+    rhs[row] =
+      6 *
+      ((ys[i + 1] - ys[i]) / h[i] - (ys[i] - ys[i - 1]) / h[i - 1]);
+  }
+
+  for (let i = 1; i < n - 2; i += 1) {
+    const factor = lower[i] / diag[i - 1];
+    diag[i] -= factor * upper[i - 1];
+    rhs[i] -= factor * rhs[i - 1];
+  }
+
+  const second = new Array(n).fill(0);
+  second[n - 2] = rhs[n - 3] / diag[n - 3];
+  for (let i = n - 4; i >= 0; i -= 1) {
+    second[i + 1] = (rhs[i] - upper[i] * second[i + 2]) / diag[i];
+  }
+
+  const intervalIndex = (x) => {
+    if (x <= xs[0]) {
+      return 0;
+    }
+    if (x >= xs[n - 1]) {
+      return n - 2;
+    }
+
+    let lo = 0;
+    let hi = n - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >>> 1;
+      if (xs[mid] <= x) {
+        lo = mid;
+      } else {
+        hi = mid;
+      }
+    }
+
+    return lo;
+  };
+
+  return {
+    evaluate(x) {
+      const i = intervalIndex(x);
+      const span = xs[i + 1] - xs[i];
+      const a = (xs[i + 1] - x) / span;
+      const b = (x - xs[i]) / span;
+      const value =
+        a * ys[i] +
+        b * ys[i + 1] +
+        (((a ** 3 - a) * second[i] + (b ** 3 - b) * second[i + 1]) *
+          span ** 2) /
+          6;
+      const slope =
+        (ys[i + 1] - ys[i]) / span +
+        (span *
+          ((-3 * a ** 2 + 1) * second[i] +
+            (3 * b ** 2 - 1) * second[i + 1])) /
+          6;
+
+      return { value, slope };
+    },
+  };
 }
 
 function selectOutputPoints(points, { maxPointsPerCombination = null } = {}) {
@@ -328,9 +641,7 @@ function selectOutputPoints(points, { maxPointsPerCombination = null } = {}) {
     );
   }
 
-  return [...indices]
-    .sort((a, b) => a - b)
-    .map((index) => points[index]);
+  return [...indices].sort((a, b) => a - b).map((index) => points[index]);
 }
 
 function summarizeCurvaturePoint(point, { includePointDetails = false } = {}) {
@@ -356,7 +667,9 @@ function summarizeCurvaturePoint(point, { includePointDetails = false } = {}) {
 }
 
 function utilizationCheck({ demand, capacity, metadata }) {
-  const utilizationRatio = isFinitePositive(capacity) ? demand / capacity : null;
+  const utilizationRatio = isFinitePositive(capacity)
+    ? demand / capacity
+    : null;
 
   return {
     id: "rc-sle-deflection-curvature",
@@ -369,11 +682,7 @@ function utilizationCheck({ demand, capacity, metadata }) {
   };
 }
 
-function slendernessCheck({
-  span,
-  section,
-  serviceability,
-}) {
+function slendernessCheck({ span, section, serviceability }) {
   const system =
     serviceability.deflection?.slendernessSystem ??
     serviceability.slendernessSystem ??
@@ -412,6 +721,24 @@ function slendernessCheck({
   };
 }
 
+/**
+ * Count vertical/rotational restraints for beam-line bending indeterminacy.
+ * A simple span and a cantilever both have 2 bending restraints; more means
+ * that flexural actions depend on stiffness redistribution.
+ */
+function countBendingSupportRestraints(beamModel) {
+  if (!beamModel?.supports) return 0;
+  let count = 0;
+  for (const support of beamModel.supports) {
+    const type = support.type ?? support.preset ?? "free";
+    const restraints = support.restraints ?? resolveBeamSupportPreset(type);
+
+    if (restraints?.uy) count += 1;
+    if (restraints?.rz) count += 1;
+  }
+  return count;
+}
+
 export class CrackedSectionDeflectionAnalysis {
   constructor({ code = "NTC2018", metadata = {} } = {}) {
     this.code = code;
@@ -430,12 +757,15 @@ export class CrackedSectionDeflectionAnalysis {
     performanceProfile = null,
     sampling = {},
     output = {},
+    beamModel = null,
+    hyperstatic = null,
   } = {}) {
     if (!analysisResult || !section?.concreteSection) {
       return new VerificationResult({
         applicationId: "rc-cracked-deflection",
         status: RESULT_STATUS.NOT_IMPLEMENTED,
-        summary: "Cracked-section deflection analysis requires a beam analysis result and an RC section.",
+        summary:
+          "Cracked-section deflection analysis requires a beam analysis result and an RC section.",
         warnings: [
           "Cracked inertia, tension stiffening and time-dependent effects were not evaluated because required inputs are missing.",
         ],
@@ -532,6 +862,11 @@ export class CrackedSectionDeflectionAnalysis {
       serviceSolveCacheHits: 0,
     };
     let globalSpan = null;
+    const normalizedBeamModel = beamModel
+      ? beamModel instanceof SingleBeamModel
+        ? beamModel
+        : new SingleBeamModel(beamModel)
+      : null;
 
     const getServiceContext = (effectiveModularRatio) => {
       const key = numericCacheKey(effectiveModularRatio);
@@ -555,6 +890,43 @@ export class CrackedSectionDeflectionAnalysis {
       return serviceContextCache.get(key);
     };
 
+    // -- Hyperstatic setup -------------------------------------------------
+    const isHyperstatic =
+      normalizedBeamModel != null &&
+      (hyperstatic === true ||
+        (hyperstatic == null &&
+          countBendingSupportRestraints(normalizedBeamModel) > 2));
+
+    let hyperstaticIteration = null;
+    const hyperstaticCurveCache = new Map();
+
+    if (hyperstatic === true && !normalizedBeamModel) {
+      warnings.push(
+        "Hyperstatic deflection iteration was requested but no beam model was provided; falling back to linear FEM moments.",
+      );
+    }
+
+    if (isHyperstatic && normalizedBeamModel) {
+      if (
+        !normalizedBeamModel.combinations ||
+        Object.keys(normalizedBeamModel.combinations).length === 0
+      ) {
+        warnings.push(
+          "Hyperstatic deflection iteration requires combination definitions in the beam model; falling back to linear FEM moments.",
+        );
+      } else {
+        hyperstaticIteration = new HyperstaticDeflectionIteration({
+          relaxationFactor: serviceability.deflection?.relaxationFactor ?? 0.5,
+          tolerance: serviceability.deflection?.iterationTolerance ?? 1e-4,
+          maxIterations: serviceability.deflection?.maxIterations ?? 50,
+        });
+        assumptions.push(
+          "Hyperstatic beams use iterative secant-stiffness redistribution with a precomputed M-κ curve per combination.",
+        );
+      }
+    }
+    // -----------------------------------------------------------------------
+
     for (const result of Object.values(analysisResult.combinations ?? {})) {
       if (String(result.context?.limitState ?? "").toUpperCase() !== "SLE") {
         continue;
@@ -567,8 +939,73 @@ export class CrackedSectionDeflectionAnalysis {
       const serviceArtifacts = getServiceContext(effectiveModularRatio);
       const gross = serviceArtifacts.gross;
       const serviceContext = serviceArtifacts.context;
+
+      // -- Hyperstatic iteration (replaces linear FEM moments) ----------
+      let iteratedResult = null;
+      let iteratedCurve = null;
+      if (
+        hyperstaticIteration &&
+        normalizedBeamModel &&
+        result.factors &&
+        Object.keys(result.factors).length > 0
+      ) {
+        const beta = creepCoefficient > 0 ? betaLongTerm : betaShortTerm;
+        const initialMaxMoment = maxAbsSampleAction(
+          result.internalForces?.samples ?? [],
+          "m",
+          resultResolver,
+        );
+        const representativeAxialForce = 0;
+        const curveKey = [
+          numericCacheKey(effectiveModularRatio),
+          numericCacheKey(beta),
+          numericCacheKey(initialMaxMoment),
+          numericCacheKey(representativeAxialForce),
+        ].join("|");
+        let curve = hyperstaticCurveCache.get(curveKey);
+        if (!curve) {
+          curve = new SectionMomentCurvatureCurve({
+            section,
+            reinforcementMaterial,
+            effectiveModularRatio,
+            mesh: analysisOptions.mesh,
+            solver: analysisOptions.solver,
+            mcr,
+            grossInertia: gross.inertia,
+            concreteModulus: effectiveConcreteModulus,
+            beta,
+            initialMaxMoment,
+            axialForce: representativeAxialForce,
+            units: DEFAULT_RC_SECTION_UNITS,
+          });
+          hyperstaticCurveCache.set(curveKey, curve);
+        }
+        iteratedCurve = curve;
+
+        const combinationDef = {
+          id: result.id,
+          factors: { ...result.factors },
+          metadata: result.context ?? {},
+        };
+
+        iteratedResult = hyperstaticIteration.iterate({
+          model: normalizedBeamModel,
+          combination: combinationDef,
+          curve,
+        });
+
+        if (!iteratedResult.converged) {
+          warnings.push(
+            `Hyperstatic secant iteration did not converge for ${result.id} after ${iteratedResult.iterations} iterations; using final moment distribution.`,
+          );
+        }
+      }
+      // -----------------------------------------------------------------
+
       const rawPoints = deduplicateSamples(
-        result.internalForces?.samples ?? [],
+        iteratedResult
+          ? (iteratedResult.momentSamples ?? [])
+          : (result.internalForces?.samples ?? []),
         resultResolver,
       );
       const analysisPoints = selectAnalysisSamples(
@@ -582,13 +1019,41 @@ export class CrackedSectionDeflectionAnalysis {
         const mEd = resultResolver.moment(sample.m ?? 0);
         const nEd = resultResolver.force(sample.n ?? 0);
         const absM = Math.abs(mEd);
-        const uncrackedCurvature =
-          isFinitePositive(effectiveConcreteModulus * gross.inertia)
-            ? mEd / (effectiveConcreteModulus * gross.inertia)
-            : 0;
+        const uncrackedCurvature = isFinitePositive(
+          effectiveConcreteModulus * gross.inertia,
+        )
+          ? mEd / (effectiveConcreteModulus * gross.inertia)
+          : 0;
         let crackedCurvature = uncrackedCurvature;
         let solverConverged = true;
         let zeta = 0;
+
+        if (iteratedCurve) {
+          const curveState = iteratedCurve.lookupState(mEd);
+          crackedCurvature = curveState.kappaCracked ?? curveState.kappa;
+          solverConverged = curveState.converged ?? true;
+          zeta = curveState.zeta ?? 0;
+
+          if (!solverConverged) {
+            warnings.push(
+              `Precomputed M-kappa curve did not converge for ${result.id} near station ${sample.station}.`,
+            );
+          }
+
+          return {
+            x,
+            station: sample.station,
+            mEd,
+            nEd,
+            mcr,
+            zeta,
+            uncrackedCurvature:
+              curveState.kappaUncracked ?? uncrackedCurvature,
+            crackedCurvature,
+            curvature: curveState.kappa,
+            cracked: curveState.cracked ?? zeta > 0,
+          };
+        }
 
         if (isFinitePositive(absM) && (!isFinitePositive(mcr) || absM > mcr)) {
           const solveCacheKey = [
@@ -648,14 +1113,28 @@ export class CrackedSectionDeflectionAnalysis {
           zeta,
           uncrackedCurvature,
           crackedCurvature,
-          curvature:
-            zeta * crackedCurvature + (1 - zeta) * uncrackedCurvature,
+          curvature: zeta * crackedCurvature + (1 - zeta) * uncrackedCurvature,
           cracked: zeta > 0,
         };
       });
-      const integrated = integrateCurvature(curvaturePoints, result.supports ?? []);
+      const integrated = integrateCurvature(
+        curvaturePoints,
+        convertSupportStations(
+          iteratedResult?.supports ?? result.supports ?? [],
+          resultResolver,
+        ),
+        {
+          displacementSamples: convertCompatibleDisplacements(
+            iteratedResult?.compatibleDisplacementSamples ?? [],
+            resultResolver,
+          ),
+        },
+      );
       const governing = integrated.reduce((selected, point) => {
-        if (!selected || Math.abs(point.deflection) > Math.abs(selected.deflection)) {
+        if (
+          !selected ||
+          Math.abs(point.deflection) > Math.abs(selected.deflection)
+        ) {
           return point;
         }
 
@@ -691,7 +1170,33 @@ export class CrackedSectionDeflectionAnalysis {
         );
       }
 
-      const outputPoints = selectOutputPoints(integrated, analysisOptions.output);
+      const outputPoints = selectOutputPoints(
+        integrated,
+        analysisOptions.output,
+      );
+      const crackedPointCount = integrated.filter((point) => point.cracked)
+        .length;
+      const maxZeta = integrated.reduce(
+        (max, point) => Math.max(max, point.zeta ?? 0),
+        0,
+      );
+      const hyperstaticSummary = iteratedResult
+        ? {
+            active: true,
+            converged: Boolean(iteratedResult.converged),
+            iterations: iteratedResult.iterations,
+            method: "secant-stiffness-moment-curvature",
+            momentCurvePointCount: iteratedCurve?.pointCount ?? null,
+            compatibleDeflectionSource: "iterated-fem-shape-functions",
+          }
+        : {
+            active: false,
+            converged: null,
+            iterations: 0,
+            method: null,
+            momentCurvePointCount: null,
+            compatibleDeflectionSource: null,
+          };
 
       combinationOutputs.push({
         resultId: result.id,
@@ -709,8 +1214,11 @@ export class CrackedSectionDeflectionAnalysis {
         inputPointCount: rawPoints.length,
         analyzedPointCount: analysisPoints.length,
         returnedPointCount: outputPoints.length,
-        points: outputPoints.map(
-          (point) => summarizeCurvaturePoint(point, analysisOptions.output),
+        crackedPointCount,
+        maxZeta: round(maxZeta),
+        hyperstatic: hyperstaticSummary,
+        points: outputPoints.map((point) =>
+          summarizeCurvaturePoint(point, analysisOptions.output),
         ),
       });
 

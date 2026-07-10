@@ -8,3 +8,5 @@ export {
   createScaServiceDeflectionAnalysisResult,
   runScaRcDeflectionAnalysis,
 } from "./adapters/scaRcDeflectionAdapter.js";
+export { SectionMomentCurvatureCurve } from "./analysis/SectionMomentCurvatureCurve.js";
+export { HyperstaticDeflectionIteration } from "./analysis/HyperstaticDeflectionIteration.js";

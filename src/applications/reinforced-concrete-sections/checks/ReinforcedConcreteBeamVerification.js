@@ -326,6 +326,7 @@ export class ReinforcedConcreteBeamVerification {
     concreteMaterial = null,
     reinforcementMaterial = null,
     analysisResult = null,
+    beamModel = null,
     mesh = this.mesh,
     solver = this.solver,
     shear = this.shear,
@@ -408,6 +409,7 @@ export class ReinforcedConcreteBeamVerification {
               maxIterations: solver?.serviceMaxIterations ?? 50,
               finiteDifferenceStep: solver?.finiteDifferenceStep ?? 1e-8,
             },
+            beamModel,
           });
     const includeDeflection =
       deflectionVerification &&

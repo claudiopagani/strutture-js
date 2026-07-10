@@ -240,6 +240,9 @@ Il frontend React dovra trattare questi oggetti come DTO:
 * editor avanzato dei gruppi per sezioni generiche;
 * visualizzazione tabellare dei checks;
 * diagrammi e punti di curvatura/freccia dai dati JSON, non da immagini precalcolate.
+* stato della ridistribuzione iperstatica da `combination.hyperstatic`
+  (`active`, `converged`, `iterations`, `method`) senza parsing delle assunzioni.
+* indicatori sintetici di fessurazione da `crackedPointCount` e `maxZeta`.
 
 ## Limiti dichiarati
 
@@ -249,10 +252,9 @@ Restano fuori dal perimetro chiuso:
 * storia di carico completa con separazione rigorosa delle quote istantanee e differite;
 * effetti reologici avanzati oltre `phi` globale;
 * ampiezza di fessura calcolata direttamente con modello meccanico;
-* redistribuzione FEM iterativa della rigidezza fessurata;
 * minimi costruttivi, interferro, ancoraggi e dettagli locali;
 * torsione e interazioni avanzate;
-* validazione estesa su casi continui, mensole e sezioni speciali.
+* validazione esterna estesa su casi continui, mensole e sezioni speciali.
 
 Questi punti sono volutamente mantenuti come evoluzioni successive, non come assunzioni nascoste.
 
