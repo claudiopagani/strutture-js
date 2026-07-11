@@ -221,16 +221,17 @@ export class SectionMomentCurvatureCurve {
       sampleMoments.push(m);
     }
     // Deduplicate.
+    const roundedSampleMoments = sampleMoments.map((value) =>
+      Number(value.toPrecision(10)),
+    );
+    const exactCrackingThresholds = [
+      this._mcrPositive,
+      this._mcrNegative,
+    ].filter(
+      (value) => Number.isFinite(value) && value <= resolvedMaxM,
+    );
     const unique = [
-      ...new Set(
-        [
-          ...sampleMoments,
-          this._mcrPositive,
-          this._mcrNegative,
-        ]
-          .filter((value) => Number.isFinite(value) && value <= resolvedMaxM)
-          .map((v) => Number(v.toPrecision(10))),
-      ),
+      ...new Set([...roundedSampleMoments, ...exactCrackingThresholds]),
     ].sort((a, b) => a - b);
 
     this._positiveTable = unique.map((m) => this._solvePoint(context, m));

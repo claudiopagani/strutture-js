@@ -46011,14 +46011,17 @@ var SectionMomentCurvatureCurve = class {
       const m = resolvedMaxM * Math.sqrt(t);
       sampleMoments.push(m);
     }
+    const roundedSampleMoments = sampleMoments.map(
+      (value) => Number(value.toPrecision(10))
+    );
+    const exactCrackingThresholds = [
+      this._mcrPositive,
+      this._mcrNegative
+    ].filter(
+      (value) => Number.isFinite(value) && value <= resolvedMaxM
+    );
     const unique5 = [
-      ...new Set(
-        [
-          ...sampleMoments,
-          this._mcrPositive,
-          this._mcrNegative
-        ].filter((value) => Number.isFinite(value) && value <= resolvedMaxM).map((v) => Number(v.toPrecision(10)))
-      )
+      .../* @__PURE__ */ new Set([...roundedSampleMoments, ...exactCrackingThresholds])
     ].sort((a, b) => a - b);
     this._positiveTable = unique5.map((m) => this._solvePoint(context, m));
     this._negativeTable = this._symmetric ? this._positiveTable.map((entry) => ({

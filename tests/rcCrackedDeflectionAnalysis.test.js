@@ -6,6 +6,7 @@ import {
   CrackedSectionDeflectionAnalysis,
   ReinforcedConcreteSection,
   runScaRcDeflectionAnalysis,
+  SectionMomentCurvatureCurve,
   SingleBeamAnalysis,
 } from "../src/index.js";
 import { createRcElasticBeamReportModel } from "../examples/beam-report-fixtures.js";
@@ -141,6 +142,44 @@ test("RC long-term Mcr uses n effective equal to n times one plus phi", () => {
       1e-12,
   );
   assert.notEqual(longTerm.mcrPositive, rare.mcrPositive);
+});
+
+test("RC moment-curvature table keeps the exact Mcr point uncracked", () => {
+  const model = createRcElasticBeamReportModel();
+  const result = analyzeUniformServiceLoad({
+    model,
+    value: -8,
+    types: ["SLE_QUASI_PERMANENT"],
+    serviceability: { deflection: { creepCoefficient: 2 } },
+  });
+  const combination = result.outputs.combinations[0];
+  const effectiveModularRatio = combination.modularRatio;
+  const curve = new SectionMomentCurvatureCurve({
+    section: model.section,
+    reinforcementMaterial: model.section.reinforcementMaterial,
+    effectiveModularRatio,
+    mcrPositive: combination.mcrPositive,
+    mcrNegative: combination.mcrNegative,
+    grossInertia: combination.grossInertia,
+    concreteModulus:
+      model.section.reinforcementMaterial.elasticModulus /
+      effectiveModularRatio,
+    beta: 0.5,
+    momentSamples: 20,
+    initialMaxMoment: combination.mcrPositive * 2,
+  });
+  const atThreshold = curve.lookupState(combination.mcrPositive);
+  const immediatelyAbove = curve.lookupState(
+    combination.mcrPositive * (1 + 1e-12),
+  );
+
+  assert.equal(atThreshold.cracked, false);
+  assert.equal(atThreshold.zeta, 0);
+  assert.equal(atThreshold.eiSec, curve.grossEI);
+  assert.equal(immediatelyAbove.cracked, true);
+  assert.ok(immediatelyAbove.zeta > 0);
+  assert.ok(immediatelyAbove.zeta < 1e-3);
+  assert.ok(immediatelyAbove.eiSec > curve.grossEI * 0.999);
 });
 
 test("RC cracked deflection analysis integrates SLE curvatures with default creep", () => {
