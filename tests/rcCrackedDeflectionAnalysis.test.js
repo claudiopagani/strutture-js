@@ -4,11 +4,144 @@ import assert from "node:assert/strict";
 import {
   createNTC2018BeamCombinations,
   CrackedSectionDeflectionAnalysis,
+  ReinforcedConcreteSection,
   runScaRcDeflectionAnalysis,
   SingleBeamAnalysis,
 } from "../src/index.js";
 import { createRcElasticBeamReportModel } from "../examples/beam-report-fixtures.js";
 import { createFixedFixedRcDeflectionExample } from "../examples/rc-deflection-report-common.js";
+
+function analyzeUniformServiceLoad({
+  model = createRcElasticBeamReportModel(),
+  value,
+  section = model.section,
+  types = ["SLE_RARE"],
+  serviceability = {},
+  output = { includePointDetails: true },
+}) {
+  const loads = [{ ...model.beamInput.loads[0], value }];
+  const combinations = createNTC2018BeamCombinations({
+    loads,
+    types,
+    idPrefix: `rc-mcr-${Math.abs(value)}`,
+  });
+  const beamInput = { ...model.beamInput, loads, combinations };
+  const analysisResult = new SingleBeamAnalysis().analyze(beamInput);
+
+  return new CrackedSectionDeflectionAnalysis().analyze({
+    analysisResult,
+    section,
+    concreteMaterial: section.concreteMaterial,
+    reinforcementMaterial: section.reinforcementMaterial,
+    serviceability,
+    output,
+  });
+}
+
+test("RC deflection remains entirely uncracked below transformed-section Mcr", () => {
+  const result = analyzeUniformServiceLoad({ value: -12 });
+  const combination = result.outputs.combinations[0];
+  const maxMoment = Math.max(
+    ...combination.points.map((point) => Math.abs(point.mEd)),
+  );
+
+  assert.ok(Math.abs(maxMoment - 37.5e6) <= 1e-6);
+  assert.ok(combination.mcr > maxMoment);
+  assert.equal(combination.crackedPointCount, 0);
+  assert.equal(combination.maxZeta, 0);
+  assert.equal(result.outputs.performance.serviceSolveCount, 0);
+  assert.ok(combination.points.every((point) => point.cracked === false));
+  assert.ok(
+    combination.points.every(
+      (point) => point.curvature === point.uncrackedCurvature,
+    ),
+  );
+  assert.equal(combination.mcr, combination.mcrPositive);
+  assert.equal(combination.mcrPositive, combination.mcrNegative);
+});
+
+test("RC deflection cracks the central span above transformed-section Mcr", () => {
+  const result = analyzeUniformServiceLoad({ value: -14 });
+  const combination = result.outputs.combinations[0];
+  const midspan = combination.points.reduce((selected, point) =>
+    Math.abs(point.station - 2.5) < Math.abs(selected.station - 2.5)
+      ? point
+      : selected,
+  );
+
+  assert.ok(Math.abs(midspan.mEd) > combination.mcrPositive);
+  assert.equal(midspan.cracked, true);
+  assert.ok(midspan.zeta > 0);
+  assert.ok(combination.crackedPointCount > 0);
+  assert.ok(result.outputs.performance.serviceSolveCount > 0);
+});
+
+test("RC deflection selects distinct positive and negative Mcr thresholds for asymmetric reinforcement", () => {
+  const model = createRcElasticBeamReportModel();
+  const bars = model.section.getReinforcementBars();
+  const asymmetricSection = new ReinforcedConcreteSection({
+    name: "RC asymmetric reinforcement",
+    concreteSection: model.section.concreteSection,
+    reinforcementBars: [bars[0], bars[2], bars[3]],
+    concreteMaterial: model.section.concreteMaterial,
+    reinforcementMaterial: model.section.reinforcementMaterial,
+    referenceModularRatio: model.section.referenceModularRatio,
+    units: model.section.units,
+  });
+  const positive = analyzeUniformServiceLoad({
+    model,
+    value: -12,
+    section: asymmetricSection,
+  }).outputs.combinations[0];
+  const negative = analyzeUniformServiceLoad({
+    model,
+    value: 12,
+    section: asymmetricSection,
+  }).outputs.combinations[0];
+  const positiveMidspan = positive.points.find(
+    (point) => Math.abs(point.station - 2.5) <= 1e-9,
+  );
+  const negativeMidspan = negative.points.find(
+    (point) => Math.abs(point.station - 2.5) <= 1e-9,
+  );
+
+  assert.notEqual(positive.mcrPositive, positive.mcrNegative);
+  assert.equal(positiveMidspan.mcr, positive.mcrPositive);
+  assert.equal(negativeMidspan.mcr, negative.mcrNegative);
+  assert.ok(positiveMidspan.mEd > 0);
+  assert.ok(negativeMidspan.mEd < 0);
+  assert.equal(positiveMidspan.cracked, true);
+  assert.equal(negativeMidspan.cracked, false);
+  assert.ok(positive.crackedPointCount > 0);
+  assert.equal(negative.crackedPointCount, 0);
+});
+
+test("RC long-term Mcr uses n effective equal to n times one plus phi", () => {
+  const phi = 2;
+  const result = analyzeUniformServiceLoad({
+    value: -8,
+    types: ["SLE_RARE", "SLE_QUASI_PERMANENT"],
+    serviceability: { deflection: { creepCoefficient: phi } },
+  });
+  const rare = result.outputs.combinations.find(
+    (combination) => combination.combinationType === "SLE_RARE",
+  );
+  const longTerm = result.outputs.combinations.find(
+    (combination) =>
+      combination.combinationType === "SLE_QUASI_PERMANENT",
+  );
+  const expectedLongTermMcr =
+    (createRcElasticBeamReportModel().section.concreteMaterial.fctm *
+      longTerm.grossInertia) /
+    longTerm.grossCentroid;
+
+  assert.equal(longTerm.modularRatio, rare.baseModularRatio * (1 + phi));
+  assert.ok(
+    Math.abs(longTerm.mcrPositive - expectedLongTermMcr) / expectedLongTermMcr <
+      1e-12,
+  );
+  assert.notEqual(longTerm.mcrPositive, rare.mcrPositive);
+});
 
 test("RC cracked deflection analysis integrates SLE curvatures with default creep", () => {
   const model = createRcElasticBeamReportModel();
@@ -181,11 +314,43 @@ test("RC hyperstatic cracked deflection iterates fixed-fixed stiffness redistrib
   assert.ok(rareHyperstatic.maxAbsDeflection > rareLinear.maxAbsDeflection);
 });
 
-test("RC hyperstatic relaxation suppresses the stiffness oscillation near Mcr", () => {
+test("RC hyperstatic deflection keeps gross EI and diagnostics below both Mcr thresholds", () => {
   const model = createFixedFixedRcDeflectionExample();
   const loads = model.loads.map((load) => ({
     ...load,
     value: load.value * 1.9,
+  }));
+  const combinations = createNTC2018BeamCombinations({
+    loads,
+    types: ["SLE_QUASI_PERMANENT"],
+    idPrefix: "rc-hyperstatic-uncracked",
+  });
+  const beamModel = { ...model.beamInput, loads, combinations };
+  const analysisResult = new SingleBeamAnalysis().analyze(beamModel);
+  const result = new CrackedSectionDeflectionAnalysis().analyze({
+    analysisResult,
+    section: model.section,
+    concreteMaterial: model.concreteMaterial,
+    reinforcementMaterial: model.reinforcementMaterial,
+    serviceability: model.serviceability,
+    beamModel,
+  });
+  const combination = result.outputs.combinations[0];
+
+  assert.equal(combination.hyperstatic.active, true);
+  assert.equal(combination.hyperstatic.converged, true);
+  assert.equal(combination.crackedPointCount, 0);
+  assert.equal(combination.maxZeta, 0);
+  assert.ok(combination.points.every((point) => point.cracked === false));
+  assert.equal(result.outputs.performance.serviceSolveCount, 0);
+  assert.equal(result.outputs.performance.curveSectionSolveCount, 0);
+});
+
+test("RC hyperstatic exact Mcr threshold remains stable near cracking", () => {
+  const model = createFixedFixedRcDeflectionExample();
+  const loads = model.loads.map((load) => ({
+    ...load,
+    value: load.value * 2.8,
   }));
   const combinations = createNTC2018BeamCombinations({
     loads,
@@ -223,8 +388,7 @@ test("RC hyperstatic relaxation suppresses the stiffness oscillation near Mcr", 
   const unrelaxed = analyze(1).outputs.combinations[0];
   const relaxed = analyze(0.5).outputs.combinations[0];
 
-  assert.equal(unrelaxed.hyperstatic.converged, false);
-  assert.equal(unrelaxed.hyperstatic.iterations, 50);
+  assert.equal(unrelaxed.hyperstatic.converged, true);
   assert.equal(relaxed.hyperstatic.converged, true);
   assert.ok(relaxed.hyperstatic.iterations < 20);
   assert.equal(relaxed.hyperstatic.relaxationFactor, 0.5);

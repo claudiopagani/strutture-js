@@ -1,4 +1,4 @@
-// strutture-js v0.3.5 — bundled ESM
+// strutture-js v0.3.6 — bundled ESM
 var __defProp = Object.defineProperty;
 var __typeError = (msg) => {
   throw TypeError(msg);
@@ -45853,6 +45853,8 @@ var SectionMomentCurvatureCurve = class {
    * @param {Object} [options.mesh]               Fiber mesh options { targetFiberCount }
    * @param {Object} [options.solver]             Section solver options { tolerance, maxIterations }
    * @param {number} options.mcr                  Cracking moment in section units
+   * @param {number} [options.mcrPositive]        Positive-bending cracking threshold
+   * @param {number} [options.mcrNegative]        Negative-bending cracking threshold
    * @param {number} options.grossInertia         Uncracked transformed inertia in section units
    * @param {number} options.concreteModulus      Effective concrete elastic modulus E_c,eff in section units
    * @param {number} [options.beta=1.0]           Tension-stiffening β coefficient
@@ -45867,6 +45869,8 @@ var SectionMomentCurvatureCurve = class {
     mesh = {},
     solver = {},
     mcr,
+    mcrPositive = mcr,
+    mcrNegative = mcr,
     grossInertia,
     concreteModulus,
     beta = 1,
@@ -45904,7 +45908,8 @@ var SectionMomentCurvatureCurve = class {
       tolerance: (_b = solver == null ? void 0 : solver.tolerance) != null ? _b : 0.01,
       maxIterations: (_c = solver == null ? void 0 : solver.maxIterations) != null ? _c : 50
     };
-    this._mcr = isFinitePositive3(mcr) ? mcr : null;
+    this._mcrPositive = isFinitePositive3(mcrPositive) ? mcrPositive : null;
+    this._mcrNegative = isFinitePositive3(mcrNegative) ? mcrNegative : null;
     this._grossInertia = grossInertia;
     this._concreteModulus = concreteModulus;
     this._beta = beta;
@@ -45987,7 +45992,11 @@ var SectionMomentCurvatureCurve = class {
   // -------------------------------------------------------------------
   _build({ momentSamples, maxMomentFactor, initialMaxMoment }) {
     const effectiveSampleCount = Math.max(10, momentSamples);
-    const maxM = isFinitePositive3(initialMaxMoment) ? initialMaxMoment * maxMomentFactor : null;
+    const finiteThresholds = [this._mcrPositive, this._mcrNegative].filter(
+      isFinitePositive3
+    );
+    const firstCrackingThreshold = finiteThresholds.length > 0 ? Math.min(...finiteThresholds) : null;
+    const maxM = isFinitePositive3(initialMaxMoment) ? isFinitePositive3(firstCrackingThreshold) && initialMaxMoment <= firstCrackingThreshold ? initialMaxMoment : initialMaxMoment * maxMomentFactor : null;
     const context = createRcServiceSectionSolverContext({
       section: this._section,
       reinforcementMaterial: this._reinforcementMaterial,
@@ -46003,7 +46012,13 @@ var SectionMomentCurvatureCurve = class {
       sampleMoments.push(m);
     }
     const unique5 = [
-      ...new Set(sampleMoments.map((v) => Number(v.toPrecision(10))))
+      ...new Set(
+        [
+          ...sampleMoments,
+          this._mcrPositive,
+          this._mcrNegative
+        ].filter((value) => Number.isFinite(value) && value <= resolvedMaxM).map((v) => Number(v.toPrecision(10)))
+      )
     ].sort((a, b) => a - b);
     this._positiveTable = unique5.map((m) => this._solvePoint(context, m));
     this._negativeTable = this._symmetric ? this._positiveTable.map((entry) => ({
@@ -46019,17 +46034,23 @@ var SectionMomentCurvatureCurve = class {
    * Uses an elastic cracked-section approximation.
    */
   _estimateMaxMoment(context, sampleCount) {
-    const guessedM = this._mcr ? this._mcr * 4 : this._grossEI * 0.01;
-    const testM = Math.max(guessedM, this._mcr ? this._mcr * 3 : 1);
+    var _a, _b;
+    const referenceMcr = Math.max(
+      (_a = this._mcrPositive) != null ? _a : 0,
+      (_b = this._mcrNegative) != null ? _b : 0
+    );
+    const guessedM = referenceMcr ? referenceMcr * 4 : this._grossEI * 0.01;
+    const testM = Math.max(guessedM, referenceMcr ? referenceMcr * 3 : 1);
     const solved = this._solvePoint(context, testM);
     if (solved.converged) {
       return testM * 1.5;
     }
-    return this._mcr ? this._mcr * 6 : this._grossEI * 5e-3;
+    return referenceMcr ? referenceMcr * 6 : this._grossEI * 5e-3;
   }
   _solvePoint(context, signedM) {
     var _a, _b;
     const absM = Math.abs(signedM);
+    const selectedMcr = signedM >= 0 ? this._mcrPositive : this._mcrNegative;
     if (absM === 0) {
       return {
         m: 0,
@@ -46043,7 +46064,7 @@ var SectionMomentCurvatureCurve = class {
       };
     }
     const uncrackedKappa = signedM / this._grossEI;
-    const isCracked = this._mcr != null && isFinitePositive3(this._mcr) && absM > this._mcr;
+    const isCracked = selectedMcr != null && isFinitePositive3(selectedMcr) && absM > selectedMcr;
     if (!isCracked) {
       return {
         m: absM,
@@ -46077,9 +46098,9 @@ var SectionMomentCurvatureCurve = class {
       this._sectionSolveFailureCount += 1;
     }
     const crackedKappa = solved.converged ? Math.sign(signedM || 1) * Math.abs((_b = (_a = solved.strainField) == null ? void 0 : _a.kappaZ) != null ? _b : 0) : uncrackedKappa;
-    const zeta = isFinitePositive3(this._mcr) ? Math.max(0, 1 - this._beta * (this._mcr / absM) ** 2) : 1;
+    const zeta = isFinitePositive3(selectedMcr) ? Math.max(0, 1 - this._beta * (selectedMcr / absM) ** 2) : 1;
     const meanKappa = zeta * crackedKappa + (1 - zeta) * uncrackedKappa;
-    const rawEiSec = isFinitePositive3(Math.abs(meanKappa)) && (!isFinitePositive3(this._mcr) || absM / this._mcr > 0.01) ? absM / Math.abs(meanKappa) : this._grossEI;
+    const rawEiSec = isFinitePositive3(Math.abs(meanKappa)) && (!isFinitePositive3(selectedMcr) || absM / selectedMcr > 0.01) ? absM / Math.abs(meanKappa) : this._grossEI;
     const eiSec = Math.min(rawEiSec, this._grossEI);
     return {
       m: absM,
@@ -46095,6 +46116,20 @@ var SectionMomentCurvatureCurve = class {
   _lookup(moment) {
     const absM = Math.abs(moment);
     const table = moment >= 0 ? this._positiveTable : this._negativeTable;
+    const selectedMcr = moment >= 0 ? this._mcrPositive : this._mcrNegative;
+    if (isFinitePositive3(selectedMcr) && absM <= selectedMcr) {
+      const kappa = moment / this._grossEI;
+      return {
+        m: absM,
+        kappa,
+        kappaUncracked: kappa,
+        kappaCracked: kappa,
+        eiSec: this._grossEI,
+        zeta: 0,
+        cracked: false,
+        converged: true
+      };
+    }
     if (absM <= table[0].m) {
       return { ...table[0] };
     }
@@ -46904,15 +46939,26 @@ function transformedGrossInertiaY({ section, modularRatio }) {
     inertia
   };
 }
-function crackingMoment({ section, concreteMaterial }) {
-  var _a;
+function crackingMoments({ section, concreteMaterial, transformedGross }) {
+  var _a, _b;
   const concrete = section.concreteSection;
   const fctm = concreteMaterial == null ? void 0 : concreteMaterial.fctm;
-  if (!isFinitePositive3(fctm)) {
-    return null;
+  const bounds = (_b = (_a = section.getBoundingBox) == null ? void 0 : _a.call(section)) != null ? _b : {
+    minY: 0,
+    maxY: concrete.height
+  };
+  if (!isFinitePositive3(fctm) || !isFinitePositive3(transformedGross == null ? void 0 : transformedGross.inertia) || !Number.isFinite(transformedGross == null ? void 0 : transformedGross.centroid) || !isFinitePositive3(concrete.height)) {
+    return { positive: null, negative: null };
   }
-  const sectionModulus = (_a = concrete.elasticSectionModulusY) != null ? _a : isFinitePositive3(concrete.inertiaY) && isFinitePositive3(concrete.height) ? concrete.inertiaY / (concrete.height / 2) : null;
-  return isFinitePositive3(sectionModulus) ? fctm * sectionModulus : null;
+  const distanceToBottom = transformedGross.centroid - bounds.minY;
+  const distanceToTop = bounds.maxY - transformedGross.centroid;
+  return {
+    positive: isFinitePositive3(distanceToBottom) ? fctm * transformedGross.inertia / distanceToBottom : null,
+    negative: isFinitePositive3(distanceToTop) ? fctm * transformedGross.inertia / distanceToTop : null
+  };
+}
+function selectCrackingMoment(moment, crackingThresholds) {
+  return moment >= 0 ? crackingThresholds.positive : crackingThresholds.negative;
 }
 function summarizeCurvaturePoint(point, { includePointDetails = false } = {}) {
   const summary = {
@@ -46928,6 +46974,8 @@ function summarizeCurvaturePoint(point, { includePointDetails = false } = {}) {
     summary.x = round2(point.x);
     summary.nEd = round2(point.nEd);
     summary.mcr = round2(point.mcr);
+    summary.mcrPositive = round2(point.mcrPositive);
+    summary.mcrNegative = round2(point.mcrNegative);
     summary.uncrackedCurvature = round2(point.uncrackedCurvature, 12);
     summary.crackedCurvature = round2(point.crackedCurvature, 12);
   }
@@ -47006,6 +47054,7 @@ var CrackedSectionDeflectionAnalysis = class {
     const assumptions = [
       "Curvatures are integrated numerically along FEM service-combination stations.",
       `Cracked RC service sections use the modular-ratio method with base n = ${baseModularRatio}.`,
+      "Cracking moments use the effective transformed uncracked section and the sign-specific extreme tension fiber.",
       "Concrete tension is excluded in cracked service-section states.",
       `Long-term quasi-permanent curvature increases the effective modular ratio through phi = ${phi}; shrinkage curvature is excluded.`
     ];
@@ -47039,7 +47088,6 @@ var CrackedSectionDeflectionAnalysis = class {
       analysisResult.units,
       DEFAULT_RC_SECTION_UNITS
     );
-    const mcr = crackingMoment({ section, concreteMaterial });
     const combinationOutputs = [];
     const checks = [];
     const serviceContextCache = /* @__PURE__ */ new Map();
@@ -47160,6 +47208,12 @@ var CrackedSectionDeflectionAnalysis = class {
       const serviceArtifacts = getServiceContext(effectiveModularRatio);
       const gross = serviceArtifacts.gross;
       const serviceContext = serviceArtifacts.context;
+      const crackingThresholds = crackingMoments({
+        section,
+        concreteMaterial,
+        transformedGross: gross
+      });
+      const mcr = crackingThresholds.positive;
       let iteratedResult = null;
       let iteratedCurve = null;
       let iteratedCurveResolver = null;
@@ -47207,6 +47261,8 @@ var CrackedSectionDeflectionAnalysis = class {
               mesh: analysisOptions.mesh,
               solver: analysisOptions.solver,
               mcr,
+              mcrPositive: crackingThresholds.positive,
+              mcrNegative: crackingThresholds.negative,
               grossInertia: gross.inertia,
               concreteModulus: effectiveConcreteModulus,
               beta,
@@ -47274,6 +47330,7 @@ var CrackedSectionDeflectionAnalysis = class {
         const mEd = resultResolver.moment((_a2 = sample.m) != null ? _a2 : 0);
         const nEd = resultResolver.force((_b2 = sample.n) != null ? _b2 : 0);
         const absM = Math.abs(mEd);
+        const selectedMcr = selectCrackingMoment(mEd, crackingThresholds);
         const uncrackedCurvature = isFinitePositive3(
           effectiveConcreteModulus * gross.inertia
         ) ? mEd / (effectiveConcreteModulus * gross.inertia) : 0;
@@ -47296,7 +47353,9 @@ var CrackedSectionDeflectionAnalysis = class {
             station: sample.station,
             mEd,
             nEd,
-            mcr,
+            mcr: selectedMcr,
+            mcrPositive: crackingThresholds.positive,
+            mcrNegative: crackingThresholds.negative,
             zeta,
             uncrackedCurvature: (_g2 = curveState.kappaUncracked) != null ? _g2 : uncrackedCurvature,
             crackedCurvature,
@@ -47304,7 +47363,7 @@ var CrackedSectionDeflectionAnalysis = class {
             cracked: (_h2 = curveState.cracked) != null ? _h2 : zeta > 0
           };
         }
-        if (isFinitePositive3(absM) && (!isFinitePositive3(mcr) || absM > mcr)) {
+        if (isFinitePositive3(absM) && (!isFinitePositive3(selectedMcr) || absM > selectedMcr)) {
           const solveCacheKey = [
             numericCacheKey(effectiveModularRatio),
             numericCacheKey(nEd),
@@ -47337,7 +47396,7 @@ var CrackedSectionDeflectionAnalysis = class {
             crackedCurvature = Math.sign(mEd || 1) * Math.abs(solved.strainField.kappaZ);
           }
           const beta = creepCoefficient > 0 ? betaLongTerm : betaShortTerm;
-          zeta = isFinitePositive3(mcr) ? Math.max(0, 1 - beta * (mcr / absM) ** 2) : 1;
+          zeta = isFinitePositive3(selectedMcr) ? Math.max(0, 1 - beta * (selectedMcr / absM) ** 2) : 1;
         }
         if (!solverConverged) {
           warnings.push(
@@ -47349,7 +47408,9 @@ var CrackedSectionDeflectionAnalysis = class {
           station: sample.station,
           mEd,
           nEd,
-          mcr,
+          mcr: selectedMcr,
+          mcrPositive: crackingThresholds.positive,
+          mcrNegative: crackingThresholds.negative,
           zeta,
           uncrackedCurvature,
           crackedCurvature,
@@ -47401,7 +47462,9 @@ var CrackedSectionDeflectionAnalysis = class {
               limitRatio,
               maxAbsDeflection: round2(Math.abs(governing2.deflection)),
               span: round2(span),
-              mcr: round2(mcr)
+              mcr: round2(mcr),
+              mcrPositive: round2(crackingThresholds.positive),
+              mcrNegative: round2(crackingThresholds.negative)
             }
           })
         );
@@ -47459,6 +47522,13 @@ var CrackedSectionDeflectionAnalysis = class {
         maxAbsDeflection: round2(Math.abs((_la = governing2 == null ? void 0 : governing2.deflection) != null ? _la : 0)),
         governingStation: round2(governing2 == null ? void 0 : governing2.station),
         mcr: round2(mcr),
+        mcrPositive: round2(crackingThresholds.positive),
+        mcrNegative: round2(crackingThresholds.negative),
+        grossCentroid: round2(gross.centroid),
+        grossInertia: round2(gross.inertia),
+        grossFlexuralRigidity: round2(
+          effectiveConcreteModulus * gross.inertia
+        ),
         inputPointCount: rawPoints.length,
         analyzedPointCount: analysisPoints.length,
         returnedPointCount: outputPoints.length,
@@ -47768,7 +47838,7 @@ function buildServiceability({ analysisState = {}, serviceability = {} }) {
   };
 }
 function summarizeForSca({ result, source, analysisState }) {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t;
   const combinations = (_b = (_a = result.outputs) == null ? void 0 : _a.combinations) != null ? _b : [];
   const primaryCombination = (_d = (_c = combinations.find(
     (combination) => combination.combinationType === resolveCombinationType(analysisState.serviceCombination)
@@ -47792,11 +47862,13 @@ function summarizeForSca({ result, source, analysisState }) {
       governingStation: (_g = primaryCombination == null ? void 0 : primaryCombination.governingStation) != null ? _g : null,
       deflectionLimit: (_h = primaryCombination == null ? void 0 : primaryCombination.deflectionLimit) != null ? _h : null,
       mcr: (_i = primaryCombination == null ? void 0 : primaryCombination.mcr) != null ? _i : null,
-      hyperstatic: (_j = primaryCombination == null ? void 0 : primaryCombination.hyperstatic) != null ? _j : { active: false },
-      crackedPointCount: (_k = primaryCombination == null ? void 0 : primaryCombination.crackedPointCount) != null ? _k : null,
-      maxZeta: (_l = primaryCombination == null ? void 0 : primaryCombination.maxZeta) != null ? _l : null,
-      fiberCount: (_o = (_n = (_m = result.outputs) == null ? void 0 : _m.performance) == null ? void 0 : _n.targetFiberCount) != null ? _o : null,
-      targetFiberCount: (_r = (_q = (_p = result.outputs) == null ? void 0 : _p.performance) == null ? void 0 : _q.targetFiberCount) != null ? _r : null
+      mcrPositive: (_j = primaryCombination == null ? void 0 : primaryCombination.mcrPositive) != null ? _j : null,
+      mcrNegative: (_k = primaryCombination == null ? void 0 : primaryCombination.mcrNegative) != null ? _k : null,
+      hyperstatic: (_l = primaryCombination == null ? void 0 : primaryCombination.hyperstatic) != null ? _l : { active: false },
+      crackedPointCount: (_m = primaryCombination == null ? void 0 : primaryCombination.crackedPointCount) != null ? _m : null,
+      maxZeta: (_n = primaryCombination == null ? void 0 : primaryCombination.maxZeta) != null ? _n : null,
+      fiberCount: (_q = (_p = (_o = result.outputs) == null ? void 0 : _o.performance) == null ? void 0 : _p.targetFiberCount) != null ? _q : null,
+      targetFiberCount: (_t = (_s = (_r = result.outputs) == null ? void 0 : _r.performance) == null ? void 0 : _s.targetFiberCount) != null ? _t : null
     },
     warnings: result.warnings,
     assumptions: result.assumptions,

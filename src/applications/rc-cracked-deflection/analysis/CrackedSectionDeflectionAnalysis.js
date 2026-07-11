@@ -173,21 +173,40 @@ function transformedGrossInertiaY({ section, modularRatio }) {
   };
 }
 
-function crackingMoment({ section, concreteMaterial }) {
+function crackingMoments({ section, concreteMaterial, transformedGross }) {
   const concrete = section.concreteSection;
   const fctm = concreteMaterial?.fctm;
+  const bounds = section.getBoundingBox?.() ?? {
+    minY: 0,
+    maxY: concrete.height,
+  };
 
-  if (!isFinitePositive(fctm)) {
-    return null;
+  if (
+    !isFinitePositive(fctm) ||
+    !isFinitePositive(transformedGross?.inertia) ||
+    !Number.isFinite(transformedGross?.centroid) ||
+    !isFinitePositive(concrete.height)
+  ) {
+    return { positive: null, negative: null };
   }
 
-  const sectionModulus =
-    concrete.elasticSectionModulusY ??
-    (isFinitePositive(concrete.inertiaY) && isFinitePositive(concrete.height)
-      ? concrete.inertiaY / (concrete.height / 2)
-      : null);
+  const distanceToBottom = transformedGross.centroid - bounds.minY;
+  const distanceToTop = bounds.maxY - transformedGross.centroid;
 
-  return isFinitePositive(sectionModulus) ? fctm * sectionModulus : null;
+  return {
+    positive: isFinitePositive(distanceToBottom)
+      ? (fctm * transformedGross.inertia) / distanceToBottom
+      : null,
+    negative: isFinitePositive(distanceToTop)
+      ? (fctm * transformedGross.inertia) / distanceToTop
+      : null,
+  };
+}
+
+function selectCrackingMoment(moment, crackingThresholds) {
+  return moment >= 0
+    ? crackingThresholds.positive
+    : crackingThresholds.negative;
 }
 
 function summarizeCurvaturePoint(point, { includePointDetails = false } = {}) {
@@ -205,6 +224,8 @@ function summarizeCurvaturePoint(point, { includePointDetails = false } = {}) {
     summary.x = round(point.x);
     summary.nEd = round(point.nEd);
     summary.mcr = round(point.mcr);
+    summary.mcrPositive = round(point.mcrPositive);
+    summary.mcrNegative = round(point.mcrNegative);
     summary.uncrackedCurvature = round(point.uncrackedCurvature, 12);
     summary.crackedCurvature = round(point.crackedCurvature, 12);
   }
@@ -303,6 +324,7 @@ export class CrackedSectionDeflectionAnalysis {
     const assumptions = [
       "Curvatures are integrated numerically along FEM service-combination stations.",
       `Cracked RC service sections use the modular-ratio method with base n = ${baseModularRatio}.`,
+      "Cracking moments use the effective transformed uncracked section and the sign-specific extreme tension fiber.",
       "Concrete tension is excluded in cracked service-section states.",
       `Long-term quasi-permanent curvature increases the effective modular ratio through phi = ${phi}; shrinkage curvature is excluded.`,
     ];
@@ -340,7 +362,6 @@ export class CrackedSectionDeflectionAnalysis {
       analysisResult.units,
       DEFAULT_RC_SECTION_UNITS,
     );
-    const mcr = crackingMoment({ section, concreteMaterial });
     const combinationOutputs = [];
     const checks = [];
     const serviceContextCache = new Map();
@@ -499,6 +520,13 @@ export class CrackedSectionDeflectionAnalysis {
       const serviceArtifacts = getServiceContext(effectiveModularRatio);
       const gross = serviceArtifacts.gross;
       const serviceContext = serviceArtifacts.context;
+      const crackingThresholds = crackingMoments({
+        section,
+        concreteMaterial,
+        transformedGross: gross,
+      });
+      // Keep the historical scalar mcr as the positive-bending threshold.
+      const mcr = crackingThresholds.positive;
 
       // -- Hyperstatic iteration (replaces linear FEM moments) ----------
       let iteratedResult = null;
@@ -554,6 +582,8 @@ export class CrackedSectionDeflectionAnalysis {
               mesh: analysisOptions.mesh,
               solver: analysisOptions.solver,
               mcr,
+              mcrPositive: crackingThresholds.positive,
+              mcrNegative: crackingThresholds.negative,
               grossInertia: gross.inertia,
               concreteModulus: effectiveConcreteModulus,
               beta,
@@ -637,6 +667,7 @@ export class CrackedSectionDeflectionAnalysis {
         const mEd = resultResolver.moment(sample.m ?? 0);
         const nEd = resultResolver.force(sample.n ?? 0);
         const absM = Math.abs(mEd);
+        const selectedMcr = selectCrackingMoment(mEd, crackingThresholds);
         const uncrackedCurvature = isFinitePositive(
           effectiveConcreteModulus * gross.inertia,
         )
@@ -666,7 +697,9 @@ export class CrackedSectionDeflectionAnalysis {
             station: sample.station,
             mEd,
             nEd,
-            mcr,
+            mcr: selectedMcr,
+            mcrPositive: crackingThresholds.positive,
+            mcrNegative: crackingThresholds.negative,
             zeta,
             uncrackedCurvature:
               curveState.kappaUncracked ?? uncrackedCurvature,
@@ -676,7 +709,10 @@ export class CrackedSectionDeflectionAnalysis {
           };
         }
 
-        if (isFinitePositive(absM) && (!isFinitePositive(mcr) || absM > mcr)) {
+        if (
+          isFinitePositive(absM) &&
+          (!isFinitePositive(selectedMcr) || absM > selectedMcr)
+        ) {
           const solveCacheKey = [
             numericCacheKey(effectiveModularRatio),
             numericCacheKey(nEd),
@@ -714,8 +750,8 @@ export class CrackedSectionDeflectionAnalysis {
           }
 
           const beta = creepCoefficient > 0 ? betaLongTerm : betaShortTerm;
-          zeta = isFinitePositive(mcr)
-            ? Math.max(0, 1 - beta * (mcr / absM) ** 2)
+          zeta = isFinitePositive(selectedMcr)
+            ? Math.max(0, 1 - beta * (selectedMcr / absM) ** 2)
             : 1;
         }
 
@@ -730,7 +766,9 @@ export class CrackedSectionDeflectionAnalysis {
           station: sample.station,
           mEd,
           nEd,
-          mcr,
+          mcr: selectedMcr,
+          mcrPositive: crackingThresholds.positive,
+          mcrNegative: crackingThresholds.negative,
           zeta,
           uncrackedCurvature,
           crackedCurvature,
@@ -793,6 +831,8 @@ export class CrackedSectionDeflectionAnalysis {
               maxAbsDeflection: round(Math.abs(governing.deflection)),
               span: round(span),
               mcr: round(mcr),
+              mcrPositive: round(crackingThresholds.positive),
+              mcrNegative: round(crackingThresholds.negative),
             },
           }),
         );
@@ -857,6 +897,13 @@ export class CrackedSectionDeflectionAnalysis {
         maxAbsDeflection: round(Math.abs(governing?.deflection ?? 0)),
         governingStation: round(governing?.station),
         mcr: round(mcr),
+        mcrPositive: round(crackingThresholds.positive),
+        mcrNegative: round(crackingThresholds.negative),
+        grossCentroid: round(gross.centroid),
+        grossInertia: round(gross.inertia),
+        grossFlexuralRigidity: round(
+          effectiveConcreteModulus * gross.inertia,
+        ),
         inputPointCount: rawPoints.length,
         analyzedPointCount: analysisPoints.length,
         returnedPointCount: outputPoints.length,

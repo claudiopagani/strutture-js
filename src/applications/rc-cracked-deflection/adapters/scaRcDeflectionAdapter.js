@@ -239,6 +239,8 @@ function summarizeForSca({ result, source, analysisState }) {
       governingStation: primaryCombination?.governingStation ?? null,
       deflectionLimit: primaryCombination?.deflectionLimit ?? null,
       mcr: primaryCombination?.mcr ?? null,
+      mcrPositive: primaryCombination?.mcrPositive ?? null,
+      mcrNegative: primaryCombination?.mcrNegative ?? null,
       hyperstatic: primaryCombination?.hyperstatic ?? { active: false },
       crackedPointCount: primaryCombination?.crackedPointCount ?? null,
       maxZeta: primaryCombination?.maxZeta ?? null,

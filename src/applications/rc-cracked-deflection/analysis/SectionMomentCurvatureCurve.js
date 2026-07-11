@@ -29,6 +29,8 @@ export class SectionMomentCurvatureCurve {
    * @param {Object} [options.mesh]               Fiber mesh options { targetFiberCount }
    * @param {Object} [options.solver]             Section solver options { tolerance, maxIterations }
    * @param {number} options.mcr                  Cracking moment in section units
+   * @param {number} [options.mcrPositive]        Positive-bending cracking threshold
+   * @param {number} [options.mcrNegative]        Negative-bending cracking threshold
    * @param {number} options.grossInertia         Uncracked transformed inertia in section units
    * @param {number} options.concreteModulus      Effective concrete elastic modulus E_c,eff in section units
    * @param {number} [options.beta=1.0]           Tension-stiffening β coefficient
@@ -43,6 +45,8 @@ export class SectionMomentCurvatureCurve {
     mesh = {},
     solver = {},
     mcr,
+    mcrPositive = mcr,
+    mcrNegative = mcr,
     grossInertia,
     concreteModulus,
     beta = 1.0,
@@ -80,7 +84,8 @@ export class SectionMomentCurvatureCurve {
       tolerance: solver?.tolerance ?? 1e-2,
       maxIterations: solver?.maxIterations ?? 50,
     };
-    this._mcr = isFinitePositive(mcr) ? mcr : null;
+    this._mcrPositive = isFinitePositive(mcrPositive) ? mcrPositive : null;
+    this._mcrNegative = isFinitePositive(mcrNegative) ? mcrNegative : null;
     this._grossInertia = grossInertia;
     this._concreteModulus = concreteModulus;
     this._beta = beta;
@@ -181,8 +186,16 @@ export class SectionMomentCurvatureCurve {
 
   _build({ momentSamples, maxMomentFactor, initialMaxMoment }) {
     const effectiveSampleCount = Math.max(10, momentSamples);
+    const finiteThresholds = [this._mcrPositive, this._mcrNegative].filter(
+      isFinitePositive,
+    );
+    const firstCrackingThreshold =
+      finiteThresholds.length > 0 ? Math.min(...finiteThresholds) : null;
     const maxM = isFinitePositive(initialMaxMoment)
-      ? initialMaxMoment * maxMomentFactor
+      ? isFinitePositive(firstCrackingThreshold) &&
+        initialMaxMoment <= firstCrackingThreshold
+        ? initialMaxMoment
+        : initialMaxMoment * maxMomentFactor
       : null;
 
     // Create the solver context once.
@@ -209,7 +222,15 @@ export class SectionMomentCurvatureCurve {
     }
     // Deduplicate.
     const unique = [
-      ...new Set(sampleMoments.map((v) => Number(v.toPrecision(10)))),
+      ...new Set(
+        [
+          ...sampleMoments,
+          this._mcrPositive,
+          this._mcrNegative,
+        ]
+          .filter((value) => Number.isFinite(value) && value <= resolvedMaxM)
+          .map((v) => Number(v.toPrecision(10))),
+      ),
     ].sort((a, b) => a - b);
 
     this._positiveTable = unique.map((m) => this._solvePoint(context, m));
@@ -229,11 +250,17 @@ export class SectionMomentCurvatureCurve {
    * Uses an elastic cracked-section approximation.
    */
   _estimateMaxMoment(context, sampleCount) {
+    const referenceMcr = Math.max(
+      this._mcrPositive ?? 0,
+      this._mcrNegative ?? 0,
+    );
     // Start from the uncracked curvature at a guessed high moment.
-    const guessedM = this._mcr ? this._mcr * 4 : this._grossEI * 0.01;
+    const guessedM = referenceMcr
+      ? referenceMcr * 4
+      : this._grossEI * 0.01;
 
     // Try to solve one point at a high moment to gauge the range.
-    const testM = Math.max(guessedM, this._mcr ? this._mcr * 3 : 1);
+    const testM = Math.max(guessedM, referenceMcr ? referenceMcr * 3 : 1);
     const solved = this._solvePoint(context, testM);
 
     if (solved.converged) {
@@ -242,11 +269,13 @@ export class SectionMomentCurvatureCurve {
     }
 
     // Fall back to a conservative range.
-    return this._mcr ? this._mcr * 6 : this._grossEI * 0.005;
+    return referenceMcr ? referenceMcr * 6 : this._grossEI * 0.005;
   }
 
   _solvePoint(context, signedM) {
     const absM = Math.abs(signedM);
+    const selectedMcr =
+      signedM >= 0 ? this._mcrPositive : this._mcrNegative;
 
     if (absM === 0) {
       return {
@@ -263,7 +292,9 @@ export class SectionMomentCurvatureCurve {
 
     const uncrackedKappa = signedM / this._grossEI;
     const isCracked =
-      this._mcr != null && isFinitePositive(this._mcr) && absM > this._mcr;
+      selectedMcr != null &&
+      isFinitePositive(selectedMcr) &&
+      absM > selectedMcr;
 
     if (!isCracked) {
       return {
@@ -307,8 +338,8 @@ export class SectionMomentCurvatureCurve {
       : uncrackedKappa;
 
     // Tension stiffening.
-    const zeta = isFinitePositive(this._mcr)
-      ? Math.max(0, 1 - this._beta * (this._mcr / absM) ** 2)
+    const zeta = isFinitePositive(selectedMcr)
+      ? Math.max(0, 1 - this._beta * (selectedMcr / absM) ** 2)
       : 1;
 
     const meanKappa = zeta * crackedKappa + (1 - zeta) * uncrackedKappa;
@@ -316,7 +347,7 @@ export class SectionMomentCurvatureCurve {
     // Guard: at very low moments near M=0, use gross EI.
     const rawEiSec =
       isFinitePositive(Math.abs(meanKappa)) &&
-      (!isFinitePositive(this._mcr) || absM / this._mcr > 0.01)
+      (!isFinitePositive(selectedMcr) || absM / selectedMcr > 0.01)
         ? absM / Math.abs(meanKappa)
         : this._grossEI;
     const eiSec = Math.min(rawEiSec, this._grossEI);
@@ -336,6 +367,22 @@ export class SectionMomentCurvatureCurve {
   _lookup(moment) {
     const absM = Math.abs(moment);
     const table = moment >= 0 ? this._positiveTable : this._negativeTable;
+    const selectedMcr =
+      moment >= 0 ? this._mcrPositive : this._mcrNegative;
+
+    if (isFinitePositive(selectedMcr) && absM <= selectedMcr) {
+      const kappa = moment / this._grossEI;
+      return {
+        m: absM,
+        kappa,
+        kappaUncracked: kappa,
+        kappaCracked: kappa,
+        eiSec: this._grossEI,
+        zeta: 0,
+        cracked: false,
+        converged: true,
+      };
+    }
 
     // Below the smallest tabulated point: return gross.
     if (absM <= table[0].m) {
