@@ -203,6 +203,83 @@ test("rc section state integrator accepts affine strain coefficients", () => {
   approx(coefficientsResult.My, classResult.My);
 });
 
+test("rc section fast evaluators match the complete integration kernel", () => {
+  const section = createDemoSection();
+  const mesh = new SectionFiberDiscretizer().discretize(section, {
+    targetCount: 100,
+  });
+  const integrator = new RCSectionStateIntegrator();
+  const concreteLaw = new ConcreteNoTensionLaw({
+    ecm: section.concreteMaterial.elasticModulus,
+    compressionCap: section.concreteMaterial.fcd,
+  });
+  const steelLaw = new SteelElasticPerfectlyPlasticLaw({
+    Es: section.reinforcementMaterial.elasticModulus,
+    fyd: section.reinforcementMaterial.fyd,
+    esu: 0.01,
+  });
+  const fractureEnergyDensity =
+    0.5 * section.reinforcementMaterial.fyd * 0.01;
+  const scenarios = [
+    {
+      strainField: {
+        eps0: -0.0002,
+        kappaY: 0.0000004,
+        kappaZ: 0.000001,
+      },
+      postUltimateResponse: "retain",
+      postUltimateFractureEnergyDensity: null,
+    },
+    {
+      strainField: new StrainField({
+        eps0: 0.015,
+        kappaY: 0,
+        kappaZ: 0,
+      }),
+      postUltimateResponse: "zero-stress",
+      postUltimateFractureEnergyDensity: null,
+    },
+    {
+      strainField: {
+        eps0: 0.015,
+        kappaY: 0,
+        kappaZ: 0,
+      },
+      postUltimateResponse: "linear-softening",
+      postUltimateFractureEnergyDensity: {
+        steel: fractureEnergyDensity,
+      },
+    },
+  ];
+
+  for (const scenario of scenarios) {
+    const options = {
+      section,
+      concreteFibers: mesh.fibers,
+      concreteLaw,
+      steelLaw,
+      includeConcreteTension: false,
+      postUltimateResponse: scenario.postUltimateResponse,
+      postUltimateFractureEnergyDensity:
+        scenario.postUltimateFractureEnergyDensity,
+    };
+    const evaluateAxialForce = integrator.createAxialForceEvaluator(options);
+    const evaluateResultants = integrator.createResultantEvaluator(options);
+    const completeState = integrator.evaluate({
+      ...options,
+      strainField: scenario.strainField,
+      includeResponseDetails: false,
+    });
+
+    approx(evaluateAxialForce(scenario.strainField), completeState.N, 1e-8);
+    const resultants = evaluateResultants(scenario.strainField);
+
+    approx(resultants.N, completeState.N, 1e-8);
+    approx(resultants.Mx, completeState.Mx, 1e-6);
+    approx(resultants.My, completeState.My, 1e-6);
+  }
+});
+
 test("rc section state integrator develops bending moment under linear strain profile", () => {
   const section = createDemoSection();
   const discretizer = new SectionFiberDiscretizer();

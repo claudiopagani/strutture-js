@@ -1,18 +1,15 @@
 import { DofRegistry } from "./DofRegistry.js";
+import { createElementLoadIndex } from "./ElementLoadIndex.js";
+import {
+  createZeroMatrix,
+  createZeroVector,
+} from "../math/arrayLinearAlgebra.js";
 
 const NODAL_LOAD_COMPONENT_BY_DOF = {
   ux: "fx",
   uy: "fy",
   rz: "mz",
 };
-
-function createZeroMatrix(size) {
-  return Array.from({ length: size }, () => new Array(size).fill(0));
-}
-
-function createZeroVector(size) {
-  return new Array(size).fill(0);
-}
 
 function isNodeLike(value) {
   return value?.id && !Array.isArray(value.nodes);
@@ -120,16 +117,6 @@ function resolveElementEquivalentLoad(element, context, size) {
   return loadVector;
 }
 
-function loadTargetsElement(load, element) {
-  const target = load?.element ?? load?.target;
-
-  if (!target || !element) {
-    return false;
-  }
-
-  return target === element || target.id === element.id;
-}
-
 function registerReferencedNodes(dofRegistry, { nodes, elements, supports, loads, constraints }) {
   dofRegistry.registerNodes(nodes);
   dofRegistry.registerElements(elements);
@@ -176,6 +163,9 @@ export class FemAssembler2D {
     nodalLoads = [],
     constraints = [],
   } = {}) {
+    this.dofRegistry =
+      this.dofRegistry.createEmpty?.() ??
+      new DofRegistry({ dofsPerNode: this.dofRegistry.dofsPerNode });
     const allLoads = [...loads, ...nodalLoads];
 
     registerReferencedNodes(this.dofRegistry, {
@@ -190,10 +180,11 @@ export class FemAssembler2D {
     const stiffnessMatrix = createZeroMatrix(size);
     const loadVector = createZeroVector(size);
     const elementAssemblies = [];
+    const elementLoadIndex = createElementLoadIndex(allLoads);
 
     for (const element of elements) {
       const dofIds = resolveElementDofIds(element, this.dofRegistry);
-      const elementLoads = allLoads.filter((load) => loadTargetsElement(load, element));
+      const elementLoads = elementLoadIndex.get(element);
       const stiffness = resolveElementStiffness(element, {
         dofRegistry: this.dofRegistry,
         element,

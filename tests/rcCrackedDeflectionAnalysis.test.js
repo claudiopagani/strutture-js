@@ -122,9 +122,15 @@ test("RC hyperstatic cracked deflection iterates fixed-fixed stiffness redistrib
     ...load,
     value: load.value * 5,
   }));
+  const combinations = createNTC2018BeamCombinations({
+    loads: heavyLoads,
+    types: ["SLE_RARE", "SLE_FREQUENT", "SLE_QUASI_PERMANENT"],
+    idPrefix: "rc-fixed-fixed-deflection",
+  });
   const beamInput = {
     ...model.beamInput,
     loads: heavyLoads,
+    combinations,
   };
   const analysisResult = new SingleBeamAnalysis().analyze(beamInput);
   const commonInput = {
@@ -162,7 +168,68 @@ test("RC hyperstatic cracked deflection iterates fixed-fixed stiffness redistrib
     ),
   );
   assert.equal(hyperstaticResult.outputs.performance.serviceSolveCount, 0);
+  assert.equal(hyperstaticResult.outputs.performance.curveBuildCount, 2);
+  assert.equal(hyperstaticResult.outputs.performance.curveCacheHitCount, 1);
+  assert.ok(
+    hyperstaticResult.outputs.performance.curveSectionSolveCount > 0,
+  );
+  assert.ok(hyperstaticResult.outputs.performance.curveLookupCount > 0);
+  assert.ok(hyperstaticResult.outputs.performance.femSolveCount > 0);
+  assert.ok(
+    hyperstaticResult.outputs.performance.hyperstaticIterationElapsedMs >= 0,
+  );
   assert.ok(rareHyperstatic.maxAbsDeflection > rareLinear.maxAbsDeflection);
+});
+
+test("RC hyperstatic relaxation suppresses the stiffness oscillation near Mcr", () => {
+  const model = createFixedFixedRcDeflectionExample();
+  const loads = model.loads.map((load) => ({
+    ...load,
+    value: load.value * 1.9,
+  }));
+  const combinations = createNTC2018BeamCombinations({
+    loads,
+    types: ["SLE_QUASI_PERMANENT"],
+    idPrefix: "rc-near-mcr-relaxation",
+  });
+  const beamModel = {
+    ...model.beamInput,
+    loads,
+    combinations,
+    discretization: {
+      ...model.beamInput.discretization,
+      elementCount: 20,
+    },
+  };
+  const analysisResult = new SingleBeamAnalysis().analyze(beamModel);
+  const analyze = (relaxationFactor) =>
+    new CrackedSectionDeflectionAnalysis().analyze({
+      beamId: `rc-near-mcr-${relaxationFactor}`,
+      analysisResult,
+      section: model.section,
+      concreteMaterial: model.concreteMaterial,
+      reinforcementMaterial: model.reinforcementMaterial,
+      serviceability: {
+        ...model.serviceability,
+        deflection: {
+          ...(model.serviceability?.deflection ?? {}),
+          relaxationFactor,
+          maxIterations: 50,
+        },
+      },
+      mesh: { targetFiberCount: 80 },
+      beamModel,
+    });
+  const unrelaxed = analyze(1).outputs.combinations[0];
+  const relaxed = analyze(0.5).outputs.combinations[0];
+
+  assert.equal(unrelaxed.hyperstatic.converged, false);
+  assert.equal(unrelaxed.hyperstatic.iterations, 50);
+  assert.equal(relaxed.hyperstatic.converged, true);
+  assert.ok(relaxed.hyperstatic.iterations < 20);
+  assert.equal(relaxed.hyperstatic.relaxationFactor, 0.5);
+  assert.ok(relaxed.crackedPointCount > 0);
+  assert.ok(relaxed.maxZeta > 0 && relaxed.maxZeta < 1);
 });
 
 test("RC hyperstatic cracked deflection keeps continuous beam support deflections compatible", () => {
@@ -216,6 +283,127 @@ test("RC hyperstatic cracked deflection keeps continuous beam support deflection
   assert.equal(result.status, "ok");
   assert.ok(middleSupport);
   assert.ok(Math.abs(middleSupport.deflection) <= 1e-9);
+});
+
+test("RC hyperstatic cracked deflection supports unequal spans with ratio 1 to 1.5", () => {
+  const model = createFixedFixedRcDeflectionExample();
+  const loads = model.loads.map((load) => ({
+    ...load,
+    value: load.value * 4,
+  }));
+  const combinations = createNTC2018BeamCombinations({
+    loads,
+    types: ["SLE_QUASI_PERMANENT"],
+    idPrefix: "rc-continuous-unequal-deflection",
+  });
+  const beamInput = {
+    ...model.beamInput,
+    geometry: {
+      start: { x: 0, y: 0 },
+      end: { x: 12.5, y: 0 },
+    },
+    supports: [
+      { id: "left", position: 0, type: "hinge" },
+      { id: "middle", position: 5, type: "roller" },
+      { id: "right", position: 12.5, type: "roller" },
+    ],
+    loads,
+    combinations,
+    discretization: {
+      elementCount: 50,
+      stations: [2.5, 5, 8.75],
+    },
+  };
+  const analysisResult = new SingleBeamAnalysis().analyze(beamInput);
+  const result = new CrackedSectionDeflectionAnalysis().analyze({
+    beamId: "rc-continuous-unequal-deflection",
+    analysisResult,
+    section: model.section,
+    concreteMaterial: model.concreteMaterial,
+    reinforcementMaterial: model.reinforcementMaterial,
+    serviceability: model.serviceability,
+    mesh: { targetFiberCount: 80 },
+    beamModel: beamInput,
+    output: { includePointDetails: true },
+  });
+  const combination = result.outputs.combinations.find(
+    (item) => item.combinationType === "SLE_QUASI_PERMANENT",
+  );
+  const supportDeflections = [0, 5, 12.5].map((station) =>
+    combination.points.find(
+      (point) => Math.abs(point.station - station) <= 1e-9,
+    ),
+  );
+
+  assert.notEqual(result.status, "not-implemented");
+  assert.equal(combination.hyperstatic.active, true);
+  assert.equal(combination.hyperstatic.converged, true);
+  assert.ok(supportDeflections.every(Boolean));
+  assert.ok(
+    supportDeflections.every(
+      (point) => Math.abs(point.deflection) <= 1e-9,
+    ),
+  );
+  assert.ok(Number.isFinite(combination.maxAbsDeflection));
+});
+
+test("RC hyperstatic deflection uses distinct M-kappa curves for variable axial force", () => {
+  const model = createFixedFixedRcDeflectionExample();
+  const bendingLoads = model.loads.map((load) => ({
+    ...load,
+    value: load.value * 1.5,
+  }));
+  const axialPointLoad = {
+    ...model.loads[0],
+    id: "axial-midspan",
+    type: "point",
+    position: 2.5,
+    direction: "global-x",
+    value: 100,
+  };
+  const loads = [...bendingLoads, axialPointLoad];
+  const combinations = createNTC2018BeamCombinations({
+    loads,
+    types: ["SLE_QUASI_PERMANENT"],
+    idPrefix: "rc-variable-axial-force",
+  });
+  const beamModel = {
+    ...model.beamInput,
+    loads,
+    combinations,
+    discretization: {
+      ...model.beamInput.discretization,
+      elementCount: 20,
+      stations: [2.5],
+    },
+  };
+  const analysisResult = new SingleBeamAnalysis().analyze(beamModel);
+  const result = new CrackedSectionDeflectionAnalysis().analyze({
+    beamId: "rc-variable-axial-force",
+    analysisResult,
+    section: model.section,
+    concreteMaterial: model.concreteMaterial,
+    reinforcementMaterial: model.reinforcementMaterial,
+    serviceability: model.serviceability,
+    mesh: { targetFiberCount: 40 },
+    beamModel,
+    output: { includePointDetails: true },
+  });
+  const combination = result.outputs.combinations[0];
+  const axialForces = new Set(
+    combination.points.map((point) => Math.round(point.nEd)),
+  );
+
+  assert.equal(combination.hyperstatic.converged, true);
+  assert.equal(combination.hyperstatic.axialForceCurveCount, 2);
+  assert.equal(combination.hyperstatic.axialForceCurveTolerance, 1000);
+  assert.ok([...axialForces].some((value) => value > 0));
+  assert.ok([...axialForces].some((value) => value < 0));
+  assert.ok(
+    result.assumptions.some((assumption) =>
+      assumption.includes("Variable axial force"),
+    ),
+  );
 });
 
 test("SCA deflection adapter builds a UI DTO from span and service moment", () => {

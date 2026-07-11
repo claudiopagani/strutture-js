@@ -1,44 +1,15 @@
-function createZeroMatrix(rows, columns = rows) {
-  return Array.from({ length: rows }, () => new Array(columns).fill(0));
-}
+import { createZeroMatrix } from "../math/arrayLinearAlgebra.js";
 
-function transpose(matrix) {
-  if (matrix.length === 0) {
-    return [];
+function validateDenseSquareMatrix(matrix, size, context) {
+  if (!Array.isArray(matrix) || matrix.length !== size) {
+    throw new Error(`${context} requires a ${size}x${size} matrix.`);
   }
 
-  return matrix[0].map((_, column) => matrix.map((row) => row[column]));
-}
-
-function multiplyMatrices(left, right) {
-  if (left.length === 0 || right.length === 0) {
-    return createZeroMatrix(left.length, 0);
+  for (const row of matrix) {
+    if (!Array.isArray(row) || row.length !== size) {
+      throw new Error(`${context} requires a ${size}x${size} matrix.`);
+    }
   }
-
-  const columnCount = right[0]?.length ?? 0;
-
-  return left.map((leftRow) =>
-    Array.from({ length: columnCount }, (_, column) =>
-      leftRow.reduce(
-        (sum, value, index) => sum + value * (right[index]?.[column] ?? 0),
-        0,
-      ),
-    ),
-  );
-}
-
-function multiplyMatrixVector(matrix, vector) {
-  return matrix.map((row) =>
-    row.reduce((sum, value, index) => sum + value * (vector[index] ?? 0), 0),
-  );
-}
-
-function addVectors(left, right) {
-  return left.map((value, index) => value + (right[index] ?? 0));
-}
-
-function subtractVectors(left, right) {
-  return left.map((value, index) => value - (right[index] ?? 0));
 }
 
 function resolveConstraintDofId(constraint, dofRegistry) {
@@ -375,6 +346,9 @@ export class KinematicConstraintReducer2D {
     );
     const transformationMatrix = createZeroMatrix(size, rootIndices.length);
     const offsetVector = new Array(size).fill(0);
+    const reducedIndexByFullIndex = new Array(size).fill(-1);
+    const scaleByFullIndex = new Array(size).fill(0);
+    const activeMappings = [];
 
     for (let index = 0; index < size; index += 1) {
       const expression = resolveExpression(index);
@@ -385,8 +359,16 @@ export class KinematicConstraintReducer2D {
         continue;
       }
 
-      transformationMatrix[index][reducedIndexByRoot.get(expression.rootIndex)] =
-        expression.scale;
+      const reducedIndex = reducedIndexByRoot.get(expression.rootIndex);
+
+      transformationMatrix[index][reducedIndex] = expression.scale;
+      reducedIndexByFullIndex[index] = reducedIndex;
+      scaleByFullIndex[index] = expression.scale;
+      activeMappings.push({
+        fullIndex: index,
+        reducedIndex,
+        scale: expression.scale,
+      });
     }
 
     const reducedDofIds = rootIndices.map((rootIndex) => dofIds[rootIndex]);
@@ -399,7 +381,25 @@ export class KinematicConstraintReducer2D {
     const constrainedDofIds = [
       ...new Set([...prescribedDofIds, ...dependentDofIds]),
     ];
-    const transformationTranspose = transpose(transformationMatrix);
+    const hasNonZeroOffset = offsetVector.some((value) => value !== 0);
+    const identityTransformation =
+      activeMappings.length === size &&
+      activeMappings.every(
+        (mapping) =>
+          mapping.fullIndex === mapping.reducedIndex && mapping.scale === 1,
+      ) &&
+      !hasNonZeroOffset;
+
+    const reduceVectorWithMappings = (vector) => {
+      const reduced = new Array(rootIndices.length).fill(0);
+
+      for (const mapping of activeMappings) {
+        reduced[mapping.reducedIndex] +=
+          mapping.scale * (vector[mapping.fullIndex] ?? 0);
+      }
+
+      return reduced;
+    };
 
     return {
       fullSize: size,
@@ -416,7 +416,7 @@ export class KinematicConstraintReducer2D {
           );
         }
 
-        return multiplyMatrixVector(transformationTranspose, vector);
+        return reduceVectorWithMappings(vector);
       },
       expandReducedVector(reducedVector = []) {
         if (!Array.isArray(reducedVector) || reducedVector.length !== rootIndices.length) {
@@ -425,32 +425,75 @@ export class KinematicConstraintReducer2D {
           );
         }
 
-        return addVectors(
-          multiplyMatrixVector(transformationMatrix, reducedVector),
-          offsetVector,
-        );
+        return offsetVector.map((offset, fullIndex) => {
+          const reducedIndex = reducedIndexByFullIndex[fullIndex];
+
+          return reducedIndex < 0
+            ? offset
+            : offset +
+                scaleByFullIndex[fullIndex] * reducedVector[reducedIndex];
+        });
       },
       reduceStiffnessMatrix(stiffnessMatrix = []) {
-        if (!Array.isArray(stiffnessMatrix) || stiffnessMatrix.length !== size) {
+        validateDenseSquareMatrix(
+          stiffnessMatrix,
+          size,
+          "KinematicConstraintReducer2D reduceStiffnessMatrix",
+        );
+
+        if (identityTransformation) {
+          return stiffnessMatrix.map((row) => [...row]);
+        }
+
+        const reduced = createZeroMatrix(rootIndices.length);
+
+        for (const rowMapping of activeMappings) {
+          const sourceRow = stiffnessMatrix[rowMapping.fullIndex];
+          const reducedRow = reduced[rowMapping.reducedIndex];
+
+          for (const columnMapping of activeMappings) {
+            reducedRow[columnMapping.reducedIndex] +=
+              rowMapping.scale *
+              sourceRow[columnMapping.fullIndex] *
+              columnMapping.scale;
+          }
+        }
+
+        return reduced;
+      },
+      reduceLinearSystem(stiffnessMatrix = [], loadVector = []) {
+        validateDenseSquareMatrix(
+          stiffnessMatrix,
+          size,
+          "KinematicConstraintReducer2D reduceLinearSystem",
+        );
+
+        if (!Array.isArray(loadVector) || loadVector.length !== size) {
           throw new Error(
-            `KinematicConstraintReducer2D reduceStiffnessMatrix requires a ${size}x${size} matrix.`,
+            `KinematicConstraintReducer2D reduceLinearSystem requires a vector with ${size} entries.`,
           );
         }
 
-        return multiplyMatrices(
-          transformationTranspose,
-          multiplyMatrices(stiffnessMatrix, transformationMatrix),
-        );
-      },
-      reduceLinearSystem(stiffnessMatrix = [], loadVector = []) {
+        let effectiveLoadVector = loadVector;
+
+        if (hasNonZeroOffset) {
+          effectiveLoadVector = new Array(size).fill(0);
+
+          for (let row = 0; row < size; row += 1) {
+            let stiffnessOffset = 0;
+
+            for (let column = 0; column < size; column += 1) {
+              stiffnessOffset +=
+                stiffnessMatrix[row][column] * offsetVector[column];
+            }
+
+            effectiveLoadVector[row] = loadVector[row] - stiffnessOffset;
+          }
+        }
+
         return {
           stiffnessMatrix: this.reduceStiffnessMatrix(stiffnessMatrix),
-          loadVector: this.reduceVector(
-            subtractVectors(
-              loadVector,
-              multiplyMatrixVector(stiffnessMatrix, offsetVector),
-            ),
-          ),
+          loadVector: reduceVectorWithMappings(effectiveLoadVector),
         };
       },
       reducedSize() {

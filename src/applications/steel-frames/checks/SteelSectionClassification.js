@@ -1,4 +1,5 @@
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
+import { clamp, roundTo as round } from "../../../domain/math/arrayLinearAlgebra.js";
 import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const INTERNAL_UNITS = Object.freeze({ force: "N", length: "mm" });
@@ -18,15 +19,8 @@ const SUPPORTED_FAMILIES = new Set([
 const FORCE_TOLERANCE = 1e-6;
 const MOMENT_TOLERANCE = 1e-6;
 
-const round = (value, decimals = 6) =>
-  Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
-
 function isFinitePositive(value) {
   return Number.isFinite(value) && value > 0;
-}
-
-function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, value));
 }
 
 function zeroTinyAction(value, tolerance) {

@@ -1,4 +1,5 @@
 import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
+import { roundTo as round } from "../../../domain/math/arrayLinearAlgebra.js";
 
 const I_H_FAMILIES = new Set(["IPE", "HEA", "HEB", "HEM"]);
 const DOUBLY_SYMMETRIC_METHOD_B_FAMILIES = new Set([
@@ -10,9 +11,6 @@ const DOUBLY_SYMMETRIC_METHOD_B_FAMILIES = new Set([
   "FLAT",
 ]);
 const FORCE_TOLERANCE = 1e-9;
-
-const round = (value, decimals = 6) =>
-  Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
 
 function isFinitePositive(value) {
   return Number.isFinite(value) && value > 0;

@@ -2,6 +2,10 @@ import { CalculationResult } from "../../../core/results/CalculationResult.js";
 import { round, uniqueStrings } from "../../../core/results/checkUtils.js";
 import { DofRegistry } from "../../../domain/fem/DofRegistry.js";
 import { DisplacementControlNonlinearStaticSolver2D } from "../../../domain/fem/nonlinear/DisplacementControlNonlinearStaticSolver2D.js";
+import {
+  createZeroMatrix,
+  createZeroVector,
+} from "../../../domain/math/arrayLinearAlgebra.js";
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
 import { bilinearizeCapacityCurve } from "./AlignmentCapacityBilinearization.js";
 import { AlignmentSeismicAggregatedAnalysis } from "./AlignmentSeismicAggregatedAnalysis.js";
@@ -42,14 +46,6 @@ function normalizeTopRotation(value = DEFAULT_TOP_ROTATION) {
   }
 
   return resolved;
-}
-
-function createZeroMatrix(size) {
-  return Array.from({ length: size }, () => new Array(size).fill(0));
-}
-
-function createZeroVector(size) {
-  return new Array(size).fill(0);
 }
 
 function transpose(matrix) {

@@ -1,9 +1,6 @@
 import { DenseLinearSolver } from "../../math/DenseLinearSolver.js";
+import { createZeroVector } from "../../math/arrayLinearAlgebra.js";
 import { KinematicConstraintReducer2D } from "../KinematicConstraintReducer2D.js";
-
-function createZeroVector(size) {
-  return new Array(size).fill(0);
-}
 
 function addVectors(left, right) {
   return left.map((value, index) => value + right[index]);

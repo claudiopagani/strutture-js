@@ -55,7 +55,7 @@ export class LinearStaticSolver2D {
     this.constraintReducer = constraintReducer;
   }
 
-  solve(model = {}) {
+  solve(model = {}, { includeDiagnostics = true } = {}) {
     const assembly = this.assembler.assemble(model);
     const {
       dofRegistry,
@@ -86,6 +86,7 @@ export class LinearStaticSolver2D {
 
     if (reduction.reducedSize() > 0) {
       const solved =
+        includeDiagnostics &&
         typeof this.linearSolver.solveWithDiagnostics === "function"
           ? this.linearSolver.solveWithDiagnostics(
               reducedAssembly.stiffnessMatrix,
@@ -105,7 +106,7 @@ export class LinearStaticSolver2D {
         stiffnessMatrix: reducedAssembly.stiffnessMatrix,
         loadVector: reducedAssembly.loadVector,
         solution: [...solved.solution],
-        diagnostics: solved,
+        diagnostics: includeDiagnostics ? solved : null,
       };
     }
 

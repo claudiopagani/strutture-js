@@ -32,11 +32,10 @@ The local runner currently measures:
   by the SPA adapter;
 - `sca-rect-service-stress-crack-width`, reconstructed from the dumped section,
   materials and SPA analysis state, then run through the public service-stress
-  workflow.
-
-`sca-rect-service-deflection` is preserved as a fixture but skipped by the local
-runner because the dump does not include a FEM `analysisResult`, which the
-current cracked-deflection workflow needs for a meaningful core-library run.
+  workflow;
+- `sca-rect-service-deflection`, reconstructed through the SCA deflection
+  adapter, which generates the synthetic service-moment profile required when
+  the SPA dump has no FEM `analysisResult`.
 
 ## SPA-side runner
 

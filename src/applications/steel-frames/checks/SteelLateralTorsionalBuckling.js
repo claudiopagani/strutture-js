@@ -1,4 +1,5 @@
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
+import { clamp, roundTo as round } from "../../../domain/math/arrayLinearAlgebra.js";
 import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const INTERNAL_UNITS = Object.freeze({ force: "N", length: "mm" });
@@ -6,15 +7,8 @@ const I_H_FAMILIES = new Set(["IPE", "HEA", "HEB", "HEM"]);
 const AUTOMATIC_MCR_FAMILIES = new Set([...I_H_FAMILIES, "RHS"]);
 const LTB_NOT_SUSCEPTIBLE_FAMILIES = new Set(["CHS", "SHS", "ROUND"]);
 
-const round = (value, decimals = 6) =>
-  Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
-
 function isFinitePositive(value) {
   return Number.isFinite(value) && value > 0;
-}
-
-function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, value));
 }
 
 function normalizedFamily(section) {

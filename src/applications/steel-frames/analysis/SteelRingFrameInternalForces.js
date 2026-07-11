@@ -1,12 +1,8 @@
 import { SteelPlasticHingeState } from "./SteelPlasticHingeState.js";
-
-function createZeroMatrix(size) {
-  return Array.from({ length: size }, () => new Array(size).fill(0));
-}
-
-function createZeroVector(size) {
-  return new Array(size).fill(0);
-}
+import {
+  createZeroMatrix,
+  createZeroVector,
+} from "../../../domain/math/arrayLinearAlgebra.js";
 
 function normalizeState(stateLike) {
   return stateLike instanceof SteelPlasticHingeState

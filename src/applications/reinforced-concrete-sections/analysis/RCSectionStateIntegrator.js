@@ -130,10 +130,212 @@ function applyPostUltimateResponse({
   };
 }
 
+function applyPostUltimateStressFast(
+  stress,
+  strain,
+  law,
+  strainLimits,
+  response,
+  fractureEnergyDensity,
+) {
+  if (response === "retain") {
+    return stress;
+  }
+
+  const strainLimit = resolveStrainLimitFromLimits(strainLimits, strain);
+
+  if (strainLimit == null || Math.abs(strain) <= strainLimit) {
+    return stress;
+  }
+
+  if (response === "zero-stress" || fractureEnergyDensity <= 0) {
+    return 0;
+  }
+
+  const limitStrain = Math.sign(strain || 1) * strainLimit;
+  const limitStress = Math.abs(law.stress(limitStrain));
+
+  if (limitStress <= 0) {
+    return 0;
+  }
+
+  const terminalStrain =
+    strainLimit + (2 * fractureEnergyDensity) / limitStress;
+  const stressReductionFactor = Math.max(
+    0,
+    (terminalStrain - Math.abs(strain)) / (terminalStrain - strainLimit),
+  );
+
+  return stress * stressReductionFactor;
+}
+
 /**
  * Integrates N, Mx = Mzz = -sum(Fi * yi), and My = Myy = sum(Fi * zi).
  */
 export class RCSectionStateIntegrator {
+  createAxialForceEvaluator(options = {}) {
+    return this._createFastEvaluator({
+      ...options,
+      includeMoments: false,
+    });
+  }
+
+  createResultantEvaluator(options = {}) {
+    return this._createFastEvaluator({
+      ...options,
+      includeMoments: true,
+    });
+  }
+
+  _createFastEvaluator({
+    section,
+    concreteFibers,
+    concreteLaw,
+    steelLaw,
+    referencePoint = null,
+    includeConcreteTension = true,
+    postUltimateResponse = "zero-stress",
+    postUltimateFractureEnergyDensity = null,
+    includeMoments = false,
+  } = {}) {
+    if (!section?.concreteSection) {
+      throw new Error("RCSectionStateIntegrator requires a reinforced concrete section.");
+    }
+
+    if (!Array.isArray(concreteFibers)) {
+      throw new Error("RCSectionStateIntegrator requires a concreteFibers array.");
+    }
+
+    if (!concreteLaw || typeof concreteLaw.stress !== "function") {
+      throw new Error("RCSectionStateIntegrator requires a concreteLaw with a stress method.");
+    }
+
+    if (!steelLaw || typeof steelLaw.stress !== "function") {
+      throw new Error("RCSectionStateIntegrator requires a steelLaw with a stress method.");
+    }
+
+    if (
+      !["retain", "linear-softening", "zero-stress"].includes(
+        postUltimateResponse,
+      )
+    ) {
+      throw new Error(
+        `Unsupported RC post-ultimate response: ${postUltimateResponse}.`,
+      );
+    }
+
+    const fractureEnergyDensity =
+      normalizePostUltimateFractureEnergyDensity(
+        postUltimateFractureEnergyDensity,
+      );
+
+    if (
+      postUltimateResponse === "linear-softening" &&
+      fractureEnergyDensity.concrete <= 0 &&
+      fractureEnergyDensity.steel <= 0
+    ) {
+      throw new Error(
+        "RCSectionStateIntegrator linear softening requires a positive postUltimateFractureEnergyDensity.",
+      );
+    }
+
+    const concreteStrainLimits = concreteLaw.strainLimits?.() ?? {};
+    const steelStrainLimits = steelLaw.strainLimits?.() ?? {};
+    const reinforcementBars = section.getReinforcementBars();
+    const resolvedReferencePoint = includeMoments
+      ? referencePoint ?? section.getReferencePoint("concrete-centroid")
+      : null;
+
+    if (
+      includeMoments &&
+      (!Number.isFinite(resolvedReferencePoint.y) ||
+        !Number.isFinite(resolvedReferencePoint.z))
+    ) {
+      throw new Error(
+        "RCSectionStateIntegrator requires a finite reference point.",
+      );
+    }
+
+    return (strainField) => {
+      const useAffineStrainField = hasStrainFieldCoefficients(strainField);
+      const fallbackStrainAt =
+        !useAffineStrainField && typeof strainField?.strainAt === "function"
+          ? strainField.strainAt.bind(strainField)
+          : null;
+
+      if (!useAffineStrainField && typeof fallbackStrainAt !== "function") {
+        throw new Error(
+          "RCSectionStateIntegrator requires a strainField with a strainAt method.",
+        );
+      }
+
+      const eps0 = useAffineStrainField ? strainField.eps0 : 0;
+      const kappaY = useAffineStrainField ? strainField.kappaY : 0;
+      const kappaZ = useAffineStrainField ? strainField.kappaZ : 0;
+      let axialForce = 0;
+      let momentX = 0;
+      let momentY = 0;
+
+      for (const fiber of concreteFibers) {
+        const strain = useAffineStrainField
+          ? eps0 + kappaY * fiber.z - kappaZ * fiber.y
+          : fallbackStrainAt(fiber);
+        let stress = applyPostUltimateStressFast(
+          concreteLaw.stress(strain),
+          strain,
+          concreteLaw,
+          concreteStrainLimits,
+          postUltimateResponse,
+          fractureEnergyDensity.concrete,
+        );
+
+        if (!includeConcreteTension && stress > 0) {
+          stress = 0;
+        }
+
+        const force = stress * fiber.area;
+
+        axialForce += force;
+
+        if (includeMoments) {
+          momentX -= force * (fiber.y - resolvedReferencePoint.y);
+          momentY += force * (fiber.z - resolvedReferencePoint.z);
+        }
+      }
+
+      for (const bar of reinforcementBars) {
+        const strain = useAffineStrainField
+          ? eps0 + kappaY * bar.z - kappaZ * bar.y
+          : fallbackStrainAt(bar);
+        const stress = applyPostUltimateStressFast(
+          steelLaw.stress(strain),
+          strain,
+          steelLaw,
+          steelStrainLimits,
+          postUltimateResponse,
+          fractureEnergyDensity.steel,
+        );
+
+        const force = stress * bar.area;
+
+        axialForce += force;
+
+        if (includeMoments) {
+          momentX -= force * (bar.y - resolvedReferencePoint.y);
+          momentY += force * (bar.z - resolvedReferencePoint.z);
+        }
+      }
+
+      return includeMoments
+        ? {
+            N: axialForce,
+            Mx: momentX,
+            My: momentY,
+          }
+        : axialForce;
+    };
+  }
+
   evaluate({
     section,
     concreteFibers,

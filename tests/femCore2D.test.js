@@ -4,11 +4,13 @@ import assert from "node:assert/strict";
 import {
   DofRegistry,
   FemAssembler2D,
+  KinematicConstraintReducer2D,
   LinearStaticSolver2D,
   NodalLoad,
   Node,
   Support,
 } from "../src/index.js";
+import { createElementLoadIndex } from "../src/domain/fem/ElementLoadIndex.js";
 
 const units = { force: "kN", length: "m" };
 
@@ -38,6 +40,27 @@ function createAxialSpringElement({ id, startNode, endNode, stiffness }) {
     },
   };
 }
+
+test("element load index groups loads once by element id or reference", () => {
+  const node = createNode("node-id");
+  const elementA = { id: "shared-id", nodes: [] };
+  const elementACopy = { id: "shared-id", nodes: [] };
+  const elementWithoutId = { nodes: [] };
+  const loadA = { id: "load-a", element: elementACopy };
+  const loadByTarget = { id: "load-target", target: elementA };
+  const loadWithoutId = { id: "load-ref", element: elementWithoutId };
+  const nodalLoad = { id: "nodal", target: node };
+  const index = createElementLoadIndex([
+    loadA,
+    loadByTarget,
+    loadWithoutId,
+    nodalLoad,
+  ]);
+
+  assert.deepEqual(index.get(elementA), [loadA, loadByTarget]);
+  assert.deepEqual(index.get(elementWithoutId), [loadWithoutId]);
+  assert.deepEqual(index.get({ id: "missing", nodes: [] }), []);
+});
 
 test("dof registry assigns stable 2D frame DOFs to registered nodes", () => {
   const nodeA = createNode("A");
@@ -140,6 +163,43 @@ test("linear static solver partitions constrained DOFs and recovers reactions", 
   ]);
 });
 
+test("linear static solver can be reused across models with different node ids", () => {
+  const solver = new LinearStaticSolver2D();
+  const solveSpring = (nodeId) => {
+    const node = createNode(nodeId);
+
+    return solver.solve({
+      nodes: [node],
+      supports: [
+        new Support({
+          id: `spring-${nodeId}`,
+          node,
+          restraints: { uy: true, rz: true },
+          springStiffness: { ux: 100 },
+        }),
+      ],
+      nodalLoads: [
+        new NodalLoad({
+          node,
+          components: { fx: 50 },
+          units,
+        }),
+      ],
+    });
+  };
+
+  const first = solveSpring("A");
+  const second = solveSpring("B");
+
+  approx(first.displacementByNode.A.ux, 0.5);
+  approx(second.displacementByNode.B.ux, 0.5);
+  assert.equal(first.dofRegistry.size(), 3);
+  assert.equal(first.dofRegistry.hasDof("A.ux"), true);
+  assert.equal(first.dofRegistry.hasDof("B.ux"), false);
+  assert.equal(second.dofRegistry.size(), 3);
+  assert.equal(second.dofRegistry.hasDof("A.ux"), false);
+});
+
 test("linear static solver includes nodal support springs in the assembled stiffness", () => {
   const node = createNode("A");
   const support = new Support({
@@ -163,6 +223,36 @@ test("linear static solver includes nodal support springs in the assembled stiff
   approx(result.displacementByNode.A.ux, 0.5);
   const uxIndex = result.dofRegistry.getIndex(node, "ux");
   approx(result.stiffnessMatrix[uxIndex][uxIndex], 100);
+});
+
+test("linear static solver can skip dense diagnostics on repeated fast paths", () => {
+  const node = createNode("A");
+  const support = new Support({
+    id: "spring-A",
+    node,
+    restraints: { uy: true, rz: true },
+    springStiffness: { ux: 100 },
+  });
+  const load = new NodalLoad({
+    node,
+    components: { fx: 50 },
+    units,
+  });
+  const solver = new LinearStaticSolver2D();
+  const model = {
+    nodes: [node],
+    supports: [support],
+    nodalLoads: [load],
+  };
+  const withDiagnostics = solver.solve(model);
+  const fast = solver.solve(model, { includeDiagnostics: false });
+
+  approx(fast.displacementByNode.A.ux, withDiagnostics.displacementByNode.A.ux);
+  assert.equal(
+    withDiagnostics.reducedSystem.diagnostics.method,
+    "dense-gaussian-elimination-partial-pivoting",
+  );
+  assert.equal(fast.reducedSystem.diagnostics, null);
 });
 
 test("linear static solver rejects conflicting displacement constraints", () => {
@@ -262,4 +352,45 @@ test("linear static solver condenses equal-DOF diaphragm constraints onto a mast
   assert.deepEqual(result.freeDofIds, ["M.ux"]);
   assert.ok(result.constrainedDofIds.includes("B.ux"));
   assert.ok(result.constrainedDofIds.includes("C.ux"));
+});
+
+test("kinematic reducer preserves scaled equal-DOF and prescribed-offset algebra", () => {
+  const nodeA = createNode("A");
+  const nodeB = createNode("B");
+  const nodeC = createNode("C");
+  const dofRegistry = new DofRegistry({ dofsPerNode: ["ux"] });
+
+  dofRegistry.registerNodes([nodeA, nodeB, nodeC]);
+
+  const reduction = new KinematicConstraintReducer2D().build({
+    dofRegistry,
+    constraints: [
+      {
+        type: "equal-dof",
+        masterNode: nodeA,
+        slaveNode: nodeB,
+        dof: "ux",
+        scale: 2,
+        offset: 3,
+      },
+      {
+        node: nodeC,
+        dof: "ux",
+        value: 4,
+      },
+    ],
+  });
+  const stiffnessMatrix = [
+    [4, 1, 2],
+    [1, 3, 0],
+    [2, 0, 5],
+  ];
+  const loadVector = [10, 20, 30];
+  const reduced = reduction.reduceLinearSystem(stiffnessMatrix, loadVector);
+
+  assert.deepEqual(reduction.transformationMatrix, [[1], [2], [0]]);
+  assert.deepEqual(reduction.offsetVector, [0, 3, 4]);
+  assert.deepEqual(reduced.stiffnessMatrix, [[20]]);
+  assert.deepEqual(reduced.loadVector, [21]);
+  assert.deepEqual(reduction.expandReducedVector([2]), [2, 7, 4]);
 });

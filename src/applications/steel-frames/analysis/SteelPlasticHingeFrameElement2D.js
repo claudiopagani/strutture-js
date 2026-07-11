@@ -1,4 +1,8 @@
 import { FrameElement2DEulerBernoulli } from "../../../domain/fem/elements/FrameElement2DEulerBernoulli.js";
+import {
+  createZeroMatrix,
+  createZeroVector,
+} from "../../../domain/math/arrayLinearAlgebra.js";
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
 import { SteelPlasticHingeState } from "./SteelPlasticHingeState.js";
 
@@ -13,14 +17,6 @@ function assertPositive(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`SteelPlasticHingeFrameElement2D requires a positive ${label}.`);
   }
-}
-
-function createZeroMatrix(rows, columns = rows) {
-  return Array.from({ length: rows }, () => new Array(columns).fill(0));
-}
-
-function createZeroVector(size) {
-  return new Array(size).fill(0);
 }
 
 function transpose(matrix) {

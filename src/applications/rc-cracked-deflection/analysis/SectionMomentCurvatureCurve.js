@@ -7,6 +7,10 @@ import {
   isFinitePositive,
 } from "../../reinforced-concrete-sections/shared/rcCommon.js";
 
+function nowMilliseconds() {
+  return globalThis.performance?.now?.() ?? Date.now();
+}
+
 /**
  * Precomputed M-κ curve for an RC section under given axial force and
  * effective modular ratio.  Provides fast lookup of secant flexural
@@ -92,12 +96,18 @@ export class SectionMomentCurvatureCurve {
     this._positiveTable = []; // [{ m, kappa, eiSec }] for M >= 0
     this._negativeTable = []; // [{ m, kappa, eiSec }] for M <= 0, keyed by |M|
     this._maxAbsM = 0;
+    this._buildElapsedMs = 0;
+    this._sectionSolveCount = 0;
+    this._sectionSolveFailureCount = 0;
+    this._lookupCount = 0;
 
+    const buildStartedAt = nowMilliseconds();
     this._build({
       momentSamples,
       maxMomentFactor,
       initialMaxMoment,
     });
+    this._buildElapsedMs = nowMilliseconds() - buildStartedAt;
   }
 
   // -------------------------------------------------------------------
@@ -123,6 +133,7 @@ export class SectionMomentCurvatureCurve {
    * Interpolated M-kappa state for a signed moment.
    */
   lookupState(moment) {
+    this._lookupCount += 1;
     return this._lookup(moment);
   }
 
@@ -145,6 +156,23 @@ export class SectionMomentCurvatureCurve {
    */
   get grossEI() {
     return this._grossEI;
+  }
+
+  get lookupCount() {
+    return this._lookupCount;
+  }
+
+  get metrics() {
+    return {
+      buildElapsedMs: this._buildElapsedMs,
+      sectionSolveCount: this._sectionSolveCount,
+      sectionSolveFailureCount: this._sectionSolveFailureCount,
+      lookupCount: this._lookupCount,
+      pointCountPerBranch: this.pointCount,
+      totalTablePointCount:
+        this._positiveTable.length + this._negativeTable.length,
+      maxAbsMoment: this._maxAbsM,
+    };
   }
 
   // -------------------------------------------------------------------
@@ -251,6 +279,8 @@ export class SectionMomentCurvatureCurve {
     }
 
     // Solve cracked section state.
+    this._sectionSolveCount += 1;
+
     const result = solveRcServiceSectionState({
       section: this._section,
       reinforcementMaterial: this._reinforcementMaterial,
@@ -268,6 +298,10 @@ export class SectionMomentCurvatureCurve {
     });
 
     const solved = result.solved;
+
+    if (!solved.converged) {
+      this._sectionSolveFailureCount += 1;
+    }
     const crackedKappa = solved.converged
       ? Math.sign(signedM || 1) * Math.abs(solved.strainField?.kappaZ ?? 0)
       : uncrackedKappa;

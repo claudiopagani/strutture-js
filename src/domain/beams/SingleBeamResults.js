@@ -1,4 +1,5 @@
 import { createUnitResolver } from "../units/UnitSystem.js";
+import { createElementLoadIndex } from "../fem/ElementLoadIndex.js";
 import { coordinateAtStation } from "./SingleBeamStations.js";
 import { splitPrincipalActions } from "./SectionRotation.js";
 
@@ -153,7 +154,14 @@ function summarizeReactions(samples) {
   };
 }
 
-export function sampleBeamResult({ model, femModel, solution, sectionProperties, femUnits }) {
+export function sampleBeamResult({
+  model,
+  femModel,
+  solution,
+  sectionProperties,
+  femUnits,
+  elementLoadIndex = null,
+}) {
   const resolver = createUnitResolver(femUnits, model.units);
   const displacementByNode = convertDisplacementMap(
     solution.displacementByNode,
@@ -186,11 +194,11 @@ export function sampleBeamResult({ model, femModel, solution, sectionProperties,
     rz: support.reaction?.rz ?? 0,
   }));
   const internalForceSamples = [];
+  const resolvedElementLoadIndex =
+    elementLoadIndex ?? createElementLoadIndex(femModel.loads ?? []);
 
   for (const element of femModel.elements) {
-    const elementLoads = femModel.loads.filter(
-      (load) => load.element?.id === element.id,
-    );
+    const elementLoads = resolvedElementLoadIndex.get(element);
     const localStations = [0, element.length() / 2, element.length()];
     const samples = element.sampleInternalForces({
       displacements: solution.displacements,

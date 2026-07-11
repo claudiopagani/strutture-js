@@ -26,703 +26,47 @@ import {
   createAffineStrainField,
 } from "./StrainField.js";
 
-const DEFAULT_EPS0_MIN = -0.08;
-const DEFAULT_EPS0_MAX = 0.08;
-const LIMIT_TOLERANCE = 1e-9;
-const EVENT_UTILIZATION_TOLERANCE = 1e-10;
-const EVENT_MAX_ITERATIONS = 80;
-const NTC2018_ULTIMATE_MOMENT_DROP = 0.15;
-const POST_ULTIMATE_MOMENT_TOLERANCE = 1e-9;
-
-const round = (value, decimals = 12) =>
-  Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
-
-function resolveConcreteUltimateCompressionStrain(concreteLaw) {
-  const compressionLimit = concreteLaw?.strainLimits?.().compression;
-
-  if (!Number.isFinite(compressionLimit) || compressionLimit === 0) {
-    return 0.0035;
-  }
-
-  return Math.abs(compressionLimit);
-}
-
-function resolveConcretePeakCompressionStrain(concreteLaw) {
-  const peak = concreteLaw?.peakCompressionStrain?.();
-
-  if (Number.isFinite(peak) && peak >= 0) {
-    return peak;
-  }
-
-  for (const key of ["ec2", "ec3", "ec4"]) {
-    if (Number.isFinite(concreteLaw?.[key]) && concreteLaw[key] >= 0) {
-      return concreteLaw[key];
-    }
-  }
-
-  return null;
-}
-
-function resolveSteelYieldStrain(steelLaw) {
-  const yieldStrain = steelLaw?.yieldStrain?.();
-
-  if (Number.isFinite(yieldStrain) && yieldStrain > 0) {
-    return Math.abs(yieldStrain);
-  }
-
-  if (Number.isFinite(steelLaw?.fyd) && Number.isFinite(steelLaw?.Es)) {
-    return Math.abs(steelLaw.fyd / steelLaw.Es);
-  }
-
-  return null;
-}
-
-function resolveSteelUltimateTensionStrain(steelLaw) {
-  const tensionLimit = steelLaw?.strainLimits?.().tension;
-
-  return Number.isFinite(tensionLimit) && tensionLimit > 0
-    ? Math.abs(tensionLimit)
-    : null;
-}
-
-function resolveCompressedSide({ compressedSide = null, compressedEdge = "top" }) {
-  if (compressedSide != null) {
-    if (!["positive", "negative"].includes(compressedSide)) {
-      throw new Error(`Unsupported compressed side: ${compressedSide}.`);
-    }
-
-    return compressedSide;
-  }
-
-  if (compressedEdge === "top") {
-    return "positive";
-  }
-
-  if (compressedEdge === "bottom") {
-    return "negative";
-  }
-
-  throw new Error(`Unsupported compressed edge: ${compressedEdge}.`);
-}
-
-function resolveUniaxialCompressedEdge({ theta, compressedSide }) {
-  if (neutralAxisDirection(theta).theta !== 0) {
-    return null;
-  }
-
-  return compressedSide === "positive" ? "top" : "bottom";
-}
-
-function buildOrientedStrainField({
-  eps0,
-  curvature,
-  theta,
-  compressedSide,
-  includeResponseDetails = false,
-}) {
-  const absoluteCurvature = Math.abs(curvature);
-  const direction = neutralAxisDirection(theta);
-  const sideSign = compressedSide === "positive" ? 1 : -1;
-  const coefficients = {
-    eps0,
-    kappaY: sideSign * absoluteCurvature * direction.sin,
-    kappaZ: sideSign * absoluteCurvature * direction.cos,
-  };
-
-  return includeResponseDetails
-    ? new StrainField(coefficients)
-    : createAffineStrainField(coefficients);
-}
-
-function signedEngineeringCurvature({
-  curvature,
-  compressedSide = null,
-  compressedEdge = "top",
-}) {
-  const absoluteCurvature = Math.abs(curvature);
-  const side = resolveCompressedSide({ compressedSide, compressedEdge });
-  return side === "positive" ? absoluteCurvature : -absoluteCurvature;
-}
-
-function resolveConcreteCompressionEdge({ section, strainField }) {
-  return resolveConcreteStrainExtremes({
-    section,
-    strainField,
-  }).compression;
-}
-
-function createStateCheck({ id, material, mode, demand, limit }) {
-  const utilizationRatio =
-    limit > 0 ? demand / limit : Number.POSITIVE_INFINITY;
-
-  return {
-    id,
-    material,
-    mode,
-    demand,
-    limit,
-    utilizationRatio,
-    reached: utilizationRatio >= 1,
-  };
-}
-
-function resolveLimitState({
-  state,
-  concreteLaw,
-  steelLaw,
-  concreteCompressionEdge,
-}) {
-  const concreteLimits = concreteLaw?.strainLimits?.() ?? {};
-  const steelLimits = steelLaw?.strainLimits?.() ?? {};
-  const checks = [];
-
-  if (Number.isFinite(concreteLimits.compression)) {
-    const limit = Math.abs(concreteLimits.compression);
-    checks.push(createStateCheck({
-      id: "concrete-compression-strain",
-      material: "concrete",
-      mode: "ultimate-compression",
-      demand: concreteCompressionEdge.demand,
-      limit,
-    }));
-  }
-
-  if (Number.isFinite(steelLimits.tension)) {
-    const limit = Math.abs(steelLimits.tension);
-    const demand = Math.max(
-      0,
-      state.extremes.maxSteelTensionStrain?.strain ??
-        state.extremes.maxSteelTension?.strain ??
-        0,
-    );
-    checks.push(createStateCheck({
-      id: "steel-tension-strain",
-      material: "steel",
-      mode: "ultimate-tension",
-      demand,
-      limit,
-    }));
-  }
-
-  if (Number.isFinite(steelLimits.compression)) {
-    const limit = Math.abs(steelLimits.compression);
-    const demand = Math.max(
-      0,
-      -(
-        state.extremes.maxSteelCompressionStrain?.strain ??
-        state.extremes.maxSteelCompression?.strain ??
-        0
-      ),
-    );
-    checks.push(createStateCheck({
-      id: "steel-compression-strain",
-      material: "steel",
-      mode: "ultimate-compression",
-      demand,
-      limit,
-    }));
-  }
-
-  const governing = checks.reduce(
-    (current, check) =>
-      current == null || check.utilizationRatio > current.utilizationRatio
-        ? check
-        : current,
-    null,
-  );
-
-  const reachedChecks = checks.filter((check) => check.reached);
-
-  return {
-    reached: reachedChecks.length > 0,
-    governing,
-    reachedChecks,
-    checks,
-  };
-}
-
-function resolveFirstYieldState({
-  state,
-  concreteLaw,
-  steelLaw,
-  concreteCompressionEdge,
-}) {
-  const checks = [];
-  const steelYieldStrain = resolveSteelYieldStrain(steelLaw);
-  const concretePeakStrain = resolveConcretePeakCompressionStrain(concreteLaw);
-
-  if (Number.isFinite(steelYieldStrain) && steelYieldStrain > 0) {
-    const tensionDemand = Math.max(
-      0,
-      state.extremes.maxSteelTensionStrain?.strain ??
-        state.extremes.maxSteelTension?.strain ??
-        0,
-    );
-    checks.push(createStateCheck({
-      id: "steel-tension-yield",
-      material: "steel",
-      mode: "yield-tension",
-      demand: tensionDemand,
-      limit: steelYieldStrain,
-    }));
-
-    const compressionDemand = Math.max(
-      0,
-      -(
-        state.extremes.maxSteelCompressionStrain?.strain ??
-        state.extremes.maxSteelCompression?.strain ??
-        0
-      ),
-    );
-    checks.push(createStateCheck({
-      id: "steel-compression-yield",
-      material: "steel",
-      mode: "yield-compression",
-      demand: compressionDemand,
-      limit: steelYieldStrain,
-    }));
-  }
-
-  if (Number.isFinite(concretePeakStrain) && concretePeakStrain > 0) {
-    checks.push(createStateCheck({
-      id: "concrete-compression-peak",
-      material: "concrete",
-      mode: "peak-compression",
-      demand: concreteCompressionEdge.demand,
-      limit: concretePeakStrain,
-    }));
-  }
-
-  const governing = checks.reduce(
-    (current, check) =>
-      current == null || check.utilizationRatio > current.utilizationRatio
-        ? check
-        : current,
-    null,
-  );
-
-  const reachedChecks = checks.filter((check) => check.reached);
-
-  return {
-    reached: reachedChecks.length > 0,
-    governing,
-    reachedChecks,
-    checks,
-  };
-}
-
-function getStateCheck(point, stateKey, checkId) {
-  return point?.[stateKey]?.checks?.find((check) => check.id === checkId) ?? null;
-}
-
-function annotateEventPoint(point, stateKey, checkId) {
-  const event = getStateCheck(point, stateKey, checkId);
-
-  if (!event) {
-    return point;
-  }
-
-  return {
-    ...point,
-    [stateKey]: {
-      ...point[stateKey],
-      reached: true,
-      governing: event,
-      event,
-      eventType: event.id,
-      eventMaterial: event.material,
-      eventMode: event.mode,
-    },
-  };
-}
-
-function annotateMomentDropPoint(point, { referenceMoment, dropRatio }) {
-  const moment = absoluteMoment(point);
-  const targetMoment = (1 - dropRatio) * referenceMoment;
-  const actualDropRatio =
-    referenceMoment > 0 ? 1 - moment / referenceMoment : null;
-
-  return {
-    ...point,
-    postUltimateState: {
-      referenceMoment,
-      reference: "material-ultimate-moment",
-      targetMoment,
-      moment,
-      targetDropRatio: dropRatio,
-      actualDropRatio,
-      reached: moment <= targetMoment,
-    },
-    // Legacy alias retained for consumers of the previous post-peak API.
-    postPeakState: {
-      maximumMoment: referenceMoment,
-      targetMoment,
-      moment,
-      targetDropRatio: dropRatio,
-      actualDropRatio,
-      reached: moment <= targetMoment,
-    },
-  };
-}
-
-function resolveBalancedFailureGeometry({
-  section,
-  concreteLaw,
-  steelLaw,
-  theta = 0,
-  compressedSide = null,
-  compressedEdge = "top",
-}) {
-  const ultimateCompressionStrain =
-    resolveConcreteUltimateCompressionStrain(concreteLaw);
-  const ultimateSteelTensionStrain =
-    resolveSteelUltimateTensionStrain(steelLaw);
-  const reinforcementBars = section.getReinforcementBars();
-
-  if (
-    !Number.isFinite(ultimateSteelTensionStrain) ||
-    ultimateSteelTensionStrain <= 0 ||
-    reinforcementBars.length === 0
-  ) {
-    return null;
-  }
-
-  const direction = neutralAxisDirection(theta);
-  const side = resolveCompressedSide({ compressedSide, compressedEdge });
-  const sideSign = side === "positive" ? 1 : -1;
-  const projectedBounds = getConcreteProjectedBounds(section, direction.theta);
-  const reinforcementProjections = reinforcementBars.map((bar) =>
-    projectionAt(direction.theta, bar),
-  );
-  const compressedEdgeProjection =
-    side === "positive"
-      ? projectedBounds.maximum.projection
-      : projectedBounds.minimum.projection;
-  const tensionReinforcementProjection =
-    side === "positive"
-      ? Math.min(...reinforcementProjections)
-      : Math.max(...reinforcementProjections);
-  const effectiveDepth =
-    sideSign *
-    (compressedEdgeProjection - tensionReinforcementProjection);
-
-  if (!Number.isFinite(effectiveDepth) || effectiveDepth <= 0) {
-    return null;
-  }
-
-  const absoluteCurvature =
-    (ultimateCompressionStrain + ultimateSteelTensionStrain) / effectiveDepth;
-  const kappaY = sideSign * absoluteCurvature * direction.sin;
-  const kappaZ = sideSign * absoluteCurvature * direction.cos;
-  const eps0 =
-    -ultimateCompressionStrain +
-    sideSign * absoluteCurvature * compressedEdgeProjection;
-
-  return {
-    theta: direction.theta,
-    compressedSide: side,
-    absoluteCurvature,
-    eps0,
-    kappaY,
-    kappaZ,
-    compressedEdgeProjection,
-    tensionReinforcementProjection,
-    compressedEdgeY:
-      direction.theta === 0 ? compressedEdgeProjection : null,
-    tensionReinforcementY:
-      direction.theta === 0 ? tensionReinforcementProjection : null,
-    effectiveDepth,
-    neutralAxisDepth: ultimateCompressionStrain / absoluteCurvature,
-    ultimateCompressionStrain,
-    ultimateSteelTensionStrain,
-  };
-}
-
-function neutralAxisY(strainField) {
-  if (!Number.isFinite(strainField.kappaZ) || Math.abs(strainField.kappaZ) < 1e-18) {
-    return null;
-  }
-
-  return strainField.eps0 / strainField.kappaZ;
-}
-
-function neutralAxisProjection({ strainField, compressedSide }) {
-  const curvature = Math.hypot(strainField.kappaY, strainField.kappaZ);
-
-  if (!Number.isFinite(curvature) || curvature < 1e-18) {
-    return null;
-  }
-
-  const sideSign = compressedSide === "positive" ? 1 : -1;
-  return strainField.eps0 / (sideSign * curvature);
-}
-
-function projectedMoment(point) {
-  const direction = neutralAxisDirection(point?.theta ?? 0);
-  return (point?.Mx ?? 0) * direction.cos + (point?.My ?? 0) * direction.sin;
-}
-
-function absoluteMoment(point) {
-  return Math.abs(projectedMoment(point));
-}
-
-function findMaximumMomentPoint(points) {
-  return points.reduce(
-    (current, point, index) => {
-      const moment = absoluteMoment(point);
-
-      if (current == null || moment > current.moment) {
-        return { point, index, moment };
-      }
-
-      return current;
-    },
-    null,
-  );
-}
-
-function interpolateCurvatureAtMomentDrop({
-  points,
-  maximumIndex,
-  targetMoment,
-  compressedEdge,
-}) {
-  for (let index = maximumIndex + 1; index < points.length; index += 1) {
-    const previous = points[index - 1];
-    const current = points[index];
-    const previousMoment = absoluteMoment(previous);
-    const currentMoment = absoluteMoment(current);
-
-    if (previousMoment >= targetMoment && currentMoment <= targetMoment) {
-      if (Math.abs(previousMoment - currentMoment) < 1e-12) {
-        const compressedSide =
-          current.compressedSide ?? previous.compressedSide ?? null;
-
-        return {
-          theta: current.theta ?? previous.theta ?? 0,
-          compressedSide,
-          absoluteCurvature: current.absoluteCurvature,
-          curvature: signedEngineeringCurvature({
-            curvature: current.absoluteCurvature,
-            compressedSide,
-            compressedEdge,
-          }),
-          Mx: current.Mx,
-          My: current.My,
-          source: "15-percent-post-peak-drop",
-          interpolation: "flat-segment",
-        };
-      }
-
-      const ratio =
-        (previousMoment - targetMoment) / (previousMoment - currentMoment);
-      const absoluteCurvature =
-        previous.absoluteCurvature +
-        ratio * (current.absoluteCurvature - previous.absoluteCurvature);
-      const mx = previous.Mx + ratio * (current.Mx - previous.Mx);
-      const my = previous.My + ratio * (current.My - previous.My);
-      const compressedSide =
-        current.compressedSide ?? previous.compressedSide ?? null;
-
-      return {
-        theta: current.theta ?? previous.theta ?? 0,
-        compressedSide,
-        absoluteCurvature,
-        curvature: signedEngineeringCurvature({
-          curvature: absoluteCurvature,
-          compressedSide,
-          compressedEdge,
-        }),
-        Mx: mx,
-        My: my,
-        source: "15-percent-post-peak-drop",
-        interpolation: "linear-moment-curvature",
-      };
-    }
-  }
-
-  return null;
-}
-
-function resolveUltimateDuctilityPoint({
-  points,
-  maximum,
-  failurePoint,
-  compressedEdge,
-}) {
-  if (!maximum) {
-    return null;
-  }
-
-  const dropPoint = interpolateCurvatureAtMomentDrop({
-    points,
-    maximumIndex: maximum.index,
-    targetMoment:
-      (1 - NTC2018_ULTIMATE_MOMENT_DROP) * maximum.moment,
-    compressedEdge,
-  });
-  const materialPoint =
-    failurePoint == null
-      ? null
-      : {
-          absoluteCurvature: failurePoint.absoluteCurvature,
-          curvature: failurePoint.curvature,
-          Mx: failurePoint.Mx,
-          My: failurePoint.My,
-          source: "material-ultimate-strain",
-          interpolation: "solved-point",
-        };
-
-  if (dropPoint && materialPoint) {
-    return dropPoint.absoluteCurvature <= materialPoint.absoluteCurvature
-      ? dropPoint
-      : materialPoint;
-  }
-
-  if (dropPoint) {
-    return dropPoint;
-  }
-
-  if (materialPoint) {
-    return materialPoint;
-  }
-
-  const lastPoint = points.at(-1);
-
-  if (!lastPoint) {
-    return null;
-  }
-
-  return {
-    absoluteCurvature: lastPoint.absoluteCurvature,
-    curvature: lastPoint.curvature,
-    Mx: lastPoint.Mx,
-    My: lastPoint.My,
-    source: "last-analysis-point",
-    interpolation: "solved-point",
-  };
-}
-
-function resolveNtc2018Ductility({
-  points,
-  firstYieldPoint,
-  failurePoint,
-  compressedEdge,
-}) {
-  if (!Array.isArray(points) || points.length === 0 || !firstYieldPoint) {
-    return null;
-  }
-
-  const maximum = findMaximumMomentPoint(points);
-  const momentDropPoint =
-    maximum == null
-      ? null
-      : interpolateCurvatureAtMomentDrop({
-          points,
-          maximumIndex: maximum.index,
-          targetMoment:
-            (1 - NTC2018_ULTIMATE_MOMENT_DROP) * maximum.moment,
-          compressedEdge,
-        });
-  const materialUltimatePoint =
-    failurePoint == null
-      ? null
-      : {
-          absoluteCurvature: failurePoint.absoluteCurvature,
-          curvature: failurePoint.curvature,
-          Mx: failurePoint.Mx,
-          My: failurePoint.My,
-          source: "material-ultimate-strain",
-          interpolation: "solved-point",
-        };
-  const ultimatePoint = resolveUltimateDuctilityPoint({
-    points,
-    maximum,
-    failurePoint,
-    compressedEdge,
-  });
-  const phiPrimeYd = firstYieldPoint.absoluteCurvature;
-  const mPrimeYd = absoluteMoment(firstYieldPoint);
-  const mRd = maximum?.moment ?? null;
-  const phiYd =
-    Number.isFinite(phiPrimeYd) &&
-    Number.isFinite(mPrimeYd) &&
-    Number.isFinite(mRd) &&
-    mPrimeYd > 0
-      ? phiPrimeYd * (mRd / mPrimeYd)
-      : null;
-  const phiU = ultimatePoint?.absoluteCurvature ?? null;
-
-  return {
-    reference: "NTC2018 4.1.2.3.4.2",
-    phiPrimeYd,
-    mPrimeYd,
-    mRd,
-    phiYd,
-    phiU,
-    curvatureDuctilityRatio:
-      Number.isFinite(phiU) && Number.isFinite(phiYd) && phiYd > 0
-        ? phiU / phiYd
-        : null,
-    firstYieldPoint,
-    maximumMomentPoint: maximum?.point ?? null,
-    momentDropPoint,
-    materialUltimatePoint,
-    ultimatePoint,
-    ultimateMomentDropRatio: NTC2018_ULTIMATE_MOMENT_DROP,
-    firstYieldGoverning: firstYieldPoint.firstYieldState?.governing?.id ?? null,
-    ultimateCurvatureSource: ultimatePoint?.source ?? null,
-  };
-}
-
-function defaultCurvatureMax({
-  section,
-  concreteLaw,
-  steelLaw,
-  theta = 0,
-  compressedSide = null,
-  compressedEdge = "top",
-}) {
-  const balancedGeometry = resolveBalancedFailureGeometry({
-    section,
-    concreteLaw,
-    steelLaw,
-    theta,
-    compressedSide,
-    compressedEdge,
-  });
-
-  if (balancedGeometry) {
-    return balancedGeometry.absoluteCurvature;
-  }
-
-  const projectedBounds = getConcreteProjectedBounds(section, theta);
-  const height =
-    projectedBounds.maximum.projection -
-    projectedBounds.minimum.projection;
-
-  if (!Number.isFinite(height) || height <= 0) {
-    throw new Error("RCMomentCurvatureAnalyzer requires a positive section height.");
-  }
-
-  return (2.5 * resolveConcreteUltimateCompressionStrain(concreteLaw)) / height;
-}
-
-function summarizeStateCheck(check) {
-  if (check == null) {
-    return null;
-  }
-
-  return {
-    id: check.id,
-    material: check.material,
-    mode: check.mode,
-    demand: round(check.demand),
-    limit: round(check.limit),
-    utilizationRatio: round(check.utilizationRatio, 9),
-    reached: check.reached,
-  };
-}
+import {
+  DEFAULT_EPS0_MIN,
+  DEFAULT_EPS0_MAX,
+  LIMIT_TOLERANCE,
+  EVENT_UTILIZATION_TOLERANCE,
+  EVENT_MAX_ITERATIONS,
+  NTC2018_ULTIMATE_MOMENT_DROP,
+  POST_ULTIMATE_MOMENT_TOLERANCE,
+  round,
+  resolveConcreteUltimateCompressionStrain,
+  resolveConcretePeakCompressionStrain,
+  resolveSteelYieldStrain,
+  resolveSteelUltimateTensionStrain,
+  resolveCompressedSide,
+  resolveUniaxialCompressedEdge,
+  buildOrientedStrainField,
+  signedEngineeringCurvature,
+  resolveConcreteCompressionEdge,
+  createStateCheck,
+  resolveLimitState,
+  resolveFirstYieldState,
+  getStateCheck,
+  annotateEventPoint,
+  annotateMomentDropPoint,
+  resolveBalancedFailureGeometry,
+  neutralAxisY,
+  neutralAxisProjection,
+  projectedMoment,
+  absoluteMoment,
+  findMaximumMomentPoint,
+  interpolateCurvatureAtMomentDrop,
+  resolveUltimateDuctilityPoint,
+  resolveNtc2018Ductility,
+  defaultCurvatureMax,
+  summarizeStateCheck,
+} from "./moment-curvature/RCMomentCurvaturePolicies.js";
+import {
+  summarizeMomentCurvatureDuctility,
+  summarizeMomentCurvaturePoint,
+} from "./moment-curvature/RCMomentCurvatureSummary.js";
+import { RCMomentCurvatureEventLocator } from "./moment-curvature/RCMomentCurvatureEventLocator.js";
 
 /**
  * Moment-curvature solver with the same theta and moment conventions as ULS.
@@ -743,6 +87,7 @@ export class RCMomentCurvatureAnalyzer {
     this.axialRootSolver = axialRootSolver;
     this.limitRootSolver = limitRootSolver;
     this.sectionIntegrator = sectionIntegrator;
+    this.eventLocator = new RCMomentCurvatureEventLocator(this);
     this.eps0Samples = eps0Samples;
     this.eps0Min = eps0Min;
     this.eps0Max = eps0Max;
@@ -791,6 +136,18 @@ export class RCMomentCurvatureAnalyzer {
     });
     const resolvedReferencePoint =
       referencePoint ?? section.getReferencePoint("concrete-centroid");
+    const evaluateAxialForce =
+      typeof this.sectionIntegrator.createAxialForceEvaluator === "function"
+        ? this.sectionIntegrator.createAxialForceEvaluator({
+            section,
+            concreteFibers,
+            concreteLaw,
+            steelLaw,
+            includeConcreteTension,
+            postUltimateResponse,
+            postUltimateFractureEnergyDensity,
+          })
+        : null;
     const evaluateAtEps0 = (
       eps0,
       { includeResponseDetails = false } = {},
@@ -799,21 +156,25 @@ export class RCMomentCurvatureAnalyzer {
         eps0,
         curvature,
         theta: direction.theta,
+        direction,
         compressedSide: resolvedCompressedSide,
         includeResponseDetails,
       });
-      const state = this.sectionIntegrator.evaluate({
-        section,
-        concreteFibers,
-        concreteLaw,
-        steelLaw,
-        strainField,
-        referencePoint: resolvedReferencePoint,
-        includeConcreteTension,
-        includeResponseDetails,
-        postUltimateResponse,
-        postUltimateFractureEnergyDensity,
-      });
+      const state =
+        !includeResponseDetails && evaluateAxialForce
+          ? { N: evaluateAxialForce(strainField) }
+          : this.sectionIntegrator.evaluate({
+              section,
+              concreteFibers,
+              concreteLaw,
+              steelLaw,
+              strainField,
+              referencePoint: resolvedReferencePoint,
+              includeConcreteTension,
+              includeResponseDetails,
+              postUltimateResponse,
+              postUltimateFractureEnergyDensity,
+            });
 
       return {
         eps0,
@@ -1412,6 +773,8 @@ export class RCMomentCurvatureAnalyzer {
               includeConcreteTension,
               minCurvature: previousPoint.absoluteCurvature,
               maxCurvature: point.absoluteCurvature,
+              lowerPoint: previousPoint,
+              upperPoint: point,
               postUltimateResponse: "retain",
             });
           } catch (error) {
@@ -1454,6 +817,8 @@ export class RCMomentCurvatureAnalyzer {
             includeConcreteTension,
             minCurvature: previousPoint.absoluteCurvature,
             maxCurvature: point.absoluteCurvature,
+            lowerPoint: previousPoint,
+            upperPoint: point,
             postUltimateResponse: "retain",
           });
         } catch (error) {
@@ -1806,505 +1171,27 @@ export class RCMomentCurvatureAnalyzer {
     };
   }
 
-  findMomentDropPoint({
-    lowerPoint,
-    upperPoint,
-    referenceMoment = null,
-    maximumMoment,
-    dropRatio,
-    ...options
-  }) {
-    const resolvedReferenceMoment = referenceMoment ?? maximumMoment;
-    const targetMoment = (1 - dropRatio) * resolvedReferenceMoment;
-
-    if (
-      !Number.isFinite(resolvedReferenceMoment) ||
-      resolvedReferenceMoment <= POST_ULTIMATE_MOMENT_TOLERANCE ||
-      !lowerPoint ||
-      !upperPoint ||
-      lowerPoint.absoluteCurvature >= upperPoint.absoluteCurvature ||
-      absoluteMoment(lowerPoint) < targetMoment ||
-      absoluteMoment(upperPoint) > targetMoment
-    ) {
-      throw new Error(
-        "RCMomentCurvatureAnalyzer requires a valid post-ultimate moment-drop bracket.",
-      );
-    }
-
-    let lower = lowerPoint;
-    let upper = upperPoint;
-
-    for (
-      let iteration = 0;
-      iteration < EVENT_MAX_ITERATIONS;
-      iteration += 1
-    ) {
-      const lowerMoment = absoluteMoment(lower);
-      const upperMoment = absoluteMoment(upper);
-      const denominator = lowerMoment - upperMoment;
-      const linearRatio =
-        denominator > 0
-          ? (lowerMoment - targetMoment) / denominator
-          : 0.5;
-      const boundedRatio = Math.max(0.1, Math.min(0.9, linearRatio));
-      const curvature =
-        lower.absoluteCurvature +
-        boundedRatio *
-          (upper.absoluteCurvature - lower.absoluteCurvature);
-      const eps0Hint =
-        lower.eps0 + boundedRatio * (upper.eps0 - lower.eps0);
-      const point = this.solveAtCurvature({
-        ...options,
-        curvature,
-        eps0Hint,
-      });
-      const moment = absoluteMoment(point);
-
-      if (moment > targetMoment) {
-        lower = point;
-      } else {
-        upper = point;
-      }
-
-      if (
-        Math.abs(moment - targetMoment) <=
-          Math.max(1, resolvedReferenceMoment * 1e-8) ||
-        upper.absoluteCurvature - lower.absoluteCurvature <=
-          EVENT_CURVATURE_TOLERANCE
-      ) {
-        break;
-      }
-    }
-
-    return annotateMomentDropPoint(upper, {
-      referenceMoment: resolvedReferenceMoment,
-      dropRatio,
-    });
+  findMomentDropPoint(options) {
+    return this.eventLocator.findMomentDropPoint(options);
   }
 
-  findFirstYieldPoint({
-    minCurvature,
-    maxCurvature,
-    ...options
-  }) {
-    return this.findEventPoint({
-      minCurvature,
-      maxCurvature,
-      stateKey: "firstYieldState",
-      ...options,
-    });
+  findFirstYieldPoint(options) {
+    return this.eventLocator.findFirstYieldPoint(options);
   }
 
-  findFailurePoint({
-    minCurvature,
-    maxCurvature,
-    ...options
-  }) {
-    return this.findEventPoint({
-      minCurvature,
-      maxCurvature,
-      stateKey: "limitState",
-      ...options,
-    });
+  findFailurePoint(options) {
+    return this.eventLocator.findFailurePoint(options);
   }
 
-  findEventPoint({
-    minCurvature,
-    maxCurvature,
-    stateKey,
-    ...options
-  }) {
-    if (
-      !Number.isFinite(minCurvature) ||
-      !Number.isFinite(maxCurvature) ||
-      minCurvature < 0 ||
-      minCurvature >= maxCurvature
-    ) {
-      throw new Error(
-        "RCMomentCurvatureAnalyzer requires a valid event-curvature bracket.",
-      );
-    }
-
-    const cache = new Map();
-    const solve = (curvature) => {
-      const key = curvature.toPrecision(17);
-
-      if (!cache.has(key)) {
-        cache.set(
-          key,
-          this.solveAtCurvature({
-            ...options,
-            curvature,
-          }),
-        );
-      }
-
-      return cache.get(key);
-    };
-    const lowerPoint = solve(minCurvature);
-    const upperPoint = solve(maxCurvature);
-    const utilizationTolerance = Math.min(
-      EVENT_UTILIZATION_TOLERANCE,
-      this.limitRootSolver.tolerance,
-    );
-    const maxIterations = Math.max(
-      EVENT_MAX_ITERATIONS,
-      this.limitRootSolver.maxIterations,
-    );
-    const candidateIds = upperPoint[stateKey].checks
-      .filter((upperCheck) => {
-        const lowerCheck = getStateCheck(lowerPoint, stateKey, upperCheck.id);
-        return (
-          upperCheck.utilizationRatio >= 1 &&
-          (lowerCheck?.utilizationRatio ?? 0) < 1
-        );
-      })
-      .map((check) => check.id);
-
-    if (candidateIds.length === 0) {
-      const alreadyReached = lowerPoint[stateKey].checks.find(
-        (check) => check.utilizationRatio >= 1,
-      );
-
-      if (alreadyReached) {
-        return annotateEventPoint(lowerPoint, stateKey, alreadyReached.id);
-      }
-
-      throw new Error(
-        `RCMomentCurvatureAnalyzer could not bracket a ${stateKey} event.`,
-      );
-    }
-
-    const candidates = candidateIds.map((checkId) => {
-      let lowerCurvature = minCurvature;
-      let upperCurvature = maxCurvature;
-      let lower = lowerPoint;
-      let upper = upperPoint;
-
-      for (
-        let iteration = 0;
-        iteration < maxIterations;
-        iteration += 1
-      ) {
-        const middleCurvature = 0.5 * (lowerCurvature + upperCurvature);
-        const middle = solve(middleCurvature);
-        const middleCheck = getStateCheck(middle, stateKey, checkId);
-
-        if (!middleCheck) {
-          throw new Error(
-            `RCMomentCurvatureAnalyzer could not evaluate event ${checkId}.`,
-          );
-        }
-
-        if (middleCheck.utilizationRatio >= 1) {
-          upperCurvature = middleCurvature;
-          upper = middle;
-        } else {
-          lowerCurvature = middleCurvature;
-          lower = middle;
-        }
-
-        const upperCheck = getStateCheck(upper, stateKey, checkId);
-        const interval = upperCurvature - lowerCurvature;
-
-        if (
-          interval <= EVENT_CURVATURE_TOLERANCE ||
-          Math.abs((upperCheck?.utilizationRatio ?? 0) - 1) <=
-            utilizationTolerance
-        ) {
-          break;
-        }
-      }
-
-      return annotateEventPoint(upper, stateKey, checkId);
-    });
-
-    return candidates.reduce((earliest, candidate) =>
-      earliest == null ||
-      candidate.absoluteCurvature < earliest.absoluteCurvature
-        ? candidate
-        : earliest,
-    null);
+  findEventPoint(options) {
+    return this.eventLocator.findEventPoint(options);
   }
 
   static summarizePoint(point) {
-    return {
-      converged: point.converged,
-      theta: round(point.theta, 12),
-      compressedSide: point.compressedSide ?? null,
-      curvature: round(point.curvature),
-      absoluteCurvature: round(point.absoluteCurvature),
-      eps0: round(point.eps0),
-      kappaY: round(point.kappaY),
-      kappaZ: round(point.kappaZ),
-      neutralAxisY: round(point.neutralAxisY, 6),
-      neutralAxisProjection: round(point.neutralAxisProjection, 6),
-      N: round(point.N, 6),
-      Mx: round(point.Mx, 6),
-      My: round(point.My, 6),
-      projectedMoment: round(
-        point.projectedMoment ?? projectedMoment(point),
-        6,
-      ),
-      axialResidual: round(point.axialResidual, 6),
-      failureMode: point.failureMode ?? point.limitState?.eventType ?? null,
-      postUltimate:
-        point.postUltimate == null
-          ? null
-          : {
-              response: point.postUltimate.response,
-              fractureEnergyDensity:
-                point.postUltimate.fractureEnergyDensity,
-              fractureEnergyDensityUnits:
-                point.postUltimate.fractureEnergyDensityUnits,
-              fractureEnergyInterpretation:
-                point.postUltimate.fractureEnergyInterpretation,
-              concreteFiberCount:
-                point.postUltimate.concreteFiberCount,
-              steelBarCount: point.postUltimate.steelBarCount,
-              active: point.postUltimate.active,
-            },
-      postUltimateState:
-        point.postUltimateState == null
-          ? null
-          : {
-              referenceMoment: round(
-                point.postUltimateState.referenceMoment,
-                6,
-              ),
-              reference: point.postUltimateState.reference,
-              targetMoment: round(
-                point.postUltimateState.targetMoment,
-                6,
-              ),
-              moment: round(point.postUltimateState.moment, 6),
-              targetDropRatio: round(
-                point.postUltimateState.targetDropRatio,
-                6,
-              ),
-              actualDropRatio: round(
-                point.postUltimateState.actualDropRatio,
-                6,
-              ),
-              reached: point.postUltimateState.reached,
-            },
-      postPeakState:
-        point.postPeakState == null
-          ? null
-          : {
-              maximumMoment: round(
-                point.postPeakState.maximumMoment,
-                6,
-              ),
-              targetMoment: round(point.postPeakState.targetMoment, 6),
-              moment: round(point.postPeakState.moment, 6),
-              targetDropRatio: round(
-                point.postPeakState.targetDropRatio,
-                6,
-              ),
-              actualDropRatio: round(
-                point.postPeakState.actualDropRatio,
-                6,
-              ),
-              reached: point.postPeakState.reached,
-            },
-      firstYieldState: {
-        reached: point.firstYieldState.reached,
-        eventType: point.firstYieldState.eventType ?? null,
-        eventMaterial: point.firstYieldState.eventMaterial ?? null,
-        eventMode: point.firstYieldState.eventMode ?? null,
-        event: summarizeStateCheck(point.firstYieldState.event),
-        governing: summarizeStateCheck(point.firstYieldState.governing),
-      },
-      limitState: {
-        reached: point.limitState.reached,
-        eventType: point.limitState.eventType ?? null,
-        eventMaterial: point.limitState.eventMaterial ?? null,
-        eventMode: point.limitState.eventMode ?? null,
-        event: summarizeStateCheck(point.limitState.event),
-        governing: summarizeStateCheck(point.limitState.governing),
-      },
-      extremes: {
-        minStrain: round(point.state.extremes.minStrain),
-        maxStrain: round(point.state.extremes.maxStrain),
-        concreteCompressionEdge:
-          point.concreteCompressionEdge == null
-            ? null
-            : {
-                edge: point.concreteCompressionEdge.edge,
-                side: point.concreteCompressionEdge.side ?? null,
-                strain: round(point.concreteCompressionEdge.strain),
-                demand: round(point.concreteCompressionEdge.demand),
-                y: round(point.concreteCompressionEdge.y, 6),
-                z: round(point.concreteCompressionEdge.z, 6),
-              },
-        maxConcreteCompression:
-          point.state.extremes.maxConcreteCompression == null
-            ? null
-            : {
-                value: round(point.state.extremes.maxConcreteCompression.value, 6),
-                strain: round(point.state.extremes.maxConcreteCompression.strain),
-                y: round(point.state.extremes.maxConcreteCompression.y, 6),
-                z: round(point.state.extremes.maxConcreteCompression.z, 6),
-              },
-        maxSteelTension:
-          point.state.extremes.maxSteelTension == null
-            ? null
-            : {
-                value: round(point.state.extremes.maxSteelTension.value, 6),
-                strain: round(point.state.extremes.maxSteelTension.strain),
-                y: round(point.state.extremes.maxSteelTension.y, 6),
-                z: round(point.state.extremes.maxSteelTension.z, 6),
-              },
-        maxSteelTensionStrain:
-          point.state.extremes.maxSteelTensionStrain == null
-            ? null
-            : {
-                value: round(
-                  point.state.extremes.maxSteelTensionStrain.stress,
-                  6,
-                ),
-                strain: round(
-                  point.state.extremes.maxSteelTensionStrain.strain,
-                ),
-                id: point.state.extremes.maxSteelTensionStrain.id,
-                y: round(point.state.extremes.maxSteelTensionStrain.y, 6),
-                z: round(point.state.extremes.maxSteelTensionStrain.z, 6),
-              },
-        maxSteelCompressionStrain:
-          point.state.extremes.maxSteelCompressionStrain == null
-            ? null
-            : {
-                value: round(
-                  point.state.extremes.maxSteelCompressionStrain.stress,
-                  6,
-                ),
-                strain: round(
-                  point.state.extremes.maxSteelCompressionStrain.strain,
-                ),
-                id: point.state.extremes.maxSteelCompressionStrain.id,
-                y: round(point.state.extremes.maxSteelCompressionStrain.y, 6),
-                z: round(point.state.extremes.maxSteelCompressionStrain.z, 6),
-              },
-      },
-      balancedFailureState:
-        point.balancedFailureState == null
-          ? null
-          : {
-              reached: point.balancedFailureState.reached,
-              concrete: summarizeStateCheck(
-                point.balancedFailureState.concrete,
-              ),
-              steel: summarizeStateCheck(point.balancedFailureState.steel),
-              effectiveDepth: round(
-                point.balancedFailureState.effectiveDepth,
-                6,
-              ),
-              neutralAxisDepth: round(
-                point.balancedFailureState.neutralAxisDepth,
-                6,
-              ),
-              compressedEdgeProjection: round(
-                point.balancedFailureState.compressedEdgeProjection,
-                6,
-              ),
-              tensionReinforcementProjection: round(
-                point.balancedFailureState.tensionReinforcementProjection,
-                6,
-              ),
-              compressedEdgeY: round(
-                point.balancedFailureState.compressedEdgeY,
-                6,
-              ),
-              tensionReinforcementY: round(
-                point.balancedFailureState.tensionReinforcementY,
-                6,
-              ),
-              assignedAxialForce: round(
-                point.balancedFailureState.assignedAxialForce,
-                6,
-              ),
-              balancedAxialForce: round(
-                point.balancedFailureState.balancedAxialForce,
-                6,
-              ),
-              axialResidual: round(
-                point.balancedFailureState.axialResidual,
-                6,
-              ),
-              compatibleWithAssignedAxialForce:
-                point.balancedFailureState.compatibleWithAssignedAxialForce,
-            },
-    };
+    return summarizeMomentCurvaturePoint(point);
   }
 
   static summarizeDuctility(ductility) {
-    if (ductility == null) {
-      return null;
-    }
-
-    return {
-      reference: ductility.reference,
-      phiPrimeYd: round(ductility.phiPrimeYd),
-      mPrimeYd: round(ductility.mPrimeYd, 6),
-      mRd: round(ductility.mRd, 6),
-      phiYd: round(ductility.phiYd),
-      phiU: round(ductility.phiU),
-      curvatureDuctilityRatio: round(ductility.curvatureDuctilityRatio, 6),
-      ultimateMomentDropRatio: round(
-        ductility.ultimateMomentDropRatio,
-        6,
-      ),
-      firstYieldGoverning: ductility.firstYieldGoverning,
-      ultimateCurvatureSource: ductility.ultimateCurvatureSource,
-      firstYieldPoint:
-        ductility.firstYieldPoint == null
-          ? null
-          : RCMomentCurvatureAnalyzer.summarizePoint(ductility.firstYieldPoint),
-      maximumMomentPoint:
-        ductility.maximumMomentPoint == null
-          ? null
-          : RCMomentCurvatureAnalyzer.summarizePoint(ductility.maximumMomentPoint),
-      momentDropPoint:
-        ductility.momentDropPoint == null
-          ? null
-          : {
-              absoluteCurvature: round(
-                ductility.momentDropPoint.absoluteCurvature,
-              ),
-              curvature: round(ductility.momentDropPoint.curvature),
-              Mx: round(ductility.momentDropPoint.Mx, 6),
-              My: round(ductility.momentDropPoint.My, 6),
-              source: ductility.momentDropPoint.source,
-              interpolation: ductility.momentDropPoint.interpolation,
-            },
-      materialUltimatePoint:
-        ductility.materialUltimatePoint == null
-          ? null
-          : {
-              absoluteCurvature: round(
-                ductility.materialUltimatePoint.absoluteCurvature,
-              ),
-              curvature: round(
-                ductility.materialUltimatePoint.curvature,
-              ),
-              Mx: round(ductility.materialUltimatePoint.Mx, 6),
-              My: round(ductility.materialUltimatePoint.My, 6),
-              source: ductility.materialUltimatePoint.source,
-              interpolation:
-                ductility.materialUltimatePoint.interpolation,
-            },
-      ultimatePoint:
-        ductility.ultimatePoint == null
-          ? null
-          : {
-              absoluteCurvature: round(ductility.ultimatePoint.absoluteCurvature),
-              curvature: round(ductility.ultimatePoint.curvature),
-              Mx: round(ductility.ultimatePoint.Mx, 6),
-              My: round(ductility.ultimatePoint.My, 6),
-              source: ductility.ultimatePoint.source,
-              interpolation: ductility.ultimatePoint.interpolation,
-            },
-    };
+    return summarizeMomentCurvatureDuctility(ductility);
   }
 }

@@ -105,11 +105,26 @@ La suite automatica copre il comportamento numerico principale e i contratti app
 npm test
 ```
 
-Per eseguire test e validazioni:
+Per eseguire test, validazioni, controllo dei confini architetturali e verifica
+del bundle Web Worker:
 
 ```bash
 npm run check
 ```
+
+Gate aggiuntivi, eseguiti anche dalla CI:
+
+```bash
+npm run lint
+npm run typecheck
+npm run coverage
+npm run check:performance
+```
+
+Il type-check JavaScript e adottato in modo graduale sui kernel matematici e
+FEM stabilizzati; la coverage minima e 85% linee, 60% branch e 88% funzioni.
+I performance budget combinano limiti deterministici sul numero di operazioni
+con soglie temporali larghe, adatte anche ai runner CI condivisi.
 
 Stato sintetico dei moduli applicativi:
 
@@ -151,6 +166,24 @@ La regola di base e semplice:
 - `src/applications/<modulo>` contiene workflow specifici;
 - `src/norms` contiene interpretazioni, preset e cataloghi normativi;
 - ogni applicazione deve restituire un risultato leggibile, serializzabile e testabile.
+
+Le dipendenze ammesse seguono la direzione `applications -> norms -> domain`:
+`domain` non puo importare `norms` o `applications`, mentre `norms` non puo
+importare `applications`. Il vincolo e verificato automaticamente con:
+
+```bash
+npm run check:architecture
+```
+
+Il package pubblica l'ESM sorgente come condizione `import`, lasciando il
+bundle `dist/index.mjs` come fallback. Per ridurre il grafo caricato e
+migliorare il tree-shaking sono disponibili subpath granulari:
+
+```js
+import { BandedLinearSolver } from "strutture-js/domain/math";
+import { CrackedSectionDeflectionAnalysis } from "strutture-js/applications/rc-cracked-deflection";
+import { getSteelProfileSectionData } from "strutture-js/catalogs/steel-profiles";
+```
 
 ## Contratti pubblici
 

@@ -6,9 +6,17 @@
   "description": "Codebase condivisa OOP per entita di calcolo strutturale in ingegneria civile.",
   "license": "MIT",
   "main": "dist/index.mjs",
+  "module": "src/index.js",
   "exports": {
-    ".": "./dist/index.mjs",
+    ".": {
+      "import": "./src/index.js",
+      "default": "./dist/index.mjs"
+    },
     "./applications": "./src/applications/index.js",
+    "./applications/*": "./src/applications/*/index.js",
+    "./domain/fem": "./src/domain/fem/index.js",
+    "./domain/math": "./src/domain/math/index.js",
+    "./catalogs/steel-profiles": "./src/catalogs/steel-profiles.js",
     "./norms/italian-historical": "./src/norms/italian-historical/index.js",
     "./norms/ntc2018": "./src/norms/ntc2018/index.js"
   },
@@ -21,10 +29,19 @@
     "build": "node scripts/build.js",
     "prepare": "npm run build",
     "test": "node --test tests/run-tests.js",
-    "check": "npm test && npm run validation && npm run check:worker-bundle",
+    "check": "npm test && npm run validation && npm run check:quality && npm run check:architecture && npm run check:worker-bundle",
     "syntax": "node scripts/check-syntax.js",
+    "lint": "eslint src tests scripts examples validation benchmarks",
+    "typecheck": "tsc -p tsconfig.check.json",
+    "check:quality": "npm run lint && npm run typecheck",
+    "coverage": "node --test --experimental-test-coverage --test-coverage-include=src/**/*.js --test-coverage-exclude=src/config/** --test-coverage-lines=85 --test-coverage-branches=60 --test-coverage-functions=88 tests/run-tests.js",
+    "check:performance": "node scripts/check-performance-budgets.js",
+    "check:architecture": "node scripts/check-architecture.js",
     "check:worker-bundle": "npm run build && node scripts/check-web-worker-bundle.js",
     "benchmark:rc-moment-curvature": "node scripts/benchmark-rc-moment-curvature.js",
+    "benchmark:rc-hyperstatic-deflection": "node scripts/benchmark-rc-hyperstatic-deflection.js",
+    "benchmark:fem-constraints": "node scripts/benchmark-kinematic-reducer.js",
+    "benchmark:fem-load-index": "node scripts/benchmark-element-load-index.js",
     "benchmark:spa-real-cases": "node benchmarks/strutture-js-spa/run-public-models.mjs",
     "example": "node examples/basic-model.js",
     "example:ntc2018": "node examples/ntc2018-presets.js",
@@ -40,6 +57,9 @@
     "validation": "node validation/run-validation.js"
   },
   "devDependencies": {
-    "esbuild": "^0.28.1"
+    "@eslint/js": "^9.39.4",
+    "esbuild": "^0.28.1",
+    "eslint": "^9.39.4",
+    "typescript": "^5.9.3"
   }
 }

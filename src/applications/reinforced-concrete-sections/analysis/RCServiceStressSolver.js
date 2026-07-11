@@ -3,48 +3,7 @@ import {
   createAffineStrainField,
 } from "./StrainField.js";
 import { RCSectionStateIntegrator } from "./RCSectionStateIntegrator.js";
-
-function solveLinearSystem3x3(matrix, vector) {
-  const a = matrix.map((row, index) => [...row, vector[index]]);
-
-  for (let pivot = 0; pivot < 3; pivot += 1) {
-    let maxRow = pivot;
-
-    for (let row = pivot + 1; row < 3; row += 1) {
-      if (Math.abs(a[row][pivot]) > Math.abs(a[maxRow][pivot])) {
-        maxRow = row;
-      }
-    }
-
-    if (Math.abs(a[maxRow][pivot]) < 1e-18) {
-      throw new Error("Singular 3x3 linear system.");
-    }
-
-    if (maxRow !== pivot) {
-      [a[pivot], a[maxRow]] = [a[maxRow], a[pivot]];
-    }
-
-    const pivotValue = a[pivot][pivot];
-
-    for (let column = pivot; column < 4; column += 1) {
-      a[pivot][column] /= pivotValue;
-    }
-
-    for (let row = 0; row < 3; row += 1) {
-      if (row === pivot) {
-        continue;
-      }
-
-      const factor = a[row][pivot];
-
-      for (let column = pivot; column < 4; column += 1) {
-        a[row][column] -= factor * a[pivot][column];
-      }
-    }
-  }
-
-  return [a[0][3], a[1][3], a[2][3]];
-}
+import { solveLinearSystem3x3 } from "../../../domain/math/arrayLinearAlgebra.js";
 
 function residualNorm(residual) {
   return Math.sqrt(
@@ -96,6 +55,17 @@ export class RCServiceStressSolver {
 
     const resolvedReferencePoint =
       referencePoint ?? section.getReferencePoint("concrete-centroid");
+    const evaluateResultants =
+      typeof this.sectionIntegrator.createResultantEvaluator === "function"
+        ? this.sectionIntegrator.createResultantEvaluator({
+            section,
+            concreteFibers,
+            concreteLaw,
+            steelLaw,
+            referencePoint: resolvedReferencePoint,
+            includeConcreteTension: false,
+          })
+        : null;
     let variables = [
       initialGuess.eps0 ?? 0,
       initialGuess.kappaY ?? 0,
@@ -110,16 +80,19 @@ export class RCServiceStressSolver {
       const strainField = includeResponseDetails
         ? new StrainField(coefficients)
         : createAffineStrainField(coefficients);
-      const state = this.sectionIntegrator.evaluate({
-        section,
-        concreteFibers,
-        concreteLaw,
-        steelLaw,
-        strainField,
-        referencePoint: resolvedReferencePoint,
-        includeConcreteTension: false,
-        includeResponseDetails,
-      });
+      const state =
+        !includeResponseDetails && evaluateResultants
+          ? evaluateResultants(strainField)
+          : this.sectionIntegrator.evaluate({
+              section,
+              concreteFibers,
+              concreteLaw,
+              steelLaw,
+              strainField,
+              referencePoint: resolvedReferencePoint,
+              includeConcreteTension: false,
+              includeResponseDetails,
+            });
       const residual = [state.N - nEd, state.Mx - mxEd, state.My - myEd];
 
       return {

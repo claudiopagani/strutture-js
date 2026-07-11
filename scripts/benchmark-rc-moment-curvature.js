@@ -113,6 +113,17 @@ class CountingIntegrator extends RCSectionStateIntegrator {
     this.detailCalls = 0;
   }
 
+  createAxialForceEvaluator(options) {
+    const evaluateAxialForce = super.createAxialForceEvaluator(options);
+
+    return (strainField) => {
+      this.calls += 1;
+      this.fastCalls += 1;
+
+      return evaluateAxialForce(strainField);
+    };
+  }
+
   evaluate(options) {
     this.calls += 1;
 
@@ -211,19 +222,23 @@ function summarizeScenario({
   };
 }
 
-function main() {
-  const runs = parseRuns();
+export function runMomentCurvatureBenchmark({
+  runs = 3,
+  targetFiberCounts = [120, 300, 1000],
+  pointCounts = [15, 41],
+  postUltimateResponses = ["zero-stress", "linear-softening"],
+} = {}) {
   const fixture = createFixture();
   const discretizer = new SectionFiberDiscretizer();
   const rows = [];
 
-  for (const targetFiberCount of [120, 300, 1000]) {
+  for (const targetFiberCount of targetFiberCounts) {
     const mesh = discretizer.discretize(fixture.section, {
       targetCount: targetFiberCount,
     });
 
-    for (const pointCount of [15, 41]) {
-      for (const postUltimateResponse of ["zero-stress", "linear-softening"]) {
+    for (const pointCount of pointCounts) {
+      for (const postUltimateResponse of postUltimateResponses) {
         rows.push(
           summarizeScenario({
             fixture,
@@ -238,13 +253,26 @@ function main() {
     }
   }
 
+  return rows;
+}
+
+function main() {
+  const runs = parseRuns();
+  const rows = runMomentCurvatureBenchmark({ runs });
+
   console.log(`RC moment-curvature benchmark (${runs} measured run(s))`);
   console.table(rows);
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(error.message);
-  process.exitCode = 1;
+if (
+  process.argv[1]
+    ?.replaceAll("\\", "/")
+    .endsWith("/benchmark-rc-moment-curvature.js")
+) {
+  try {
+    main();
+  } catch (error) {
+    console.error(error.message);
+    process.exitCode = 1;
+  }
 }

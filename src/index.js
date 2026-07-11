@@ -8,7 +8,7 @@ export { SolidTimberMaterial } from "./domain/materials/SolidTimberMaterial.js";
 export { GlulamTimberMaterial } from "./domain/materials/GlulamTimberMaterial.js";
 export { MasonryMaterial } from "./domain/materials/MasonryMaterial.js";
 export { ExistingMasonryMaterial } from "./domain/materials/ExistingMasonryMaterial.js";
-export { NTC2018ExistingMasonryMaterial } from "./domain/materials/NTC2018ExistingMasonryMaterial.js";
+export { NTC2018ExistingMasonryMaterial } from "./norms/ntc2018/materials/NTC2018ExistingMasonryMaterial.js";
 export {
   EXISTING_MATERIAL_CONFIDENCE_LEVELS,
   characteristicValueFromExistingMean,
@@ -132,7 +132,10 @@ export {
   KinematicConstraintReducer2D,
   LinearStaticSolver2D,
 } from "./domain/fem/index.js";
-export { DenseLinearSolver } from "./domain/math/index.js";
+export {
+  BandedLinearSolver,
+  DenseLinearSolver,
+} from "./domain/math/index.js";
 export { IllinoisRootSolver } from "./domain/solvers/index.js";
 export {
   FORCE_UNIT_FACTORS,

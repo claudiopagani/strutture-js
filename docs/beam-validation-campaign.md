@@ -20,7 +20,9 @@ npm run check
 
 `npm run validation -- --json` stampa lo stesso contenuto in forma serializzata, utile per script o confronti automatici.
 
-`npm run check` esegue `npm test` e poi `npm run validation`; e il gate locale consigliato prima di consegnare modifiche.
+`npm run check` esegue test, validazione, controllo dei confini architetturali
+e verifica del bundle Web Worker; e il gate locale consigliato prima di
+consegnare modifiche.
 
 La suite `npm test` include anche la campagna tramite `tests/beamValidationCampaign.test.js`, in modo da intercettare regressioni numeriche dentro il ciclo ordinario dei test.
 

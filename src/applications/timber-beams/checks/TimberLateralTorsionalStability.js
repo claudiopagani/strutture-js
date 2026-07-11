@@ -1,17 +1,11 @@
 import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
+import { clamp, roundTo as round } from "../../../domain/math/arrayLinearAlgebra.js";
 
 const DEFAULT_E005_RATIO = 2 / 3;
 const FORCE_TOLERANCE = 1e-9;
 
-const round = (value, decimals = 6) =>
-  Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
-
 function isFinitePositive(value) {
   return Number.isFinite(value) && value > 0;
-}
-
-function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, value));
 }
 
 function hasSignificantAction(value, tolerance = FORCE_TOLERANCE) {

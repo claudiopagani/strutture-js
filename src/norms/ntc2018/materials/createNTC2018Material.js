@@ -1,6 +1,6 @@
 import { ConcreteMaterial } from "../../../domain/materials/ConcreteMaterial.js";
 import { ExistingMasonryMaterial } from "../../../domain/materials/ExistingMasonryMaterial.js";
-import { NTC2018ExistingMasonryMaterial } from "../../../domain/materials/NTC2018ExistingMasonryMaterial.js";
+import { NTC2018ExistingMasonryMaterial } from "./NTC2018ExistingMasonryMaterial.js";
 import { GlulamTimberMaterial } from "../../../domain/materials/GlulamTimberMaterial.js";
 import { SolidTimberMaterial } from "../../../domain/materials/SolidTimberMaterial.js";
 import { SteelMaterial } from "../../../domain/materials/SteelMaterial.js";

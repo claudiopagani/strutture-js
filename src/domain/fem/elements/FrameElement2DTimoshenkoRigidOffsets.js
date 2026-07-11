@@ -1,4 +1,5 @@
 import { FrameElement2DTimoshenko } from "./FrameElement2DTimoshenko.js";
+import { createZeroVector } from "../../math/arrayLinearAlgebra.js";
 
 function assertNode(node, label) {
   if (!node?.id) {
@@ -58,10 +59,6 @@ function multiplyMatrixVector(matrix, vector) {
 
 function subtractVectors(left, right) {
   return left.map((value, index) => value - right[index]);
-}
-
-function createZeroVector(size) {
-  return new Array(size).fill(0);
 }
 
 function resolveGlobalElementDisplacements(element, globalDisplacements, dofRegistry) {

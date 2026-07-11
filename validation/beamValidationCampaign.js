@@ -1045,6 +1045,158 @@ function simplySupportedUniformLoadCase() {
   };
 }
 
+function analyzeUniformBeam({ id, length, supports, elementCount }) {
+  return new SingleBeamAnalysis().analyze({
+    id,
+    units: femUnits,
+    geometry: {
+      start: { x: 0, y: 0 },
+      end: { x: length, y: 0 },
+    },
+    section: createDemoSection(),
+    material: createSteelMaterial(),
+    supports,
+    loads: [
+      {
+        id: "g1",
+        actionType: "G1",
+        type: "uniform",
+        value: -2,
+      },
+    ],
+    discretization: {
+      elementCount,
+      stations: supports.map((support) => support.position),
+    },
+    combinations: false,
+  }).loadCases.G1;
+}
+
+function fixedFixedUniformLoadCase() {
+  return {
+    id: "beam-eb-fixed-fixed-udl",
+    title: "Euler-Bernoulli beam, fixed-fixed, uniform load",
+    category: "beam-analysis",
+    sourceKind: "external-analytical-reference",
+    source: "Classical fixed-ended beam closed-form solution",
+    notes:
+      "Independent reference uses qL/2 reactions, qL^2/12 end moments, qL^2/24 midspan moment and qL^4/(384EI) deflection.",
+    evaluate() {
+      const loadCase = analyzeUniformBeam({
+        id: "validation-eb-fixed-fixed",
+        length: 4,
+        supports: [
+          { id: "left", position: 0, type: "fixed" },
+          { id: "right", position: 4, type: "fixed" },
+        ],
+        elementCount: 8,
+      });
+      const left = loadCase.reactions.samples.find(
+        (sample) => sample.station === 0,
+      );
+      const right = loadCase.reactions.samples.find(
+        (sample) => sample.station === 4,
+      );
+      const midspan = loadCase.displacements.samples.find(
+        (sample) => sample.station === 2,
+      );
+      const midspanMoment = loadCase.internalForces.samples.find(
+        (sample) => sample.station === 2,
+      );
+
+      return {
+        leftReaction: left.uy,
+        rightReaction: right.uy,
+        leftMoment: left.rz,
+        rightMoment: right.rz,
+        midspanMoment: midspanMoment.m,
+        midspanDeflection: midspan.uy,
+      };
+    },
+    expectations: [
+      { id: "left-reaction", path: "leftReaction", expected: 4, tolerance: 1e-9 },
+      { id: "right-reaction", path: "rightReaction", expected: 4, tolerance: 1e-9 },
+      { id: "left-moment", path: "leftMoment", expected: 8 / 3, tolerance: 1e-9 },
+      { id: "right-moment", path: "rightMoment", expected: -8 / 3, tolerance: 1e-9 },
+      { id: "midspan-moment", path: "midspanMoment", expected: 4 / 3, tolerance: 1e-9 },
+      {
+        id: "midspan-deflection",
+        path: "midspanDeflection",
+        expected: (-2 * 4 ** 4) / (384 * 14000),
+        tolerance: 1e-12,
+      },
+    ],
+  };
+}
+
+function continuousUniformLoadCase({ unequal = false } = {}) {
+  const firstSpan = 4;
+  const secondSpan = unequal ? 6 : 4;
+  const length = firstSpan + secondSpan;
+  const load = 2;
+  const middleMoment =
+    (-load * (firstSpan ** 3 + secondSpan ** 3)) /
+    (8 * (firstSpan + secondSpan));
+  const leftReaction =
+    (load * firstSpan) / 2 + middleMoment / firstSpan;
+  const firstSpanRightReaction = load * firstSpan - leftReaction;
+  const secondSpanLeftReaction =
+    (load * secondSpan) / 2 - middleMoment / secondSpan;
+  const rightReaction = load * secondSpan - secondSpanLeftReaction;
+  const middleReaction = firstSpanRightReaction + secondSpanLeftReaction;
+
+  return {
+    id: unequal
+      ? "beam-eb-continuous-unequal-udl"
+      : "beam-eb-continuous-equal-udl",
+    title: unequal
+      ? "Euler-Bernoulli continuous beam, spans 1:1.5, uniform load"
+      : "Euler-Bernoulli continuous beam, two equal spans, uniform load",
+    category: "beam-analysis",
+    sourceKind: "external-analytical-reference",
+    source: "Clapeyron three-moment theorem",
+    notes:
+      "Independent support moment and reactions are derived from the three-moment theorem with zero end moments.",
+    evaluate() {
+      const loadCase = analyzeUniformBeam({
+        id: unequal
+          ? "validation-eb-continuous-unequal"
+          : "validation-eb-continuous-equal",
+        length,
+        supports: [
+          { id: "left", position: 0, type: "hinge" },
+          { id: "middle", position: firstSpan, type: "roller" },
+          { id: "right", position: length, type: "roller" },
+        ],
+        elementCount: unequal ? 20 : 16,
+      });
+      const reactionAt = (station) =>
+        loadCase.reactions.samples.find(
+          (sample) => sample.station === station,
+        )?.uy;
+      const supportMoment = loadCase.internalForces.samples.find(
+        (sample) => sample.station === firstSpan,
+      )?.m;
+
+      return {
+        leftReaction: reactionAt(0),
+        middleReaction: reactionAt(firstSpan),
+        rightReaction: reactionAt(length),
+        middleMoment: supportMoment,
+        verticalEquilibrium:
+          reactionAt(0) + reactionAt(firstSpan) + reactionAt(length),
+      };
+    },
+    expectations: [
+      { id: "left-reaction", path: "leftReaction", expected: leftReaction, tolerance: 1e-9 },
+      { id: "middle-reaction", path: "middleReaction", expected: middleReaction, tolerance: 1e-9 },
+      { id: "right-reaction", path: "rightReaction", expected: rightReaction, tolerance: 1e-9 },
+      { id: "middle-moment", path: "middleMoment", expected: middleMoment, tolerance: 1e-9 },
+      { id: "vertical-equilibrium", path: "verticalEquilibrium", expected: load * length, tolerance: 1e-9 },
+    ],
+  };
+}
+
 function steelClassificationCase() {
   return {
     id: "steel-ipe200-classification-pure-bending",
@@ -2094,6 +2246,9 @@ function verificationStationSelectionCase() {
 export function createBeamValidationCases() {
   return [
     simplySupportedUniformLoadCase(),
+    fixedFixedUniformLoadCase(),
+    continuousUniformLoadCase(),
+    continuousUniformLoadCase({ unequal: true }),
     steelClassificationCase(),
     sciP364RestrainedBeamExampleCase(),
     sciP364UnrestrainedBeamLtbCase(),

@@ -91,6 +91,175 @@ function backSubstitute(upperMatrix, rhs) {
   return solution;
 }
 
+function eliminateAndSolve({
+  upperMatrix,
+  transformedRhs,
+  scale,
+  singularityTolerance,
+  includeDiagnostics = false,
+}) {
+  const size = upperMatrix.length;
+  const rowPermutation = includeDiagnostics
+    ? Array.from({ length: size }, (_, index) => index)
+    : null;
+  const pivots = includeDiagnostics ? [] : null;
+  let determinantSign = 1;
+
+  for (let pivot = 0; pivot < size; pivot += 1) {
+    let pivotRow = pivot;
+    let pivotMagnitude = Math.abs(upperMatrix[pivot][pivot]);
+
+    for (let row = pivot + 1; row < size; row += 1) {
+      const candidateMagnitude = Math.abs(upperMatrix[row][pivot]);
+
+      if (candidateMagnitude > pivotMagnitude) {
+        pivotRow = row;
+        pivotMagnitude = candidateMagnitude;
+      }
+    }
+
+    if (pivotMagnitude <= singularityTolerance * scale) {
+      throw new Error(
+        `DenseLinearSolver detected a singular matrix near pivot ${pivot + 1}.`,
+      );
+    }
+
+    if (pivotRow !== pivot) {
+      [upperMatrix[pivot], upperMatrix[pivotRow]] = [
+        upperMatrix[pivotRow],
+        upperMatrix[pivot],
+      ];
+      [transformedRhs[pivot], transformedRhs[pivotRow]] = [
+        transformedRhs[pivotRow],
+        transformedRhs[pivot],
+      ];
+
+      if (includeDiagnostics) {
+        [rowPermutation[pivot], rowPermutation[pivotRow]] = [
+          rowPermutation[pivotRow],
+          rowPermutation[pivot],
+        ];
+        determinantSign *= -1;
+      }
+    }
+
+    const pivotValue = upperMatrix[pivot][pivot];
+
+    if (includeDiagnostics) {
+      pivots.push(pivotValue);
+    }
+
+    for (let row = pivot + 1; row < size; row += 1) {
+      const factor = upperMatrix[row][pivot] / pivotValue;
+      upperMatrix[row][pivot] = 0;
+
+      for (let column = pivot + 1; column < size; column += 1) {
+        upperMatrix[row][column] -= factor * upperMatrix[pivot][column];
+      }
+
+      transformedRhs[row] -= factor * transformedRhs[pivot];
+    }
+  }
+
+  return {
+    solution: backSubstitute(upperMatrix, transformedRhs),
+    rowPermutation,
+    pivots,
+    determinantSign,
+  };
+}
+
+export class DenseLUFactorization {
+  constructor({ lu, rowPermutation, scale, singularityTolerance }) {
+    this.lu = lu;
+    this.rowPermutation = rowPermutation;
+    this.scale = scale;
+    this.singularityTolerance = singularityTolerance;
+    this.size = lu.length;
+    this.pivots = lu.map((row, index) => row[index]);
+  }
+
+  solve(rhs) {
+    const originalRhs = cloneVector(rhs, this.size);
+    const transformedRhs = this.rowPermutation.map(
+      (originalRow) => originalRhs[originalRow],
+    );
+
+    for (let row = 0; row < this.size; row += 1) {
+      for (let column = 0; column < row; column += 1) {
+        transformedRhs[row] -= this.lu[row][column] * transformedRhs[column];
+      }
+    }
+
+    return backSubstitute(this.lu, transformedRhs);
+  }
+
+  solveMany(rightHandSides) {
+    if (!Array.isArray(rightHandSides)) {
+      throw new Error("DenseLUFactorization solveMany requires an array of vectors.");
+    }
+
+    return rightHandSides.map((rhs) => this.solve(rhs));
+  }
+}
+
+function factorizeDenseMatrix(matrix, singularityTolerance) {
+  const lu = cloneDenseSquareMatrix(matrix);
+  const size = lu.length;
+  const scale = matrixScale(lu);
+  const rowPermutation = Array.from({ length: size }, (_, index) => index);
+
+  if (scale === 0) {
+    throw new Error("DenseLinearSolver detected a singular matrix with zero stiffness scale.");
+  }
+
+  for (let pivot = 0; pivot < size; pivot += 1) {
+    let pivotRow = pivot;
+    let pivotMagnitude = Math.abs(lu[pivot][pivot]);
+
+    for (let row = pivot + 1; row < size; row += 1) {
+      const candidateMagnitude = Math.abs(lu[row][pivot]);
+
+      if (candidateMagnitude > pivotMagnitude) {
+        pivotRow = row;
+        pivotMagnitude = candidateMagnitude;
+      }
+    }
+
+    if (pivotMagnitude <= singularityTolerance * scale) {
+      throw new Error(
+        `DenseLinearSolver detected a singular matrix near pivot ${pivot + 1}.`,
+      );
+    }
+
+    if (pivotRow !== pivot) {
+      [lu[pivot], lu[pivotRow]] = [lu[pivotRow], lu[pivot]];
+      [rowPermutation[pivot], rowPermutation[pivotRow]] = [
+        rowPermutation[pivotRow],
+        rowPermutation[pivot],
+      ];
+    }
+
+    const pivotValue = lu[pivot][pivot];
+
+    for (let row = pivot + 1; row < size; row += 1) {
+      const factor = lu[row][pivot] / pivotValue;
+      lu[row][pivot] = factor;
+
+      for (let column = pivot + 1; column < size; column += 1) {
+        lu[row][column] -= factor * lu[pivot][column];
+      }
+    }
+  }
+
+  return new DenseLUFactorization({
+    lu,
+    rowPermutation,
+    scale,
+    singularityTolerance,
+  });
+}
+
 export class DenseLinearSolver {
   constructor({
     singularityTolerance = 1e-12,
@@ -115,7 +284,24 @@ export class DenseLinearSolver {
   }
 
   solve(matrix, rhs) {
-    return this.solveWithDiagnostics(matrix, rhs).solution;
+    const upperMatrix = cloneDenseSquareMatrix(matrix);
+    const transformedRhs = cloneVector(rhs, upperMatrix.length);
+    const scale = matrixScale(upperMatrix);
+
+    if (scale === 0) {
+      throw new Error("DenseLinearSolver detected a singular matrix with zero stiffness scale.");
+    }
+
+    return eliminateAndSolve({
+      upperMatrix,
+      transformedRhs,
+      scale,
+      singularityTolerance: this.singularityTolerance,
+    }).solution;
+  }
+
+  factorize(matrix) {
+    return factorizeDenseMatrix(matrix, this.singularityTolerance);
   }
 
   solveWithDiagnostics(matrix, rhs) {
@@ -130,61 +316,18 @@ export class DenseLinearSolver {
       throw new Error("DenseLinearSolver detected a singular matrix with zero stiffness scale.");
     }
 
-    const rowPermutation = Array.from({ length: size }, (_, index) => index);
-    const pivots = [];
-    let determinantSign = 1;
-
-    for (let pivot = 0; pivot < size; pivot += 1) {
-      let pivotRow = pivot;
-      let pivotMagnitude = Math.abs(upperMatrix[pivot][pivot]);
-
-      for (let row = pivot + 1; row < size; row += 1) {
-        const candidateMagnitude = Math.abs(upperMatrix[row][pivot]);
-
-        if (candidateMagnitude > pivotMagnitude) {
-          pivotRow = row;
-          pivotMagnitude = candidateMagnitude;
-        }
-      }
-
-      if (pivotMagnitude <= this.singularityTolerance * scale) {
-        throw new Error(
-          `DenseLinearSolver detected a singular matrix near pivot ${pivot + 1}.`,
-        );
-      }
-
-      if (pivotRow !== pivot) {
-        [upperMatrix[pivot], upperMatrix[pivotRow]] = [
-          upperMatrix[pivotRow],
-          upperMatrix[pivot],
-        ];
-        [transformedRhs[pivot], transformedRhs[pivotRow]] = [
-          transformedRhs[pivotRow],
-          transformedRhs[pivot],
-        ];
-        [rowPermutation[pivot], rowPermutation[pivotRow]] = [
-          rowPermutation[pivotRow],
-          rowPermutation[pivot],
-        ];
-        determinantSign *= -1;
-      }
-
-      const pivotValue = upperMatrix[pivot][pivot];
-      pivots.push(pivotValue);
-
-      for (let row = pivot + 1; row < size; row += 1) {
-        const factor = upperMatrix[row][pivot] / pivotValue;
-        upperMatrix[row][pivot] = 0;
-
-        for (let column = pivot + 1; column < size; column += 1) {
-          upperMatrix[row][column] -= factor * upperMatrix[pivot][column];
-        }
-
-        transformedRhs[row] -= factor * transformedRhs[pivot];
-      }
-    }
-
-    const solution = backSubstitute(upperMatrix, transformedRhs);
+    const {
+      solution,
+      rowPermutation,
+      pivots,
+      determinantSign,
+    } = eliminateAndSolve({
+      upperMatrix,
+      transformedRhs,
+      scale,
+      singularityTolerance: this.singularityTolerance,
+      includeDiagnostics: true,
+    });
     const absPivots = pivots.map((value) => Math.abs(value));
     const minAbsPivot = Math.min(...absPivots);
     const maxAbsPivot = Math.max(...absPivots);

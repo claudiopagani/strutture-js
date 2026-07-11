@@ -1,4 +1,8 @@
 import { DenseLinearSolver } from "../../../domain/math/DenseLinearSolver.js";
+import {
+  createZeroMatrix,
+  createZeroVector,
+} from "../../../domain/math/arrayLinearAlgebra.js";
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
 
 const FEM_UNITS = Object.freeze({ force: "kN", length: "m" });
@@ -40,14 +44,6 @@ const PLASTIC_GENERALIZED_DOF_DEFINITIONS = Object.freeze({
     },
   }),
 });
-
-function createZeroMatrix(size) {
-  return Array.from({ length: size }, () => new Array(size).fill(0));
-}
-
-function createZeroVector(size) {
-  return new Array(size).fill(0);
-}
 
 function transpose(matrix) {
   return matrix[0].map((_, column) => matrix.map((row) => row[column]));

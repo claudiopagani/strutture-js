@@ -1,4 +1,5 @@
 import { LinearStaticSolver2D } from "../../../domain/fem/LinearStaticSolver2D.js";
+import { createElementLoadIndex } from "../../../domain/fem/ElementLoadIndex.js";
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
 import {
   SingleBeamModel,
@@ -8,6 +9,10 @@ import { SingleBeamFemBuilder } from "../../../domain/beams/SingleBeamFemBuilder
 import { sampleBeamResult } from "../../../domain/beams/SingleBeamResults.js";
 
 const FEM_UNITS = Object.freeze({ force: "kN", length: "m" });
+
+function nowMilliseconds() {
+  return globalThis.performance?.now?.() ?? Date.now();
+}
 
 /**
  * Iterative secant-stiffness solver for hyperstatic RC beams.
@@ -32,6 +37,28 @@ export class HyperstaticDeflectionIteration {
     tolerance = 1e-4,
     maxIterations = 50,
   } = {}) {
+    if (
+      !Number.isFinite(relaxationFactor) ||
+      relaxationFactor <= 0 ||
+      relaxationFactor > 1
+    ) {
+      throw new Error(
+        "HyperstaticDeflectionIteration relaxationFactor must be in (0, 1].",
+      );
+    }
+
+    if (!Number.isFinite(tolerance) || tolerance <= 0) {
+      throw new Error(
+        "HyperstaticDeflectionIteration tolerance must be positive.",
+      );
+    }
+
+    if (!Number.isInteger(maxIterations) || maxIterations <= 0) {
+      throw new Error(
+        "HyperstaticDeflectionIteration maxIterations must be a positive integer.",
+      );
+    }
+
     this.femBuilder = femBuilder;
     this.relaxationFactor = relaxationFactor;
     this.tolerance = tolerance;
@@ -47,7 +74,23 @@ export class HyperstaticDeflectionIteration {
    * @param {SectionMomentCurvatureCurve} params.curve  Precomputed M-κ curve
    * @returns {Object}  { converged, iterations, momentSamples, displacementSamples, femModel, solution }
    */
-  iterate({ model, combination, curve } = {}) {
+  iterate({ model, combination, curve, curveResolver = null } = {}) {
+    const startedAt = nowMilliseconds();
+    const curveLookupCountAtStart = curve?.lookupCount ?? 0;
+    const performance = {
+      elapsedMs: 0,
+      femSolveCount: 0,
+      femSolveElapsedMs: 0,
+      curveLookupCount: 0,
+    };
+    const finalizePerformance = () => {
+      performance.elapsedMs = nowMilliseconds() - startedAt;
+      performance.curveLookupCount =
+        (curve?.lookupCount ?? curveLookupCountAtStart) -
+        curveLookupCountAtStart;
+
+      return { ...performance };
+    };
     const beamModel =
       model instanceof SingleBeamModel ? model : new SingleBeamModel(model);
 
@@ -79,6 +122,7 @@ export class HyperstaticDeflectionIteration {
         displacementSamples: [],
         femModel: null,
         solution: null,
+        performance: finalizePerformance(),
       };
     }
 
@@ -90,13 +134,27 @@ export class HyperstaticDeflectionIteration {
 
     // 2. Initial EI values from the model's elements (gross).
     const elements = femModel.elements ?? [];
+    const elementLoadIndex = createElementLoadIndex(femModel.loads ?? []);
     const initialEI = elements.map((el) => el.flexuralRigidity);
     let currentEI = [...initialEI];
 
     // 3. First linear solve.
     const solver = new LinearStaticSolver2D();
-    let solution = solver.solve(femModel);
-    let prevMoments = this._extractMidMoments(femModel, solution);
+    const solveFem = () => {
+      const solveStartedAt = nowMilliseconds();
+      const solved = solver.solve(femModel, { includeDiagnostics: false });
+
+      performance.femSolveCount += 1;
+      performance.femSolveElapsedMs += nowMilliseconds() - solveStartedAt;
+
+      return solved;
+    };
+    let solution = solveFem();
+    let previousActions = this._extractMidActions(
+      femModel,
+      solution,
+      elementLoadIndex,
+    );
 
     // 4. No iteration needed for isostatic beams (single element edge case already handled).
     if (elements.length === 0) {
@@ -107,6 +165,7 @@ export class HyperstaticDeflectionIteration {
         displacementSamples: [],
         femModel,
         solution,
+        performance: finalizePerformance(),
       };
     }
 
@@ -117,12 +176,22 @@ export class HyperstaticDeflectionIteration {
     for (let iter = 0; iter < this.maxIterations; iter += 1) {
       iterations = iter + 1;
       // Look up secant EI for each element.
-      const targetEI = prevMoments.map((m) =>
-        curveToFemUnits.convert(curve.lookupEI(femToCurveUnits.moment(m)), {
+      const targetEI = previousActions.map((action, index) => {
+        const moment = femToCurveUnits.moment(action.m);
+        const axialForce = femToCurveUnits.force(action.n);
+        const resolvedCurve =
+          curveResolver?.({
+            element: elements[index],
+            index,
+            axialForce,
+            moment,
+          }) ?? curve;
+
+        return curveToFemUnits.convert(resolvedCurve.lookupEI(moment), {
           forceExponent: 1,
           lengthExponent: 2,
-        }),
-      );
+        });
+      });
 
       // Apply relaxation and update elements.
       let maxRelChange = 0;
@@ -140,13 +209,20 @@ export class HyperstaticDeflectionIteration {
       }
 
       // Re-solve with updated rigidities.
-      solution = solver.solve(femModel);
-      const newMoments = this._extractMidMoments(femModel, solution);
+      solution = solveFem();
+      const newActions = this._extractMidActions(
+        femModel,
+        solution,
+        elementLoadIndex,
+      );
 
       // Check convergence on moments.
-      const momentChange = this._relativeChange(prevMoments, newMoments);
+      const momentChange = this._relativeChange(
+        previousActions.map((action) => action.m),
+        newActions.map((action) => action.m),
+      );
 
-      prevMoments = newMoments;
+      previousActions = newActions;
 
       if (momentChange < this.tolerance && maxRelChange < this.tolerance * 10) {
         converged = true;
@@ -161,6 +237,7 @@ export class HyperstaticDeflectionIteration {
       solution,
       sectionProperties: femModel.sectionProperties,
       femUnits: FEM_UNITS,
+      elementLoadIndex,
     });
 
     return {
@@ -177,6 +254,8 @@ export class HyperstaticDeflectionIteration {
       geometry: result.geometry ?? null,
       femModel,
       solution,
+      performance: finalizePerformance(),
+      relaxationFactor: this.relaxationFactor,
     };
   }
 
@@ -187,11 +266,25 @@ export class HyperstaticDeflectionIteration {
   /**
    * Extract the bending moment at the midpoint of each element.
    */
-  _extractMidMoments(femModel, solution) {
+  _extractMidMoments(
+    femModel,
+    solution,
+    elementLoadIndex = createElementLoadIndex(femModel.loads ?? []),
+  ) {
+    return this._extractMidActions(
+      femModel,
+      solution,
+      elementLoadIndex,
+    ).map((action) => action.m);
+  }
+
+  _extractMidActions(
+    femModel,
+    solution,
+    elementLoadIndex = createElementLoadIndex(femModel.loads ?? []),
+  ) {
     return (femModel.elements ?? []).map((element) => {
-      const elementLoads = (femModel.loads ?? []).filter(
-        (load) => load.element?.id === element.id,
-      );
+      const elementLoads = elementLoadIndex.get(element);
       const midStation = element.length() / 2;
       const samples = element.sampleInternalForces({
         displacements: solution.displacements,
@@ -199,7 +292,10 @@ export class HyperstaticDeflectionIteration {
         loads: elementLoads,
         stations: [midStation],
       });
-      return samples[0]?.m ?? 0;
+      return {
+        m: samples[0]?.m ?? 0,
+        n: samples[0]?.n ?? 0,
+      };
     });
   }
 

@@ -44,6 +44,20 @@ export class DofRegistry {
     this.nodeIdSet = new Set();
   }
 
+  reset() {
+    this.dofIds.length = 0;
+    this.dofIndexById.clear();
+    this.descriptorById.clear();
+    this.nodeIds.length = 0;
+    this.nodeIdSet.clear();
+
+    return this;
+  }
+
+  createEmpty() {
+    return new DofRegistry({ dofsPerNode: this.dofsPerNode });
+  }
+
   registerNode(nodeOrId, dofs = this.dofsPerNode) {
     const nodeId = resolveNodeId(nodeOrId);
 

@@ -89,7 +89,7 @@ export class SingleBeamAnalysis {
     const solver = new LinearStaticSolver2D({
       linearSolver: this.linearSolver ?? undefined,
     });
-    const solution = solver.solve(femModel);
+    const solution = solver.solve(femModel, { includeDiagnostics: false });
 
     return {
       id: context.loadCaseId ?? context.combinationId ?? model.id,
