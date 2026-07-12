@@ -1,4 +1,4 @@
-// strutture-js v0.3.6 — bundled ESM
+// strutture-js v0.3.7 — bundled ESM
 var __defProp = Object.defineProperty;
 var __typeError = (msg) => {
   throw TypeError(msg);
@@ -46300,6 +46300,9 @@ var HyperstaticDeflectionIteration = class {
     }
     let converged = false;
     let iterations = 0;
+    let effectiveRelaxationFactor = this.relaxationFactor;
+    let previousStiffnessResidual = null;
+    let adaptiveAdjustmentCount = 0;
     for (let iter = 0; iter < this.maxIterations; iter += 1) {
       iterations = iter + 1;
       const targetEI = previousActions.map((action, index) => {
@@ -46317,9 +46320,36 @@ var HyperstaticDeflectionIteration = class {
           lengthExponent: 2
         });
       });
+      const stiffnessResidual = targetEI.map(
+        (value, index) => value - currentEI[index]
+      );
+      if (previousStiffnessResidual) {
+        const residualDifference = stiffnessResidual.map(
+          (value, index) => value - previousStiffnessResidual[index]
+        );
+        const denominator = residualDifference.reduce(
+          (sum, value) => sum + value ** 2,
+          0
+        );
+        const numerator = previousStiffnessResidual.reduce(
+          (sum, value, index) => sum + value * residualDifference[index],
+          0
+        );
+        const aitkenFactor = denominator > 0 ? -effectiveRelaxationFactor * numerator / denominator : effectiveRelaxationFactor;
+        if (Number.isFinite(aitkenFactor) && aitkenFactor > 0) {
+          const nextFactor = Math.min(
+            this.relaxationFactor,
+            Math.max(0.05, aitkenFactor)
+          );
+          if (Math.abs(nextFactor - effectiveRelaxationFactor) > 1e-12) {
+            adaptiveAdjustmentCount += 1;
+          }
+          effectiveRelaxationFactor = nextFactor;
+        }
+      }
       let maxRelChange = 0;
       for (let i = 0; i < elements.length; i += 1) {
-        const newEI = this.relaxationFactor * targetEI[i] + (1 - this.relaxationFactor) * currentEI[i];
+        const newEI = effectiveRelaxationFactor * targetEI[i] + (1 - effectiveRelaxationFactor) * currentEI[i];
         const relChange = currentEI[i] !== 0 ? Math.abs(newEI - currentEI[i]) / Math.abs(currentEI[i]) : 0;
         maxRelChange = Math.max(maxRelChange, relChange);
         currentEI[i] = newEI;
@@ -46335,6 +46365,7 @@ var HyperstaticDeflectionIteration = class {
         previousActions.map((action) => action.m),
         newActions.map((action) => action.m)
       );
+      previousStiffnessResidual = stiffnessResidual;
       previousActions = newActions;
       if (momentChange < this.tolerance && maxRelChange < this.tolerance * 10) {
         converged = true;
@@ -46364,7 +46395,9 @@ var HyperstaticDeflectionIteration = class {
       femModel,
       solution,
       performance: finalizePerformance(),
-      relaxationFactor: this.relaxationFactor
+      relaxationFactor: this.relaxationFactor,
+      effectiveRelaxationFactor,
+      adaptiveAdjustmentCount
     };
   }
   // -------------------------------------------------------------------
@@ -47016,7 +47049,7 @@ var CrackedSectionDeflectionAnalysis = class {
     beamModel = null,
     hyperstatic = null
   } = {}) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q, _R, _S, _T, _U, _V, _W, _X, _Y, _Z, __, _$, _aa, _ba, _ca, _da, _ea, _fa, _ga, _ha, _ia, _ja, _ka, _la, _ma, _na, _oa, _pa;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q, _R, _S, _T, _U, _V, _W, _X, _Y, _Z, __, _$, _aa, _ba, _ca, _da, _ea, _fa, _ga, _ha, _ia, _ja, _ka, _la, _ma, _na, _oa, _pa, _qa, _ra, _sa;
     if (!analysisResult || !(section == null ? void 0 : section.concreteSection)) {
       return new VerificationResult({
         applicationId: "rc-cracked-deflection",
@@ -47489,8 +47522,10 @@ var CrackedSectionDeflectionAnalysis = class {
         converged: Boolean(iteratedResult.converged),
         iterations: iteratedResult.iterations,
         relaxationFactor: (_da = iteratedResult.relaxationFactor) != null ? _da : hyperstaticIteration.relaxationFactor,
+        effectiveRelaxationFactor: (_fa = (_ea = iteratedResult.effectiveRelaxationFactor) != null ? _ea : iteratedResult.relaxationFactor) != null ? _fa : hyperstaticIteration.relaxationFactor,
+        adaptiveAdjustmentCount: (_ga = iteratedResult.adaptiveAdjustmentCount) != null ? _ga : 0,
         method: "secant-stiffness-moment-curvature",
-        momentCurvePointCount: (_ea = iteratedCurve == null ? void 0 : iteratedCurve.pointCount) != null ? _ea : null,
+        momentCurvePointCount: (_ha = iteratedCurve == null ? void 0 : iteratedCurve.pointCount) != null ? _ha : null,
         axialForceCurveCount: iteratedCurveKeys.size,
         axialForceCurveTolerance,
         compatibleDeflectionSource: "iterated-fem-shape-functions",
@@ -47498,14 +47533,16 @@ var CrackedSectionDeflectionAnalysis = class {
         curveBuildElapsedMs: combinationCurveBuildElapsedMs,
         curveSectionSolveCount: combinationCurveSectionSolveCount,
         curveLookupCount,
-        femSolveCount: (_ga = (_fa = iteratedResult.performance) == null ? void 0 : _fa.femSolveCount) != null ? _ga : 0,
-        femSolveElapsedMs: (_ia = (_ha = iteratedResult.performance) == null ? void 0 : _ha.femSolveElapsedMs) != null ? _ia : 0,
-        iterationElapsedMs: (_ka = (_ja = iteratedResult.performance) == null ? void 0 : _ja.elapsedMs) != null ? _ka : 0
+        femSolveCount: (_ja = (_ia = iteratedResult.performance) == null ? void 0 : _ia.femSolveCount) != null ? _ja : 0,
+        femSolveElapsedMs: (_la = (_ka = iteratedResult.performance) == null ? void 0 : _ka.femSolveElapsedMs) != null ? _la : 0,
+        iterationElapsedMs: (_na = (_ma = iteratedResult.performance) == null ? void 0 : _ma.elapsedMs) != null ? _na : 0
       } : {
         active: false,
         converged: null,
         iterations: 0,
         relaxationFactor: null,
+        effectiveRelaxationFactor: null,
+        adaptiveAdjustmentCount: 0,
         method: null,
         momentCurvePointCount: null,
         axialForceCurveCount: 0,
@@ -47522,7 +47559,7 @@ var CrackedSectionDeflectionAnalysis = class {
         limitRatio,
         span: round2(span),
         deflectionLimit: round2(limit),
-        maxAbsDeflection: round2(Math.abs((_la = governing2 == null ? void 0 : governing2.deflection) != null ? _la : 0)),
+        maxAbsDeflection: round2(Math.abs((_oa = governing2 == null ? void 0 : governing2.deflection) != null ? _oa : 0)),
         governingStation: round2(governing2 == null ? void 0 : governing2.station),
         mcr: round2(mcr),
         mcrPositive: round2(crackingThresholds.positive),
@@ -47557,9 +47594,9 @@ var CrackedSectionDeflectionAnalysis = class {
       applicationId: "rc-cracked-deflection",
       status: checks.length > 0 && checks.every((check) => check.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       summary: "RC service deflection from cracked/uncracked curvature integration.",
-      utilizationRatio: (_ma = governing == null ? void 0 : governing.utilizationRatio) != null ? _ma : null,
-      demand: (_na = governing == null ? void 0 : governing.demand) != null ? _na : null,
-      capacity: (_oa = governing == null ? void 0 : governing.capacity) != null ? _oa : null,
+      utilizationRatio: (_pa = governing == null ? void 0 : governing.utilizationRatio) != null ? _pa : null,
+      demand: (_qa = governing == null ? void 0 : governing.demand) != null ? _qa : null,
+      capacity: (_ra = governing == null ? void 0 : governing.capacity) != null ? _ra : null,
       checks,
       outputs: {
         beamId,
@@ -47582,7 +47619,7 @@ var CrackedSectionDeflectionAnalysis = class {
         code: this.code,
         beamId,
         method: "curvature-integration-tension-stiffening-mvp",
-        governingCheckId: (_pa = governing == null ? void 0 : governing.id) != null ? _pa : null,
+        governingCheckId: (_sa = governing == null ? void 0 : governing.id) != null ? _sa : null,
         creepCoefficient: phi,
         includeShrinkage: false,
         ...this.metadata

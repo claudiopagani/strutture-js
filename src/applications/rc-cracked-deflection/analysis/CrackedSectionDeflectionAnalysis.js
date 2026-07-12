@@ -856,6 +856,12 @@ export class CrackedSectionDeflectionAnalysis {
             relaxationFactor:
               iteratedResult.relaxationFactor ??
               hyperstaticIteration.relaxationFactor,
+            effectiveRelaxationFactor:
+              iteratedResult.effectiveRelaxationFactor ??
+              iteratedResult.relaxationFactor ??
+              hyperstaticIteration.relaxationFactor,
+            adaptiveAdjustmentCount:
+              iteratedResult.adaptiveAdjustmentCount ?? 0,
             method: "secant-stiffness-moment-curvature",
             momentCurvePointCount: iteratedCurve?.pointCount ?? null,
             axialForceCurveCount: iteratedCurveKeys.size,
@@ -877,6 +883,8 @@ export class CrackedSectionDeflectionAnalysis {
             converged: null,
             iterations: 0,
             relaxationFactor: null,
+            effectiveRelaxationFactor: null,
+            adaptiveAdjustmentCount: 0,
             method: null,
             momentCurvePointCount: null,
             axialForceCurveCount: 0,

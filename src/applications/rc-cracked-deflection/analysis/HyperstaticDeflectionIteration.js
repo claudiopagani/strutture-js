@@ -172,6 +172,9 @@ export class HyperstaticDeflectionIteration {
     // 5. Iterate.
     let converged = false;
     let iterations = 0;
+    let effectiveRelaxationFactor = this.relaxationFactor;
+    let previousStiffnessResidual = null;
+    let adaptiveAdjustmentCount = 0;
 
     for (let iter = 0; iter < this.maxIterations; iter += 1) {
       iterations = iter + 1;
@@ -193,12 +196,46 @@ export class HyperstaticDeflectionIteration {
         });
       });
 
+      // Vector Aitken relaxation stabilizes the fixed-point iteration when
+      // elements close to Mcr repeatedly enter and leave the cracked branch.
+      const stiffnessResidual = targetEI.map(
+        (value, index) => value - currentEI[index],
+      );
+      if (previousStiffnessResidual) {
+        const residualDifference = stiffnessResidual.map(
+          (value, index) => value - previousStiffnessResidual[index],
+        );
+        const denominator = residualDifference.reduce(
+          (sum, value) => sum + value ** 2,
+          0,
+        );
+        const numerator = previousStiffnessResidual.reduce(
+          (sum, value, index) => sum + value * residualDifference[index],
+          0,
+        );
+        const aitkenFactor = denominator > 0
+          ? (-effectiveRelaxationFactor * numerator) / denominator
+          : effectiveRelaxationFactor;
+
+        if (Number.isFinite(aitkenFactor) && aitkenFactor > 0) {
+          const nextFactor = Math.min(
+            this.relaxationFactor,
+            Math.max(0.05, aitkenFactor),
+          );
+
+          if (Math.abs(nextFactor - effectiveRelaxationFactor) > 1e-12) {
+            adaptiveAdjustmentCount += 1;
+          }
+          effectiveRelaxationFactor = nextFactor;
+        }
+      }
+
       // Apply relaxation and update elements.
       let maxRelChange = 0;
       for (let i = 0; i < elements.length; i += 1) {
         const newEI =
-          this.relaxationFactor * targetEI[i] +
-          (1 - this.relaxationFactor) * currentEI[i];
+          effectiveRelaxationFactor * targetEI[i] +
+          (1 - effectiveRelaxationFactor) * currentEI[i];
         const relChange =
           currentEI[i] !== 0
             ? Math.abs(newEI - currentEI[i]) / Math.abs(currentEI[i])
@@ -222,6 +259,7 @@ export class HyperstaticDeflectionIteration {
         newActions.map((action) => action.m),
       );
 
+      previousStiffnessResidual = stiffnessResidual;
       previousActions = newActions;
 
       if (momentChange < this.tolerance && maxRelChange < this.tolerance * 10) {
@@ -256,6 +294,8 @@ export class HyperstaticDeflectionIteration {
       solution,
       performance: finalizePerformance(),
       relaxationFactor: this.relaxationFactor,
+      effectiveRelaxationFactor,
+      adaptiveAdjustmentCount,
     };
   }
 

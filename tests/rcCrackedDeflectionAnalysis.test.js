@@ -3,8 +3,12 @@ import assert from "node:assert/strict";
 
 import {
   createNTC2018BeamCombinations,
+  createNTC2018ConcreteMaterial,
+  createNTC2018ReinforcementSteelMaterial,
   CrackedSectionDeflectionAnalysis,
+  RectangularSection,
   ReinforcedConcreteSection,
+  ReinforcementBar,
   runScaRcDeflectionAnalysis,
   SectionMomentCurvatureCurve,
   SingleBeamAnalysis,
@@ -37,6 +41,94 @@ function analyzeUniformServiceLoad({
     serviceability,
     output,
   });
+}
+
+function createScaDefaultDeflectionSection() {
+  const units = { force: "N", length: "mm" };
+  const concreteMaterial = createNTC2018ConcreteMaterial({
+    strengthClass: "C25/30",
+    units,
+  });
+  const reinforcementMaterial = createNTC2018ReinforcementSteelMaterial({
+    grade: "B450C",
+    units,
+  });
+  const concreteSection = new RectangularSection({
+    width: 300,
+    height: 500,
+    units,
+  });
+  const reinforcementBars = [
+    ...[40, 150, 260].map(
+      (z) =>
+        new ReinforcementBar({
+          diameter: 16,
+          material: reinforcementMaterial,
+          y: 40,
+          z,
+          units,
+        }),
+    ),
+    ...[40, 260].map(
+      (z) =>
+        new ReinforcementBar({
+          diameter: 14,
+          material: reinforcementMaterial,
+          y: 460,
+          z,
+          units,
+        }),
+    ),
+  ];
+  const section = new ReinforcedConcreteSection({
+    concreteSection,
+    reinforcementBars,
+    concreteMaterial,
+    reinforcementMaterial,
+    referenceModularRatio: 15,
+    units,
+  });
+
+  return { section, concreteMaterial, reinforcementMaterial, units };
+}
+
+function transformedBeamSectionProvider({
+  section,
+  reinforcementMaterial,
+  modularRatio,
+  units,
+}) {
+  const concrete = section.concreteSection;
+  const transformedBars = section.getReinforcementBars().map((bar) => ({
+    area: modularRatio * bar.area,
+    y: bar.y,
+  }));
+  const area =
+    concrete.area +
+    transformedBars.reduce((sum, bar) => sum + bar.area, 0);
+  const centroid =
+    (concrete.area * concrete.centroidY +
+      transformedBars.reduce((sum, bar) => sum + bar.area * bar.y, 0)) /
+    area;
+  const inertia =
+    concrete.inertiaY +
+    concrete.area * (concrete.centroidY - centroid) ** 2 +
+    transformedBars.reduce(
+      (sum, bar) => sum + bar.area * (bar.y - centroid) ** 2,
+      0,
+    );
+  const concreteModulus =
+    reinforcementMaterial.elasticModulus / modularRatio;
+
+  return {
+    getElasticBeamProperties() {
+      return {
+        axialRigidity: concreteModulus * area,
+        flexuralRigidity: concreteModulus * inertia,
+        units,
+      };
+    },
+  };
 }
 
 test("RC deflection remains entirely uncracked below transformed-section Mcr", () => {
@@ -383,6 +475,94 @@ test("RC hyperstatic deflection keeps gross EI and diagnostics below both Mcr th
   assert.ok(combination.points.every((point) => point.cracked === false));
   assert.equal(result.outputs.performance.serviceSolveCount, 0);
   assert.equal(result.outputs.performance.curveSectionSolveCount, 0);
+});
+
+test("RC adaptive relaxation converges for the SCA default three-support beam at q 20", () => {
+  const {
+    section,
+    concreteMaterial,
+    reinforcementMaterial,
+    units,
+  } = createScaDefaultDeflectionSection();
+  const effectiveModularRatio = 15 * (1 + 2);
+  const beamModel = {
+    units: { force: "kN", length: "m" },
+    geometry: {
+      start: { x: 0, y: 0 },
+      end: { x: 10, y: 0 },
+    },
+    sectionProvider: transformedBeamSectionProvider({
+      section,
+      reinforcementMaterial,
+      modularRatio: effectiveModularRatio,
+      units,
+    }),
+    supports: [
+      { id: "left", position: 0, type: "hinge" },
+      { id: "middle", position: 5, type: "roller" },
+      { id: "right", position: 10, type: "roller" },
+    ],
+    loads: [
+      {
+        id: "q",
+        loadCaseId: "q",
+        type: "uniform",
+        value: -20,
+        direction: "global-y",
+        from: 0,
+        to: 10,
+      },
+    ],
+    combinations: [
+      {
+        id: "sca-q20",
+        combinationType: "SLE_QUASI_PERMANENT",
+        limitState: "SLE",
+        serviceCombination: "quasiPermanent",
+        factors: { q: 1 },
+        metadata: {
+          limitState: "SLE",
+          combinationType: "SLE_QUASI_PERMANENT",
+        },
+      },
+    ],
+    discretization: { elementCount: 32 },
+    verificationStations: { count: 33, mode: "combined" },
+  };
+  const analysisResult = new SingleBeamAnalysis().analyze(beamModel);
+  const result = new CrackedSectionDeflectionAnalysis().analyze({
+    analysisResult,
+    beamModel,
+    section,
+    concreteMaterial,
+    reinforcementMaterial,
+    mesh: { targetFiberCount: 200 },
+    performanceProfile: "interactive",
+    serviceability: {
+      deflection: {
+        modularRatio: 15,
+        creepCoefficient: 2,
+        betaShortTerm: 1,
+        betaLongTerm: 0.5,
+        maxStationsPerCombination: 33,
+        maxOutputPointsPerCombination: 33,
+      },
+    },
+  });
+  const combination = result.outputs.combinations[0];
+
+  assert.equal(combination.hyperstatic.converged, true);
+  assert.ok(combination.hyperstatic.iterations < 50);
+  assert.ok(combination.hyperstatic.adaptiveAdjustmentCount > 0);
+  assert.ok(
+    combination.hyperstatic.effectiveRelaxationFactor > 0 &&
+      combination.hyperstatic.effectiveRelaxationFactor <= 0.5,
+  );
+  assert.ok(combination.crackedPointCount > 0);
+  assert.equal(
+    result.warnings.some((warning) => warning.includes("did not converge")),
+    false,
+  );
 });
 
 test("RC hyperstatic exact Mcr threshold remains stable near cracking", () => {
