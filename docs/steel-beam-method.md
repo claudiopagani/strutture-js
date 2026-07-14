@@ -348,7 +348,7 @@ Il check riporta:
 * freccia massima;
 * limite adottato.
 
-## Report e frontend
+## Report e consumer
 
 Il report JSON espone ogni verifica nel formato comune:
 
@@ -364,7 +364,7 @@ Il report JSON espone ogni verifica nel formato comune:
 }
 ```
 
-I metadata dei checks acciaio includono grandezze utili per il frontend:
+I metadata dei checks acciaio includono grandezze utili per i consumer:
 
 * `fyd`;
 * `gammaM0`;

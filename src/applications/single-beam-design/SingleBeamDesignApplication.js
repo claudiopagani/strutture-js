@@ -105,7 +105,7 @@ export class SingleBeamDesignApplication extends StructuralApplication {
         maturity: "mvp",
         plannedCapabilities: [
           "JSON and Markdown reporting",
-          "frontend-ready DTOs",
+          "consumer-ready DTOs",
           "material-specific verification adapters",
           "example library for simple beams",
         ],

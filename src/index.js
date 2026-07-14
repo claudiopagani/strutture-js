@@ -231,6 +231,8 @@ export {
   HyperstaticDeflectionIteration,
   RC_DEFLECTION_PERFORMANCE_PROFILES,
   SectionMomentCurvatureCurve,
+  createServiceDeflectionAnalysisResult,
+  runRcServiceDeflectionAnalysis,
   createScaServiceDeflectionAnalysisResult,
   runScaRcDeflectionAnalysis,
   ReinforcedConcreteBeamVerification,

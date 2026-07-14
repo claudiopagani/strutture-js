@@ -16,6 +16,7 @@ test("package root export exposes the main public API", () => {
   assert.equal(typeof PublicApi.getSteelVerificationCapabilities, "function");
   assert.equal(typeof PublicApi.validateSteelMemberFem3DResult, "function");
   assert.equal(typeof PublicApi.verifySteelWebShearBuckling, "function");
+  assert.equal(typeof PublicApi.runRcServiceDeflectionAnalysis, "function");
   assert.equal(typeof PublicApi.runScaRcDeflectionAnalysis, "function");
   assert.equal(typeof PublicApi.HyperstaticDeflectionIteration, "function");
   assert.equal(typeof PublicApi.SectionMomentCurvatureCurve, "function");
@@ -26,6 +27,7 @@ test("applications subpath export exposes application registry helpers", () => {
   assert.equal(typeof ApplicationsApi.createDefaultApplicationRegistry, "function");
   assert.equal(typeof ApplicationsApi.SingleBeamDesignApplication, "function");
   assert.equal(typeof ApplicationsApi.MasonryWallOpeningsApplication, "function");
+  assert.equal(typeof ApplicationsApi.runRcServiceDeflectionAnalysis, "function");
   assert.equal(typeof ApplicationsApi.runScaRcDeflectionAnalysis, "function");
   assert.equal(typeof ApplicationsApi.HyperstaticDeflectionIteration, "function");
   assert.equal(typeof ApplicationsApi.SectionMomentCurvatureCurve, "function");

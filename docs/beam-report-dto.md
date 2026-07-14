@@ -1,6 +1,6 @@
 # Beam Report DTO
 
-Questo documento fissa il contratto minimo del report di trave semplice usato da esempi, test, API e futuro frontend React.
+Questo documento fissa il contratto minimo del report di trave semplice usato da esempi, test, API e consumer esterni.
 
 ## Principi
 
@@ -66,13 +66,13 @@ Campi principali:
 }
 ```
 
-Uso previsto nel frontend:
+Uso previsto nei consumer:
 
 * `loadCaseIds` e `combinationIds` alimentano navigazione e select.
 * `loadCases` e `combinations` contengono sintesi pronte per tabelle.
 * `envelopes` contiene estremi governanti per dashboard e badge.
 * `sectionRotation`, `principalAxes` e `sectionRigidity` descrivono assi principali, angolo `alpha`, rigidezze principali e rigidezza verticale equivalente usata dal FEM 2D.
-* `principalActionEnvelopes` espone gli inviluppi gia separati in `mY`, `mZ`, `vY`, `vZ`, senza costringere il frontend a scavare nel risultato grezzo.
+* `principalActionEnvelopes` espone gli inviluppi gia separati in `mY`, `mZ`, `vY`, `vZ`, senza costringere il consumer a scavare nel risultato grezzo.
 * `raw` contiene punti dei diagrammi, reazioni, spostamenti e metadata completi.
 
 ## Assi Ruotati E Azioni Principali
@@ -178,7 +178,7 @@ Uso previsto:
 
 Quando la configurazione e presente nel `beamInput`, `SingleBeamAnalysis` inserisce nella mesh FEM le stazioni di griglia e utente richieste da `auto`, `user` e `combined`; `SingleBeamDesignApplication` propaga poi la stessa configurazione al verificatore materiale. I moduli materiali restano comunque usabili standalone: `BeamSectionActionVerifier` accetta la stessa configurazione anche senza passare dall'applicazione trave.
 
-I metadata dei check permettono al frontend di distinguere:
+I metadata dei check permettono al consumer di distinguere:
 
 * campioni FEM generici;
 * punti definiti dall'utente;
@@ -189,7 +189,7 @@ I metadata dei check permettono al frontend di distinguere:
 
 ## BeamReportArtifact
 
-Gli artefatti sono DTO pensati per CLI, API download e frontend:
+Gli artefatti sono DTO pensati per CLI e integrazioni consumer:
 
 ```js
 {
@@ -225,7 +225,7 @@ Controlla:
 * forma minima di `verification`, se presente;
 * warning, assunzioni e metadata come array/oggetti serializzabili.
 
-Non sostituisce un JSON Schema completo: e un guardiano leggero per test, API e frontend React.
+Non sostituisce un JSON Schema completo: e un guardiano leggero per test e integrazioni consumer.
 
 ## Script
 

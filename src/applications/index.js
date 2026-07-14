@@ -55,6 +55,8 @@ export { CrackedSectionDeflectionAnalysis } from "./rc-cracked-deflection/index.
 export { HyperstaticDeflectionIteration } from "./rc-cracked-deflection/index.js";
 export { RC_DEFLECTION_PERFORMANCE_PROFILES } from "./rc-cracked-deflection/index.js";
 export { SectionMomentCurvatureCurve } from "./rc-cracked-deflection/index.js";
+export { createServiceDeflectionAnalysisResult } from "./rc-cracked-deflection/index.js";
+export { runRcServiceDeflectionAnalysis } from "./rc-cracked-deflection/index.js";
 export { createScaServiceDeflectionAnalysisResult } from "./rc-cracked-deflection/index.js";
 export { runScaRcDeflectionAnalysis } from "./rc-cracked-deflection/index.js";
 export { ReinforcedConcreteSectionApplication } from "./reinforced-concrete-sections/index.js";

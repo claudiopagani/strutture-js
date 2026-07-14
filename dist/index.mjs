@@ -1,4 +1,4 @@
-// strutture-js v0.3.8 — bundled ESM
+// strutture-js v0.4.0 — bundled ESM
 var __defProp = Object.defineProperty;
 var __typeError = (msg) => {
   throw TypeError(msg);
@@ -48570,9 +48570,9 @@ var CrackedSectionBeamModel = class {
   }
 };
 
-// src/applications/rc-cracked-deflection/adapters/scaRcDeflectionAdapter.js
+// src/applications/rc-cracked-deflection/adapters/serviceDeflectionAdapter.js
 var BEAM_UNITS = Object.freeze({ force: "kN", length: "m" });
-var SCA_DEFLECTION_SYSTEMS = Object.freeze({
+var SERVICE_DEFLECTION_SYSTEMS = Object.freeze({
   simpleBeam: Object.freeze({
     id: "simpleBeam",
     slendernessSystem: "simple_span",
@@ -48641,7 +48641,7 @@ function resolveCombinationType(value) {
 }
 function resolveDeflectionSystem(value) {
   var _a;
-  return (_a = SCA_DEFLECTION_SYSTEMS[value]) != null ? _a : SCA_DEFLECTION_SYSTEMS.simpleBeam;
+  return (_a = SERVICE_DEFLECTION_SYSTEMS[value]) != null ? _a : SERVICE_DEFLECTION_SYSTEMS.simpleBeam;
 }
 function supportStationsForSpan(system, span) {
   return system.supports.map((support) => ({
@@ -48656,20 +48656,20 @@ function momentAtRatio({ ratio, maxMoment, momentShape }) {
   }
   return maxMoment * 4 * ratio * (1 - ratio);
 }
-function createScaServiceDeflectionAnalysisResult({
+function createServiceDeflectionAnalysisResult({
   spanM,
   maxMomentKnm,
   axialForceKn = 0,
   structuralSystem = "simpleBeam",
   stationCount = 17,
   combinationType = "SLE_RARE",
-  id = "sca-service-deflection"
+  id = "rc-service-deflection"
 } = {}) {
   if (!Number.isFinite(spanM) || spanM <= 0) {
-    throw new Error("SCA service deflection requires a positive spanM.");
+    throw new Error("Service deflection requires a positive spanM.");
   }
   if (!Number.isFinite(maxMomentKnm)) {
-    throw new Error("SCA service deflection requires a finite maxMomentKnm.");
+    throw new Error("Service deflection requires a finite maxMomentKnm.");
   }
   const system = resolveDeflectionSystem(structuralSystem);
   const count = Math.max(3, stationCount);
@@ -48690,7 +48690,7 @@ function createScaServiceDeflectionAnalysisResult({
     combinations: {
       [id]: {
         id,
-        resultType: "sca-service-moment-profile",
+        resultType: "service-moment-profile",
         units: BEAM_UNITS,
         context: {
           limitState: "SLE",
@@ -48706,7 +48706,7 @@ function createScaServiceDeflectionAnalysisResult({
       }
     },
     metadata: {
-      source: "sca-service-deflection-adapter",
+      source: "service-deflection-adapter",
       structuralSystem: system.id,
       momentShape: system.momentShape,
       maxMomentKnm,
@@ -48741,7 +48741,7 @@ function buildServiceability({ analysisState = {}, serviceability = {} }) {
     deflection
   };
 }
-function summarizeForSca({ result, source, analysisState }) {
+function summarizeServiceDeflection({ result, source, analysisState }) {
   var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t;
   const combinations = (_b = (_a = result.outputs) == null ? void 0 : _a.combinations) != null ? _b : [];
   const primaryCombination = (_d = (_c = combinations.find(
@@ -48783,7 +48783,7 @@ function summarizeForSca({ result, source, analysisState }) {
     }
   };
 }
-function runScaRcDeflectionAnalysis({
+function runRcServiceDeflectionAnalysis({
   sectionBuild = null,
   analysisState = {},
   analysisResult = null,
@@ -48804,14 +48804,14 @@ function runScaRcDeflectionAnalysis({
       kind: "serviceDeflection",
       applicationId: "rc-cracked-deflection",
       status: RESULT_STATUS.NOT_IMPLEMENTED,
-      summary: "SCA service deflection requires a reinforced concrete section.",
+      summary: "Service deflection requires a reinforced concrete section.",
       checks: [],
       outputs: {},
       warnings: [
-        "No reinforced concrete section was provided to the SCA deflection adapter."
+        "No reinforced concrete section was provided to the service deflection adapter."
       ],
       assumptions: [],
-      metadata: { source: "sca-service-deflection-adapter" }
+      metadata: { source: "service-deflection-adapter" }
     };
   }
   const spanM = parseLocaleNumber(analysisState.deflectionSpanM, null);
@@ -48828,17 +48828,17 @@ function runScaRcDeflectionAnalysis({
       kind: "serviceDeflection",
       applicationId: "rc-cracked-deflection",
       status: RESULT_STATUS.NOT_ANALYZED,
-      summary: "SCA service deflection requires span and service moment inputs.",
+      summary: "Service deflection requires span and service moment inputs.",
       checks: [],
       outputs: {},
       warnings: [
-        "No beam analysis result was provided and the simplified SCA deflection inputs are incomplete."
+        "No beam analysis result was provided and the simplified deflection inputs are incomplete."
       ],
       assumptions: [],
-      metadata: { source: "sca-service-deflection-adapter" }
+      metadata: { source: "service-deflection-adapter" }
     };
   }
-  const syntheticAnalysisResult = analysisResult != null ? analysisResult : createScaServiceDeflectionAnalysisResult({
+  const syntheticAnalysisResult = analysisResult != null ? analysisResult : createServiceDeflectionAnalysisResult({
     spanM,
     maxMomentKnm,
     axialForceKn: -compressionKn,
@@ -48857,10 +48857,10 @@ function runScaRcDeflectionAnalysis({
   const result = new CrackedSectionDeflectionAnalysis({
     code,
     metadata: {
-      source: "sca-service-deflection-adapter"
+      source: "service-deflection-adapter"
     }
   }).analyze({
-    beamId: (_c2 = analysisState.id) != null ? _c2 : "sca-service-deflection",
+    beamId: (_c2 = analysisState.id) != null ? _c2 : "rc-service-deflection",
     analysisResult: syntheticAnalysisResult,
     section,
     concreteMaterial,
@@ -48871,12 +48871,14 @@ function runScaRcDeflectionAnalysis({
     performanceProfile,
     output: output != null ? output : {}
   });
-  return summarizeForSca({
+  return summarizeServiceDeflection({
     result,
     source: analysisResult ? "beam-analysis-result" : "synthetic-service-moment-profile",
     analysisState
   });
 }
+var createScaServiceDeflectionAnalysisResult = createServiceDeflectionAnalysisResult;
+var runScaRcDeflectionAnalysis = runRcServiceDeflectionAnalysis;
 
 // src/applications/reinforced-concrete-sections/analysis/moment-curvature/MomentCurvaturePostUltimateOptions.js
 var DEFAULT_POST_ULTIMATE_MOMENT_DROP = 0.15;
@@ -55672,7 +55674,7 @@ var SingleBeamDesignApplication = class extends StructuralApplication {
         maturity: "mvp",
         plannedCapabilities: [
           "JSON and Markdown reporting",
-          "frontend-ready DTOs",
+          "consumer-ready DTOs",
           "material-specific verification adapters",
           "example library for simple beams"
         ],
@@ -59799,6 +59801,7 @@ export {
   createNTC2018WindAction,
   createReinforcedConcreteBeamSectionProvider,
   createScaServiceDeflectionAnalysisResult,
+  createServiceDeflectionAnalysisResult,
   createSteelBeamSectionProvider,
   createSteelCompoundProfileSection,
   createSteelMemberFem3DResult,
@@ -59850,6 +59853,7 @@ export {
   resolvePrincipalSectionFrame,
   rotateSecondMoments,
   round2 as round,
+  runRcServiceDeflectionAnalysis,
   runScaRcDeflectionAnalysis,
   sanitizeAlignmentOpenings,
   selectNTC2018ExistingMasonryParameterLevel,

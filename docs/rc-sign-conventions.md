@@ -86,7 +86,7 @@ esplicitamente come alias di `Mzz` e `Myy`.
 
 Non rientrano in questa modifica:
 
-- l'applicazione SCA che consuma la libreria;
+- le applicazioni esterne che consumano la libreria;
 - `theta` della verifica a taglio, che indica l'inclinazione del puntone e non
   l'orientamento dell'asse neutro;
 - la nomenclatura FEM `mY`/`mZ` e la convenzione `sectionRotation`, che restano

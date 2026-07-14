@@ -155,9 +155,9 @@ geometriche. Non sono ancora un profilo normativo completo: classificazione
 locale, instabilita globale, instabilita locale dei componenti, calastrelli,
 saldature, bulloni e collegamenti richiedono un verificatore specifico.
 
-## Confine con il frontend
+## Confine con i consumer
 
-La repo del sito dovrebbe costruire un adapter UI sopra queste API:
+Ogni applicazione consumer dovrebbe costruire un proprio adapter sopra queste API:
 
 * recupero e filtraggio del catalogo
 * ordinamento e label dei profili

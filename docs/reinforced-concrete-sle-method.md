@@ -1,7 +1,7 @@
 # Metodo SLE per travi in c.a.
 
 Questo documento descrive il metodo implementato per le verifiche agli stati limite di esercizio delle travi in calcestruzzo armato.
-Il motore e pensato per funzionare sia come verifica standalone di sezione sia come modulo integrato nel workflow di trave semplice e nei futuri input React/API.
+Il motore e pensato per funzionare sia come verifica standalone di sezione sia come modulo integrato nel workflow di trave semplice e in consumer esterni.
 
 ## Perimetro
 
@@ -222,7 +222,7 @@ npm test
 npm run example:beam-reports:write
 ```
 
-## Report e frontend
+## Report e consumer
 
 Il report JSON espone dati serializzabili:
 
@@ -233,7 +233,7 @@ Il report JSON espone dati serializzabili:
 * gruppi e barre delle armature;
 * risultati SLE puntuali e globali.
 
-Il frontend React dovra trattare questi oggetti come DTO:
+Il consumer deve trattare questi oggetti come DTO:
 
 * selettori per ambiente, combinazione, `n`, `phi`, limite freccia;
 * editor top/bottom per rettangolari e T;

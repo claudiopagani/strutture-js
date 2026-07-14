@@ -36,3 +36,45 @@ Quando lo status non basta a descrivere il risultato:
 * usare `metadata` per dettagli leggibili da UI, report o test senza alterare il contratto principale.
 
 Questa separazione evita di codificare significati nascosti dentro lo status.
+
+## Contratto e serializzazione
+
+`CalculationResult.toJSON()` restituisce un oggetto con `applicationId`,
+`status`, `summary`, `outputs`, `warnings`, `assumptions` e `metadata`.
+`VerificationResult.toJSON()` aggiunge `utilizationRatio`, `demand`,
+`capacity` e `checks`.
+
+Il consumer deve serializzare il risultato completo con `toJSON()` e
+`JSON.stringify`, conservandolo in un envelope che registri almeno versione
+risolta di `strutture-js`, applicazione/metodo e versione dell'eventuale schema
+di report. La versione della libreria viene fornita dal build o dal lockfile
+del consumer: non e dedotta dal risultato.
+
+`demand`, `capacity` e `utilizationRatio` possono essere `null` quando il
+metodo non produce una capacita valida. Un valore mancante non equivale a zero
+e non autorizza il consumer a dichiarare la verifica soddisfatta.
+
+## Uso da parte di UI e report
+
+UI e renderer devono mostrare gli esiti gia presenti nel risultato:
+
+- usare `status` per distinguere completamento, esito negativo, fuori campo,
+  placeholder ed errore;
+- usare `checks` per il dettaglio e `metadata.governingCheckId`, quando
+  presente, per la verifica governante;
+- mostrare `demand`, `capacity` e `utilizationRatio` con le unita dichiarate;
+- riportare `warnings` e `assumptions` senza sopprimerli;
+- usare `outputs` per diagrammi, inviluppi e dati di report.
+
+Il consumer puo formattare i valori ma non deve ricalcolare una formula per
+ricavare un nuovo status. In particolare:
+
+- `not-supported` richiede di cambiare metodo o campo di applicazione;
+- `not-implemented` indica che non esiste ancora una funzionalita operativa;
+- `failed` indica che l'esecuzione non ha prodotto un risultato affidabile.
+
+Un report puo aggiungere testo esplicativo, ma non deve trasformare nessuno di
+questi tre status in `ok` o `not-verified`.
+
+Per un esempio di envelope vedere
+[Consumer Integration](consumer-integration.md).

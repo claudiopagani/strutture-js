@@ -9,7 +9,7 @@ import {
   RectangularSection,
   ReinforcedConcreteSection,
   ReinforcementBar,
-  runScaRcDeflectionAnalysis,
+  runRcServiceDeflectionAnalysis,
   SectionMomentCurvatureCurve,
   SingleBeamAnalysis,
 } from "../src/index.js";
@@ -43,7 +43,7 @@ function analyzeUniformServiceLoad({
   });
 }
 
-function createScaDefaultDeflectionSection() {
+function createDefaultDeflectionSection() {
   const units = { force: "N", length: "mm" };
   const concreteMaterial = createNTC2018ConcreteMaterial({
     strengthClass: "C25/30",
@@ -477,13 +477,13 @@ test("RC hyperstatic deflection keeps gross EI and diagnostics below both Mcr th
   assert.equal(result.outputs.performance.curveSectionSolveCount, 0);
 });
 
-test("RC adaptive relaxation converges for the SCA default three-support beam at q 20", () => {
+test("RC adaptive relaxation converges for the default three-support beam at q 20", () => {
   const {
     section,
     concreteMaterial,
     reinforcementMaterial,
     units,
-  } = createScaDefaultDeflectionSection();
+  } = createDefaultDeflectionSection();
   const effectiveModularRatio = 15 * (1 + 2);
   const beamModel = {
     units: { force: "kN", length: "m" },
@@ -515,7 +515,7 @@ test("RC adaptive relaxation converges for the SCA default three-support beam at
     ],
     combinations: [
       {
-        id: "sca-q20",
+        id: "continuous-q20",
         combinationType: "SLE_QUASI_PERMANENT",
         limitState: "SLE",
         serviceCombination: "quasiPermanent",
@@ -789,9 +789,9 @@ test("RC hyperstatic deflection uses distinct M-kappa curves for variable axial 
   );
 });
 
-test("SCA deflection adapter builds a UI DTO from span and service moment", () => {
+test("service deflection adapter builds a serializable DTO from span and service moment", () => {
   const model = createRcElasticBeamReportModel();
-  const result = runScaRcDeflectionAnalysis({
+  const result = runRcServiceDeflectionAnalysis({
     sectionBuild: {
       section: model.section,
       materials: {

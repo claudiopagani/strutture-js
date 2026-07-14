@@ -185,6 +185,16 @@ import { CrackedSectionDeflectionAnalysis } from "strutture-js/applications/rc-c
 import { getSteelProfileSectionData } from "strutture-js/catalogs/steel-profiles";
 ```
 
+I confini della libreria, gli entry point supportati e il pattern di
+integrazione per applicazioni esterne sono documentati in:
+
+- [docs/project-boundaries.md](docs/project-boundaries.md);
+- [docs/public-api-policy.md](docs/public-api-policy.md);
+- [docs/consumer-integration.md](docs/consumer-integration.md).
+
+I consumer devono usare soltanto il package root o i subpath dichiarati in
+`package.json#exports`; i deep import in `src` non sono API supportate.
+
 ## Contratti pubblici
 
 Le applicazioni restituiscono uno tra:
@@ -335,6 +345,9 @@ Ogni caso di validazione dovrebbe dichiarare:
 Documentazione utile:
 
 - [docs/beam-validation-campaign.md](docs/beam-validation-campaign.md);
+- [docs/project-boundaries.md](docs/project-boundaries.md);
+- [docs/public-api-policy.md](docs/public-api-policy.md);
+- [docs/consumer-integration.md](docs/consumer-integration.md);
 - [docs/implementation-boundaries.md](docs/implementation-boundaries.md);
 - [docs/result-status.md](docs/result-status.md);
 - [docs/steel-beam-method.md](docs/steel-beam-method.md);
@@ -360,7 +373,7 @@ Rischio: puo rallentare contributi piccoli se applicata in modo troppo rigido.
 
 Adatta quando contribuiscono ingegneri con competenze diverse.
 
-- ogni area tecnica ha un piccolo gruppo di riferimento: c.a., acciaio, muratura, legno, FEM, normative, UI consumer;
+- ogni area tecnica ha un piccolo gruppo di riferimento: c.a., acciaio, muratura, legno, FEM, normative, integrazioni consumer;
 - i gruppi curano fonti, casi di validazione e priorita;
 - le API comuni restano discusse centralmente;
 - le implementazioni verticali possono avanzare in parallelo.
@@ -411,7 +424,7 @@ Tipi di contributo utili:
 - esempi riproducibili;
 - report piu chiari;
 - documentazione metodologica;
-- UI esterne che consumano la libreria e riportano esigenze reali.
+- feedback ed esempi di integrazione da consumer esterni, mantenendo il loro codice applicativo fuori dalla libreria.
 
 ## Criteri per nuovo codice di calcolo
 
@@ -427,7 +440,12 @@ Ogni nuovo workflow dovrebbe rispondere a queste domande:
 - Quali test lo proteggono?
 - Quale validazione numerica lo rende credibile?
 
-Se una risposta non e ancora disponibile, il codice puo entrare come scaffold o MVP, ma deve dichiarare esplicitamente i propri limiti.
+Una funzionalita di calcolo entra quando e riutilizzabile, deterministica o con
+dipendenze esplicite, indipendente da UI/rete/database/software proprietario,
+serializzabile, testata e supportata da fonti e validazione adeguate. Uno
+scaffold puo descrivere un limite con `not-implemented`, ma non e una
+funzionalita operativa e non sostituisce questi criteri. Vedi
+[docs/project-boundaries.md](docs/project-boundaries.md).
 
 ## Limiti generali
 
@@ -446,11 +464,10 @@ Direzioni naturali di crescita:
 
 - consolidare i contratti pubblici dei risultati;
 - ampliare le campagne di validazione indipendenti;
-- completare i workflow scaffold;
-- estendere FEM e analisi non lineari;
-- migliorare copertura normativa e tracciabilita delle fonti;
-- pubblicare esempi di UI costruite sopra la libreria;
-- definire una governance aperta per maintainer e gruppi di lavoro.
+- ampliare le verifiche normative con fonti e limiti espliciti;
+- migliorare prestazioni e robustezza numerica;
+- evolvere i moduli FEM pubblici e generici;
+- migliorare documentazione e stabilita delle API.
 
 ## Licenza
 

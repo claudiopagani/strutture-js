@@ -57,10 +57,10 @@ campate, con carichi uniformemente distribuiti e sezione/armatura costanti.
 - [x] Flusso iperstatico: curva M-kappa, iterazione secante, momenti finali,
       curvature e frecce.
 - [x] Warning in caso di mancata convergenza.
-- [x] Output UI-ready per combinazione: `hyperstatic`, `crackedPointCount`,
+- [x] Output serializzabile per combinazione: `hyperstatic`, `crackedPointCount`,
       `maxZeta`.
 
-### Fase 5 - Integrazione API/UI
+### Fase 5 - Integrazione API e consumer
 
 - [x] `RCrackedDeflectionApplication` passa `beamModel`/`beamInput`.
 - [x] `ReinforcedConcreteBeamVerification` accetta `beamModel`.
@@ -68,7 +68,7 @@ campate, con carichi uniformemente distribuiti e sezione/armatura costanti.
 - [x] Esempi report RC passano `beamModel`.
 - [x] Export pubblici di `SectionMomentCurvatureCurve` e
       `HyperstaticDeflectionIteration`.
-- [x] Adapter SCA espone alias UI `hyperstatic`, `crackedPointCount`, `maxZeta`.
+- [x] Adapter di servizio espone i campi `hyperstatic`, `crackedPointCount`, `maxZeta`.
 
 ### Fase 6 - Test
 
@@ -162,9 +162,7 @@ iperstatica iterativa.
       tree-shaking.
 - [x] Aggiungere CI, lint, type-check, coverage report e soglie automatiche
       sui benchmark.
-- [x] Allineare la documentazione dei benchmark: il caso
-      `sca-rect-service-deflection` viene eseguito ma il README lo dichiara
-      ancora saltato.
+- [x] Allineare la documentazione dei benchmark ai casi effettivamente eseguiti.
 
 ### Piano di lavoro ordinato
 
@@ -298,9 +296,9 @@ Risultati del lotto D, 10 luglio 2026:
   sintassi valida, bundle root `1.949,5 KiB` (`341,7 KiB` gzip) e worker
   `235 KiB`.
 
-## Note per UI
+## Note per i consumer
 
-La UI puo leggere direttamente:
+Il consumer puo leggere direttamente:
 
 - `outputs.combinations[].hyperstatic.active`
 - `outputs.combinations[].hyperstatic.converged`
@@ -313,5 +311,5 @@ La UI puo leggere direttamente:
 - `outputs.combinations[].points[]` per diagrammi di momento, curvatura,
   rotazione e freccia.
 
-Nel DTO SCA sintetico gli stessi campi principali sono copiati anche in
+Nel DTO sintetico gli stessi campi principali sono copiati anche in
 `outputs.hyperstatic`, `outputs.crackedPointCount` e `outputs.maxZeta`.
