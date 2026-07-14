@@ -8,6 +8,19 @@ export { SteelMemberVerification } from "./checks/SteelMemberVerification.js";
 export { classifySteelSection } from "./checks/SteelSectionClassification.js";
 export { getSteelVerificationCapabilities } from "./checks/steelVerificationCapabilities.js";
 export {
+  createSteelMemberFem3DResult,
+  validateSteelMemberFem3DResult,
+  steelMemberFem3DToLegacyAnalysisResult,
+} from "./fem/SteelMemberFem3DContract.js";
+export {
+  calculateSteelMomentDiagramFactor,
+  steelNotSupportedCheck,
+  verifySteelBendingShearInteraction,
+  verifySteelConcentratedWebLoad,
+  verifySteelShearTorsionInteraction,
+  verifySteelWebShearBuckling,
+} from "./checks/SteelAdvancedMemberChecks.js";
+export {
   calculateSteelCompressionBucklingAxis,
   inferSteelCompressionBucklingCurves,
   steelBucklingCurveImperfectionFactor,

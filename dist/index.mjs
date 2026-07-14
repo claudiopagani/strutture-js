@@ -1,4 +1,4 @@
-// strutture-js v0.3.7 — bundled ESM
+// strutture-js v0.3.8 — bundled ESM
 var __defProp = Object.defineProperty;
 var __typeError = (msg) => {
   throw TypeError(msg);
@@ -20993,7 +20993,7 @@ var BeamSectionActionVerifier = class {
       );
     }
     const requestedLimitStates = limitStates instanceof Set ? limitStates : normalizeLimitStates(limitStates);
-    const entries = entriesFromResults(analysisResult, includeLoadCases).filter(
+    const entries2 = entriesFromResults(analysisResult, includeLoadCases).filter(
       (entry) => {
         var _a2, _b2;
         return !requestedLimitStates || requestedLimitStates.has(String((_b2 = (_a2 = entry.context) == null ? void 0 : _a2.limitState) != null ? _b2 : "").toUpperCase());
@@ -21003,7 +21003,7 @@ var BeamSectionActionVerifier = class {
     const checks = [];
     const warnings = [];
     const assumptions = [];
-    for (const entry of entries) {
+    for (const entry of entries2) {
       const stationSettings = normalizeVerificationStationSettings(
         verificationStations,
         entry
@@ -21090,7 +21090,7 @@ var BeamSectionActionVerifier = class {
       assumptions: [...new Set(assumptions)],
       metadata: {
         ...this.metadata,
-        resultCount: entries.length,
+        resultCount: entries2.length,
         limitStates: requestedLimitStates ? [...requestedLimitStates] : null,
         verificationStations: copyVerificationStations(verificationStations)
       }
@@ -23128,8 +23128,8 @@ function expandLoads(loads) {
   }
   const expanded = [];
   const pushGroup = (items, actionType) => {
-    const entries = Array.isArray(items) ? items : [items];
-    for (const item of entries) {
+    const entries2 = Array.isArray(items) ? items : [items];
+    for (const item of entries2) {
       if (item == null) {
         continue;
       }
@@ -37265,6 +37265,694 @@ function classifySteelSection({
   };
 }
 
+// src/applications/steel-frames/fem/SteelMemberFem3DContract.js
+var LIMIT_STATES = /* @__PURE__ */ new Set(["ULS", "SLS", "SLU", "SLE"]);
+var finiteOrNull4 = (value) => Number.isFinite(value) ? value : null;
+function firstFinite4(...values) {
+  var _a;
+  return (_a = values.find((value) => Number.isFinite(value))) != null ? _a : null;
+}
+function normalizeLimitState(value) {
+  const normalized = String(value != null ? value : "").trim().toUpperCase();
+  if (normalized === "ULS") return "SLU";
+  if (normalized === "SLS") return "SLE";
+  return normalized;
+}
+function entries(value) {
+  return Array.isArray(value) ? value : Object.values(value != null ? value : {});
+}
+function normalizeStation(sample = {}, index = 0) {
+  var _a, _b, _c, _d, _e, _f, _g;
+  const principal = (_a = sample.principalActions) != null ? _a : {};
+  const coordinates = (_c = (_b = sample.coordinates) != null ? _b : sample.coordinate) != null ? _c : {};
+  const displacements = (_d = sample.displacements) != null ? _d : {};
+  const rotations = (_e = sample.rotations) != null ? _e : {};
+  const station = firstFinite4(sample.station, sample.position, sample.s, sample.x);
+  return {
+    id: (_f = sample.id) != null ? _f : `station-${index + 1}`,
+    station,
+    coordinates: {
+      x: firstFinite4(coordinates.x, sample.coordinateX, station),
+      y: firstFinite4(coordinates.y, sample.coordinateY),
+      z: firstFinite4(coordinates.z, sample.coordinateZ)
+    },
+    actions: {
+      N: firstFinite4(sample.N, sample.n),
+      Vy: firstFinite4(sample.Vy, sample.vY, principal.vY, sample.v),
+      Vz: firstFinite4(sample.Vz, sample.vZ, principal.vZ),
+      My: firstFinite4(sample.My, sample.mY, principal.mY, sample.m),
+      Mz: firstFinite4(sample.Mz, sample.mZ, principal.mZ),
+      T: firstFinite4(sample.T, sample.t, sample.torsion),
+      B: firstFinite4(sample.B, sample.bimoment, sample.warpingBimoment)
+    },
+    displacements: {
+      u: firstFinite4(sample.u, sample.ux, displacements.u, displacements.ux),
+      v: firstFinite4(
+        sample.vDisplacement,
+        sample.uy,
+        displacements.v,
+        displacements.uy,
+        Number.isFinite(sample.Vy) ? sample.v : null
+      ),
+      w: firstFinite4(sample.w, sample.uz, displacements.w, displacements.uz)
+    },
+    rotations: {
+      x: firstFinite4(sample.rotationX, sample.rx, rotations.x, rotations.rx),
+      y: firstFinite4(sample.rotationY, sample.ry, rotations.y, rotations.ry),
+      z: firstFinite4(sample.rotationZ, sample.rz, rotations.z, rotations.rz)
+    },
+    momentDiagram: sample.momentDiagram ? { ...sample.momentDiagram } : null,
+    metadata: { ...(_g = sample.metadata) != null ? _g : {} }
+  };
+}
+function normalizeCombination(result = {}, index = 0) {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m;
+  const context = (_a = result.context) != null ? _a : {};
+  const rawStations = (_e = (_d = (_b = result.stations) != null ? _b : result.stationResults) != null ? _d : (_c = result.internalForces) == null ? void 0 : _c.samples) != null ? _e : [];
+  const limitState = normalizeLimitState(
+    (_g = (_f = result.limitState) != null ? _f : result.type) != null ? _g : context.limitState
+  );
+  return {
+    id: String((_j = (_i = (_h = result.combinationId) != null ? _h : result.id) != null ? _i : context.combinationId) != null ? _j : `combination-${index + 1}`),
+    limitState,
+    combinationType: (_l = (_k = result.combinationType) != null ? _k : context.combinationType) != null ? _l : null,
+    stations: entries(rawStations).map(normalizeStation),
+    momentDiagram: result.momentDiagram ? { ...result.momentDiagram } : null,
+    metadata: { ...(_m = result.metadata) != null ? _m : {} }
+  };
+}
+function normalizeEnd(raw = {}, id) {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
+  const coordinates = (_b = (_a = raw.coordinates) != null ? _a : raw.coordinate) != null ? _b : raw;
+  return {
+    id: (_c = raw.id) != null ? _c : id,
+    coordinates: {
+      x: finiteOrNull4(coordinates.x),
+      y: finiteOrNull4(coordinates.y),
+      z: finiteOrNull4(coordinates.z)
+    },
+    restraints: {
+      ux: Boolean((_d = raw.restraints) == null ? void 0 : _d.ux),
+      uy: Boolean((_e = raw.restraints) == null ? void 0 : _e.uy),
+      uz: Boolean((_f = raw.restraints) == null ? void 0 : _f.uz),
+      rx: Boolean((_g = raw.restraints) == null ? void 0 : _g.rx),
+      ry: Boolean((_h = raw.restraints) == null ? void 0 : _h.ry),
+      rz: Boolean((_i = raw.restraints) == null ? void 0 : _i.rz),
+      warping: Boolean((_j = raw.restraints) == null ? void 0 : _j.warping)
+    },
+    metadata: { ...(_k = raw.metadata) != null ? _k : {} }
+  };
+}
+function normalizeMember(source = {}, analysisResult = {}) {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F;
+  const geometry = (_a = analysisResult.geometry) != null ? _a : {};
+  const rawSupports = (_b = analysisResult.supports) != null ? _b : [];
+  const startSupport = (_c = rawSupports.find((support) => support.station === 0)) != null ? _c : {};
+  const length = firstFinite4(source.length, geometry.length, geometry.horizontalSpan);
+  const endSupport = (_d = rawSupports.find((support) => support.station === length)) != null ? _d : {};
+  const ends = (_e = source.ends) != null ? _e : {};
+  const stability = (_g = (_f = source.stability) != null ? _f : analysisResult.stability) != null ? _g : {};
+  return {
+    id: (_j = (_i = (_h = source.id) != null ? _h : analysisResult.memberId) != null ? _i : analysisResult.id) != null ? _j : null,
+    length,
+    ends: {
+      start: normalizeEnd((_m = (_l = (_k = ends.start) != null ? _k : source.start) != null ? _l : geometry.start) != null ? _m : startSupport, "start"),
+      end: normalizeEnd((_p = (_o = (_n = ends.end) != null ? _n : source.end) != null ? _o : geometry.end) != null ? _p : endSupport, "end")
+    },
+    frameClassification: {
+      sway: (_r = (_q = stability.sway) != null ? _q : source.sway) != null ? _r : null,
+      nonSway: (_t = (_s = stability.nonSway) != null ? _s : source.nonSway) != null ? _t : null
+    },
+    effectiveLengths: {
+      y: finiteOrNull4((_u = stability.effectiveLengthY) != null ? _u : stability.LcrY),
+      z: finiteOrNull4((_v = stability.effectiveLengthZ) != null ? _v : stability.LcrZ),
+      torsional: finiteOrNull4((_w = stability.effectiveLengthTorsional) != null ? _w : stability.LcrT)
+    },
+    effectiveLengthFactors: {
+      y: finiteOrNull4((_x = stability.effectiveLengthFactorY) != null ? _x : stability.kY),
+      z: finiteOrNull4((_y = stability.effectiveLengthFactorZ) != null ? _y : stability.kZ),
+      torsional: finiteOrNull4((_z = stability.effectiveLengthFactorTorsional) != null ? _z : stability.kT)
+    },
+    restraintSegments: entries(
+      (_B = (_A = source.restraintSegments) != null ? _A : stability.restraintSegments) != null ? _B : stability.segments
+    ).map((segment, index) => {
+      var _a2, _b2, _c2, _d2, _e2, _f2, _g2, _h2, _i2, _j2;
+      return {
+        id: (_a2 = segment.id) != null ? _a2 : `restraint-segment-${index + 1}`,
+        from: finiteOrNull4((_b2 = segment.from) != null ? _b2 : segment.start),
+        to: finiteOrNull4((_c2 = segment.to) != null ? _c2 : segment.end),
+        lateral: (_e2 = (_d2 = segment.lateral) != null ? _d2 : segment.laterallyRestrained) != null ? _e2 : null,
+        torsional: (_g2 = (_f2 = segment.torsional) != null ? _f2 : segment.torsionallyRestrained) != null ? _g2 : null,
+        warping: (_i2 = (_h2 = segment.warping) != null ? _h2 : segment.warpingRestrained) != null ? _i2 : null,
+        momentDiagram: segment.momentDiagram ? { ...segment.momentDiagram } : null,
+        metadata: { ...(_j2 = segment.metadata) != null ? _j2 : {} }
+      };
+    }),
+    webPanels: entries((_C = source.webPanels) != null ? _C : analysisResult.webPanels).map((panel, index) => {
+      var _a2, _b2, _c2, _d2, _e2;
+      return {
+        id: (_a2 = panel.id) != null ? _a2 : `web-panel-${index + 1}`,
+        from: finiteOrNull4((_b2 = panel.from) != null ? _b2 : panel.start),
+        to: finiteOrNull4((_c2 = panel.to) != null ? _c2 : panel.end),
+        length: firstFinite4(panel.length, Number.isFinite(panel.to) && Number.isFinite(panel.from) ? panel.to - panel.from : null),
+        endPost: (_d2 = panel.endPost) != null ? _d2 : "non-rigid",
+        stiffeners: entries(panel.stiffeners).map((stiffener) => ({ ...stiffener })),
+        metadata: { ...(_e2 = panel.metadata) != null ? _e2 : {} }
+      };
+    }),
+    stiffeners: entries((_D = source.stiffeners) != null ? _D : analysisResult.stiffeners).map((item) => ({ ...item })),
+    concentratedLoads: entries(
+      (_E = source.concentratedLoads) != null ? _E : analysisResult.concentratedLoads
+    ).map((load, index) => {
+      var _a2, _b2, _c2, _d2, _e2;
+      return {
+        id: (_a2 = load.id) != null ? _a2 : `concentrated-load-${index + 1}`,
+        combinationId: (_b2 = load.combinationId) != null ? _b2 : null,
+        station: firstFinite4(load.station, load.position, load.x),
+        force: firstFinite4(load.force, load.FEd, load.value),
+        bearingLength: firstFinite4(load.bearingLength, load.ss),
+        loadType: (_d2 = (_c2 = load.loadType) != null ? _c2 : load.type) != null ? _d2 : "internal",
+        metadata: { ...(_e2 = load.metadata) != null ? _e2 : {} }
+      };
+    }),
+    metadata: { ...(_F = source.metadata) != null ? _F : {} }
+  };
+}
+function validateSteelMemberFem3DResult(analysisResult, { strict = false } = {}) {
+  var _a, _b, _c, _d, _e;
+  const errors = [];
+  const warnings = [];
+  const source = (_b = (_a = analysisResult == null ? void 0 : analysisResult.fem3d) != null ? _a : analysisResult) != null ? _b : {};
+  const rawCombinations = (_c = source.combinations) != null ? _c : analysisResult == null ? void 0 : analysisResult.combinations;
+  const combinations = entries(rawCombinations).map(normalizeCombination);
+  const member = normalizeMember((_d = source.member) != null ? _d : {}, analysisResult != null ? analysisResult : {});
+  if (!analysisResult || typeof analysisResult !== "object") {
+    errors.push("analysisResult must be an object.");
+  }
+  if (!(analysisResult == null ? void 0 : analysisResult.units)) errors.push("analysisResult.units is required.");
+  if (combinations.length === 0) errors.push("At least one FEM combination is required.");
+  if (strict) {
+    if (!Number.isFinite(member.length) || member.length <= 0) {
+      errors.push("member.length must be a positive number.");
+    }
+    for (const endId of ["start", "end"]) {
+      for (const coordinate of ["x", "y", "z"]) {
+        if (!Number.isFinite(member.ends[endId].coordinates[coordinate])) {
+          errors.push(`member.ends.${endId}.coordinates.${coordinate} is required.`);
+        }
+      }
+    }
+    if (typeof member.frameClassification.sway !== "boolean" && typeof member.frameClassification.nonSway !== "boolean") {
+      errors.push("member frame classification requires sway or nonSway.");
+    }
+    for (const axis of ["y", "z"]) {
+      if (!Number.isFinite(member.effectiveLengths[axis]) && !Number.isFinite(member.effectiveLengthFactors[axis])) {
+        errors.push(`member requires effective length or effective-length factor about ${axis}.`);
+      }
+    }
+  }
+  combinations.forEach((combination) => {
+    if (!LIMIT_STATES.has(combination.limitState)) {
+      errors.push(`Combination ${combination.id} requires limitState SLU/ULS or SLE/SLS.`);
+    }
+    if (combination.stations.length === 0) {
+      errors.push(`Combination ${combination.id} requires at least one station.`);
+    }
+    combination.stations.forEach((station) => {
+      if (!Number.isFinite(station.station)) {
+        errors.push(`Combination ${combination.id}, ${station.id}: station is required.`);
+      }
+      for (const action of ["N", "Vy", "Vz", "My", "Mz", "T", "B"]) {
+        if (!Number.isFinite(station.actions[action])) {
+          const message = `Combination ${combination.id}, ${station.id}: action ${action} is missing.`;
+          (strict ? errors : warnings).push(message);
+        }
+      }
+      if (strict) {
+        for (const coordinate of ["x", "y", "z"]) {
+          if (!Number.isFinite(station.coordinates[coordinate])) {
+            errors.push(`Combination ${combination.id}, ${station.id}: coordinate ${coordinate} is missing.`);
+          }
+        }
+        for (const displacement of ["u", "v", "w"]) {
+          if (!Number.isFinite(station.displacements[displacement])) {
+            errors.push(`Combination ${combination.id}, ${station.id}: displacement ${displacement} is missing.`);
+          }
+        }
+        for (const rotation of ["x", "y", "z"]) {
+          if (!Number.isFinite(station.rotations[rotation])) {
+            errors.push(`Combination ${combination.id}, ${station.id}: rotation ${rotation} is missing.`);
+          }
+        }
+      }
+    });
+  });
+  const value = {
+    schema: "strutture-js/steel-member-fem-3d",
+    version: 1,
+    units: (analysisResult == null ? void 0 : analysisResult.units) ? { ...analysisResult.units } : null,
+    member,
+    combinations,
+    metadata: { ...(_e = source.metadata) != null ? _e : {} }
+  };
+  return { ok: errors.length === 0, value, errors, warnings };
+}
+function createSteelMemberFem3DResult(input, options = { strict: true }) {
+  const validation = validateSteelMemberFem3DResult(input, options);
+  if (!validation.ok) {
+    throw new Error(`Invalid steel FEM 3D result: ${validation.errors.join(" ")}`);
+  }
+  return validation.value;
+}
+function steelMemberFem3DToLegacyAnalysisResult(contract) {
+  const combinations = Object.fromEntries(contract.combinations.map((combination) => {
+    const samples = combination.stations.map((station) => {
+      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m;
+      return {
+        id: station.id,
+        station: station.station,
+        n: (_a = station.actions.N) != null ? _a : 0,
+        v: (_b = station.actions.Vy) != null ? _b : 0,
+        m: (_c = station.actions.My) != null ? _c : 0,
+        vY: (_d = station.actions.Vy) != null ? _d : 0,
+        vZ: (_e = station.actions.Vz) != null ? _e : 0,
+        mY: (_f = station.actions.My) != null ? _f : 0,
+        mZ: (_g = station.actions.Mz) != null ? _g : 0,
+        t: (_h = station.actions.T) != null ? _h : 0,
+        bimoment: (_i = station.actions.B) != null ? _i : 0,
+        principalActions: {
+          vY: (_j = station.actions.Vy) != null ? _j : 0,
+          vZ: (_k = station.actions.Vz) != null ? _k : 0,
+          mY: (_l = station.actions.My) != null ? _l : 0,
+          mZ: (_m = station.actions.Mz) != null ? _m : 0
+        },
+        coordinates: { ...station.coordinates },
+        displacements: { ...station.displacements },
+        rotations: { ...station.rotations }
+      };
+    });
+    const deflectionSamples = combination.stations.filter((station) => Number.isFinite(station.displacements.v));
+    const maxDeflection = deflectionSamples.reduce((selected, station) => !selected || Math.abs(station.displacements.v) > Math.abs(selected.displacements.v) ? station : selected, null);
+    const entry = {
+      id: combination.id,
+      resultType: "steel-member-fem-3d-combination",
+      units: { ...contract.units },
+      context: {
+        limitState: combination.limitState === "SLU" ? "ULS" : "SLE",
+        combinationType: combination.combinationType,
+        combinationId: combination.id
+      },
+      geometry: { length: contract.member.length },
+      supports: [
+        { station: 0, restraints: { ...contract.member.ends.start.restraints } },
+        { station: contract.member.length, restraints: { ...contract.member.ends.end.restraints } }
+      ],
+      internalForces: { samples },
+      displacements: {
+        maxAbsVerticalDisplacement: maxDeflection ? { station: maxDeflection.station, uy: maxDeflection.displacements.v } : null
+      },
+      metadata: { ...combination.metadata }
+    };
+    return [combination.id, entry];
+  }));
+  return {
+    id: contract.member.id,
+    units: { ...contract.units },
+    geometry: { length: contract.member.length },
+    combinations,
+    metadata: { schema: contract.schema, version: contract.version }
+  };
+}
+
+// src/applications/steel-frames/checks/SteelAdvancedMemberChecks.js
+var I_H_FAMILIES5 = /* @__PURE__ */ new Set(["IPE", "HEA", "HEB", "HEM"]);
+var round4 = (value, decimals = 6) => Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
+var positive = (value) => Number.isFinite(value) && value > 0;
+function familyOf(section) {
+  var _a, _b, _c;
+  return String((_c = (_b = section == null ? void 0 : section.family) != null ? _b : (_a = section == null ? void 0 : section.catalogProperties) == null ? void 0 : _a.family) != null ? _c : "").toUpperCase();
+}
+function gamma(material, key, fallback = 1.05) {
+  var _a, _b, _c, _d;
+  return (_d = (_c = (_a = material == null ? void 0 : material.metadata) == null ? void 0 : _a[key]) != null ? _c : (_b = material == null ? void 0 : material.metadata) == null ? void 0 : _b.gammaM1) != null ? _d : fallback;
+}
+function uniformCheck({ id, description, demand, capacity, metadata = {}, warnings = [], assumptions = [] }) {
+  const ratio = positive(capacity) ? Math.abs(demand) / capacity : null;
+  return {
+    status: Number.isFinite(ratio) && ratio <= 1 ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+    check: {
+      id,
+      description,
+      demand: round4(Math.abs(demand)),
+      capacity: round4(capacity),
+      utilizationRatio: round4(ratio),
+      ok: Number.isFinite(ratio) && ratio <= 1,
+      metadata,
+      warnings: [...warnings],
+      assumptions: [...assumptions]
+    },
+    warnings,
+    assumptions
+  };
+}
+function steelNotSupportedCheck({ id, description, missingInputs = [], reference, metadata = {}, warnings = [] }) {
+  const message = `${description} is not supported; no resistance has been calculated.`;
+  return {
+    id,
+    description,
+    demand: null,
+    capacity: null,
+    utilizationRatio: null,
+    ok: null,
+    status: RESULT_STATUS.NOT_SUPPORTED,
+    metadata: {
+      norm: "NTC 2018 / Circolare 2019",
+      method: "not-supported",
+      reference,
+      missingInputs: [...missingInputs],
+      ...metadata
+    },
+    warnings: [message, ...warnings],
+    assumptions: []
+  };
+}
+function calculateSteelMomentDiagramFactor(samples = [], axis = "My", segment = null) {
+  const key = String(axis).toUpperCase() === "MZ" ? "Mz" : "My";
+  const selected = samples.filter((sample) => {
+    const station = sample.station;
+    return (!segment || !Number.isFinite(segment.from) || station >= segment.from - 1e-9) && (!segment || !Number.isFinite(segment.to) || station <= segment.to + 1e-9);
+  });
+  if (selected.length < 2) return null;
+  const moment = (sample) => {
+    var _a, _b, _c, _d, _e, _f;
+    return (_f = (_e = (_c = (_b = (_a = sample.actions) == null ? void 0 : _a[key]) != null ? _b : sample[key]) != null ? _c : sample[key === "My" ? "mY" : "mZ"]) != null ? _e : (_d = sample.principalActions) == null ? void 0 : _d[key === "My" ? "mY" : "mZ"]) != null ? _f : key === "My" ? sample.m : 0;
+  };
+  const first = moment(selected[0]);
+  const last = moment(selected[selected.length - 1]);
+  const max = selected.reduce((value, sample) => Math.abs(moment(sample)) > Math.abs(value) ? moment(sample) : value, first);
+  if (!Number.isFinite(first) || !Number.isFinite(last) || Math.abs(max) <= 1e-12) return null;
+  const endWithMax = Math.abs(first) >= Math.abs(last) ? first : last;
+  const otherEnd = Math.abs(first) >= Math.abs(last) ? last : first;
+  const psi = Math.abs(endWithMax) > 1e-12 ? otherEnd / endWithMax : 1;
+  const cm = Math.min(1, Math.max(0.4, 0.6 + 0.4 * psi));
+  return { factor: round4(cm), psi: round4(psi), source: "fem-end-moment-diagram" };
+}
+function webGeometry(section) {
+  var _a;
+  const h = section == null ? void 0 : section.height;
+  const tw = section == null ? void 0 : section.webThickness;
+  const tf = section == null ? void 0 : section.flangeThickness;
+  const r = (_a = section == null ? void 0 : section.rootRadius) != null ? _a : 0;
+  return { h, tw, tf, hw: positive(h) && positive(tf) ? h - 2 * tf - 2 * r : null };
+}
+function verifySteelWebShearBuckling({ section, material, vEd = 0, panel = {}, gammaM1 = null } = {}) {
+  var _a, _b, _c, _d, _e;
+  const family = familyOf(section);
+  const { hw, tw } = webGeometry(section);
+  const fy = material == null ? void 0 : material.fyk;
+  const E = (_b = (_a = material == null ? void 0 : material.E) != null ? _a : material == null ? void 0 : material.elasticModulus) != null ? _b : 21e4;
+  const a = (_c = panel.length) != null ? _c : Number.isFinite(panel.to) && Number.isFinite(panel.from) ? panel.to - panel.from : null;
+  const resolvedGamma = gammaM1 != null ? gammaM1 : gamma(material, "gammaM1");
+  if (!I_H_FAMILIES5.has(family) || ![hw, tw, fy, E, a, resolvedGamma].every(positive)) {
+    return { status: RESULT_STATUS.NOT_SUPPORTED, check: steelNotSupportedCheck({
+      id: "steel-web-shear-buckling",
+      description: "Web shear buckling",
+      missingInputs: ["I/H web geometry h, tw, tf, r", "panel length a", "steel fyk and E"],
+      reference: "NTC 2018 \xA74.2.4.1.2.6; UNI EN 1993-1-5 \xA75",
+      metadata: { family, panelId: (_d = panel.id) != null ? _d : null }
+    }), warnings: [] };
+  }
+  const epsilon = Math.sqrt(235 / fy);
+  const eta = fy <= 460 ? 1.2 : 1;
+  const aspect = a / hw;
+  const kTau = aspect >= 1 ? 5.34 + 4 / aspect ** 2 : 4 + 5.34 / aspect ** 2;
+  const lambdaW = hw / (37.4 * tw * epsilon * Math.sqrt(kTau));
+  const rigidEndPost = panel.endPost === "rigid" || panel.rigidEndPost === true;
+  const chiW = Math.min(
+    eta,
+    lambdaW < 0.83 / eta ? eta : rigidEndPost ? 1.37 / (0.7 + lambdaW) : 1.21 / (0.8 + lambdaW)
+  );
+  const capacity = chiW * fy * hw * tw / (Math.sqrt(3) * resolvedGamma);
+  const result = uniformCheck({
+    id: "steel-web-shear-buckling",
+    description: "I/H web panel shear buckling resistance",
+    demand: vEd,
+    capacity,
+    metadata: { norm: "NTC 2018 / Circolare 2019", method: "EN-1993-1-5-5.2-web-only", reference: "NTC 2018 \xA74.2.4.1.2.6; UNI EN 1993-1-5 \xA75.2", panelId: (_e = panel.id) != null ? _e : null, endPost: rigidEndPost ? "rigid" : "non-rigid", hw: round4(hw), tw: round4(tw), a: round4(a), kTau: round4(kTau), relativeWebSlenderness: round4(lambdaW), chiW: round4(chiW), eta, gammaM1: resolvedGamma },
+    assumptions: ["The resistance includes the web contribution only; no flange contribution is credited."]
+  });
+  result.check.metadata.shearBucklingRequired = hw / tw > 72 * epsilon / eta;
+  return result;
+}
+function verifySteelConcentratedWebLoad({ section, material, load = {}, panel = {}, gammaM1 = null } = {}) {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
+  const family = familyOf(section);
+  const { hw, tw, tf } = webGeometry(section);
+  const b = section == null ? void 0 : section.width;
+  const fyw = material == null ? void 0 : material.fyk;
+  const fyf = material == null ? void 0 : material.fyk;
+  const E = (_b = (_a = material == null ? void 0 : material.E) != null ? _a : material == null ? void 0 : material.elasticModulus) != null ? _b : 21e4;
+  const ss = (_c = load.bearingLength) != null ? _c : load.ss;
+  const force = (_e = (_d = load.force) != null ? _d : load.FEd) != null ? _e : 0;
+  const a = (_f = panel.length) != null ? _f : load.panelLength;
+  const resolvedGamma = gammaM1 != null ? gammaM1 : gamma(material, "gammaM1");
+  if (!I_H_FAMILIES5.has(family) || ![hw, tw, tf, b, fyw, E, ss, a, resolvedGamma].every(positive)) {
+    return { status: RESULT_STATUS.NOT_SUPPORTED, check: steelNotSupportedCheck({
+      id: "steel-concentrated-web-load",
+      description: "Transverse concentrated load on web",
+      missingInputs: ["I/H web and flange geometry", "bearingLength", "web panel length", "load position/type", "steel fyk and E"],
+      reference: "NTC 2018 \xA74.2.4.1.2.6; UNI EN 1993-1-5 \xA76",
+      metadata: { family, loadId: (_g = load.id) != null ? _g : null }
+    }), warnings: [] };
+  }
+  const m1 = fyf * b / (fyw * tw);
+  const m2 = 0.02 * (hw / tf) ** 2;
+  const ly = Math.min(hw, ss + 2 * tf * (1 + Math.sqrt(Math.max(0, m1 + m2))));
+  const type = String((_i = (_h = load.loadType) != null ? _h : load.type) != null ? _i : "internal").toLowerCase();
+  const kF = type === "end" ? 2 + 6 * (ss / hw) : 6 + 2 * (hw / a) ** 2;
+  const fCr = 0.9 * kF * E * tw ** 3 / hw;
+  const lambdaF = Math.sqrt(ly * tw * fyw / fCr);
+  const chiF = Math.min(1, 0.5 / lambdaF);
+  const effectiveLength = chiF * ly;
+  const capacity = fyw * effectiveLength * tw / resolvedGamma;
+  return uniformCheck({
+    id: "steel-concentrated-web-load",
+    description: "I/H web transverse-force resistance",
+    demand: force,
+    capacity,
+    metadata: { norm: "NTC 2018 / Circolare 2019", method: "EN-1993-1-5-6.2", reference: "NTC 2018 \xA74.2.4.1.2.6; UNI EN 1993-1-5 \xA76.2", loadId: (_j = load.id) != null ? _j : null, panelId: (_k = panel.id) != null ? _k : null, loadType: type, bearingLength: round4(ss), effectiveLoadedLength: round4(effectiveLength), kF: round4(kF), lambdaF: round4(lambdaF), chiF: round4(chiF), gammaM1: resolvedGamma },
+    assumptions: ["The load is introduced through one flange and the web panel geometry supplied with the FEM member is applicable."]
+  });
+}
+function verifySteelBendingShearInteraction({ section, material, mEd = 0, vEd = 0, bendingCapacity, shearCapacity, gammaM0 = null } = {}) {
+  var _a;
+  const { tw } = webGeometry(section);
+  const fy = material == null ? void 0 : material.fyk;
+  const Wpl = section == null ? void 0 : section.plasticSectionModulusY;
+  const resolvedGamma = gammaM0 != null ? gammaM0 : gamma(material, "gammaM0");
+  if (![bendingCapacity, shearCapacity].every(positive)) {
+    return { status: RESULT_STATUS.NOT_SUPPORTED, check: steelNotSupportedCheck({ id: "steel-bending-shear-interaction", description: "Bending-shear interaction", missingInputs: ["plastic bending resistance", "shear resistance"], reference: "NTC 2018 \xA74.2.4.1.2.5; UNI EN 1993-1-1 \xA76.2.8" }), warnings: [] };
+  }
+  const shearRatio = Math.abs(vEd) / shearCapacity;
+  let capacity = bendingCapacity;
+  let rho = 0;
+  if (shearRatio > 0.5) {
+    rho = Math.min(1, (2 * shearRatio - 1) ** 2);
+    if (I_H_FAMILIES5.has(familyOf(section)) && positive(Wpl) && positive(tw) && positive(fy)) {
+      const webArea = (_a = section == null ? void 0 : section.shearAreaY) != null ? _a : tw * webGeometry(section).hw;
+      capacity = Math.min(bendingCapacity, Math.max(0, (Wpl - rho * webArea ** 2 / (4 * tw)) * fy / resolvedGamma));
+    } else {
+      capacity = (1 - rho) * bendingCapacity;
+    }
+  }
+  return uniformCheck({ id: "steel-bending-shear-interaction", description: "Bending resistance reduced by high shear", demand: mEd, capacity, metadata: { norm: "NTC 2018 / Circolare 2019", method: "EN-1993-1-1-6.2.8", reference: "NTC 2018 \xA74.2.4.1.2.5", shearRatio: round4(shearRatio), rho: round4(rho), reductionApplied: shearRatio > 0.5 } });
+}
+function verifySteelShearTorsionInteraction({ section, material, vEd = 0, tEd = 0, shearCapacity } = {}) {
+  const WT = section == null ? void 0 : section.torsionalSectionModulus;
+  const fy = material == null ? void 0 : material.fyk;
+  const resolvedGamma = gamma(material, "gammaM0");
+  if (![WT, fy, shearCapacity].every(positive)) {
+    return { status: RESULT_STATUS.NOT_SUPPORTED, check: steelNotSupportedCheck({ id: "steel-shear-torsion-interaction", description: "Shear-Saint-Venant torsion interaction", missingInputs: ["torsional section modulus WT", "shear resistance", "steel fyk"], reference: "NTC 2018 \xA74.2.4.1.2.7; UNI EN 1993-1-1 \xA76.2.7" }), warnings: [] };
+  }
+  const tauT = Math.abs(tEd) / WT;
+  const tauRd = fy / (Math.sqrt(3) * resolvedGamma);
+  const family = familyOf(section);
+  const factor = ["CHS", "SHS", "RHS"].includes(family) ? Math.sqrt(Math.max(0, 1 - (tauT / tauRd) ** 2)) : Math.max(0, 1 - tauT / (1.25 * tauRd));
+  return uniformCheck({ id: "steel-shear-torsion-interaction", description: "Shear resistance reduced by uniform Saint-Venant torsion", demand: vEd, capacity: factor * shearCapacity, metadata: { norm: "NTC 2018 / Circolare 2019", method: "EN-1993-1-1-6.2.7", reference: "NTC 2018 \xA74.2.4.1.2.7", torsionalShearStress: round4(tauT), torsionalShearResistance: round4(tauRd), reductionFactor: round4(factor) }, assumptions: ["Only uniform Saint-Venant torsion is considered; warping torsion and bimoment must be absent."] });
+}
+
+// src/applications/steel-frames/checks/SteelFem3DVerification.js
+var round5 = (value, decimals = 6) => Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
+function inSegment(station, segment) {
+  return (!Number.isFinite(segment.from) || station >= segment.from - 1e-9) && (!Number.isFinite(segment.to) || station <= segment.to + 1e-9);
+}
+function maxSample(samples, selector, segment = null) {
+  return samples.filter((sample) => !segment || inSegment(sample.station, segment)).reduce((selected, sample) => !selected || Math.abs(selector(sample)) > Math.abs(selector(selected)) ? sample : selected, null);
+}
+function decorate(check, combination, station = null, segment = null, restraintAssumptions = {}) {
+  var _a, _b, _c, _d, _e, _f;
+  return {
+    ...check,
+    metadata: {
+      norm: "NTC 2018 / Circolare 2019",
+      combinationId: (_a = combination == null ? void 0 : combination.id) != null ? _a : null,
+      limitState: (_b = combination == null ? void 0 : combination.limitState) != null ? _b : null,
+      station: (_c = station == null ? void 0 : station.station) != null ? _c : null,
+      coordinates: (station == null ? void 0 : station.coordinates) ? { ...station.coordinates } : null,
+      governingSegment: (_d = segment == null ? void 0 : segment.id) != null ? _d : null,
+      restraintAssumptions: { ...restraintAssumptions },
+      ...check.metadata
+    },
+    warnings: [...(_e = check.warnings) != null ? _e : []],
+    assumptions: [...(_f = check.assumptions) != null ? _f : []]
+  };
+}
+function steelUnsupportedFeatureCatalog() {
+  return [
+    steelNotSupportedCheck({ id: "steel-warping-torsion", description: "Warping torsion and bimoment verification", missingInputs: ["warping normal/shear stress distribution", "sectorial coordinates", "warping restraints and load eccentricities"], reference: "NTC 2018 \xA74.2.4.1.2.7; UNI EN 1993-1-1 \xA76.2.7" }),
+    steelNotSupportedCheck({ id: "steel-torsional-flexural-torsional-buckling", description: "Torsional and flexural-torsional buckling of non-doubly-symmetric open sections", missingInputs: ["shear-centre coordinates", "warping constant", "torsional effective length", "end warping restraints", "elastic critical loads Ncr,T and Ncr,TF"], reference: "Circolare 2019 C4.2.4.1.3.1; UNI EN 1993-1-1 \xA76.3.1.4" }),
+    steelNotSupportedCheck({ id: "steel-class-4-effective-properties", description: "Class 4 effective properties and stability", missingInputs: ["effective area Aeff", "effective section moduli Weff,y/Weff,z", "neutral-axis shift", "plate buckling reduction factors"], reference: "NTC 2018 \xA74.2.4.1.2.2; UNI EN 1993-1-5 \xA74" }),
+    steelNotSupportedCheck({ id: "steel-fatigue", description: "Steel fatigue verification", missingInputs: ["stress-range spectrum", "detail category", "cycle counts", "partial factors and damage accumulation rule"], reference: "NTC 2018 \xA74.2.4.1.4; UNI EN 1993-1-9" }),
+    steelNotSupportedCheck({ id: "steel-built-up-cold-formed", description: "Built-up members and cold-formed profiles", missingInputs: ["component spacing and connectors", "built-up shear stiffness", "local/distortional buckling data", "cold-forming corner properties"], reference: "NTC 2018 \xA74.2.4; UNI EN 1993-1-1 \xA76.4 and UNI EN 1993-1-3" })
+  ];
+}
+function verifySteelFem3DAdvanced({ contract, section, material, resultToSectionUnits, sectionToResultUnits, serviceability = {}, resistance = {}, stability = {} } = {}) {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
+  const checks = [];
+  const warnings = [];
+  const assumptions = [];
+  const activeNotSupported = [];
+  const family = String((_a = section == null ? void 0 : section.family) != null ? _a : "").toUpperCase();
+  const fy = material == null ? void 0 : material.fyk;
+  const gammaM0 = (_c = (_b = material == null ? void 0 : material.metadata) == null ? void 0 : _b.gammaM0) != null ? _c : 1.05;
+  const bendingCapacity = sectionToResultUnits.moment(((_d = section == null ? void 0 : section.plasticSectionModulusY) != null ? _d : section == null ? void 0 : section.elasticSectionModulusY) * fy / gammaM0);
+  const shearArea = (_e = section == null ? void 0 : section.shearAreaY) != null ? _e : section == null ? void 0 : section.area;
+  const shearCapacity = sectionToResultUnits.force(shearArea * fy / (Math.sqrt(3) * gammaM0));
+  const member = contract.member;
+  const activateUnsupported = (check) => {
+    var _a2;
+    if (!activeNotSupported.some((item) => item.id === check.id)) {
+      activeNotSupported.push(check);
+      checks.push(check);
+      warnings.push(...(_a2 = check.warnings) != null ? _a2 : []);
+    }
+  };
+  const restraintAssumptions = {
+    sway: member.frameClassification.sway,
+    nonSway: member.frameClassification.nonSway,
+    effectiveLengths: { ...member.effectiveLengths },
+    effectiveLengthFactors: { ...member.effectiveLengthFactors }
+  };
+  for (const combination of contract.combinations) {
+    if (combination.limitState === "SLU") {
+      for (const panel of member.webPanels) {
+        const sample = maxSample(combination.stations, (item) => {
+          var _a2;
+          return (_a2 = item.actions.Vy) != null ? _a2 : 0;
+        }, panel);
+        if (!sample) continue;
+        const result = verifySteelWebShearBuckling({ section, material, vEd: resultToSectionUnits.force((_f = sample.actions.Vy) != null ? _f : 0), panel: { ...panel, length: resultToSectionUnits.length(panel.length) } });
+        const decorated = decorate(result.check, combination, sample, panel, restraintAssumptions);
+        if (Number.isFinite(decorated.capacity)) decorated.capacity = round5(sectionToResultUnits.force(decorated.capacity));
+        decorated.demand = round5(Math.abs((_g = sample.actions.Vy) != null ? _g : 0));
+        checks.push(decorated);
+        warnings.push(...decorated.warnings);
+        if (decorated.status === RESULT_STATUS.NOT_SUPPORTED) activeNotSupported.push(decorated);
+      }
+      const bendingShearSample = resistance.class4Detected ? null : maxSample(combination.stations, (item) => {
+        var _a2, _b2;
+        const m = Math.abs((_a2 = item.actions.My) != null ? _a2 : 0) / Math.max(bendingCapacity, 1e-12);
+        const v = Math.abs((_b2 = item.actions.Vy) != null ? _b2 : 0) / Math.max(shearCapacity, 1e-12);
+        return m + v;
+      });
+      if (bendingShearSample) {
+        const result = verifySteelBendingShearInteraction({ section, material, mEd: resultToSectionUnits.moment((_h = bendingShearSample.actions.My) != null ? _h : 0), vEd: resultToSectionUnits.force((_i = bendingShearSample.actions.Vy) != null ? _i : 0), bendingCapacity: resultToSectionUnits.moment(bendingCapacity), shearCapacity: resultToSectionUnits.force(shearCapacity) });
+        const decorated = decorate(result.check, combination, bendingShearSample, null, restraintAssumptions);
+        if (Number.isFinite(decorated.capacity)) decorated.capacity = round5(sectionToResultUnits.moment(decorated.capacity));
+        decorated.demand = round5(Math.abs((_j = bendingShearSample.actions.My) != null ? _j : 0));
+        checks.push(decorated);
+      }
+      for (const load of member.concentratedLoads.filter((item) => !item.combinationId || item.combinationId === combination.id)) {
+        const panel = member.webPanels.find((item) => inSegment(load.station, item));
+        const loadForCheck = { ...load, force: resultToSectionUnits.force(load.force), bearingLength: resultToSectionUnits.length(load.bearingLength) };
+        const panelForCheck = panel ? { ...panel, length: resultToSectionUnits.length(panel.length) } : {};
+        const result = verifySteelConcentratedWebLoad({ section, material, load: loadForCheck, panel: panelForCheck });
+        const station = (_k = combination.stations.find((item) => Math.abs(item.station - load.station) <= 1e-9)) != null ? _k : null;
+        const decorated = decorate(result.check, combination, station, panel, restraintAssumptions);
+        if (Number.isFinite(decorated.capacity)) decorated.capacity = round5(sectionToResultUnits.force(decorated.capacity));
+        decorated.demand = Number.isFinite(load.force) ? round5(Math.abs(load.force)) : null;
+        checks.push(decorated);
+        warnings.push(...decorated.warnings);
+        if (decorated.status === RESULT_STATUS.NOT_SUPPORTED) activeNotSupported.push(decorated);
+      }
+      const torsionSample = maxSample(combination.stations, (item) => {
+        var _a2;
+        return (_a2 = item.actions.T) != null ? _a2 : 0;
+      });
+      const bimomentSample = maxSample(combination.stations, (item) => {
+        var _a2;
+        return (_a2 = item.actions.B) != null ? _a2 : 0;
+      });
+      if (bimomentSample && Math.abs((_l = bimomentSample.actions.B) != null ? _l : 0) > 1e-9) {
+        const unsupported = decorate(steelUnsupportedFeatureCatalog()[0], combination, bimomentSample, null, restraintAssumptions);
+        checks.push(unsupported);
+        activeNotSupported.push(unsupported);
+        warnings.push(...unsupported.warnings);
+      } else if (torsionSample && Math.abs((_m = torsionSample.actions.T) != null ? _m : 0) > 1e-9) {
+        const result = verifySteelShearTorsionInteraction({ section, material, vEd: resultToSectionUnits.force((_n = torsionSample.actions.Vy) != null ? _n : 0), tEd: resultToSectionUnits.moment(torsionSample.actions.T), shearCapacity: resultToSectionUnits.force(shearCapacity) });
+        const decorated = decorate(result.check, combination, torsionSample, null, restraintAssumptions);
+        if (Number.isFinite(decorated.capacity)) decorated.capacity = round5(sectionToResultUnits.force(decorated.capacity));
+        decorated.demand = round5(Math.abs((_o = torsionSample.actions.Vy) != null ? _o : 0));
+        checks.push(decorated);
+        warnings.push(...decorated.warnings);
+        if (decorated.status === RESULT_STATUS.NOT_SUPPORTED) activeNotSupported.push(decorated);
+      }
+    }
+  }
+  const hasCompressionDemand = contract.combinations.some(
+    (combination) => combination.limitState === "SLU" && combination.stations.some(
+      (sample) => {
+        var _a2;
+        return Math.abs((_a2 = sample.actions.N) != null ? _a2 : 0) > 1e-9;
+      }
+    )
+  );
+  if (["L", "LU", "T", "UPN"].includes(family) && hasCompressionDemand) {
+    activateUnsupported(steelUnsupportedFeatureCatalog()[1]);
+  }
+  const hw = Number.isFinite(section == null ? void 0 : section.height) && Number.isFinite(section == null ? void 0 : section.flangeThickness) ? section.height - 2 * section.flangeThickness - 2 * ((_p = section.rootRadius) != null ? _p : 0) : null;
+  const epsilon = Number.isFinite(fy) && fy > 0 ? Math.sqrt(235 / fy) : null;
+  if (["IPE", "HEA", "HEB", "HEM"].includes(family) && member.webPanels.length === 0 && Number.isFinite(hw) && Number.isFinite(section == null ? void 0 : section.webThickness) && Number.isFinite(epsilon) && hw / section.webThickness > 72 * epsilon / (fy <= 460 ? 1.2 : 1)) {
+    activateUnsupported(steelNotSupportedCheck({
+      id: "steel-web-shear-buckling",
+      description: "Web shear buckling",
+      missingInputs: ["web panel boundaries", "transverse stiffener positions", "end-post classification"],
+      reference: "NTC 2018 \xA74.2.4.1.2.6; UNI EN 1993-1-5 \xA75"
+    }));
+  }
+  if (family === "COMPOUND" || resistance.coldFormed === true) {
+    activateUnsupported(steelUnsupportedFeatureCatalog()[4]);
+  }
+  if (((_q = resistance.fatigue) == null ? void 0 : _q.enabled) === true) activateUnsupported(steelUnsupportedFeatureCatalog()[3]);
+  const vibration = {
+    status: "requires-input",
+    automatic: false,
+    requiredInputs: ["modal frequencies", "modal masses", "damping ratio", "occupancy/excitation model", "acceleration or response limits"],
+    reference: "NTC 2018 \xA74.2.4.2.2 and \xA77.2.6; ISO 10137",
+    availableFemFields: ["combinationId", "station", "u", "v", "w", "rotations"],
+    metadata: { requested: ((_r = serviceability.vibration) == null ? void 0 : _r.enabled) === true }
+  };
+  return {
+    checks,
+    warnings: [...new Set(warnings)],
+    assumptions,
+    activeNotSupported,
+    unsupportedFeatures: steelUnsupportedFeatureCatalog(),
+    vibration,
+    status: activeNotSupported.length > 0 ? RESULT_STATUS.NOT_SUPPORTED : checks.every((check) => check.ok !== false) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED
+  };
+}
+
 // src/applications/steel-frames/checks/SteelMemberVerificationPolicies.js
 var DEFAULT_SECTION_UNITS = Object.freeze({ force: "N", length: "mm" });
 function hasSignificantAction(value, tolerance = 1e-9) {
@@ -37331,7 +38019,7 @@ function isMoreSevereGroupedCheck(candidate, current) {
 function resultEntries(resultMap = {}) {
   return Object.values(resultMap != null ? resultMap : {});
 }
-function normalizeLimitState(limitState) {
+function normalizeLimitState2(limitState) {
   return String(limitState != null ? limitState : "").trim().toUpperCase();
 }
 function normalizeCombinationType(combinationType) {
@@ -37398,7 +38086,7 @@ function createDeflectionChecks({
   var _a, _b, _c, _d, _e, _f, _g, _h, _i;
   const checks = [];
   for (const result of resultEntries(analysisResult.combinations)) {
-    if (normalizeLimitState((_a = result.context) == null ? void 0 : _a.limitState) !== "SLE") {
+    if (normalizeLimitState2((_a = result.context) == null ? void 0 : _a.limitState) !== "SLE") {
       continue;
     }
     const span = (_d = (_b = result.geometry) == null ? void 0 : _b.length) != null ? _d : (_c = result.geometry) == null ? void 0 : _c.horizontalSpan;
@@ -37679,7 +38367,7 @@ function createLateralTorsionalBucklingChecks({
     "Lateral-torsional buckling is checked on ULS FEM bending maxima for declared unbraced segments; automatic Mcr is available for I/H and RHS profiles, while CHS/SHS/ROUND are treated as not susceptible to the classic LTB check."
   );
   for (const result of resultEntries(analysisResult.combinations)) {
-    if (normalizeLimitState((_a = result.context) == null ? void 0 : _a.limitState) !== "ULS") {
+    if (normalizeLimitState2((_a = result.context) == null ? void 0 : _a.limitState) !== "ULS") {
       continue;
     }
     for (const segment of createLtbSegments({ result, options })) {
@@ -37816,7 +38504,7 @@ function createCompressionBucklingChecks({
     "Compression buckling uses NTC 2018 flexural buckling reductions about y and z; effective lengths default from the simple-beam supports and can be overridden."
   );
   for (const result of resultEntries(analysisResult.combinations)) {
-    if (normalizeLimitState((_a = result.context) == null ? void 0 : _a.limitState) !== "ULS") {
+    if (normalizeLimitState2((_a = result.context) == null ? void 0 : _a.limitState) !== "ULS") {
       continue;
     }
     const axialForceConvention = (_c = (_b = optionValue(options, ["axialForceConvention"], null)) != null ? _b : classification.axialForceConvention) != null ? _c : "absolute";
@@ -38004,7 +38692,7 @@ function createBeamColumnInteractionChecks({
   resistance = {},
   classification = {}
 }) {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v;
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E;
   const interactionOptions = beamColumnInteractionOptions(stability);
   const bucklingOptions = compressionBucklingOptions(stability);
   const checks = [];
@@ -38023,7 +38711,7 @@ function createBeamColumnInteractionChecks({
     "Steel beam-column stability interaction uses Circolare NTC 2018 Method B; Mz is included for supported doubly symmetric profiles, while torsion and torsional interactions are excluded."
   );
   for (const result of resultEntries(analysisResult.combinations)) {
-    if (normalizeLimitState((_a = result.context) == null ? void 0 : _a.limitState) !== "ULS") {
+    if (normalizeLimitState2((_a = result.context) == null ? void 0 : _a.limitState) !== "ULS") {
       continue;
     }
     const lengths = resolveCompressionBucklingLengths({
@@ -38032,6 +38720,8 @@ function createBeamColumnInteractionChecks({
       resultToSectionUnits
     });
     const samples = (_c = (_b = result.internalForces) == null ? void 0 : _b.samples) != null ? _c : [];
+    const momentFactorY = calculateSteelMomentDiagramFactor(samples, "My");
+    const momentFactorZ = calculateSteelMomentDiagramFactor(samples, "Mz");
     const useBiaxialInteraction = samples.some((sample) => {
       var _a2, _b2, _c2;
       return hasSignificantAction(
@@ -38118,9 +38808,9 @@ function createBeamColumnInteractionChecks({
         sectionClass: classificationResult.class,
         compressionBucklingResult,
         chiLT: ltbReduction.chiLT,
-        alphaMy: optionValue(interactionOptions, ["alphaMy", "momentFactorY", "cmy"], 1),
-        alphaMLT: optionValue(interactionOptions, ["alphaMLT", "momentFactorLT", "cmLT"], 1),
-        gammaM1: (_r = optionValue(interactionOptions, ["gammaM1"], null)) != null ? _r : optionValue(bucklingOptions, ["gammaM1"]),
+        alphaMy: optionValue(interactionOptions, ["alphaMy", "momentFactorY", "cmy"], (_r = momentFactorY == null ? void 0 : momentFactorY.factor) != null ? _r : 1),
+        alphaMLT: optionValue(interactionOptions, ["alphaMLT", "momentFactorLT", "cmLT"], (_s = momentFactorY == null ? void 0 : momentFactorY.factor) != null ? _s : 1),
+        gammaM1: (_t = optionValue(interactionOptions, ["gammaM1"], null)) != null ? _t : optionValue(bucklingOptions, ["gammaM1"]),
         axialForceConvention,
         allowSinglySymmetric: optionValue(
           interactionOptions,
@@ -38133,7 +38823,7 @@ function createBeamColumnInteractionChecks({
         mzEd: mzEdSectionUnits,
         bendingSectionModulusY: bendingResistanceBasis.sectionModulus,
         bendingSectionModulusZ: bendingResistanceBasisZ.sectionModulus,
-        alphaMz: optionValue(interactionOptions, ["alphaMz", "momentFactorZ", "cmz"], 1)
+        alphaMz: optionValue(interactionOptions, ["alphaMz", "momentFactorZ", "cmz"], (_u = momentFactorZ == null ? void 0 : momentFactorZ.factor) != null ? _u : 1)
       }) : verifySteelBeamColumnInteractionMy({
         ...commonInteractionOptions,
         bendingSectionModulus: bendingResistanceBasis.sectionModulus
@@ -38153,9 +38843,9 @@ function createBeamColumnInteractionChecks({
           resultId: result.id,
           resultType: result.resultType,
           station: sample.station,
-          limitState: (_t = (_s = result.context) == null ? void 0 : _s.limitState) != null ? _t : null,
-          combinationType: normalizeCombinationType((_u = result.context) == null ? void 0 : _u.combinationType),
-          nEd: round2((_v = sample.n) != null ? _v : 0),
+          limitState: (_w = (_v = result.context) == null ? void 0 : _v.limitState) != null ? _w : null,
+          combinationType: normalizeCombinationType((_x = result.context) == null ? void 0 : _x.combinationType),
+          nEd: round2((_y = sample.n) != null ? _y : 0),
           nEdSectionUnits: round2(nEdSectionUnits),
           myEd: round2(strongAxisMoment),
           mzEd: round2(weakAxisMoment),
@@ -38168,6 +38858,12 @@ function createBeamColumnInteractionChecks({
           lengthInferenceSource: lengths.inferenceSource,
           resistanceBasis: bendingResistanceBasis.basis,
           resistanceBasisZ: bendingResistanceBasisZ.basis,
+          momentDiagramFactorY: (_z = momentFactorY == null ? void 0 : momentFactorY.factor) != null ? _z : 1,
+          momentDiagramPsiY: (_A = momentFactorY == null ? void 0 : momentFactorY.psi) != null ? _A : null,
+          momentDiagramFactorYSource: (_B = momentFactorY == null ? void 0 : momentFactorY.source) != null ? _B : "default-uniform-moment",
+          momentDiagramFactorZ: (_C = momentFactorZ == null ? void 0 : momentFactorZ.factor) != null ? _C : 1,
+          momentDiagramPsiZ: (_D = momentFactorZ == null ? void 0 : momentFactorZ.psi) != null ? _D : null,
+          momentDiagramFactorZSource: (_E = momentFactorZ == null ? void 0 : momentFactorZ.source) != null ? _E : "default-uniform-moment",
           ...ltbReduction.metadata
         }
       });
@@ -38272,6 +38968,35 @@ function createSteelActionVerifier({
           partRatios: classificationPartMetadata(classificationResult, "ratio")
         }
       };
+      if (classificationResult.class > 3) {
+        const unsupported = steelNotSupportedCheck({
+          id: "steel-class-4-effective-properties",
+          description: "Class 4 effective properties and stability",
+          missingInputs: [
+            "effective area Aeff",
+            "effective section moduli Weff,y/Weff,z",
+            "neutral-axis shift",
+            "plate buckling reduction factors"
+          ],
+          reference: "NTC 2018 \xA74.2.4.1.2.2; UNI EN 1993-1-5 \xA74"
+        });
+        return {
+          status: RESULT_STATUS.NOT_SUPPORTED,
+          utilizationRatio: null,
+          demand: null,
+          capacity: null,
+          checks: [classificationCheck, unsupported],
+          warnings: [
+            ...classificationResult.warnings,
+            ...unsupported.warnings
+          ],
+          assumptions: [],
+          metadata: {
+            governingCheckId: unsupported.id,
+            classification: classificationResult
+          }
+        };
+      }
       const axialStress = isFinitePositive3(section.area) ? Math.abs(convertedNEd) / section.area : null;
       const bendingStress = isFinitePositive3(bendingResistanceBasis.sectionModulus) ? Math.abs(convertedMEd) / bendingResistanceBasis.sectionModulus : null;
       const bendingResistanceBasisZ = selectBendingResistanceBasis({
@@ -38463,7 +39188,7 @@ var SteelMemberVerification = class {
     verificationStations = this.verificationStations,
     deflectionLimitRatio = ((_c) => (_c = ((_b) => (_b = serviceability.deflectionLimitRatio) != null ? _b : ((_a) => (_a = serviceability.deflection) == null ? void 0 : _a.limitRatio)())()) != null ? _c : this.deflectionLimitRatio)()
   } = {}) {
-    var _a2, _b2, _c2, _d;
+    var _a2, _b2, _c2, _d, _e, _f, _g, _h, _i, _j, _k;
     if (!section || !material || !analysisResult) {
       return new VerificationResult({
         applicationId: "steel-frames",
@@ -38481,7 +39206,86 @@ var SteelMemberVerification = class {
         }
       });
     }
-    const resultUnits = analysisResult.units;
+    const explicitFem3D = Boolean(
+      analysisResult.fem3d || Array.isArray(analysisResult.combinations) || Object.values((_a2 = analysisResult.combinations) != null ? _a2 : {}).some(
+        (combination) => Array.isArray(combination == null ? void 0 : combination.stations)
+      )
+    );
+    const fem3DValidation = validateSteelMemberFem3DResult(analysisResult, {
+      strict: explicitFem3D
+    });
+    if (!fem3DValidation.ok) {
+      const contractCheck = {
+        id: "steel-fem-3d-contract",
+        description: "Steel member FEM 3D input contract",
+        demand: null,
+        capacity: null,
+        utilizationRatio: null,
+        ok: null,
+        status: RESULT_STATUS.NOT_SUPPORTED,
+        metadata: {
+          norm: "NTC 2018 / Circolare 2019",
+          method: "steel-member-fem-3d-contract-v1",
+          missingInputs: [...fem3DValidation.errors],
+          reference: "NTC 2018 \xA74.2.4 and Circolare 2019 C4.2.4",
+          combinationId: null,
+          station: null,
+          restraintAssumptions: null
+        },
+        warnings: ["The FEM 3D result is incomplete; no member capacity has been calculated."],
+        assumptions: []
+      };
+      return new VerificationResult({
+        applicationId: "steel-frames",
+        status: RESULT_STATUS.NOT_SUPPORTED,
+        summary: "Steel member verification not supported because the FEM 3D contract is incomplete.",
+        checks: [contractCheck],
+        warnings: contractCheck.warnings,
+        outputs: {
+          fem3d: fem3DValidation.value,
+          contractValidation: {
+            ok: false,
+            errors: fem3DValidation.errors,
+            warnings: fem3DValidation.warnings
+          },
+          unsupportedFeatures: steelUnsupportedFeatureCatalog()
+        },
+        metadata: {
+          code: this.code,
+          memberId,
+          method: "steel-member-fem-3d-contract-v1",
+          ...this.metadata
+        }
+      });
+    }
+    const workingAnalysisResult = explicitFem3D ? steelMemberFem3DToLegacyAnalysisResult(fem3DValidation.value) : analysisResult;
+    const contractMember = fem3DValidation.value.member;
+    const contractCompression = {
+      effectiveLengthY: contractMember.effectiveLengths.y,
+      effectiveLengthZ: contractMember.effectiveLengths.z,
+      effectiveLengthFactorY: contractMember.effectiveLengthFactors.y,
+      effectiveLengthFactorZ: contractMember.effectiveLengthFactors.z
+    };
+    const contractLtbSegments = contractMember.restraintSegments.length > 0 ? contractMember.restraintSegments.map((segment) => ({
+      ...segment,
+      length: Number.isFinite(segment.to) && Number.isFinite(segment.from) ? segment.to - segment.from : null
+    })) : void 0;
+    const resolvedStability = {
+      ...stability,
+      compressionBuckling: {
+        ...contractCompression,
+        ...(_c2 = (_b2 = stability.compressionBuckling) != null ? _b2 : stability.buckling) != null ? _c2 : {}
+      },
+      lateralTorsionalBuckling: {
+        ...contractLtbSegments ? { segments: contractLtbSegments } : {},
+        ...(_e = (_d = stability.lateralTorsionalBuckling) != null ? _d : stability.ltb) != null ? _e : {}
+      },
+      beamColumnInteraction: {
+        compressionBuckling: contractCompression,
+        ...(_g = (_f = stability.beamColumnInteraction) != null ? _f : stability.interaction) != null ? _g : {}
+      }
+    };
+    const resultUnits = workingAnalysisResult.units;
     const sectionUnits = DEFAULT_SECTION_UNITS;
     const sectionToResultUnits = createUnitResolver(sectionUnits, resultUnits);
     const resultToSectionUnits = createUnitResolver(resultUnits, sectionUnits);
@@ -38498,46 +39302,66 @@ var SteelMemberVerification = class {
       }),
       limitStates: "ULS",
       verificationStations
-    }).verify({ analysisResult });
+    }).verify({ analysisResult: workingAnalysisResult });
     const deflectionChecks = createDeflectionChecks({
-      analysisResult,
+      analysisResult: workingAnalysisResult,
       deflectionLimitRatio
     });
     const lateralTorsionalBuckling = createLateralTorsionalBucklingChecks({
-      analysisResult,
+      analysisResult: workingAnalysisResult,
       section,
       material,
       resultToSectionUnits,
       sectionToResultUnits,
-      stability,
+      stability: resolvedStability,
       resistance,
       classification
     });
     const compressionBuckling = createCompressionBucklingChecks({
-      analysisResult,
+      analysisResult: workingAnalysisResult,
       section,
       material,
       resultToSectionUnits,
       sectionToResultUnits,
-      stability,
+      stability: resolvedStability,
       classification
     });
     const beamColumnInteraction = createBeamColumnInteractionChecks({
-      analysisResult,
+      analysisResult: workingAnalysisResult,
       section,
       material,
       resultToSectionUnits,
       sectionToResultUnits,
-      stability,
+      stability: resolvedStability,
       resistance,
       classification
+    });
+    const class4Detected = actionVerification.checks.some(
+      (check) => {
+        var _a3;
+        return check.id === "steel-section-classification" && ((_a3 = check.metadata) == null ? void 0 : _a3.sectionClass) > 3;
+      }
+    );
+    const advanced = verifySteelFem3DAdvanced({
+      contract: fem3DValidation.value,
+      section,
+      material,
+      resultToSectionUnits,
+      sectionToResultUnits,
+      serviceability,
+      resistance: { ...resistance, class4Detected },
+      stability: resolvedStability
     });
     const allChecks = [
       ...actionVerification.checks,
       ...lateralTorsionalBuckling.checks,
       ...compressionBuckling.checks,
       ...beamColumnInteraction.checks,
-      ...deflectionChecks
+      ...deflectionChecks,
+      ...advanced.checks,
+      ...class4Detected ? advanced.unsupportedFeatures.filter(
+        (check) => check.id === "steel-class-4-effective-properties"
+      ) : []
     ];
     const groupedChecks = Object.values(
       allChecks.reduce((acc, check) => {
@@ -38554,16 +39378,44 @@ var SteelMemberVerification = class {
     const compressionBucklingOk = compressionBuckling.status === RESULT_STATUS.OK;
     const beamColumnInteractionOk = beamColumnInteraction.status === RESULT_STATUS.OK;
     const sleOk = deflectionChecks.length === 0 || deflectionChecks.every((check) => check.ok);
+    const hasNotSupported = class4Detected || advanced.status === RESULT_STATUS.NOT_SUPPORTED || groupedChecks.some((check) => check.status === RESULT_STATUS.NOT_SUPPORTED);
+    const uniformChecks = groupedChecks.map((check) => {
+      var _a3, _b3, _c3, _d2, _e2, _f2, _g2, _h2, _i2, _j2, _k2, _l, _m, _n, _o;
+      return {
+        ...check,
+        metadata: {
+          norm: "NTC 2018 / Circolare 2019",
+          combinationId: (_d2 = (_c3 = (_a3 = check.metadata) == null ? void 0 : _a3.combinationId) != null ? _c3 : (_b3 = check.metadata) == null ? void 0 : _b3.resultId) != null ? _d2 : null,
+          station: (_f2 = (_e2 = check.metadata) == null ? void 0 : _e2.station) != null ? _f2 : null,
+          governingSegment: (_j2 = (_i2 = (_g2 = check.metadata) == null ? void 0 : _g2.governingSegment) != null ? _i2 : (_h2 = check.metadata) == null ? void 0 : _h2.segmentId) != null ? _j2 : null,
+          restraintAssumptions: (_l = (_k2 = check.metadata) == null ? void 0 : _k2.restraintAssumptions) != null ? _l : {
+            sway: contractMember.frameClassification.sway,
+            nonSway: contractMember.frameClassification.nonSway,
+            effectiveLengths: { ...contractMember.effectiveLengths },
+            effectiveLengthFactors: { ...contractMember.effectiveLengthFactors }
+          },
+          ...(_m = check.metadata) != null ? _m : {}
+        },
+        warnings: [...(_n = check.warnings) != null ? _n : []],
+        assumptions: [...(_o = check.assumptions) != null ? _o : []]
+      };
+    });
     return new VerificationResult({
       applicationId: "steel-frames",
-      status: ulsOk && ltbOk && compressionBucklingOk && beamColumnInteractionOk && sleOk ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+      status: hasNotSupported ? RESULT_STATUS.NOT_SUPPORTED : ulsOk && ltbOk && compressionBucklingOk && beamColumnInteractionOk && sleOk && advanced.status === RESULT_STATUS.OK ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       summary: "Steel member ULS section resistance, stability and SLE deflection verification from FEM beam results.",
-      utilizationRatio: (_a2 = governing == null ? void 0 : governing.utilizationRatio) != null ? _a2 : null,
-      demand: (_b2 = governing == null ? void 0 : governing.demand) != null ? _b2 : null,
-      capacity: (_c2 = governing == null ? void 0 : governing.capacity) != null ? _c2 : null,
-      checks: groupedChecks,
+      utilizationRatio: (_h = governing == null ? void 0 : governing.utilizationRatio) != null ? _h : null,
+      demand: (_i = governing == null ? void 0 : governing.demand) != null ? _i : null,
+      capacity: (_j = governing == null ? void 0 : governing.capacity) != null ? _j : null,
+      checks: uniformChecks,
       outputs: {
         stationResultCount: actionVerification.outputs.stationResultCount,
+        fem3d: fem3DValidation.value,
+        contractValidation: {
+          ok: fem3DValidation.ok,
+          errors: [...fem3DValidation.errors],
+          warnings: [...fem3DValidation.warnings]
+        },
         uls: actionVerification.outputs,
         serviceability: {
           deflectionLimitRatio,
@@ -38599,6 +39451,15 @@ var SteelMemberVerification = class {
             }))
           }
         },
+        advanced: {
+          status: advanced.status,
+          checks: advanced.checks.map((check) => ({
+            ...check,
+            metadata: { ...check.metadata }
+          }))
+        },
+        vibration: advanced.vibration,
+        unsupportedFeatures: advanced.unsupportedFeatures,
         governing: governing ? {
           utilizationRatio: governing.utilizationRatio,
           demand: governing.demand,
@@ -38620,7 +39481,10 @@ var SteelMemberVerification = class {
         ...lateralTorsionalBuckling.warnings,
         ...compressionBuckling.warnings,
         ...beamColumnInteraction.warnings,
-        "Steel member stability excludes torsion and torsional interactions; N+My+Mz is available for supported doubly symmetric profiles."
+        ...advanced.warnings,
+        ...fem3DValidation.warnings,
+        "Steel member stability excludes torsion and torsional interactions from Method B; N+My+Mz is available for supported doubly symmetric profiles.",
+        "Warping torsion and bimoment are never approximated; uniform Saint-Venant torsion is checked only when the required section data are available."
       ]),
       assumptions: [
         ...actionVerification.assumptions,
@@ -38633,7 +39497,7 @@ var SteelMemberVerification = class {
         code: this.code,
         memberId,
         method: "steel-elastic-member-mvp",
-        governingCheckId: (_d = governing == null ? void 0 : governing.id) != null ? _d : null,
+        governingCheckId: (_k = governing == null ? void 0 : governing.id) != null ? _k : null,
         deflectionLimitRatio,
         verificationStations,
         ...this.metadata
@@ -38693,7 +39557,7 @@ function resolveLineLoadEntries(payload, wallId, warnings) {
   if (!payload || typeof payload !== "object") {
     return [];
   }
-  const entries = [];
+  const entries2 = [];
   for (const [rawKey, rawValue] of Object.entries(payload)) {
     const key = normalizeLineLoadEntryKey(rawKey);
     const value = Number.isFinite(rawValue) ? rawValue : rawValue == null ? void 0 : rawValue.value;
@@ -38705,7 +39569,7 @@ function resolveLineLoadEntries(payload, wallId, warnings) {
     const category = resolveVariableCategory(rawValue, normalizedKey);
     const isVariable = (rawValue == null ? void 0 : rawValue.nature) === "variable" || category != null || normalizedKey === "QK";
     if (permanentClass) {
-      entries.push({
+      entries2.push({
         id: `${wallId}-${key}`,
         key,
         value,
@@ -38718,7 +39582,7 @@ function resolveLineLoadEntries(payload, wallId, warnings) {
       continue;
     }
     if (isVariable) {
-      entries.push({
+      entries2.push({
         id: `${wallId}-${key}`,
         key,
         value,
@@ -38735,18 +39599,18 @@ function resolveLineLoadEntries(payload, wallId, warnings) {
     warnings.push(
       `Wall ${wallId} line load entry ${key} was treated as a direct characteristic contribution because it does not map to the supported G1/G2/Qk action families.`
     );
-    entries.push({
+    entries2.push({
       id: `${wallId}-${key}`,
       key,
       value,
       kind: "direct"
     });
   }
-  return entries;
+  return entries2;
 }
-function selectLeadingVariable(entries = []) {
+function selectLeadingVariable(entries2 = []) {
   var _a;
-  return (_a = entries.find((entry) => entry.leading)) != null ? _a : entries.reduce(
+  return (_a = entries2.find((entry) => entry.leading)) != null ? _a : entries2.reduce(
     (selected, candidate) => !selected || Math.abs(candidate.value) > Math.abs(selected.value) ? candidate : selected,
     null
   );
@@ -38758,19 +39622,19 @@ function resolveCombinedLineLoad({
   warnings
 }) {
   var _a, _b;
-  const entries = resolveLineLoadEntries(payload, wallId, warnings);
+  const entries2 = resolveLineLoadEntries(payload, wallId, warnings);
   const normalizedCombination = normalizeCombinationType2(combinationType);
-  if (entries.length === 0) {
+  if (entries2.length === 0) {
     return {
       value: 0,
-      entries,
+      entries: entries2,
       factors: [],
       combinationType: normalizedCombination
     };
   }
-  const permanents = entries.filter((entry) => entry.kind === "permanent");
-  const variables = entries.filter((entry) => entry.kind === "variable");
-  const directs = entries.filter((entry) => entry.kind === "direct");
+  const permanents = entries2.filter((entry) => entry.kind === "permanent");
+  const variables = entries2.filter((entry) => entry.kind === "variable");
+  const directs = entries2.filter((entry) => entry.kind === "direct");
   const factors = [];
   let value = directs.reduce((sum, entry) => sum + entry.value, 0);
   const pushFactor = (entry, factor) => {
@@ -38788,7 +39652,7 @@ function resolveCombinedLineLoad({
     }
     return {
       value,
-      entries,
+      entries: entries2,
       factors,
       combinationType: normalizedCombination
     };
@@ -38804,7 +39668,7 @@ function resolveCombinedLineLoad({
     }
     return {
       value,
-      entries,
+      entries: entries2,
       factors,
       combinationType: normalizedCombination,
       leadingVariableId: (_a = leading == null ? void 0 : leading.id) != null ? _a : null
@@ -38821,7 +39685,7 @@ function resolveCombinedLineLoad({
     }
     return {
       value,
-      entries,
+      entries: entries2,
       factors,
       combinationType: normalizedCombination,
       leadingVariableId: (_b = leading == null ? void 0 : leading.id) != null ? _b : null
@@ -38836,7 +39700,7 @@ function resolveCombinedLineLoad({
     }
     return {
       value,
-      entries,
+      entries: entries2,
       factors,
       combinationType: normalizedCombination
     };
@@ -48153,7 +49017,7 @@ var EVENT_UTILIZATION_TOLERANCE = 1e-10;
 var EVENT_MAX_ITERATIONS = 80;
 var NTC2018_ULTIMATE_MOMENT_DROP = 0.15;
 var POST_ULTIMATE_MOMENT_TOLERANCE = 1e-9;
-var round4 = (value, decimals = 12) => Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
+var round6 = (value, decimals = 12) => Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
 function resolveConcreteUltimateCompressionStrain(concreteLaw) {
   var _a;
   const compressionLimit = (_a = concreteLaw == null ? void 0 : concreteLaw.strainLimits) == null ? void 0 : _a.call(concreteLaw).compression;
@@ -48688,9 +49552,9 @@ function summarizeStateCheck(check) {
     id: check.id,
     material: check.material,
     mode: check.mode,
-    demand: round4(check.demand),
-    limit: round4(check.limit),
-    utilizationRatio: round4(check.utilizationRatio, 9),
+    demand: round6(check.demand),
+    limit: round6(check.limit),
+    utilizationRatio: round6(check.utilizationRatio, 9),
     reached: check.reached
   };
 }
@@ -48700,23 +49564,23 @@ function summarizeMomentCurvaturePoint(point) {
   var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l;
   return {
     converged: point.converged,
-    theta: round4(point.theta, 12),
+    theta: round6(point.theta, 12),
     compressedSide: (_a = point.compressedSide) != null ? _a : null,
-    curvature: round4(point.curvature),
-    absoluteCurvature: round4(point.absoluteCurvature),
-    eps0: round4(point.eps0),
-    kappaY: round4(point.kappaY),
-    kappaZ: round4(point.kappaZ),
-    neutralAxisY: round4(point.neutralAxisY, 6),
-    neutralAxisProjection: round4(point.neutralAxisProjection, 6),
-    N: round4(point.N, 6),
-    Mx: round4(point.Mx, 6),
-    My: round4(point.My, 6),
-    projectedMoment: round4(
+    curvature: round6(point.curvature),
+    absoluteCurvature: round6(point.absoluteCurvature),
+    eps0: round6(point.eps0),
+    kappaY: round6(point.kappaY),
+    kappaZ: round6(point.kappaZ),
+    neutralAxisY: round6(point.neutralAxisY, 6),
+    neutralAxisProjection: round6(point.neutralAxisProjection, 6),
+    N: round6(point.N, 6),
+    Mx: round6(point.Mx, 6),
+    My: round6(point.My, 6),
+    projectedMoment: round6(
       (_b = point.projectedMoment) != null ? _b : projectedMoment(point),
       6
     ),
-    axialResidual: round4(point.axialResidual, 6),
+    axialResidual: round6(point.axialResidual, 6),
     failureMode: (_e = (_d = point.failureMode) != null ? _d : (_c = point.limitState) == null ? void 0 : _c.eventType) != null ? _e : null,
     postUltimate: point.postUltimate == null ? null : {
       response: point.postUltimate.response,
@@ -48728,38 +49592,38 @@ function summarizeMomentCurvaturePoint(point) {
       active: point.postUltimate.active
     },
     postUltimateState: point.postUltimateState == null ? null : {
-      referenceMoment: round4(
+      referenceMoment: round6(
         point.postUltimateState.referenceMoment,
         6
       ),
       reference: point.postUltimateState.reference,
-      targetMoment: round4(
+      targetMoment: round6(
         point.postUltimateState.targetMoment,
         6
       ),
-      moment: round4(point.postUltimateState.moment, 6),
-      targetDropRatio: round4(
+      moment: round6(point.postUltimateState.moment, 6),
+      targetDropRatio: round6(
         point.postUltimateState.targetDropRatio,
         6
       ),
-      actualDropRatio: round4(
+      actualDropRatio: round6(
         point.postUltimateState.actualDropRatio,
         6
       ),
       reached: point.postUltimateState.reached
     },
     postPeakState: point.postPeakState == null ? null : {
-      maximumMoment: round4(
+      maximumMoment: round6(
         point.postPeakState.maximumMoment,
         6
       ),
-      targetMoment: round4(point.postPeakState.targetMoment, 6),
-      moment: round4(point.postPeakState.moment, 6),
-      targetDropRatio: round4(
+      targetMoment: round6(point.postPeakState.targetMoment, 6),
+      moment: round6(point.postPeakState.moment, 6),
+      targetDropRatio: round6(
         point.postPeakState.targetDropRatio,
         6
       ),
-      actualDropRatio: round4(
+      actualDropRatio: round6(
         point.postPeakState.actualDropRatio,
         6
       ),
@@ -48782,51 +49646,51 @@ function summarizeMomentCurvaturePoint(point) {
       governing: summarizeStateCheck(point.limitState.governing)
     },
     extremes: {
-      minStrain: round4(point.state.extremes.minStrain),
-      maxStrain: round4(point.state.extremes.maxStrain),
+      minStrain: round6(point.state.extremes.minStrain),
+      maxStrain: round6(point.state.extremes.maxStrain),
       concreteCompressionEdge: point.concreteCompressionEdge == null ? null : {
         edge: point.concreteCompressionEdge.edge,
         side: (_l = point.concreteCompressionEdge.side) != null ? _l : null,
-        strain: round4(point.concreteCompressionEdge.strain),
-        demand: round4(point.concreteCompressionEdge.demand),
-        y: round4(point.concreteCompressionEdge.y, 6),
-        z: round4(point.concreteCompressionEdge.z, 6)
+        strain: round6(point.concreteCompressionEdge.strain),
+        demand: round6(point.concreteCompressionEdge.demand),
+        y: round6(point.concreteCompressionEdge.y, 6),
+        z: round6(point.concreteCompressionEdge.z, 6)
       },
       maxConcreteCompression: point.state.extremes.maxConcreteCompression == null ? null : {
-        value: round4(point.state.extremes.maxConcreteCompression.value, 6),
-        strain: round4(point.state.extremes.maxConcreteCompression.strain),
-        y: round4(point.state.extremes.maxConcreteCompression.y, 6),
-        z: round4(point.state.extremes.maxConcreteCompression.z, 6)
+        value: round6(point.state.extremes.maxConcreteCompression.value, 6),
+        strain: round6(point.state.extremes.maxConcreteCompression.strain),
+        y: round6(point.state.extremes.maxConcreteCompression.y, 6),
+        z: round6(point.state.extremes.maxConcreteCompression.z, 6)
       },
       maxSteelTension: point.state.extremes.maxSteelTension == null ? null : {
-        value: round4(point.state.extremes.maxSteelTension.value, 6),
-        strain: round4(point.state.extremes.maxSteelTension.strain),
-        y: round4(point.state.extremes.maxSteelTension.y, 6),
-        z: round4(point.state.extremes.maxSteelTension.z, 6)
+        value: round6(point.state.extremes.maxSteelTension.value, 6),
+        strain: round6(point.state.extremes.maxSteelTension.strain),
+        y: round6(point.state.extremes.maxSteelTension.y, 6),
+        z: round6(point.state.extremes.maxSteelTension.z, 6)
       },
       maxSteelTensionStrain: point.state.extremes.maxSteelTensionStrain == null ? null : {
-        value: round4(
+        value: round6(
           point.state.extremes.maxSteelTensionStrain.stress,
           6
         ),
-        strain: round4(
+        strain: round6(
           point.state.extremes.maxSteelTensionStrain.strain
         ),
         id: point.state.extremes.maxSteelTensionStrain.id,
-        y: round4(point.state.extremes.maxSteelTensionStrain.y, 6),
-        z: round4(point.state.extremes.maxSteelTensionStrain.z, 6)
+        y: round6(point.state.extremes.maxSteelTensionStrain.y, 6),
+        z: round6(point.state.extremes.maxSteelTensionStrain.z, 6)
       },
       maxSteelCompressionStrain: point.state.extremes.maxSteelCompressionStrain == null ? null : {
-        value: round4(
+        value: round6(
           point.state.extremes.maxSteelCompressionStrain.stress,
           6
         ),
-        strain: round4(
+        strain: round6(
           point.state.extremes.maxSteelCompressionStrain.strain
         ),
         id: point.state.extremes.maxSteelCompressionStrain.id,
-        y: round4(point.state.extremes.maxSteelCompressionStrain.y, 6),
-        z: round4(point.state.extremes.maxSteelCompressionStrain.z, 6)
+        y: round6(point.state.extremes.maxSteelCompressionStrain.y, 6),
+        z: round6(point.state.extremes.maxSteelCompressionStrain.z, 6)
       }
     },
     balancedFailureState: point.balancedFailureState == null ? null : {
@@ -48835,39 +49699,39 @@ function summarizeMomentCurvaturePoint(point) {
         point.balancedFailureState.concrete
       ),
       steel: summarizeStateCheck(point.balancedFailureState.steel),
-      effectiveDepth: round4(
+      effectiveDepth: round6(
         point.balancedFailureState.effectiveDepth,
         6
       ),
-      neutralAxisDepth: round4(
+      neutralAxisDepth: round6(
         point.balancedFailureState.neutralAxisDepth,
         6
       ),
-      compressedEdgeProjection: round4(
+      compressedEdgeProjection: round6(
         point.balancedFailureState.compressedEdgeProjection,
         6
       ),
-      tensionReinforcementProjection: round4(
+      tensionReinforcementProjection: round6(
         point.balancedFailureState.tensionReinforcementProjection,
         6
       ),
-      compressedEdgeY: round4(
+      compressedEdgeY: round6(
         point.balancedFailureState.compressedEdgeY,
         6
       ),
-      tensionReinforcementY: round4(
+      tensionReinforcementY: round6(
         point.balancedFailureState.tensionReinforcementY,
         6
       ),
-      assignedAxialForce: round4(
+      assignedAxialForce: round6(
         point.balancedFailureState.assignedAxialForce,
         6
       ),
-      balancedAxialForce: round4(
+      balancedAxialForce: round6(
         point.balancedFailureState.balancedAxialForce,
         6
       ),
-      axialResidual: round4(
+      axialResidual: round6(
         point.balancedFailureState.axialResidual,
         6
       ),
@@ -48881,13 +49745,13 @@ function summarizeMomentCurvatureDuctility(ductility) {
   }
   return {
     reference: ductility.reference,
-    phiPrimeYd: round4(ductility.phiPrimeYd),
-    mPrimeYd: round4(ductility.mPrimeYd, 6),
-    mRd: round4(ductility.mRd, 6),
-    phiYd: round4(ductility.phiYd),
-    phiU: round4(ductility.phiU),
-    curvatureDuctilityRatio: round4(ductility.curvatureDuctilityRatio, 6),
-    ultimateMomentDropRatio: round4(
+    phiPrimeYd: round6(ductility.phiPrimeYd),
+    mPrimeYd: round6(ductility.mPrimeYd, 6),
+    mRd: round6(ductility.mRd, 6),
+    phiYd: round6(ductility.phiYd),
+    phiU: round6(ductility.phiU),
+    curvatureDuctilityRatio: round6(ductility.curvatureDuctilityRatio, 6),
+    ultimateMomentDropRatio: round6(
       ductility.ultimateMomentDropRatio,
       6
     ),
@@ -48896,32 +49760,32 @@ function summarizeMomentCurvatureDuctility(ductility) {
     firstYieldPoint: ductility.firstYieldPoint == null ? null : summarizeMomentCurvaturePoint(ductility.firstYieldPoint),
     maximumMomentPoint: ductility.maximumMomentPoint == null ? null : summarizeMomentCurvaturePoint(ductility.maximumMomentPoint),
     momentDropPoint: ductility.momentDropPoint == null ? null : {
-      absoluteCurvature: round4(
+      absoluteCurvature: round6(
         ductility.momentDropPoint.absoluteCurvature
       ),
-      curvature: round4(ductility.momentDropPoint.curvature),
-      Mx: round4(ductility.momentDropPoint.Mx, 6),
-      My: round4(ductility.momentDropPoint.My, 6),
+      curvature: round6(ductility.momentDropPoint.curvature),
+      Mx: round6(ductility.momentDropPoint.Mx, 6),
+      My: round6(ductility.momentDropPoint.My, 6),
       source: ductility.momentDropPoint.source,
       interpolation: ductility.momentDropPoint.interpolation
     },
     materialUltimatePoint: ductility.materialUltimatePoint == null ? null : {
-      absoluteCurvature: round4(
+      absoluteCurvature: round6(
         ductility.materialUltimatePoint.absoluteCurvature
       ),
-      curvature: round4(
+      curvature: round6(
         ductility.materialUltimatePoint.curvature
       ),
-      Mx: round4(ductility.materialUltimatePoint.Mx, 6),
-      My: round4(ductility.materialUltimatePoint.My, 6),
+      Mx: round6(ductility.materialUltimatePoint.Mx, 6),
+      My: round6(ductility.materialUltimatePoint.My, 6),
       source: ductility.materialUltimatePoint.source,
       interpolation: ductility.materialUltimatePoint.interpolation
     },
     ultimatePoint: ductility.ultimatePoint == null ? null : {
-      absoluteCurvature: round4(ductility.ultimatePoint.absoluteCurvature),
-      curvature: round4(ductility.ultimatePoint.curvature),
-      Mx: round4(ductility.ultimatePoint.Mx, 6),
-      My: round4(ductility.ultimatePoint.My, 6),
+      absoluteCurvature: round6(ductility.ultimatePoint.absoluteCurvature),
+      curvature: round6(ductility.ultimatePoint.curvature),
+      Mx: round6(ductility.ultimatePoint.Mx, 6),
+      My: round6(ductility.ultimatePoint.My, 6),
       source: ductility.ultimatePoint.source,
       interpolation: ductility.ultimatePoint.interpolation
     }
@@ -54982,12 +55846,12 @@ var SteelFrameApplication = class extends StructuralApplication {
 };
 
 // src/applications/steel-frames/checks/steelVerificationCapabilities.js
-var I_H_FAMILIES5 = /* @__PURE__ */ new Set(["IPE", "HEA", "HEB", "HEM"]);
+var I_H_FAMILIES6 = /* @__PURE__ */ new Set(["IPE", "HEA", "HEB", "HEM"]);
 var U_SECTION_FAMILIES = /* @__PURE__ */ new Set(["UPN"]);
 var CLOSED_HOLLOW_FAMILIES2 = /* @__PURE__ */ new Set(["CHS", "SHS", "RHS"]);
 var AXISYMMETRIC_OR_SQUARE_FAMILIES = /* @__PURE__ */ new Set(["CHS", "SHS", "ROUND"]);
 var DOUBLY_SYMMETRIC_METHOD_B_FAMILIES2 = /* @__PURE__ */ new Set([
-  ...I_H_FAMILIES5,
+  ...I_H_FAMILIES6,
   "CHS",
   "SHS",
   "RHS",
@@ -54995,7 +55859,7 @@ var DOUBLY_SYMMETRIC_METHOD_B_FAMILIES2 = /* @__PURE__ */ new Set([
   "FLAT"
 ]);
 var CLASSIFICATION_FAMILIES = /* @__PURE__ */ new Set([
-  ...I_H_FAMILIES5,
+  ...I_H_FAMILIES6,
   ...U_SECTION_FAMILIES,
   ...CLOSED_HOLLOW_FAMILIES2,
   "ROUND",
@@ -55005,14 +55869,14 @@ var CLASSIFICATION_FAMILIES = /* @__PURE__ */ new Set([
   "T"
 ]);
 var AUTOMATIC_COMPRESSION_BUCKLING_FAMILIES = /* @__PURE__ */ new Set([
-  ...I_H_FAMILIES5,
+  ...I_H_FAMILIES6,
   ...U_SECTION_FAMILIES,
   ...CLOSED_HOLLOW_FAMILIES2,
   "ROUND",
   "FLAT"
 ]);
 var OPEN_UNSYMMETRIC_FAMILIES2 = /* @__PURE__ */ new Set(["L", "LU", "T"]);
-var AUTOMATIC_MCR_FAMILIES2 = /* @__PURE__ */ new Set([...I_H_FAMILIES5, "RHS"]);
+var AUTOMATIC_MCR_FAMILIES2 = /* @__PURE__ */ new Set([...I_H_FAMILIES6, "RHS"]);
 function normalizedFamily5(section) {
   var _a, _b, _c;
   return String((_c = (_b = section == null ? void 0 : section.family) != null ? _b : (_a = section == null ? void 0 : section.catalogProperties) == null ? void 0 : _a.family) != null ? _c : "").trim().toUpperCase();
@@ -55033,6 +55897,7 @@ function profileNameOf(section, fallback = null) {
 function supported(message = null, extra = {}) {
   return {
     status: "supported",
+    availability: "automatic",
     message,
     ...extra
   };
@@ -55040,6 +55905,7 @@ function supported(message = null, extra = {}) {
 function automatic(message = null, extra = {}) {
   return {
     status: "automatic",
+    availability: "automatic",
     message,
     ...extra
   };
@@ -55047,6 +55913,7 @@ function automatic(message = null, extra = {}) {
 function requiresInput(requiredInputs, message = null, extra = {}) {
   return {
     status: "requires-input",
+    availability: "requires-input",
     requiredInputs,
     message,
     ...extra
@@ -55055,6 +55922,7 @@ function requiresInput(requiredInputs, message = null, extra = {}) {
 function requiresOverride(requiredInputs, message = null, extra = {}) {
   return {
     status: "requires-override",
+    availability: "requires-input",
     requiredInputs,
     message,
     ...extra
@@ -55063,6 +55931,7 @@ function requiresOverride(requiredInputs, message = null, extra = {}) {
 function notRequired(message = null, extra = {}) {
   return {
     status: "not-required",
+    availability: "automatic",
     message,
     ...extra
   };
@@ -55070,6 +55939,7 @@ function notRequired(message = null, extra = {}) {
 function notSupported(message = null, extra = {}) {
   return {
     status: "not-supported",
+    availability: "not-supported",
     message,
     ...extra
   };
@@ -55234,10 +56104,33 @@ function getSteelVerificationCapabilities({
     beamColumnInteraction: beamColumnInteractionCapability(family),
     serviceability: supported("SLE vertical deflection checks are available from FEM beam results.", {
       requiredInputs: ["SLE combination", "deflection limit ratio"]
-    })
+    }),
+    webShearBuckling: I_H_FAMILIES6.has(family) ? requiresInput(
+      ["web panels", "panel lengths", "end-post type", "transverse stiffeners"],
+      "I/H web shear buckling is automatic after the panel and stiffener layout is supplied.",
+      { method: "NTC 2018 \xA74.2.4.1.2.6 / EN 1993-1-5 \xA75" }
+    ) : notRequired("The implemented web-panel shear-buckling model applies only to rolled/welded I/H sections."),
+    concentratedWebLoads: I_H_FAMILIES6.has(family) ? requiresInput(
+      ["load station", "bearing length", "load type", "containing web panel"],
+      "Transverse concentrated web-load resistance is automatic with load-introduction data.",
+      { method: "NTC 2018 \xA74.2.4.1.2.6 / EN 1993-1-5 \xA76" }
+    ) : notSupported("Concentrated transverse web loads are currently implemented only for I/H sections."),
+    bendingShearInteraction: automatic(
+      "The bending resistance is reduced automatically when VEd exceeds 0.5 VRd.",
+      { method: "NTC 2018 \xA74.2.4.1.2.5 / EN 1993-1-1 \xA76.2.8" }
+    ),
+    shearTorsionInteraction: requiresInput(
+      ["Saint-Venant torque T", "torsional section modulus WT", "zero bimoment B"],
+      "Only uniform Saint-Venant torsion is supported; warping torsion is blocked.",
+      { method: "NTC 2018 \xA74.2.4.1.2.7 / EN 1993-1-1 \xA76.2.7" }
+    ),
+    vibration: requiresInput(
+      ["modal frequencies", "modal masses", "damping", "excitation model", "response limits"],
+      "The FEM contract is vibration-ready, but the acceptance check is not implemented."
+    )
   };
-  const unsupportedCount = Object.values(checks).filter(
-    (item) => item.status === "not-supported"
+  const unsupportedCount = Object.entries(checks).filter(
+    ([key, item]) => ["classification", "sectionResistance", "compressionBuckling", "lateralTorsionalBuckling", "beamColumnInteraction", "serviceability"].includes(key) && item.status === "not-supported"
   ).length;
   return {
     status: unsupportedCount === 0 ? "supported" : "partially-supported",
@@ -55245,9 +56138,28 @@ function getSteelVerificationCapabilities({
     profileName: profileNameOf(resolvedSection, profileName),
     checks,
     compound: compoundCapability(family),
+    unsupported: {
+      warpingTorsionAndBimoment: notSupported(
+        "No approximate capacity is returned; sectorial stresses and warping restraints require a dedicated model.",
+        { requiredInputs: ["sectorial coordinates", "warping stresses", "warping restraints"], reference: "NTC 2018 \xA74.2.4.1.2.7 / EN 1993-1-1 \xA76.2.7" }
+      ),
+      torsionalAndFlexuralTorsionalBuckling: notSupported(
+        "Open sections that are not doubly symmetric require critical torsional/flexural-torsional loads.",
+        { requiredInputs: ["shear centre", "Iw", "Lcr,T", "warping restraints", "Ncr,T/Ncr,TF"], reference: "Circolare 2019 C4.2.4.1.3.1 / EN 1993-1-1 \xA76.3.1.4" }
+      ),
+      class4EffectiveProperties: notSupported(
+        "Gross-section capacities are not substituted for effective class-4 properties.",
+        { requiredInputs: ["Aeff", "Weff,y", "Weff,z", "neutral-axis shift"], reference: "NTC 2018 \xA74.2.4.1.2.2 / EN 1993-1-5 \xA74" }
+      ),
+      fatigue: notSupported("Fatigue is outside this verifier.", { requiredInputs: ["detail category", "stress ranges", "cycle spectrum"], reference: "NTC 2018 \xA74.2.4.1.4 / EN 1993-1-9" }),
+      builtUpAndColdFormed: notSupported("Built-up members and cold-formed profiles require dedicated models.", { requiredInputs: ["connector layout", "built-up shear stiffness", "local/distortional buckling data"], reference: "EN 1993-1-1 \xA76.4 / EN 1993-1-3" })
+    },
     limitations: [
-      "Class 4 effective section properties are not implemented.",
-      "Torsion and torsional interactions are excluded from the current steel member verifier.",
+      "Class 4 effective section properties and stability are not implemented; no gross-property approximation is returned.",
+      "Only uniform Saint-Venant torsion may be checked; warping torsion/bimoment is not supported.",
+      "Torsional and flexural-torsional buckling of non-doubly-symmetric open sections is not supported.",
+      "Fatigue and cold-formed/built-up member verification are not supported.",
+      "Connection verification is intentionally outside this application.",
       "Compound profile verification is geometric/elastic until a dedicated built-up member verifier is added."
     ]
   };
@@ -55276,7 +56188,7 @@ var SteelFrameModel = class {
 };
 
 // src/applications/timber-concrete-composite-beams/checks/TimberConcreteCompositeBeamVerification.js
-var round5 = (value, decimals = 6) => Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
+var round7 = (value, decimals = 6) => Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
 function assertPositive18(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be a positive number.`);
@@ -55292,7 +56204,7 @@ function slabCompositeWeakAxisNeglectWarning({
   mZEdSectionUnits,
   vZEdSectionUnits
 }) {
-  return `${systemLabel}: mZ/vZ from section rotation are reported and neglected in this 1D gamma-method verification because the slab action provides high in-plane stiffness/resistance; checked governing components are mY/vY. mZ=${round5(mZEd)}, vZ=${round5(vZEd)}, mZSectionUnits=${round5(mZEdSectionUnits)}, vZSectionUnits=${round5(vZEdSectionUnits)}.`;
+  return `${systemLabel}: mZ/vZ from section rotation are reported and neglected in this 1D gamma-method verification because the slab action provides high in-plane stiffness/resistance; checked governing components are mY/vY. mZ=${round7(mZEd)}, vZ=${round7(vZEd)}, mZSectionUnits=${round7(mZEdSectionUnits)}, vZSectionUnits=${round7(vZEdSectionUnits)}.`;
 }
 function evaluateCheck(demand, capacity) {
   const utilizationRatio = demand / capacity;
@@ -55335,10 +56247,10 @@ function demandResolver(context = {}) {
     { force: "N", length: "mm" }
   );
 }
-function maxAbsSample(entries, samplesGetter, valueKey) {
+function maxAbsSample(entries2, samplesGetter, valueKey) {
   var _a;
   let selected = null;
-  for (const entry of entries) {
+  for (const entry of entries2) {
     for (const sample of (_a = samplesGetter(entry)) != null ? _a : []) {
       const value = sample == null ? void 0 : sample[valueKey];
       if (!Number.isFinite(value)) {
@@ -55359,17 +56271,17 @@ function femDemands(analysisResult) {
   const resolver = createUnitResolver(analysisResult.units, { force: "N", length: "mm" });
   const combinations = Object.values((_a = analysisResult.combinations) != null ? _a : {});
   const loadCases = Object.values((_b = analysisResult.loadCases) != null ? _b : {});
-  const entries = combinations.length > 0 ? combinations : loadCases;
-  const ulsEntries = entries.filter((entry) => {
+  const entries2 = combinations.length > 0 ? combinations : loadCases;
+  const ulsEntries = entries2.filter((entry) => {
     var _a2;
     return ((_a2 = entry.context) == null ? void 0 : _a2.limitState) === "ULS";
   });
-  const sleEntries = entries.filter((entry) => {
+  const sleEntries = entries2.filter((entry) => {
     var _a2;
     return ((_a2 = entry.context) == null ? void 0 : _a2.limitState) === "SLE";
   });
-  const uls = ulsEntries.length > 0 ? ulsEntries : entries;
-  const sle = sleEntries.length > 0 ? sleEntries : entries;
+  const uls = ulsEntries.length > 0 ? ulsEntries : entries2;
+  const sle = sleEntries.length > 0 ? sleEntries : entries2;
   const moment = maxAbsSample(uls, (entry) => {
     var _a2;
     return (_a2 = entry.internalForces) == null ? void 0 : _a2.samples;
@@ -55413,10 +56325,10 @@ var TimberConcreteCompositeBeamVerification = class {
     const vZEdSectionUnits = resolver.force(vZEd);
     const weakAxisNeglected = hasSignificantAction4(mZEdSectionUnits) || hasSignificantAction4(vZEdSectionUnits);
     const weakAxisMetadata = {
-      mZEd: round5(mZEd),
-      vZEd: round5(vZEd),
-      mZEdSectionUnits: round5(mZEdSectionUnits),
-      vZEdSectionUnits: round5(vZEdSectionUnits),
+      mZEd: round7(mZEd),
+      vZEd: round7(vZEd),
+      mZEdSectionUnits: round7(mZEdSectionUnits),
+      vZEdSectionUnits: round7(vZEdSectionUnits),
       weakAxisComponentsNeglected: weakAxisNeglected,
       weakAxisNeglectReason: weakAxisNeglected ? "slab-in-plane-stiffness-resistance" : null
     };
@@ -55520,13 +56432,13 @@ var TimberConcreteCompositeBeamVerification = class {
       }
     ].map((check) => ({
       ...check,
-      demand: round5(check.demand),
-      capacity: round5(check.capacity),
-      utilizationRatio: round5(check.utilizationRatio),
+      demand: round7(check.demand),
+      capacity: round7(check.capacity),
+      utilizationRatio: round7(check.utilizationRatio),
       metadata: {
         method: "gelfi-gamma-method-section-actions",
-        gammaUls: round5(gammaUls),
-        inertiaEffUls: round5(inertiaEffUls),
+        gammaUls: round7(gammaUls),
+        inertiaEffUls: round7(inertiaEffUls),
         ...weakAxisMetadata
       }
     }));
@@ -55560,8 +56472,8 @@ var TimberConcreteCompositeBeamVerification = class {
       metadata: {
         governingCheckId: governingCheck3.id,
         method: "gelfi-gamma-method-section-actions",
-        bendingEd: round5(bendingEd),
-        shearEd: round5(shearEd),
+        bendingEd: round7(bendingEd),
+        shearEd: round7(shearEd),
         ...weakAxisMetadata
       }
     };
@@ -55740,64 +56652,64 @@ var TimberConcreteCompositeBeamVerification = class {
       applicationId: "timber-concrete-composite-beams",
       status: combinedChecks.every((check) => check.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       summary: "Verification of timber beam with collaborating concrete slab according to the Gelfi-style gamma method implemented from the workbook.",
-      utilizationRatio: round5(governingCheck3.utilizationRatio, 6),
-      demand: round5(governingCheck3.demand, 6),
-      capacity: round5(governingCheck3.capacity, 6),
+      utilizationRatio: round7(governingCheck3.utilizationRatio, 6),
+      demand: round7(governingCheck3.demand, 6),
+      capacity: round7(governingCheck3.capacity, 6),
       checks: combinedChecks.map((check) => ({
         ...check,
-        demand: round5(check.demand, 6),
-        capacity: round5(check.capacity, 6),
-        utilizationRatio: round5(check.utilizationRatio, 6)
+        demand: round7(check.demand, 6),
+        capacity: round7(check.capacity, 6),
+        utilizationRatio: round7(check.utilizationRatio, 6)
       })),
       outputs: {
-        fcd: round5(fcd, 6),
-        fyd: round5(fyd, 6),
-        fmD: round5(fmD, 6),
-        ewInf: round5(ewInf, 6),
-        n: round5(n, 6),
-        slabArea: round5(slabArea, 6),
-        timberArea: round5(timberArea, 6),
-        idealArea: round5(idealArea, 6),
-        reinforcementArea: round5(reinforcementArea, 6),
-        timberCentroid: round5(timberCentroid, 6),
-        slabCentroid: round5(slabCentroid, 6),
-        idealCentroid: round5(idealCentroid, 6),
-        centroidDistance: round5(centroidDistance, 6),
-        slabInertia: round5(slabInertia, 6),
-        timberInertia: round5(timberInertia, 6),
-        disconnectedInertia: round5(disconnectedInertia, 6),
-        idealInertia: round5(idealInertia, 6),
-        slabStaticMoment: round5(slabStaticMoment, 6),
-        dStar: round5(dStar, 6),
-        timberSectionModulus: round5(timberSectionModulus, 6),
-        shearEd: round5(shearEd, 6),
-        bendingEd: round5(bendingEd, 6),
-        gammaUls: round5(gammaUls, 6),
-        inertiaEffUls: round5(inertiaEffUls, 6),
-        gammaSle: round5(gammaSle, 6),
-        inertiaEffSle: round5(inertiaEffSle, 6),
-        slabMoment: round5(slabMoment, 6),
-        timberMoment: round5(timberMoment, 6),
-        slipForce: round5(slipForce, 6),
-        timberStressBottom: round5(timberStressBottom, 6),
-        timberStressTop: round5(timberStressTop, 6),
-        neutralAxisDepth: round5(neutralAxisDepth, 6),
-        slabMomentResistance: round5(slabMomentResistance, 6),
-        connectorForceConservative: round5(connectorForceConservative, 6),
-        deflectionEffUls: round5(deflectionEffUls, 6),
-        deflectionIdealUls: round5(deflectionIdealUls, 6),
-        deflectionIncrease: round5(deflectionIncrease, 6),
-        lateralSlip: round5(lateralSlip, 6),
-        connectorForceGelfi: round5(connectorForceGelfi, 6),
-        connectorKser: round5(connectorKser, 6),
-        connectorKu: round5(connectorKu, 6),
-        connectorFvrk: round5(connectorFvrk, 6),
-        deflectionSle: round5(deflectionSle, 6),
+        fcd: round7(fcd, 6),
+        fyd: round7(fyd, 6),
+        fmD: round7(fmD, 6),
+        ewInf: round7(ewInf, 6),
+        n: round7(n, 6),
+        slabArea: round7(slabArea, 6),
+        timberArea: round7(timberArea, 6),
+        idealArea: round7(idealArea, 6),
+        reinforcementArea: round7(reinforcementArea, 6),
+        timberCentroid: round7(timberCentroid, 6),
+        slabCentroid: round7(slabCentroid, 6),
+        idealCentroid: round7(idealCentroid, 6),
+        centroidDistance: round7(centroidDistance, 6),
+        slabInertia: round7(slabInertia, 6),
+        timberInertia: round7(timberInertia, 6),
+        disconnectedInertia: round7(disconnectedInertia, 6),
+        idealInertia: round7(idealInertia, 6),
+        slabStaticMoment: round7(slabStaticMoment, 6),
+        dStar: round7(dStar, 6),
+        timberSectionModulus: round7(timberSectionModulus, 6),
+        shearEd: round7(shearEd, 6),
+        bendingEd: round7(bendingEd, 6),
+        gammaUls: round7(gammaUls, 6),
+        inertiaEffUls: round7(inertiaEffUls, 6),
+        gammaSle: round7(gammaSle, 6),
+        inertiaEffSle: round7(inertiaEffSle, 6),
+        slabMoment: round7(slabMoment, 6),
+        timberMoment: round7(timberMoment, 6),
+        slipForce: round7(slipForce, 6),
+        timberStressBottom: round7(timberStressBottom, 6),
+        timberStressTop: round7(timberStressTop, 6),
+        neutralAxisDepth: round7(neutralAxisDepth, 6),
+        slabMomentResistance: round7(slabMomentResistance, 6),
+        connectorForceConservative: round7(connectorForceConservative, 6),
+        deflectionEffUls: round7(deflectionEffUls, 6),
+        deflectionIdealUls: round7(deflectionIdealUls, 6),
+        deflectionIncrease: round7(deflectionIncrease, 6),
+        lateralSlip: round7(lateralSlip, 6),
+        connectorForceGelfi: round7(connectorForceGelfi, 6),
+        connectorKser: round7(connectorKser, 6),
+        connectorKu: round7(connectorKu, 6),
+        connectorFvrk: round7(connectorFvrk, 6),
+        deflectionSle: round7(deflectionSle, 6),
         governing: {
           checkId: governingCheck3.id,
-          utilizationRatio: round5(governingCheck3.utilizationRatio, 6),
-          demand: round5(governingCheck3.demand, 6),
-          capacity: round5(governingCheck3.capacity, 6),
+          utilizationRatio: round7(governingCheck3.utilizationRatio, 6),
+          demand: round7(governingCheck3.demand, 6),
+          capacity: round7(governingCheck3.capacity, 6),
           metadata: (_h = governingCheck3.metadata) != null ? _h : null
         },
         sectionActionVerification: sectionActionVerification ? {
@@ -55975,7 +56887,7 @@ var TimberConcreteCompositeBeamSectionProvider = class {
     const stiffnessReduction = finalStiffness && Number.isFinite(kdef) ? 1 + kdef : 1;
     const effectiveTimberModulus = timberMaterial.elasticModulus / stiffnessReduction;
     const inertiaEffective = ultimate ? gammaProperties.inertiaEffUls : gammaProperties.inertiaEffSle;
-    const gamma = ultimate ? gammaProperties.gammaUls : gammaProperties.gammaSle;
+    const gamma2 = ultimate ? gammaProperties.gammaUls : gammaProperties.gammaSle;
     const connectorStiffness = ultimate ? connector.ku : connector.kser;
     const timberShearModulus = resolveShearModulus4(timberMaterial, 16);
     const concreteShearModulus = resolveShearModulus4(concreteMaterial);
@@ -56004,7 +56916,7 @@ var TimberConcreteCompositeBeamSectionProvider = class {
         connectorSpacing,
         connectorStiffness,
         modularRatio: gammaProperties.n,
-        gamma,
+        gamma: gamma2,
         gammaUls: gammaProperties.gammaUls,
         gammaSle: gammaProperties.gammaSle,
         inertiaEffective,
@@ -56143,7 +57055,7 @@ var TimberConcreteCompositeBeamModel = class {
 };
 
 // src/applications/timber-xlam-composite-beams/checks/TimberXlamCompositeBeamVerification.js
-var round6 = (value, decimals = 6) => Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
+var round8 = (value, decimals = 6) => Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
 function assertPositive20(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be a positive number.`);
@@ -56159,7 +57071,7 @@ function slabCompositeWeakAxisNeglectWarning2({
   mZEdSectionUnits,
   vZEdSectionUnits
 }) {
-  return `${systemLabel}: mZ/vZ from section rotation are reported and neglected in this 1D gamma-method verification because the slab action provides high in-plane stiffness/resistance; checked governing components are mY/vY. mZ=${round6(mZEd)}, vZ=${round6(vZEd)}, mZSectionUnits=${round6(mZEdSectionUnits)}, vZSectionUnits=${round6(vZEdSectionUnits)}.`;
+  return `${systemLabel}: mZ/vZ from section rotation are reported and neglected in this 1D gamma-method verification because the slab action provides high in-plane stiffness/resistance; checked governing components are mY/vY. mZ=${round8(mZEd)}, vZ=${round8(vZEd)}, mZSectionUnits=${round8(mZEdSectionUnits)}, vZSectionUnits=${round8(vZEdSectionUnits)}.`;
 }
 function evaluateCheck2(demand, capacity) {
   const utilizationRatio = demand / capacity;
@@ -56206,10 +57118,10 @@ function timberShearStrength(material) {
   var _a, _b, _c, _d, _e;
   return (_e = (_d = (_b = material.fvK) != null ? _b : (_a = material.metadata) == null ? void 0 : _a.fvK) != null ? _d : (_c = material.metadata) == null ? void 0 : _c.fvk) != null ? _e : null;
 }
-function maxAbsSample2(entries, samplesGetter, valueKey) {
+function maxAbsSample2(entries2, samplesGetter, valueKey) {
   var _a;
   let selected = null;
-  for (const entry of entries) {
+  for (const entry of entries2) {
     for (const sample of (_a = samplesGetter(entry)) != null ? _a : []) {
       const value = sample == null ? void 0 : sample[valueKey];
       if (!Number.isFinite(value)) {
@@ -56230,12 +57142,12 @@ function femDemands2(analysisResult) {
   const resolver = createUnitResolver(analysisResult.units, { force: "N", length: "mm" });
   const combinations = Object.values((_a = analysisResult.combinations) != null ? _a : {});
   const loadCases = Object.values((_b = analysisResult.loadCases) != null ? _b : {});
-  const entries = combinations.length > 0 ? combinations : loadCases;
-  const ulsEntries = entries.filter((entry) => {
+  const entries2 = combinations.length > 0 ? combinations : loadCases;
+  const ulsEntries = entries2.filter((entry) => {
     var _a2;
     return ((_a2 = entry.context) == null ? void 0 : _a2.limitState) === "ULS";
   });
-  const sleEntries = entries.filter((entry) => {
+  const sleEntries = entries2.filter((entry) => {
     var _a2;
     return ((_a2 = entry.context) == null ? void 0 : _a2.limitState) === "SLE";
   });
@@ -56245,8 +57157,8 @@ function femDemands2(analysisResult) {
       return ((_a2 = entry.context) == null ? void 0 : _a2.serviceCombination) === "final" || ((_b2 = entry.context) == null ? void 0 : _b2.deformationState) === "final";
     }
   );
-  const uls = ulsEntries.length > 0 ? ulsEntries : entries;
-  const sle = sleEntries.length > 0 ? sleEntries : entries;
+  const uls = ulsEntries.length > 0 ? ulsEntries : entries2;
+  const sle = sleEntries.length > 0 ? sleEntries : entries2;
   const moment = maxAbsSample2(uls, (entry) => {
     var _a2;
     return (_a2 = entry.internalForces) == null ? void 0 : _a2.samples;
@@ -56299,10 +57211,10 @@ var TimberXlamCompositeBeamVerification = class {
     const vZEdSectionUnits = resolver.force(vZEd);
     const weakAxisNeglected = hasSignificantAction5(mZEdSectionUnits) || hasSignificantAction5(vZEdSectionUnits);
     const weakAxisMetadata = {
-      mZEd: round6(mZEd),
-      vZEd: round6(vZEd),
-      mZEdSectionUnits: round6(mZEdSectionUnits),
-      vZEdSectionUnits: round6(vZEdSectionUnits),
+      mZEd: round8(mZEd),
+      vZEd: round8(vZEd),
+      mZEdSectionUnits: round8(mZEdSectionUnits),
+      vZEdSectionUnits: round8(vZEdSectionUnits),
       weakAxisComponentsNeglected: weakAxisNeglected,
       weakAxisNeglectReason: weakAxisNeglected ? "slab-in-plane-stiffness-resistance" : null
     };
@@ -56405,14 +57317,14 @@ var TimberXlamCompositeBeamVerification = class {
       }
     ].map((check) => ({
       ...check,
-      demand: round6(check.demand),
-      capacity: round6(check.capacity),
-      utilizationRatio: round6(check.utilizationRatio),
+      demand: round8(check.demand),
+      capacity: round8(check.capacity),
+      utilizationRatio: round8(check.utilizationRatio),
       metadata: {
         method: "timber-xlam-gamma-method-section-actions",
-        gamma1Uls: round6(gamma1Uls),
-        gamma2Uls: round6(gamma2Uls),
-        ejEffUls: round6(ejEffUls),
+        gamma1Uls: round8(gamma1Uls),
+        gamma2Uls: round8(gamma2Uls),
+        ejEffUls: round8(ejEffUls),
         ...weakAxisMetadata
       }
     }));
@@ -56446,8 +57358,8 @@ var TimberXlamCompositeBeamVerification = class {
       metadata: {
         governingCheckId: governingCheck3.id,
         method: "timber-xlam-gamma-method-section-actions",
-        bendingEd: round6(bendingEd),
-        shearEd: round6(shearEd),
+        bendingEd: round8(bendingEd),
+        shearEd: round8(shearEd),
         ...weakAxisMetadata
       }
     };
@@ -56622,71 +57534,71 @@ var TimberXlamCompositeBeamVerification = class {
       applicationId: "timber-xlam-composite-beams",
       status: combinedChecks.every((check) => check.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       summary: "Verification of timber beams collaborating with an XLAM panel based on the workbook gamma-method and timber-timber connector checks.",
-      utilizationRatio: round6(governingCheck3.utilizationRatio),
-      demand: round6(governingCheck3.demand),
-      capacity: round6(governingCheck3.capacity),
+      utilizationRatio: round8(governingCheck3.utilizationRatio),
+      demand: round8(governingCheck3.demand),
+      capacity: round8(governingCheck3.capacity),
       checks: combinedChecks.map((check) => ({
         ...check,
-        demand: round6(check.demand),
-        capacity: round6(check.capacity),
-        utilizationRatio: round6(check.utilizationRatio)
+        demand: round8(check.demand),
+        capacity: round8(check.capacity),
+        utilizationRatio: round8(check.utilizationRatio)
       })),
       outputs: {
-        kdef: round6(kdef),
-        kser: round6(connector.kser),
-        kslu: round6(connector.ku),
-        ksle: round6(connector.kser),
-        a1: round6(a1),
-        e1: round6(e1),
-        j1: round6(j1),
-        e1j1: round6(e1j1),
-        a2: round6(a2),
-        e2: round6(e2),
-        j2: round6(j2),
-        e2j2: round6(e2j2),
-        a: round6(a),
-        gamma1Uls: round6(gamma1Uls),
-        gamma2Uls: round6(gamma2Uls),
-        a1Uls: round6(a1Uls),
-        a2Uls: round6(a2Uls),
-        ejEffUls: round6(ejEffUls),
-        bendingEd: round6(bendingEd / 1e6),
-        shearEd: round6(shearEd / 1e3),
-        m1: round6(m1 / 1e6),
-        m2: round6(m2 / 1e6),
-        n1: round6(n1 / 1e3),
-        n2: round6(n2 / 1e3),
-        sigmaN1: round6(sigmaN1),
-        sigmaM1: round6(sigmaM1),
-        sigmaN2: round6(sigmaN2),
-        sigmaM2: round6(sigmaM2),
-        gamma1Sle: round6(gamma1Sle),
-        gamma2Sle: round6(gamma2Sle),
-        a1Sle: round6(a1Sle),
-        a2Sle: round6(a2Sle),
-        ejEffSle: round6(ejEffSle),
-        deflectionPermanent: round6(deflectionPermanent),
-        deflectionVariable: round6(deflectionVariable),
-        deflectionShort: round6(deflectionShort),
-        deflectionLong: round6(deflectionLong),
-        tau1: round6(tau1),
-        tau2: round6(tau2),
-        connectorForce: round6(connectorForce / 1e3),
+        kdef: round8(kdef),
+        kser: round8(connector.kser),
+        kslu: round8(connector.ku),
+        ksle: round8(connector.kser),
+        a1: round8(a1),
+        e1: round8(e1),
+        j1: round8(j1),
+        e1j1: round8(e1j1),
+        a2: round8(a2),
+        e2: round8(e2),
+        j2: round8(j2),
+        e2j2: round8(e2j2),
+        a: round8(a),
+        gamma1Uls: round8(gamma1Uls),
+        gamma2Uls: round8(gamma2Uls),
+        a1Uls: round8(a1Uls),
+        a2Uls: round8(a2Uls),
+        ejEffUls: round8(ejEffUls),
+        bendingEd: round8(bendingEd / 1e6),
+        shearEd: round8(shearEd / 1e3),
+        m1: round8(m1 / 1e6),
+        m2: round8(m2 / 1e6),
+        n1: round8(n1 / 1e3),
+        n2: round8(n2 / 1e3),
+        sigmaN1: round8(sigmaN1),
+        sigmaM1: round8(sigmaM1),
+        sigmaN2: round8(sigmaN2),
+        sigmaM2: round8(sigmaM2),
+        gamma1Sle: round8(gamma1Sle),
+        gamma2Sle: round8(gamma2Sle),
+        a1Sle: round8(a1Sle),
+        a2Sle: round8(a2Sle),
+        ejEffSle: round8(ejEffSle),
+        deflectionPermanent: round8(deflectionPermanent),
+        deflectionVariable: round8(deflectionVariable),
+        deflectionShort: round8(deflectionShort),
+        deflectionLong: round8(deflectionLong),
+        tau1: round8(tau1),
+        tau2: round8(tau2),
+        connectorForce: round8(connectorForce / 1e3),
         connectorResistanceModes: {
-          rk1a: round6(timberTimberResistance.rk1a),
-          rk1b: round6(timberTimberResistance.rk1b),
-          rk1c: round6(timberTimberResistance.rk1c),
-          rk2a: round6(timberTimberResistance.rk2a),
-          rk2b: round6(timberTimberResistance.rk2b),
-          rk3: round6(timberTimberResistance.rk3),
-          governing: round6(timberTimberResistance.governing),
-          designResistance: round6(timberTimberResistance.designResistance)
+          rk1a: round8(timberTimberResistance.rk1a),
+          rk1b: round8(timberTimberResistance.rk1b),
+          rk1c: round8(timberTimberResistance.rk1c),
+          rk2a: round8(timberTimberResistance.rk2a),
+          rk2b: round8(timberTimberResistance.rk2b),
+          rk3: round8(timberTimberResistance.rk3),
+          governing: round8(timberTimberResistance.governing),
+          designResistance: round8(timberTimberResistance.designResistance)
         },
         governing: {
           checkId: governingCheck3.id,
-          utilizationRatio: round6(governingCheck3.utilizationRatio),
-          demand: round6(governingCheck3.demand),
-          capacity: round6(governingCheck3.capacity),
+          utilizationRatio: round8(governingCheck3.utilizationRatio),
+          demand: round8(governingCheck3.demand),
+          capacity: round8(governingCheck3.capacity),
           metadata: (_g = governingCheck3.metadata) != null ? _g : null
         },
         sectionActionVerification: sectionActionVerification ? {
@@ -57192,7 +58104,7 @@ function verifyTimberLateralTorsionalStability({
 
 // src/applications/timber-beams/checks/TimberBeamVerification.js
 var DEFAULT_SECTION_UNITS3 = Object.freeze({ force: "N", length: "mm" });
-function normalizeLimitState2(limitState) {
+function normalizeLimitState3(limitState) {
   return String(limitState != null ? limitState : "").trim().toUpperCase();
 }
 function normalizeCombinationType4(combinationType) {
@@ -57229,11 +58141,11 @@ function loadCaseEntries(analysisResult = {}) {
   var _a;
   return Object.values((_a = analysisResult.loadCases) != null ? _a : {});
 }
-function entriesByLimitState(entries, limitState) {
-  return entries.filter(
+function entriesByLimitState(entries2, limitState) {
+  return entries2.filter(
     (entry) => {
       var _a;
-      return normalizeLimitState2((_a = entry.context) == null ? void 0 : _a.limitState) === normalizeLimitState2(limitState);
+      return normalizeLimitState3((_a = entry.context) == null ? void 0 : _a.limitState) === normalizeLimitState3(limitState);
     }
   );
 }
@@ -57243,8 +58155,8 @@ function isFinalServiceEntry(entry) {
   const deformationState = String((_d = (_c = entry.context) == null ? void 0 : _c.deformationState) != null ? _d : "").trim().toLowerCase();
   return serviceCombination === "final" || serviceCombination === "quasi-permanent" || deformationState === "final" || ((_f = (_e = entry.sectionProperties) == null ? void 0 : _e.metadata) == null ? void 0 : _f.finalStiffness) === true;
 }
-function maxAbsDeflection(entries) {
-  return entries.reduce((selected, entry) => {
+function maxAbsDeflection(entries2) {
+  return entries2.reduce((selected, entry) => {
     var _a;
     const sample = (_a = entry.displacements) == null ? void 0 : _a.maxAbsVerticalDisplacement;
     if (!sample || !Number.isFinite(sample.uy)) {
@@ -57260,9 +58172,9 @@ function maxAbsDeflection(entries) {
     return !selected || candidate.value > selected.value ? candidate : selected;
   }, null);
 }
-function spanForResult(entries, resultId, analysisResult) {
+function spanForResult(entries2, resultId, analysisResult) {
   var _a, _b, _c, _d, _e, _f, _g, _h;
-  const result = entries.find((entry) => entry.id === resultId);
+  const result = entries2.find((entry) => entry.id === resultId);
   return (_h = (_g = (_e = (_c = (_a = result == null ? void 0 : result.geometry) == null ? void 0 : _a.length) != null ? _c : (_b = result == null ? void 0 : result.geometry) == null ? void 0 : _b.horizontalSpan) != null ? _e : (_d = analysisResult.geometry) == null ? void 0 : _d.length) != null ? _g : (_f = analysisResult.geometry) == null ? void 0 : _f.horizontalSpan) != null ? _h : null;
 }
 function resultEntries4(analysisResult = {}) {
@@ -57422,7 +58334,7 @@ function createLateralTorsionalStabilityChecks({
   const ulsEntries = resultEntries4(analysisResult).filter(
     (entry) => {
       var _a2;
-      return normalizeLimitState2((_a2 = entry.context) == null ? void 0 : _a2.limitState) === "ULS";
+      return normalizeLimitState3((_a2 = entry.context) == null ? void 0 : _a2.limitState) === "ULS";
     }
   );
   if (ulsEntries.length === 0) {
@@ -57887,7 +58799,7 @@ var TimberBeamModel = class {
 };
 
 // src/applications/xlam-panels-out-of-plane/checks/XlamOutOfPlanePanelVerification.js
-var round7 = (value, decimals = 6) => Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
+var round9 = (value, decimals = 6) => Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
 function assertPositive22(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be a positive number.`);
@@ -57999,31 +58911,31 @@ var XlamOutOfPlanePanelVerification = class {
       applicationId: "xlam-panels-out-of-plane",
       status: checks.every((check) => check.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       summary: "Out-of-plane verification of a standalone XLAM panel following the CLTdesigner/WCTE2010 1D-plate approach based on Timoshenko beam theory.",
-      utilizationRatio: round7(governingCheck3.utilizationRatio),
-      demand: round7(governingCheck3.demand),
-      capacity: round7(governingCheck3.capacity),
+      utilizationRatio: round9(governingCheck3.utilizationRatio),
+      demand: round9(governingCheck3.demand),
+      capacity: round9(governingCheck3.capacity),
       checks: checks.map((check) => ({
         ...check,
-        demand: round7(check.demand),
-        capacity: round7(check.capacity),
-        utilizationRatio: round7(check.utilizationRatio)
+        demand: round9(check.demand),
+        capacity: round9(check.capacity),
+        utilizationRatio: round9(check.utilizationRatio)
       })),
       outputs: {
-        bendingStiffness: round7(bendingStiffness),
-        shearStiffness: round7(stiffness.shearStiffness),
-        shearCorrectionCoefficient: round7(stiffness.shearCorrectionCoefficient),
-        slenderness: round7(slenderness),
+        bendingStiffness: round9(bendingStiffness),
+        shearStiffness: round9(stiffness.shearStiffness),
+        shearCorrectionCoefficient: round9(stiffness.shearCorrectionCoefficient),
+        slenderness: round9(slenderness),
         exactMethodRecommended: slenderness < 15,
-        mEd: round7(mEd),
-        vEd: round7(vEd),
-        sigmaEdge: round7(sigmaEdge),
-        tau0Max: round7(tau0Max),
-        tau90Max: round7(tau90Max),
-        kSystem: round7(kSystem),
-        fmCltD: round7(fmCltD),
-        kdef: round7(kdef),
-        deflectionShort: round7(deflectionShort),
-        deflectionLong: round7(deflectionLong)
+        mEd: round9(mEd),
+        vEd: round9(vEd),
+        sigmaEdge: round9(sigmaEdge),
+        tau0Max: round9(tau0Max),
+        tau90Max: round9(tau90Max),
+        kSystem: round9(kSystem),
+        fmCltD: round9(fmCltD),
+        kdef: round9(kdef),
+        deflectionShort: round9(deflectionShort),
+        deflectionLong: round9(deflectionLong)
       },
       warnings: slenderness < 15 ? [
         "The WCTE2010 article recommends an exact analytical solution for L/H < 15."
@@ -58142,11 +59054,11 @@ function slabWeakAxisNeglectWarning({
 function resultEntries5(resultMap = {}) {
   return Object.values(resultMap != null ? resultMap : {});
 }
-function normalizeLimitState3(limitState) {
+function normalizeLimitState4(limitState) {
   return String(limitState != null ? limitState : "").trim().toUpperCase();
 }
-function maxAbsDeflection2(entries) {
-  return entries.reduce((selected, entry) => {
+function maxAbsDeflection2(entries2) {
+  return entries2.reduce((selected, entry) => {
     var _a;
     const sample = (_a = entry.displacements) == null ? void 0 : _a.maxAbsVerticalDisplacement;
     if (!sample || !Number.isFinite(sample.uy)) {
@@ -58387,7 +59299,7 @@ var XlamBeamVerification = class {
     const sleEntries = resultEntries5(analysisResult.combinations).filter(
       (entry) => {
         var _a2;
-        return normalizeLimitState3((_a2 = entry.context) == null ? void 0 : _a2.limitState) === "SLE";
+        return normalizeLimitState4((_a2 = entry.context) == null ? void 0 : _a2.limitState) === "SLE";
       }
     );
     const governingDeflection = maxAbsDeflection2(sleEntries);
@@ -58541,7 +59453,7 @@ function listItalianHistoricalReinforcementSteelGrades() {
 // src/norms/italian-historical/materials/createItalianHistoricalMaterial.js
 var INTERNAL_UNITS19 = Object.freeze({ force: "N", length: "mm" });
 var HISTORICAL_REINFORCEMENT_ELONGATION_CHARACTERISTIC = 0.075;
-var round8 = (value, decimals = 2) => Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
+var round10 = (value, decimals = 2) => Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
 function assertCatalogEntry2(catalog, key, message) {
   const entry = catalog[key];
   if (!entry) {
@@ -58588,11 +59500,11 @@ function createItalianHistoricalReinforcementSteelMaterial({
     grade,
     density: unitResolver.volumeLoad(density),
     elasticModulus: elasticModulus == null ? 21e4 : unitResolver.stress(elasticModulus),
-    fyMean: existingState.existing ? round8(fyMean, 2) : null,
-    ftMean: existingState.existing ? round8(ftMean, 2) : null,
-    fyk: round8(fyk, 2),
-    fyd: round8(fyk / gammaS, 2),
-    ftk: round8(ftk, 2),
+    fyMean: existingState.existing ? round10(fyMean, 2) : null,
+    ftMean: existingState.existing ? round10(ftMean, 2) : null,
+    fyk: round10(fyk, 2),
+    fyd: round10(fyk / gammaS, 2),
+    ftk: round10(ftk, 2),
     elongationCharacteristic: HISTORICAL_REINFORCEMENT_ELONGATION_CHARACTERISTIC,
     existing: existingState.existing,
     knowledgeLevel: (_a = existingState.knowledgeLevel) != null ? _a : knowledgeLevel,
@@ -58608,11 +59520,11 @@ function createItalianHistoricalReinforcementSteelMaterial({
       steelUse: "reinforcement",
       gammaS,
       elongationCharacteristic: HISTORICAL_REINFORCEMENT_ELONGATION_CHARACTERISTIC,
-      elongationCharacteristicPermille: round8(
+      elongationCharacteristicPermille: round10(
         HISTORICAL_REINFORCEMENT_ELONGATION_CHARACTERISTIC * 1e3,
         2
       ),
-      ultimateStrain: round8(
+      ultimateStrain: round10(
         0.9 * HISTORICAL_REINFORCEMENT_ELONGATION_CHARACTERISTIC,
         6
       ),
@@ -58852,6 +59764,7 @@ export {
   calculateSteelCompressionBucklingAxis,
   calculateSteelMethodBInteractionCoefficients,
   calculateSteelMethodBInteractionCoefficientsMyMz,
+  calculateSteelMomentDiagramFactor,
   calculateTimberLateralBucklingReduction,
   calculateTimberRectangularCriticalBendingStress,
   characteristicValueFromExistingMean,
@@ -58888,6 +59801,7 @@ export {
   createScaServiceDeflectionAnalysisResult,
   createSteelBeamSectionProvider,
   createSteelCompoundProfileSection,
+  createSteelMemberFem3DResult,
   createSteelProfileSection,
   createTecnariaConnector,
   createTimberBeamSectionProvider,
@@ -58942,15 +59856,22 @@ export {
   selectNTC2018ExistingMasonryTypology,
   splitPrincipalActions,
   steelBucklingCurveImperfectionFactor,
+  steelMemberFem3DToLegacyAnalysisResult,
+  steelNotSupportedCheck,
   toggleNTC2018ExistingMasonryModifier,
   uniqueStrings,
   updateNTC2018ExistingMasonryMaltaBuona,
   utilizationCheck,
   validateBeamReportDto,
+  validateSteelMemberFem3DResult,
   verifyBeamSectionActions,
   verifySteelBeamColumnInteractionMy,
   verifySteelBeamColumnInteractionMyMz,
+  verifySteelBendingShearInteraction,
   verifySteelCompressionBuckling,
+  verifySteelConcentratedWebLoad,
   verifySteelLateralTorsionalBuckling,
+  verifySteelShearTorsionInteraction,
+  verifySteelWebShearBuckling,
   verifyTimberLateralTorsionalStability
 };

@@ -14,6 +14,8 @@ test("package root export exposes the main public API", () => {
   assert.equal(typeof PublicApi.SingleBeamAnalysis, "function");
   assert.equal(typeof PublicApi.CalculationResult, "function");
   assert.equal(typeof PublicApi.getSteelVerificationCapabilities, "function");
+  assert.equal(typeof PublicApi.validateSteelMemberFem3DResult, "function");
+  assert.equal(typeof PublicApi.verifySteelWebShearBuckling, "function");
   assert.equal(typeof PublicApi.runScaRcDeflectionAnalysis, "function");
   assert.equal(typeof PublicApi.HyperstaticDeflectionIteration, "function");
   assert.equal(typeof PublicApi.SectionMomentCurvatureCurve, "function");

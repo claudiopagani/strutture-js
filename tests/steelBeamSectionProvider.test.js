@@ -744,7 +744,7 @@ test("steel member verification blocks class 4 sections until effective properti
     (check) => check.id === "steel-section-classification",
   );
 
-  assert.equal(verification.status, "not-verified");
+  assert.equal(verification.status, "not-supported");
   assert.equal(classification.metadata.sectionClass, 4);
   assert.equal(classification.ok, false);
   assert.ok(

@@ -86,6 +86,8 @@ export { SteelPlasticHingeFrameElement2D } from "./steel-frames/index.js";
 export { SteelPlasticHingeState } from "./steel-frames/index.js";
 export { classifySteelSection } from "./steel-frames/index.js";
 export { getSteelVerificationCapabilities } from "./steel-frames/index.js";
+export { createSteelMemberFem3DResult, validateSteelMemberFem3DResult, steelMemberFem3DToLegacyAnalysisResult } from "./steel-frames/index.js";
+export { calculateSteelMomentDiagramFactor, steelNotSupportedCheck, verifySteelBendingShearInteraction, verifySteelConcentratedWebLoad, verifySteelShearTorsionInteraction, verifySteelWebShearBuckling } from "./steel-frames/index.js";
 export { calculateElasticCriticalMomentLT } from "./steel-frames/index.js";
 export { calculateSteelCompressionBucklingAxis } from "./steel-frames/index.js";
 export { calculateSteelMethodBInteractionCoefficients } from "./steel-frames/index.js";

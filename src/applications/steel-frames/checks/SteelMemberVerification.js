@@ -17,6 +17,14 @@ import { verifySteelCompressionBuckling } from "./SteelCompressionBuckling.js";
 import { verifySteelLateralTorsionalBuckling } from "./SteelLateralTorsionalBuckling.js";
 import { classifySteelSection } from "./SteelSectionClassification.js";
 import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
+import {
+  validateSteelMemberFem3DResult,
+  steelMemberFem3DToLegacyAnalysisResult,
+} from "../fem/SteelMemberFem3DContract.js";
+import {
+  steelUnsupportedFeatureCatalog,
+  verifySteelFem3DAdvanced,
+} from "./SteelFem3DVerification.js";
 
 import {
   DEFAULT_SECTION_UNITS,
@@ -121,7 +129,96 @@ export class SteelMemberVerification {
       });
     }
 
-    const resultUnits = analysisResult.units;
+    const explicitFem3D = Boolean(
+      analysisResult.fem3d ||
+      Array.isArray(analysisResult.combinations) ||
+      Object.values(analysisResult.combinations ?? {}).some(
+        (combination) => Array.isArray(combination?.stations),
+      )
+    );
+    const fem3DValidation = validateSteelMemberFem3DResult(analysisResult, {
+      strict: explicitFem3D,
+    });
+    if (!fem3DValidation.ok) {
+      const contractCheck = {
+        id: "steel-fem-3d-contract",
+        description: "Steel member FEM 3D input contract",
+        demand: null,
+        capacity: null,
+        utilizationRatio: null,
+        ok: null,
+        status: RESULT_STATUS.NOT_SUPPORTED,
+        metadata: {
+          norm: "NTC 2018 / Circolare 2019",
+          method: "steel-member-fem-3d-contract-v1",
+          missingInputs: [...fem3DValidation.errors],
+          reference: "NTC 2018 §4.2.4 and Circolare 2019 C4.2.4",
+          combinationId: null,
+          station: null,
+          restraintAssumptions: null,
+        },
+        warnings: ["The FEM 3D result is incomplete; no member capacity has been calculated."],
+        assumptions: [],
+      };
+      return new VerificationResult({
+        applicationId: "steel-frames",
+        status: RESULT_STATUS.NOT_SUPPORTED,
+        summary: "Steel member verification not supported because the FEM 3D contract is incomplete.",
+        checks: [contractCheck],
+        warnings: contractCheck.warnings,
+        outputs: {
+          fem3d: fem3DValidation.value,
+          contractValidation: {
+            ok: false,
+            errors: fem3DValidation.errors,
+            warnings: fem3DValidation.warnings,
+          },
+          unsupportedFeatures: steelUnsupportedFeatureCatalog(),
+        },
+        metadata: {
+          code: this.code,
+          memberId,
+          method: "steel-member-fem-3d-contract-v1",
+          ...this.metadata,
+        },
+      });
+    }
+
+    const workingAnalysisResult = explicitFem3D
+      ? steelMemberFem3DToLegacyAnalysisResult(fem3DValidation.value)
+      : analysisResult;
+    const contractMember = fem3DValidation.value.member;
+    const contractCompression = {
+      effectiveLengthY: contractMember.effectiveLengths.y,
+      effectiveLengthZ: contractMember.effectiveLengths.z,
+      effectiveLengthFactorY: contractMember.effectiveLengthFactors.y,
+      effectiveLengthFactorZ: contractMember.effectiveLengthFactors.z,
+    };
+    const contractLtbSegments = contractMember.restraintSegments.length > 0
+      ? contractMember.restraintSegments.map((segment) => ({
+          ...segment,
+          length: Number.isFinite(segment.to) && Number.isFinite(segment.from)
+            ? segment.to - segment.from
+            : null,
+        }))
+      : undefined;
+    const resolvedStability = {
+      ...stability,
+      compressionBuckling: {
+        ...contractCompression,
+        ...(stability.compressionBuckling ?? stability.buckling ?? {}),
+      },
+      lateralTorsionalBuckling: {
+        ...(contractLtbSegments ? { segments: contractLtbSegments } : {}),
+        ...(stability.lateralTorsionalBuckling ?? stability.ltb ?? {}),
+      },
+      beamColumnInteraction: {
+        compressionBuckling: contractCompression,
+        ...(stability.beamColumnInteraction ?? stability.interaction ?? {}),
+      },
+    };
+
+    const resultUnits = workingAnalysisResult.units;
     const sectionUnits = DEFAULT_SECTION_UNITS;
     const sectionToResultUnits = createUnitResolver(sectionUnits, resultUnits);
     const resultToSectionUnits = createUnitResolver(resultUnits, sectionUnits);
@@ -138,39 +235,52 @@ export class SteelMemberVerification {
       }),
       limitStates: "ULS",
       verificationStations,
-    }).verify({ analysisResult });
+    }).verify({ analysisResult: workingAnalysisResult });
     const deflectionChecks = createDeflectionChecks({
-      analysisResult,
+      analysisResult: workingAnalysisResult,
       deflectionLimitRatio,
     });
     const lateralTorsionalBuckling = createLateralTorsionalBucklingChecks({
-      analysisResult,
+      analysisResult: workingAnalysisResult,
       section,
       material,
       resultToSectionUnits,
       sectionToResultUnits,
-      stability,
+      stability: resolvedStability,
       resistance,
       classification,
     });
     const compressionBuckling = createCompressionBucklingChecks({
-      analysisResult,
+      analysisResult: workingAnalysisResult,
       section,
       material,
       resultToSectionUnits,
       sectionToResultUnits,
-      stability,
+      stability: resolvedStability,
       classification,
     });
     const beamColumnInteraction = createBeamColumnInteractionChecks({
-      analysisResult,
+      analysisResult: workingAnalysisResult,
       section,
       material,
       resultToSectionUnits,
       sectionToResultUnits,
-      stability,
+      stability: resolvedStability,
       resistance,
       classification,
+    });
+    const class4Detected = actionVerification.checks.some(
+      (check) => check.id === "steel-section-classification" && check.metadata?.sectionClass > 3,
+    );
+    const advanced = verifySteelFem3DAdvanced({
+      contract: fem3DValidation.value,
+      section,
+      material,
+      resultToSectionUnits,
+      sectionToResultUnits,
+      serviceability,
+      resistance: { ...resistance, class4Detected },
+      stability: resolvedStability,
     });
     const allChecks = [
       ...actionVerification.checks,
@@ -178,6 +288,12 @@ export class SteelMemberVerification {
       ...compressionBuckling.checks,
       ...beamColumnInteraction.checks,
       ...deflectionChecks,
+      ...advanced.checks,
+      ...(class4Detected
+        ? advanced.unsupportedFeatures.filter(
+            (check) => check.id === "steel-class-4-effective-properties",
+          )
+        : []),
     ];
     const groupedChecks = Object.values(
       allChecks.reduce((acc, check) => {
@@ -198,20 +314,52 @@ export class SteelMemberVerification {
     const sleOk =
       deflectionChecks.length === 0 ||
       deflectionChecks.every((check) => check.ok);
+    const hasNotSupported =
+      class4Detected ||
+      advanced.status === RESULT_STATUS.NOT_SUPPORTED ||
+      groupedChecks.some((check) => check.status === RESULT_STATUS.NOT_SUPPORTED);
+    const uniformChecks = groupedChecks.map((check) => ({
+      ...check,
+      metadata: {
+        norm: "NTC 2018 / Circolare 2019",
+        combinationId:
+          check.metadata?.combinationId ?? check.metadata?.resultId ?? null,
+        station: check.metadata?.station ?? null,
+        governingSegment:
+          check.metadata?.governingSegment ?? check.metadata?.segmentId ?? null,
+        restraintAssumptions:
+          check.metadata?.restraintAssumptions ?? {
+            sway: contractMember.frameClassification.sway,
+            nonSway: contractMember.frameClassification.nonSway,
+            effectiveLengths: { ...contractMember.effectiveLengths },
+            effectiveLengthFactors: { ...contractMember.effectiveLengthFactors },
+          },
+        ...(check.metadata ?? {}),
+      },
+      warnings: [...(check.warnings ?? [])],
+      assumptions: [...(check.assumptions ?? [])],
+    }));
 
     return new VerificationResult({
       applicationId: "steel-frames",
-      status:
-        ulsOk && ltbOk && compressionBucklingOk && beamColumnInteractionOk && sleOk
+      status: hasNotSupported
+        ? RESULT_STATUS.NOT_SUPPORTED
+        : ulsOk && ltbOk && compressionBucklingOk && beamColumnInteractionOk && sleOk && advanced.status === RESULT_STATUS.OK
           ? RESULT_STATUS.OK
           : RESULT_STATUS.NOT_VERIFIED,
       summary: "Steel member ULS section resistance, stability and SLE deflection verification from FEM beam results.",
       utilizationRatio: governing?.utilizationRatio ?? null,
       demand: governing?.demand ?? null,
       capacity: governing?.capacity ?? null,
-      checks: groupedChecks,
+      checks: uniformChecks,
       outputs: {
         stationResultCount: actionVerification.outputs.stationResultCount,
+        fem3d: fem3DValidation.value,
+        contractValidation: {
+          ok: fem3DValidation.ok,
+          errors: [...fem3DValidation.errors],
+          warnings: [...fem3DValidation.warnings],
+        },
         uls: actionVerification.outputs,
         serviceability: {
           deflectionLimitRatio,
@@ -247,6 +395,15 @@ export class SteelMemberVerification {
             })),
           },
         },
+        advanced: {
+          status: advanced.status,
+          checks: advanced.checks.map((check) => ({
+            ...check,
+            metadata: { ...check.metadata },
+          })),
+        },
+        vibration: advanced.vibration,
+        unsupportedFeatures: advanced.unsupportedFeatures,
         governing: governing
           ? {
               utilizationRatio: governing.utilizationRatio,
@@ -273,7 +430,10 @@ export class SteelMemberVerification {
         ...lateralTorsionalBuckling.warnings,
         ...compressionBuckling.warnings,
         ...beamColumnInteraction.warnings,
-        "Steel member stability excludes torsion and torsional interactions; N+My+Mz is available for supported doubly symmetric profiles.",
+        ...advanced.warnings,
+        ...fem3DValidation.warnings,
+        "Steel member stability excludes torsion and torsional interactions from Method B; N+My+Mz is available for supported doubly symmetric profiles.",
+        "Warping torsion and bimoment are never approximated; uniform Saint-Venant torsion is checked only when the required section data are available.",
       ]),
       assumptions: [
         ...actionVerification.assumptions,

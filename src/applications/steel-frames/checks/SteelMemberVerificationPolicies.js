@@ -17,6 +17,10 @@ import { verifySteelCompressionBuckling } from "./SteelCompressionBuckling.js";
 import { verifySteelLateralTorsionalBuckling } from "./SteelLateralTorsionalBuckling.js";
 import { classifySteelSection } from "./SteelSectionClassification.js";
 import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
+import {
+  calculateSteelMomentDiagramFactor,
+  steelNotSupportedCheck,
+} from "./SteelAdvancedMemberChecks.js";
 
 export const DEFAULT_SECTION_UNITS = Object.freeze({ force: "N", length: "mm" });
 
@@ -945,6 +949,8 @@ export function createBeamColumnInteractionChecks({
     });
 
     const samples = result.internalForces?.samples ?? [];
+    const momentFactorY = calculateSteelMomentDiagramFactor(samples, "My");
+    const momentFactorZ = calculateSteelMomentDiagramFactor(samples, "Mz");
     const useBiaxialInteraction = samples.some((sample) =>
       hasSignificantAction(
         resultToSectionUnits.moment(sample.principalActions?.mZ ?? sample.mZ ?? 0),
@@ -1044,8 +1050,8 @@ export function createBeamColumnInteractionChecks({
         sectionClass: classificationResult.class,
         compressionBucklingResult,
         chiLT: ltbReduction.chiLT,
-        alphaMy: optionValue(interactionOptions, ["alphaMy", "momentFactorY", "cmy"], 1),
-        alphaMLT: optionValue(interactionOptions, ["alphaMLT", "momentFactorLT", "cmLT"], 1),
+        alphaMy: optionValue(interactionOptions, ["alphaMy", "momentFactorY", "cmy"], momentFactorY?.factor ?? 1),
+        alphaMLT: optionValue(interactionOptions, ["alphaMLT", "momentFactorLT", "cmLT"], momentFactorY?.factor ?? 1),
         gammaM1:
           optionValue(interactionOptions, ["gammaM1"], null) ??
           optionValue(bucklingOptions, ["gammaM1"]),
@@ -1062,7 +1068,7 @@ export function createBeamColumnInteractionChecks({
             mzEd: mzEdSectionUnits,
             bendingSectionModulusY: bendingResistanceBasis.sectionModulus,
             bendingSectionModulusZ: bendingResistanceBasisZ.sectionModulus,
-            alphaMz: optionValue(interactionOptions, ["alphaMz", "momentFactorZ", "cmz"], 1),
+            alphaMz: optionValue(interactionOptions, ["alphaMz", "momentFactorZ", "cmz"], momentFactorZ?.factor ?? 1),
           })
         : verifySteelBeamColumnInteractionMy({
             ...commonInteractionOptions,
@@ -1101,6 +1107,12 @@ export function createBeamColumnInteractionChecks({
           lengthInferenceSource: lengths.inferenceSource,
           resistanceBasis: bendingResistanceBasis.basis,
           resistanceBasisZ: bendingResistanceBasisZ.basis,
+          momentDiagramFactorY: momentFactorY?.factor ?? 1,
+          momentDiagramPsiY: momentFactorY?.psi ?? null,
+          momentDiagramFactorYSource: momentFactorY?.source ?? "default-uniform-moment",
+          momentDiagramFactorZ: momentFactorZ?.factor ?? 1,
+          momentDiagramPsiZ: momentFactorZ?.psi ?? null,
+          momentDiagramFactorZSource: momentFactorZ?.source ?? "default-uniform-moment",
           ...ltbReduction.metadata,
         },
       });
@@ -1240,6 +1252,35 @@ export function createSteelActionVerifier({
           partRatios: classificationPartMetadata(classificationResult, "ratio"),
         },
       };
+      if (classificationResult.class > 3) {
+        const unsupported = steelNotSupportedCheck({
+          id: "steel-class-4-effective-properties",
+          description: "Class 4 effective properties and stability",
+          missingInputs: [
+            "effective area Aeff",
+            "effective section moduli Weff,y/Weff,z",
+            "neutral-axis shift",
+            "plate buckling reduction factors",
+          ],
+          reference: "NTC 2018 §4.2.4.1.2.2; UNI EN 1993-1-5 §4",
+        });
+        return {
+          status: RESULT_STATUS.NOT_SUPPORTED,
+          utilizationRatio: null,
+          demand: null,
+          capacity: null,
+          checks: [classificationCheck, unsupported],
+          warnings: [
+            ...classificationResult.warnings,
+            ...unsupported.warnings,
+          ],
+          assumptions: [],
+          metadata: {
+            governingCheckId: unsupported.id,
+            classification: classificationResult,
+          },
+        };
+      }
       const axialStress = isFinitePositive(section.area)
         ? Math.abs(convertedNEd) / section.area
         : null;

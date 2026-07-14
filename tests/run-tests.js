@@ -8,6 +8,7 @@ import "./ntc2018SlabLoadAnalysis.test.js";
 import "./steelProfileSection.test.js";
 import "./steelCompoundProfileSection.test.js";
 import "./steelBeamSectionProvider.test.js";
+import "./steelFrameAdvancedVerification.test.js";
 import "./steelRingFramePushover.test.js";
 import "./longitudinalReinforcementLayout.test.js";
 import "./timberMaterialHierarchy.test.js";

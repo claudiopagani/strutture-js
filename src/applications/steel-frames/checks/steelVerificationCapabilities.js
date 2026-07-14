@@ -57,6 +57,7 @@ function profileNameOf(section, fallback = null) {
 function supported(message = null, extra = {}) {
   return {
     status: "supported",
+    availability: "automatic",
     message,
     ...extra,
   };
@@ -65,6 +66,7 @@ function supported(message = null, extra = {}) {
 function automatic(message = null, extra = {}) {
   return {
     status: "automatic",
+    availability: "automatic",
     message,
     ...extra,
   };
@@ -73,6 +75,7 @@ function automatic(message = null, extra = {}) {
 function requiresInput(requiredInputs, message = null, extra = {}) {
   return {
     status: "requires-input",
+    availability: "requires-input",
     requiredInputs,
     message,
     ...extra,
@@ -82,6 +85,7 @@ function requiresInput(requiredInputs, message = null, extra = {}) {
 function requiresOverride(requiredInputs, message = null, extra = {}) {
   return {
     status: "requires-override",
+    availability: "requires-input",
     requiredInputs,
     message,
     ...extra,
@@ -91,6 +95,7 @@ function requiresOverride(requiredInputs, message = null, extra = {}) {
 function notRequired(message = null, extra = {}) {
   return {
     status: "not-required",
+    availability: "automatic",
     message,
     ...extra,
   };
@@ -99,6 +104,7 @@ function notRequired(message = null, extra = {}) {
 function notSupported(message = null, extra = {}) {
   return {
     status: "not-supported",
+    availability: "not-supported",
     message,
     ...extra,
   };
@@ -288,10 +294,37 @@ export function getSteelVerificationCapabilities({
     serviceability: supported("SLE vertical deflection checks are available from FEM beam results.", {
       requiredInputs: ["SLE combination", "deflection limit ratio"],
     }),
+    webShearBuckling: I_H_FAMILIES.has(family)
+      ? requiresInput(
+          ["web panels", "panel lengths", "end-post type", "transverse stiffeners"],
+          "I/H web shear buckling is automatic after the panel and stiffener layout is supplied.",
+          { method: "NTC 2018 §4.2.4.1.2.6 / EN 1993-1-5 §5" },
+        )
+      : notRequired("The implemented web-panel shear-buckling model applies only to rolled/welded I/H sections."),
+    concentratedWebLoads: I_H_FAMILIES.has(family)
+      ? requiresInput(
+          ["load station", "bearing length", "load type", "containing web panel"],
+          "Transverse concentrated web-load resistance is automatic with load-introduction data.",
+          { method: "NTC 2018 §4.2.4.1.2.6 / EN 1993-1-5 §6" },
+        )
+      : notSupported("Concentrated transverse web loads are currently implemented only for I/H sections."),
+    bendingShearInteraction: automatic(
+      "The bending resistance is reduced automatically when VEd exceeds 0.5 VRd.",
+      { method: "NTC 2018 §4.2.4.1.2.5 / EN 1993-1-1 §6.2.8" },
+    ),
+    shearTorsionInteraction: requiresInput(
+      ["Saint-Venant torque T", "torsional section modulus WT", "zero bimoment B"],
+      "Only uniform Saint-Venant torsion is supported; warping torsion is blocked.",
+      { method: "NTC 2018 §4.2.4.1.2.7 / EN 1993-1-1 §6.2.7" },
+    ),
+    vibration: requiresInput(
+      ["modal frequencies", "modal masses", "damping", "excitation model", "response limits"],
+      "The FEM contract is vibration-ready, but the acceptance check is not implemented.",
+    ),
   };
 
-  const unsupportedCount = Object.values(checks).filter(
-    (item) => item.status === "not-supported",
+  const unsupportedCount = Object.entries(checks).filter(
+    ([key, item]) => ["classification", "sectionResistance", "compressionBuckling", "lateralTorsionalBuckling", "beamColumnInteraction", "serviceability"].includes(key) && item.status === "not-supported",
   ).length;
 
   return {
@@ -300,9 +333,28 @@ export function getSteelVerificationCapabilities({
     profileName: profileNameOf(resolvedSection, profileName),
     checks,
     compound: compoundCapability(family),
+    unsupported: {
+      warpingTorsionAndBimoment: notSupported(
+        "No approximate capacity is returned; sectorial stresses and warping restraints require a dedicated model.",
+        { requiredInputs: ["sectorial coordinates", "warping stresses", "warping restraints"], reference: "NTC 2018 §4.2.4.1.2.7 / EN 1993-1-1 §6.2.7" },
+      ),
+      torsionalAndFlexuralTorsionalBuckling: notSupported(
+        "Open sections that are not doubly symmetric require critical torsional/flexural-torsional loads.",
+        { requiredInputs: ["shear centre", "Iw", "Lcr,T", "warping restraints", "Ncr,T/Ncr,TF"], reference: "Circolare 2019 C4.2.4.1.3.1 / EN 1993-1-1 §6.3.1.4" },
+      ),
+      class4EffectiveProperties: notSupported(
+        "Gross-section capacities are not substituted for effective class-4 properties.",
+        { requiredInputs: ["Aeff", "Weff,y", "Weff,z", "neutral-axis shift"], reference: "NTC 2018 §4.2.4.1.2.2 / EN 1993-1-5 §4" },
+      ),
+      fatigue: notSupported("Fatigue is outside this verifier.", { requiredInputs: ["detail category", "stress ranges", "cycle spectrum"], reference: "NTC 2018 §4.2.4.1.4 / EN 1993-1-9" }),
+      builtUpAndColdFormed: notSupported("Built-up members and cold-formed profiles require dedicated models.", { requiredInputs: ["connector layout", "built-up shear stiffness", "local/distortional buckling data"], reference: "EN 1993-1-1 §6.4 / EN 1993-1-3" }),
+    },
     limitations: [
-      "Class 4 effective section properties are not implemented.",
-      "Torsion and torsional interactions are excluded from the current steel member verifier.",
+      "Class 4 effective section properties and stability are not implemented; no gross-property approximation is returned.",
+      "Only uniform Saint-Venant torsion may be checked; warping torsion/bimoment is not supported.",
+      "Torsional and flexural-torsional buckling of non-doubly-symmetric open sections is not supported.",
+      "Fatigue and cold-formed/built-up member verification are not supported.",
+      "Connection verification is intentionally outside this application.",
       "Compound profile verification is geometric/elastic until a dedicated built-up member verifier is added.",
     ],
   };
