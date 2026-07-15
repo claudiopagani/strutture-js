@@ -136,6 +136,7 @@ Stato sintetico dei moduli applicativi:
 | `masonry-wall-openings` | Implementato | Verifiche di cerchiature su allineamenti murari, confronto pre/post e contributo laterale della cerchiatura. |
 | `masonry-ring-beams` | Scaffold | Modello e placeholder per cerchiature in muratura. |
 | `reinforced-concrete-sections` | Implementato | Analisi SLU/SLE di sezioni in c.a. a fibre. |
+| `reinforced-concrete-plates` | Implementato | Verifica locale SLU/SLE di piastre piane in c.a. mediante strisce equivalenti Wood-Armer. |
 | `timber-beams` | Parziale | Verifiche di travi in legno da risultati FEM disponibili. |
 | `timber-concrete-composite-beams` | Implementato | Verifica gamma-method di travi legno-calcestruzzo con connettori. |
 | `timber-xlam-composite-beams` | Implementato | Verifica gamma-method di travi lignee collaboranti con pannelli XLAM. |
@@ -352,6 +353,7 @@ Documentazione utile:
 - [docs/result-status.md](docs/result-status.md);
 - [docs/steel-beam-method.md](docs/steel-beam-method.md);
 - [docs/reinforced-concrete-sle-method.md](docs/reinforced-concrete-sle-method.md).
+- [docs/reinforced-concrete-plates-method.md](docs/reinforced-concrete-plates-method.md).
 
 ## Collaborazione
 

@@ -44,6 +44,14 @@ export const APPLICATION_CATALOG = [
     primaryFocus: "Section analysis for axial force and bending.",
   },
   {
+    id: "reinforced-concrete-plates",
+    name: "RC Plates",
+    domain: "reinforced-concrete",
+    maturity: "implemented",
+    primaryFocus:
+      "Local ULS and SLE verification of flat RC plates through rotated Wood-Armer equivalent strips.",
+  },
+  {
     id: "timber-beams",
     name: "Timber Beams",
     domain: "timber",

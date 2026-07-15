@@ -11,6 +11,32 @@ const SLENDERNESS_LIMITS = Object.freeze({
   cantilever: { k: 0.4, high: 6, low: 8 },
 });
 
+export const FLAT_SLAB_REINFORCEMENT_RATIO_LIMITS = Object.freeze({
+  low: 0.005,
+  high: 0.015,
+});
+
+function flatSlabLimitFromReinforcementRatio({ ratio, limits }) {
+  const lowRatio = FLAT_SLAB_REINFORCEMENT_RATIO_LIMITS.low;
+  const highRatio = FLAT_SLAB_REINFORCEMENT_RATIO_LIMITS.high;
+
+  if (ratio <= lowRatio) {
+    return { limit: limits.low, stressLevel: "low", interpolationFactor: 0 };
+  }
+
+  if (ratio >= highRatio) {
+    return { limit: limits.high, stressLevel: "high", interpolationFactor: 1 };
+  }
+
+  const interpolationFactor = (ratio - lowRatio) / (highRatio - lowRatio);
+
+  return {
+    limit: limits.low + interpolationFactor * (limits.high - limits.low),
+    stressLevel: "interpolated-from-rho-l",
+    interpolationFactor,
+  };
+}
+
 export function utilizationCheck({ demand, capacity, metadata }) {
   const utilizationRatio = isFinitePositive(capacity)
     ? demand / capacity
@@ -32,12 +58,31 @@ export function slendernessCheck({ span, section, serviceability }) {
     serviceability.deflection?.slendernessSystem ??
     serviceability.slendernessSystem ??
     "simple_span";
-  const stressLevel =
+  let stressLevel =
     serviceability.deflection?.slendernessStressLevel ??
     serviceability.slendernessStressLevel ??
     "low";
   const limits = SLENDERNESS_LIMITS[system] ?? SLENDERNESS_LIMITS.simple_span;
-  const limit = limits[stressLevel] ?? limits.low;
+  const reinforcementRatio =
+    serviceability.deflection?.reinforcementRatio ??
+    serviceability.reinforcementRatio ??
+    null;
+  let limit = limits[stressLevel] ?? limits.low;
+  let interpolationFactor = null;
+
+  if (
+    system === "flat_slab" &&
+    Number.isFinite(reinforcementRatio) &&
+    reinforcementRatio >= 0
+  ) {
+    const resolved = flatSlabLimitFromReinforcementRatio({
+      ratio: reinforcementRatio,
+      limits,
+    });
+    limit = resolved.limit;
+    stressLevel = resolved.stressLevel;
+    interpolationFactor = resolved.interpolationFactor;
+  }
   const height = section.concreteSection?.height ?? section.height;
 
   if (!isFinitePositive(span) || !isFinitePositive(height)) {
@@ -62,6 +107,13 @@ export function slendernessCheck({ span, section, serviceability }) {
       span: round(span),
       sectionHeight: round(height),
       slendernessLimit: limit,
+      reinforcementRatio,
+      reinforcementRatioPercent: Number.isFinite(reinforcementRatio)
+        ? round(100 * reinforcementRatio)
+        : null,
+      reinforcementRatioLow: FLAT_SLAB_REINFORCEMENT_RATIO_LIMITS.low,
+      reinforcementRatioHigh: FLAT_SLAB_REINFORCEMENT_RATIO_LIMITS.high,
+      interpolationFactor: round(interpolationFactor),
     },
   };
 }

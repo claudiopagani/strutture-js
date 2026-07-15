@@ -451,7 +451,10 @@ export class ReinforcedConcreteServiceabilityVerification {
           z: round(bar.z),
           diameter: round(bar.diameter),
           stress: round(bar.stress),
-          spacing: round(localSpacing(bar, barsInTension, options.rowTolerance)),
+          spacing: round(
+            crackControlSelection.spacing ??
+              localSpacing(bar, barsInTension, options.rowTolerance),
+          ),
         })),
         strainField: {
           eps0: round(solvedState.strainField.eps0, 12),

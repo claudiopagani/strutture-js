@@ -23,6 +23,7 @@ export function createRcSectionAnalysisContext(model, { service = false } = {}) 
   const discretizer = new SectionFiberDiscretizer();
   const mesh = discretizer.discretize(section, {
     targetCount: targetFiberCount,
+    method: model.mesh?.method ?? "grid",
   });
 
   return {

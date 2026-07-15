@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import * as PublicApi from "strutture-js";
 import * as ApplicationsApi from "strutture-js/applications";
 import * as RcDeflectionApi from "strutture-js/applications/rc-cracked-deflection";
+import * as RcPlatesApi from "strutture-js/applications/reinforced-concrete-plates";
 import * as FemApi from "strutture-js/domain/fem";
 import * as MathApi from "strutture-js/domain/math";
 import * as SteelProfilesApi from "strutture-js/catalogs/steel-profiles";
@@ -18,6 +19,8 @@ test("package root export exposes the main public API", () => {
   assert.equal(typeof PublicApi.verifySteelWebShearBuckling, "function");
   assert.equal(typeof PublicApi.runRcServiceDeflectionAnalysis, "function");
   assert.equal(typeof PublicApi.runScaRcDeflectionAnalysis, "function");
+  assert.equal(typeof PublicApi.ReinforcedConcretePlateApplication, "function");
+  assert.equal(typeof PublicApi.rotatePlateMoments, "function");
   assert.equal(typeof PublicApi.HyperstaticDeflectionIteration, "function");
   assert.equal(typeof PublicApi.SectionMomentCurvatureCurve, "function");
   assert.equal(typeof PublicApi.RESULT_STATUS, "object");
@@ -31,11 +34,14 @@ test("applications subpath export exposes application registry helpers", () => {
   assert.equal(typeof ApplicationsApi.runScaRcDeflectionAnalysis, "function");
   assert.equal(typeof ApplicationsApi.HyperstaticDeflectionIteration, "function");
   assert.equal(typeof ApplicationsApi.SectionMomentCurvatureCurve, "function");
+  assert.equal(typeof ApplicationsApi.ReinforcedConcretePlateModel, "function");
   assert.equal(typeof ApplicationsApi.getSteelVerificationCapabilities, "function");
 });
 
 test("granular ESM subpaths expose applications, solvers and catalogs", () => {
   assert.equal(typeof RcDeflectionApi.CrackedSectionDeflectionAnalysis, "function");
+  assert.equal(typeof RcPlatesApi.ReinforcedConcretePlateVerification, "function");
+  assert.equal(typeof RcPlatesApi.woodArmer, "function");
   assert.equal(typeof FemApi.LinearStaticSolver2D, "function");
   assert.equal(typeof MathApi.BandedLinearSolver, "function");
   assert.ok(SteelProfilesApi.STEEL_PROFILE_FAMILIES.includes("IPE"));

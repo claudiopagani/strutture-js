@@ -3,7 +3,9 @@ import {
   ConcreteMaterial,
   ConcreteParabolaRectangleLaw,
   RectangularSection,
+  RC_PLATE_ANALYSIS_TYPES,
   RCUltimateSectionSolver,
+  ReinforcedConcretePlateApplication,
   ReinforcedConcreteSection,
   ReinforcedConcreteShearVerification,
   ReinforcedConcreteServiceabilityVerification,
@@ -28,6 +30,9 @@ import {
   createNTC2018TimberMaterial,
   createSteelProfileSection,
   createTecnariaConnector,
+  rotatePlateMoments,
+  rotatePlateShear,
+  woodArmer,
   verifySteelCompressionBuckling,
   verifySteelLateralTorsionalBuckling,
 } from "../src/index.js";
@@ -2151,6 +2156,226 @@ function rcShearExcelRegressionCase() {
   };
 }
 
+function rcPlateActionTransformationCase() {
+  return {
+    id: "rc-plate-rotation-wood-armer-manual",
+    title: "RC plate tensor rotation and conservative Wood-Armer face envelope",
+    category: "reinforced-concrete-plates",
+    source:
+      "R. H. Wood, The reinforcement of slabs in accordance with a pre-determined field of moments, BRE Current Paper CP44/68 (1968); independent matrix multiplication",
+    sourceKind: "primary-method-reference",
+    notes:
+      "Checks transformation invariants, a 90 degree shear-vector rotation, zero-twist direct moments and the adopted conservative pure-twist face envelope.",
+    evaluate() {
+      const source = { mxx: 30, myy: 10, mxy: 5 };
+      const rotated = rotatePlateMoments({ ...source, angle: 90 });
+      const shear = rotatePlateShear({ qx: 3, qy: 4, angle: 90 });
+      const direct = woodArmer({ ...source, mxy: 0 });
+      const pureTwist = woodArmer({ mxx: 0, myy: 0, mxy: 7 });
+
+      return {
+        rotatedMxx: round(rotated.mxx),
+        rotatedMyy: round(rotated.myy),
+        rotatedMxy: round(rotated.mxy),
+        trace: round(rotated.invariants.trace),
+        determinant: round(rotated.invariants.determinant),
+        rotatedQx: round(shear.qx),
+        rotatedQy: round(shear.qy),
+        shearNorm: round(shear.resultant),
+        directBottomX: direct["bottom-x"],
+        directBottomY: direct["bottom-y"],
+        pureBottomX: pureTwist["bottom-x"],
+        pureBottomY: pureTwist["bottom-y"],
+        pureTopX: pureTwist["top-x"],
+        pureTopY: pureTwist["top-y"],
+      };
+    },
+    expectations: [
+      { id: "mxx-90", path: "rotatedMxx", expected: 10, tolerance: 1e-9 },
+      { id: "myy-90", path: "rotatedMyy", expected: 30, tolerance: 1e-9 },
+      { id: "mxy-90", path: "rotatedMxy", expected: -5, tolerance: 1e-9 },
+      { id: "trace", path: "trace", expected: 40, tolerance: 1e-9 },
+      { id: "determinant", path: "determinant", expected: 275, tolerance: 1e-9 },
+      { id: "qx-90", path: "rotatedQx", expected: 4, tolerance: 1e-9 },
+      { id: "qy-90", path: "rotatedQy", expected: -3, tolerance: 1e-9 },
+      { id: "q-norm", path: "shearNorm", expected: 5, tolerance: 1e-9 },
+      { id: "direct-x", path: "directBottomX", expected: 30, tolerance: 1e-9 },
+      { id: "direct-y", path: "directBottomY", expected: 10, tolerance: 1e-9 },
+      { id: "pure-bottom-x", path: "pureBottomX", expected: 7, tolerance: 1e-9 },
+      { id: "pure-bottom-y", path: "pureBottomY", expected: 7, tolerance: 1e-9 },
+      { id: "pure-top-x", path: "pureTopX", expected: -7, tolerance: 1e-9 },
+      { id: "pure-top-y", path: "pureTopY", expected: -7, tolerance: 1e-9 },
+    ],
+  };
+}
+
+function rcPlateFlatSlabSlendernessInterpolationCase() {
+  return {
+    id: "rc-plate-flat-slab-rho-l-interpolation",
+    title: "RC plate flat-slab slenderness from independent face ratios",
+    category: "reinforced-concrete-plates",
+    source:
+      "Circolare 21 gennaio 2019 n. 7, Tabella C4.1.I; independent reinforcement-area, effective-depth and linear-interpolation arithmetic",
+    sourceKind: "primary-method-reference",
+    notes:
+      "Evaluates top and bottom rho_l independently, retains their Wood-Armer moments and selects the lower face limit separately in X and Y.",
+    evaluate() {
+      const concreteMaterial = createNTC2018ConcreteMaterial({
+        strengthClass: "C25/30",
+        units: sectionUnits,
+      });
+      const reinforcementMaterial = createNTC2018ReinforcementSteelMaterial({
+        grade: "B450C",
+        units: sectionUnits,
+      });
+      const result = new ReinforcedConcretePlateApplication().run({
+        model: {
+          id: "validation-flat-slab-rho-l",
+          units: sectionUnits,
+          materials: { concreteMaterial, reinforcementMaterial },
+          geometry: { thickness: 200, unitWidth: 1000 },
+          reinforcement: {
+            angle: 0,
+            top: {
+              x: { barsPerMeter: 5, diameter: 12, clearCover: 25 },
+              y: { barsPerMeter: 5, diameter: 12, clearCover: 40 },
+            },
+            bottom: {
+              x: { barsPerMeter: 6, diameter: 14, clearCover: 25 },
+              y: { barsPerMeter: 6, diameter: 14, clearCover: 42 },
+            },
+          },
+          analysis: {
+            type: RC_PLATE_ANALYSIS_TYPES.SLS_SIMPLIFIED_DEFLECTION,
+            combinationType: "SLE_QUASI_PERMANENT",
+            actions: { mxx: 2_000, myy: -1_000, mxy: 5_000, qx: 0, qy: 0 },
+            deflection: { spanX: 3200, spanY: 3000 },
+          },
+        },
+      });
+      const [x, y] = result.outputs.slendernessChecks;
+
+      return {
+        rhoX: round(x.reinforcementRatio),
+        rhoY: round(y.reinforcementRatio),
+        limitX: round(x.capacity),
+        limitY: round(y.capacity),
+        bottomXMoment: x.faceChecks[0].woodArmerMoment,
+        topXMoment: x.faceChecks[1].woodArmerMoment,
+        demandX: round(x.demand),
+        demandY: round(y.demand),
+        stressLevel: x.stressLevel,
+      };
+    },
+    expectations: [
+      { id: "rho-x", path: "rhoX", expected: 0.005497787, tolerance: 1e-9 },
+      { id: "rho-y", path: "rhoY", expected: 0.006116743, tolerance: 1e-9 },
+      { id: "limit-x", path: "limitX", expected: 23.651549, tolerance: 1e-6 },
+      { id: "limit-y", path: "limitY", expected: 23.21828, tolerance: 1e-6 },
+      { id: "bottom-x-moment", path: "bottomXMoment", expected: 7_000, tolerance: 1e-12 },
+      { id: "top-x-moment", path: "topXMoment", expected: -3_000, tolerance: 1e-12 },
+      { id: "demand-x", path: "demandX", expected: 16, tolerance: 1e-12 },
+      { id: "demand-y", path: "demandY", expected: 15, tolerance: 1e-12 },
+      {
+        id: "interpolated-branch",
+        path: "stressLevel",
+        expected: "interpolated-from-rho-l",
+        type: "equal",
+      },
+    ],
+  };
+}
+
+function rcPlateVerticalSLinksShearCase() {
+  return {
+    id: "rc-plate-vertical-s-links-shear",
+    title: "RC plate one-way shear with a distributed grid of vertical S-links",
+    category: "reinforced-concrete-plates",
+    source:
+      "NTC 2018 4.1.2.3.5.1-2; independent conversion of an 8/150x200 mm S-link grid to Asw/s on a 1000 mm strip",
+    sourceKind: "primary-method-reference",
+    notes:
+      "Each S is declared vertical, effectively anchored and equivalent to one shear leg. The reinforced and unreinforced mechanisms are both retained.",
+    evaluate() {
+      const concreteMaterial = createNTC2018ConcreteMaterial({
+        strengthClass: "C25/30",
+        units: sectionUnits,
+      });
+      const reinforcementMaterial = createNTC2018ReinforcementSteelMaterial({
+        grade: "B450C",
+        units: sectionUnits,
+      });
+      const result = new ReinforcedConcretePlateApplication().run({
+        model: {
+          id: "validation-plate-s-links",
+          units: sectionUnits,
+          materials: { concreteMaterial, reinforcementMaterial },
+          geometry: { thickness: 200, unitWidth: 1000 },
+          reinforcement: {
+            angle: 0,
+            shear: { diameter: 8, spacingX: 150, spacingY: 200 },
+            top: {
+              x: { barsPerMeter: 5, diameter: 12, clearCover: 25 },
+              y: { barsPerMeter: 5, diameter: 12, clearCover: 40 },
+            },
+            bottom: {
+              x: { barsPerMeter: 6, diameter: 14, clearCover: 25 },
+              y: { barsPerMeter: 6, diameter: 14, clearCover: 42 },
+            },
+          },
+          analysis: {
+            type: RC_PLATE_ANALYSIS_TYPES.ULS_BENDING_SHEAR,
+            combinationType: "ULS_FUNDAMENTAL",
+            actions: { mxx: 25_000, myy: 15_000, mxy: 5_000, qx: 60, qy: 40 },
+          },
+        },
+      });
+      const [x, y] = result.outputs.shearChecks;
+      const governingCandidate = (check) =>
+        check.candidates.find((candidate) => candidate.face === check.governingFace);
+
+      return {
+        aswPerSX: round(
+          governingCandidate(x).outputs.parameters.transverseReinforcement.areaPerSpacing,
+        ),
+        aswPerSY: round(
+          governingCandidate(y).outputs.parameters.transverseReinforcement.areaPerSpacing,
+        ),
+        vRdWithX: round(x.vRdWithTransverseReinforcement),
+        vRdWithoutX: round(x.vRdWithoutTransverseReinforcement),
+        vRdX: round(x.capacity),
+        vRdWithY: round(y.vRdWithTransverseReinforcement),
+        vRdWithoutY: round(y.vRdWithoutTransverseReinforcement),
+        vRdY: round(y.capacity),
+        selectedX: x.selectedMechanism,
+        selectedY: y.selectedMechanism,
+      };
+    },
+    expectations: [
+      { id: "asw-per-s-x", path: "aswPerSX", expected: 1.675516082, tolerance: 1e-9 },
+      { id: "asw-per-s-y", path: "aswPerSY", expected: 1.675516082, tolerance: 1e-9 },
+      { id: "vrd-with-x", path: "vRdWithX", expected: 247827.929398, tolerance: 1e-6 },
+      { id: "vrd-without-x", path: "vRdWithoutX", expected: 96582.067981, tolerance: 1e-6 },
+      { id: "vrd-selected-x", path: "vRdX", expected: 247827.929398, tolerance: 1e-6 },
+      { id: "vrd-with-y", path: "vRdWithY", expected: 222750.103209, tolerance: 1e-6 },
+      { id: "vrd-without-y", path: "vRdWithoutY", expected: 89951.472511, tolerance: 1e-6 },
+      { id: "vrd-selected-y", path: "vRdY", expected: 222750.103209, tolerance: 1e-6 },
+      {
+        id: "selected-x",
+        path: "selectedX",
+        expected: "with-transverse-reinforcement",
+        type: "equal",
+      },
+      {
+        id: "selected-y",
+        path: "selectedY",
+        expected: "with-transverse-reinforcement",
+        type: "equal",
+      },
+    ],
+  };
+}
+
 function verificationStationSelectionCase() {
   return {
     id: "beam-verification-user-station-selection",
@@ -2254,6 +2479,9 @@ export function createBeamValidationCases() {
     sciP364UnrestrainedBeamLtbCase(),
     sciP364PinnedColumnBucklingCase(),
     rcShearExcelRegressionCase(),
+    rcPlateActionTransformationCase(),
+    rcPlateFlatSlabSlendernessInterpolationCase(),
+    rcPlateVerticalSLinksShearCase(),
     rcServiceStressLimitCase(),
     rcCrackEnvironmentMappingCase(),
     rcCrackTensionGroupSelectionCase(),

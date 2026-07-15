@@ -2,6 +2,8 @@ import {
   ReinforcedConcreteSection,
   ReinforcedConcreteSectionApplication,
   ReinforcedConcreteSectionModel,
+  ReinforcedConcretePlateApplication,
+  ReinforcedConcretePlateModel,
   ReinforcementBar,
   RectangularSection,
   createNTC2018ConcreteMaterial,
@@ -100,6 +102,38 @@ function createWorkerSmokeModel() {
 export function runWorkerSmoke() {
   const model = createWorkerSmokeModel();
   const result = new ReinforcedConcreteSectionApplication().run({ model });
+  const concreteMaterial = createNTC2018ConcreteMaterial({
+    strengthClass: "C25/30",
+    units,
+  });
+  const reinforcementMaterial = createNTC2018ReinforcementSteelMaterial({
+    grade: "B450C",
+    units,
+  });
+  const plateResult = new ReinforcedConcretePlateApplication().run({
+    model: new ReinforcedConcretePlateModel({
+      id: "worker-smoke-rc-plate",
+      units,
+      materials: { concreteMaterial, reinforcementMaterial },
+      geometry: { thickness: 200 },
+      reinforcement: {
+        top: {
+          x: { barsPerMeter: 5, diameter: 12, clearCover: 25 },
+          y: { barsPerMeter: 5, diameter: 12, clearCover: 40 },
+        },
+        bottom: {
+          x: { barsPerMeter: 6, diameter: 14, clearCover: 25 },
+          y: { barsPerMeter: 6, diameter: 14, clearCover: 42 },
+        },
+      },
+      analysis: {
+        type: "SLS_SIMPLIFIED_DEFLECTION",
+        combinationType: "SLE_QUASI_PERMANENT",
+        actions: {},
+        deflection: { spanX: 3000, spanY: 2800 },
+      },
+    }),
+  });
 
   return {
     applicationId: result.applicationId,
@@ -107,6 +141,9 @@ export function runWorkerSmoke() {
     analysisType: result.outputs.analysisType,
     fiberCount: result.outputs.fiberCount,
     warningCount: result.warnings.length,
+    plateApplicationId: plateResult.applicationId,
+    plateStatus: plateResult.status,
+    plateCheckCount: plateResult.checks.length,
   };
 }
 

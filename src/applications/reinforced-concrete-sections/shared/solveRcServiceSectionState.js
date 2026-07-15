@@ -31,6 +31,7 @@ export function createRcServiceSectionSolverContext({
   const discretizer = new SectionFiberDiscretizer();
   const concreteMesh = discretizer.discretize(section, {
     targetCount: mesh?.targetFiberCount ?? 100,
+    method: mesh?.method ?? "grid",
   });
   const serviceSolver = new RCServiceStressSolver({
     tolerance: solver?.tolerance ?? 1e-2,
@@ -96,6 +97,8 @@ export function solveRcServiceSectionState({
     actions,
     referencePoint,
     initialGuess,
+    analysisMode:
+      context.mesh.method === "uniaxial-strips" ? "uniaxial" : "biaxial",
   };
 
   return {
@@ -105,7 +108,9 @@ export function solveRcServiceSectionState({
     serviceSolver: context.serviceSolver,
     solved: useFallbacks
       ? solveServiceStressWithFallbacks(solveInput)
-      : context.serviceSolver.solve({
+      : context.serviceSolver[
+          solveInput.analysisMode === "uniaxial" ? "solveUniaxial" : "solve"
+        ]({
           section,
           concreteFibers: context.mesh.fibers,
           concreteLaw: context.concreteLaw,

@@ -67,6 +67,9 @@ if (
   smoke.applicationId !== "reinforced-concrete-sections" ||
   smoke.status !== "ok" ||
   smoke.analysisType !== "service-stress" ||
+  smoke.plateApplicationId !== "reinforced-concrete-plates" ||
+  smoke.plateStatus !== "ok" ||
+  smoke.plateCheckCount !== 4 ||
   !Number.isInteger(smoke.fiberCount) ||
   smoke.fiberCount <= 0
 ) {

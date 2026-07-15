@@ -5,6 +5,7 @@ import { MasonryWallOpeningsApplication } from "./masonry-wall-openings/index.js
 import { MasonryRingBeamApplication } from "./masonry-ring-beams/index.js";
 import { MicropileBromsApplication } from "./micropiles-broms/index.js";
 import { RCrackedDeflectionApplication } from "./rc-cracked-deflection/index.js";
+import { ReinforcedConcretePlateApplication } from "./reinforced-concrete-plates/index.js";
 import { ReinforcedConcreteSectionApplication } from "./reinforced-concrete-sections/index.js";
 import { SingleBeamDesignApplication } from "./single-beam-design/index.js";
 import { SteelFrameApplication } from "./steel-frames/index.js";
@@ -59,6 +60,20 @@ export { createServiceDeflectionAnalysisResult } from "./rc-cracked-deflection/i
 export { runRcServiceDeflectionAnalysis } from "./rc-cracked-deflection/index.js";
 export { createScaServiceDeflectionAnalysisResult } from "./rc-cracked-deflection/index.js";
 export { runScaRcDeflectionAnalysis } from "./rc-cracked-deflection/index.js";
+export {
+  RC_PLATE_ANALYSIS_TYPES,
+  ReinforcedConcretePlateApplication,
+  ReinforcedConcretePlateModel,
+  ReinforcedConcretePlateVerification,
+  createPlateStripSection,
+  rotatePlateMoments,
+  rotatePlateShear,
+  verifyPlateBending,
+  verifyPlateServiceability,
+  verifyPlateShear,
+  verifyPlateSlenderness,
+  woodArmer,
+} from "./reinforced-concrete-plates/index.js";
 export { ReinforcedConcreteSectionApplication } from "./reinforced-concrete-sections/index.js";
 export { ReinforcedConcreteBeamVerification } from "./reinforced-concrete-sections/index.js";
 export { ReinforcedConcreteShearVerification } from "./reinforced-concrete-sections/index.js";
@@ -132,6 +147,7 @@ export function createDefaultApplicationRegistry() {
     new MasonryPierApplication(),
     new MasonryWallOpeningsApplication(),
     new ReinforcedConcreteSectionApplication(),
+    new ReinforcedConcretePlateApplication(),
     new TimberBeamApplication(),
     new TimberConcreteCompositeBeamApplication(),
     new TimberXlamCompositeBeamApplication(),

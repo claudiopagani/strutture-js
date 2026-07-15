@@ -21,10 +21,10 @@ function mergeGuess(base, guess) {
   };
 }
 
-function guessKey(guess) {
+function guessKey(guess, analysisMode) {
   return JSON.stringify([
     guess.eps0 ?? 0,
-    guess.kappaY ?? 0,
+    analysisMode === "uniaxial" ? 0 : (guess.kappaY ?? 0),
     guess.kappaZ ?? 0,
   ]);
 }
@@ -48,6 +48,7 @@ export function solveServiceStressWithFallbacks({
   actions,
   referencePoint = null,
   initialGuess = {},
+  analysisMode = "biaxial",
 } = {}) {
   const baseGuess = normalizeInitialGuess(initialGuess);
   const guesses = [
@@ -59,7 +60,7 @@ export function solveServiceStressWithFallbacks({
   let lastError = null;
 
   for (const guess of guesses) {
-    const key = guessKey(guess);
+    const key = guessKey(guess, analysisMode);
 
     if (used.has(key)) {
       continue;
@@ -70,7 +71,11 @@ export function solveServiceStressWithFallbacks({
     let result = null;
 
     try {
-      result = serviceSolver.solve({
+      const solve =
+        analysisMode === "uniaxial"
+          ? serviceSolver.solveUniaxial.bind(serviceSolver)
+          : serviceSolver.solve.bind(serviceSolver);
+      result = solve({
         section,
         concreteFibers,
         concreteLaw,

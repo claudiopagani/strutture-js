@@ -149,6 +149,7 @@ export function filterBarsForCrackControl({
         bars: [],
         groupId: requestedGroupId,
         face: tensionFace,
+        spacing: null,
         missingRequiredGroup: true,
       };
     }
@@ -157,6 +158,7 @@ export function filterBarsForCrackControl({
       bars,
       groupId: null,
       face: tensionFace,
+      spacing: null,
       missingRequiredGroup: false,
     };
   }
@@ -174,6 +176,7 @@ export function filterBarsForCrackControl({
     bars: filtered,
     groupId: group.id,
     face: group.face ?? tensionFace,
+    spacing: Number.isFinite(group.spacing) ? group.spacing : null,
     missingRequiredGroup: false,
   };
 }
@@ -216,7 +219,9 @@ export function createIndirectCrackControlChecks({
       sigmaS,
       widthClass,
     );
-    const spacing = localSpacing(bar, barsInTension, options.rowTolerance);
+    const spacing = isFinitePositive(selection.spacing)
+      ? selection.spacing
+      : localSpacing(bar, barsInTension, options.rowTolerance);
     const spacingLimit = interpolateTable(
       MAX_BAR_SPACING_TABLE,
       sigmaS,
@@ -234,6 +239,9 @@ export function createIndirectCrackControlChecks({
       mEd: round(stressActions.primaryMoment),
       weakAxisMomentNeglected: stressActions.biaxialStress,
       neglectedMyEd: round(stressActions.userMyEd),
+      spacingSource: isFinitePositive(selection.spacing)
+        ? "reinforcement-group-explicit"
+        : "bar-coordinate-distance",
     };
     const checks = [];
 

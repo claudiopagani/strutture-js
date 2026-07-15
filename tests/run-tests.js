@@ -16,6 +16,7 @@ import "./timberBeamSectionProvider.test.js";
 import "./reinforcedConcreteBeamSectionProvider.test.js";
 import "./reinforcedConcreteShearVerification.test.js";
 import "./reinforcedConcreteServiceabilityVerification.test.js";
+import "./reinforcedConcretePlateApplication.test.js";
 import "./rcCrackedDeflectionAnalysis.test.js";
 import "./beamValidationCampaign.test.js";
 import "./packageExports.test.js";

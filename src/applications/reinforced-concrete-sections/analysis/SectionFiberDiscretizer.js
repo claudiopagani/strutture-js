@@ -57,8 +57,46 @@ export class SectionFiberDiscretizer {
       throw new Error("SectionFiberDiscretizer targetCount must be a positive integer.");
     }
 
-    if (method !== "grid") {
+    if (!["grid", "uniaxial-strips"].includes(method)) {
       throw new Error(`Unsupported discretization method: ${method}.`);
+    }
+
+    if (method === "uniaxial-strips") {
+      const concreteSection = section.concreteSection;
+
+      if (concreteSection?.metadata?.shape !== "rectangular") {
+        throw new Error(
+          "SectionFiberDiscretizer uniaxial-strips requires a rectangular concrete section.",
+        );
+      }
+
+      const bounds = section.getBoundingBox();
+      const height = bounds.maxY - bounds.minY;
+      const width = bounds.maxZ - bounds.minZ;
+      const fiberHeight = height / targetCount;
+      const fibers = Array.from({ length: targetCount }, (_, index) => ({
+        id: `concrete-strip-${index + 1}`,
+        area: fiberHeight * width,
+        y: bounds.minY + (index + 0.5) * fiberHeight,
+        z: (bounds.minZ + bounds.maxZ) / 2,
+        height: fiberHeight,
+        width,
+        materialRole: "concrete",
+      }));
+
+      return {
+        method,
+        targetCount,
+        generatedCount: fibers.length,
+        grid: {
+          rows: targetCount,
+          cols: 1,
+          fiberHeight,
+          fiberWidth: width,
+        },
+        bounds,
+        fibers,
+      };
     }
 
     const polygon = section.getConcreteOutlinePoints();
