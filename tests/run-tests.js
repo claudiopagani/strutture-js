@@ -5,6 +5,8 @@ import "./ntc2018Actions.test.js";
 import "./ntc2018BeamCombinations.test.js";
 import "./loadAbstractions.test.js";
 import "./ntc2018SlabLoadAnalysis.test.js";
+import "./punchingConnectionContract.test.js";
+import "./punchingVerification.test.js";
 import "./steelProfileSection.test.js";
 import "./steelCompoundProfileSection.test.js";
 import "./steelBeamSectionProvider.test.js";

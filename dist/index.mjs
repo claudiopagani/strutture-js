@@ -1680,25 +1680,25 @@ function calculatePolygonMassProperties(points) {
   for (let index = 0; index < resolvedPoints.length; index += 1) {
     const current = resolvedPoints[index];
     const next = resolvedPoints[(index + 1) % resolvedPoints.length];
-    const cross = current.z * next.y - next.z * current.y;
-    signedDoubleArea += cross;
-    centroidZFactor += (current.z + next.z) * cross;
-    centroidYFactor += (current.y + next.y) * cross;
-    inertiaYOrigin += (current.y ** 2 + current.y * next.y + next.y ** 2) * cross;
-    inertiaZOrigin += (current.z ** 2 + current.z * next.z + next.z ** 2) * cross;
-    productOrigin += (2 * current.y * current.z + current.y * next.z + next.y * current.z + 2 * next.y * next.z) * cross;
+    const cross2 = current.z * next.y - next.z * current.y;
+    signedDoubleArea += cross2;
+    centroidZFactor += (current.z + next.z) * cross2;
+    centroidYFactor += (current.y + next.y) * cross2;
+    inertiaYOrigin += (current.y ** 2 + current.y * next.y + next.y ** 2) * cross2;
+    inertiaZOrigin += (current.z ** 2 + current.z * next.z + next.z ** 2) * cross2;
+    productOrigin += (2 * current.y * current.z + current.y * next.z + next.y * current.z + 2 * next.y * next.z) * cross2;
   }
-  const signedArea = signedDoubleArea / 2;
-  const orientation = Math.sign(signedArea) || 1;
-  const area = Math.abs(signedArea);
+  const signedArea2 = signedDoubleArea / 2;
+  const orientation = Math.sign(signedArea2) || 1;
+  const area = Math.abs(signedArea2);
   if (area === 0) {
     throw new Error("Polygon mass properties require a non-zero area.");
   }
-  const centroidZ = centroidZFactor / (6 * signedArea);
-  const centroidY = centroidYFactor / (6 * signedArea);
-  const inertiaY = orientation * (inertiaYOrigin / 12 - signedArea * centroidY ** 2);
-  const inertiaZ = orientation * (inertiaZOrigin / 12 - signedArea * centroidZ ** 2);
-  const productOfInertiaYZ = orientation * (productOrigin / 24 - signedArea * centroidY * centroidZ);
+  const centroidZ = centroidZFactor / (6 * signedArea2);
+  const centroidY = centroidYFactor / (6 * signedArea2);
+  const inertiaY = orientation * (inertiaYOrigin / 12 - signedArea2 * centroidY ** 2);
+  const inertiaZ = orientation * (inertiaZOrigin / 12 - signedArea2 * centroidZ ** 2);
+  const productOfInertiaYZ = orientation * (productOrigin / 24 - signedArea2 * centroidY * centroidZ);
   return {
     area,
     centroidY,
@@ -1891,22 +1891,22 @@ var PolygonSection = class extends CrossSection {
     for (let index = 0; index < resolvedPoints.length; index += 1) {
       const current = resolvedPoints[index];
       const next = resolvedPoints[(index + 1) % resolvedPoints.length];
-      const cross = current.z * next.y - next.z * current.y;
-      signedDoubleArea += cross;
-      centroidZFactor += (current.z + next.z) * cross;
-      centroidYFactor += (current.y + next.y) * cross;
-      inertiaYOrigin += (current.y ** 2 + current.y * next.y + next.y ** 2) * cross;
-      inertiaZOrigin += (current.z ** 2 + current.z * next.z + next.z ** 2) * cross;
+      const cross2 = current.z * next.y - next.z * current.y;
+      signedDoubleArea += cross2;
+      centroidZFactor += (current.z + next.z) * cross2;
+      centroidYFactor += (current.y + next.y) * cross2;
+      inertiaYOrigin += (current.y ** 2 + current.y * next.y + next.y ** 2) * cross2;
+      inertiaZOrigin += (current.z ** 2 + current.z * next.z + next.z ** 2) * cross2;
     }
-    const signedArea = signedDoubleArea / 2;
-    const area = Math.abs(signedArea);
+    const signedArea2 = signedDoubleArea / 2;
+    const area = Math.abs(signedArea2);
     if (area === 0) {
       throw new Error("Polygon section area must be non-zero.");
     }
-    const centroidZ = centroidZFactor / (6 * signedArea);
-    const centroidY = centroidYFactor / (6 * signedArea);
-    const inertiaY = Math.abs(inertiaYOrigin / 12 - signedArea * centroidY ** 2);
-    const inertiaZ = Math.abs(inertiaZOrigin / 12 - signedArea * centroidZ ** 2);
+    const centroidZ = centroidZFactor / (6 * signedArea2);
+    const centroidY = centroidYFactor / (6 * signedArea2);
+    const inertiaY = Math.abs(inertiaYOrigin / 12 - signedArea2 * centroidY ** 2);
+    const inertiaZ = Math.abs(inertiaZOrigin / 12 - signedArea2 * centroidZ ** 2);
     const massProperties = calculateSectionMassProperties({
       points: resolvedPoints
     });
@@ -27009,6 +27009,566 @@ var NTC2018SlabLoadAnalysis = class {
   }
 };
 
+// src/domain/slabs/punching/PunchingActionState.js
+var INTERNAL_UNITS8 = Object.freeze({ force: "N", length: "mm" });
+var SOURCE_METHODS = /* @__PURE__ */ new Set([
+  "manual",
+  "joint-equilibrium",
+  "integrated-contour"
+]);
+function finite(value, label) {
+  if (!Number.isFinite(value)) {
+    throw new Error(`${label} must be finite.`);
+  }
+  return value;
+}
+function normalizeCombinationType(value) {
+  if (value == null || value === "") {
+    return null;
+  }
+  return String(value).trim().toUpperCase().replace(/[\s-]+/g, "_");
+}
+function normalizeSource(source) {
+  var _a;
+  if (source != null && (typeof source !== "object" || Array.isArray(source))) {
+    throw new Error("Punching action source must be an object.");
+  }
+  const normalized = structuredClone(source != null ? source : { method: "manual" });
+  (_a = normalized.method) != null ? _a : normalized.method = "manual";
+  if (!SOURCE_METHODS.has(normalized.method)) {
+    throw new Error(`Unsupported punching action source method: ${normalized.method}.`);
+  }
+  return normalized;
+}
+var PUNCHING_ACTION_SCHEMA_VERSION = "rc-punching-action-state/v0";
+var PunchingActionState = class {
+  constructor({
+    id,
+    connectionId,
+    localFrameId = null,
+    combinationType = null,
+    units = null,
+    referencePoint = {},
+    components = {},
+    source = { method: "manual" },
+    metadata = {}
+  } = {}) {
+    var _a, _b, _c, _d, _e, _f;
+    if (!id) {
+      throw new Error("A punching action state id is required.");
+    }
+    if (!connectionId) {
+      throw new Error("PunchingActionState requires a connectionId.");
+    }
+    assertExplicitUnitSystem(units, "PunchingActionState");
+    const resolver = createUnitResolver(units, INTERNAL_UNITS8);
+    this.id = id;
+    this.connectionId = connectionId;
+    this.localFrameId = localFrameId;
+    this.schemaVersion = PUNCHING_ACTION_SCHEMA_VERSION;
+    this.combinationType = normalizeCombinationType(combinationType);
+    this.units = INTERNAL_UNITS8;
+    this.referencePoint = {
+      x: resolver.length(finite(Number((_a = referencePoint.x) != null ? _a : 0), "referencePoint.x")),
+      y: resolver.length(finite(Number((_b = referencePoint.y) != null ? _b : 0), "referencePoint.y")),
+      z: resolver.length(finite(Number((_c = referencePoint.z) != null ? _c : 0), "referencePoint.z"))
+    };
+    this.components = {
+      fz: resolver.force(finite(Number((_d = components.fz) != null ? _d : 0), "components.fz")),
+      mx: resolver.moment(finite(Number((_e = components.mx) != null ? _e : 0), "components.mx")),
+      my: resolver.moment(finite(Number((_f = components.my) != null ? _f : 0), "components.my"))
+    };
+    this.source = normalizeSource(source);
+    this.metadata = {
+      ...metadata,
+      unitSystem: INTERNAL_UNITS8,
+      sourceUnitSystem: resolver.sourceUnitSystem,
+      componentConvention: "right-handed-actions-exerted-on-slab-in-connection-local-frame"
+    };
+  }
+  toJSON() {
+    return {
+      id: this.id,
+      connectionId: this.connectionId,
+      localFrameId: this.localFrameId,
+      schemaVersion: this.schemaVersion,
+      combinationType: this.combinationType,
+      units: { ...this.units },
+      referencePoint: { ...this.referencePoint },
+      components: { ...this.components },
+      source: structuredClone(this.source),
+      metadata: { ...this.metadata }
+    };
+  }
+};
+
+// src/domain/slabs/punching/PunchingConnectionModel.js
+var INTERNAL_UNITS9 = Object.freeze({ force: "N", length: "mm" });
+var FRAME_TOLERANCE = 1e-6;
+function finite2(value, label) {
+  if (!Number.isFinite(value)) {
+    throw new Error(`${label} must be finite.`);
+  }
+  return value;
+}
+function positive(value, label) {
+  finite2(value, label);
+  if (value <= 0) {
+    throw new Error(`${label} must be positive.`);
+  }
+  return value;
+}
+function vectorNorm(vector) {
+  return Math.hypot(vector.x, vector.y, vector.z);
+}
+function dot(first, second) {
+  return first.x * second.x + first.y * second.y + first.z * second.z;
+}
+function cross(first, second) {
+  return {
+    x: first.y * second.z - first.z * second.y,
+    y: first.z * second.x - first.x * second.z,
+    z: first.x * second.y - first.y * second.x
+  };
+}
+function normalizeDirection(input, fallback, label) {
+  const source = input != null ? input : fallback;
+  const vector = {
+    x: finite2(Number(source.x), `${label}.x`),
+    y: finite2(Number(source.y), `${label}.y`),
+    z: finite2(Number(source.z), `${label}.z`)
+  };
+  const norm2 = vectorNorm(vector);
+  if (Math.abs(norm2 - 1) > FRAME_TOLERANCE) {
+    throw new Error(`${label} must be a unit vector.`);
+  }
+  return {
+    x: vector.x / norm2,
+    y: vector.y / norm2,
+    z: vector.z / norm2
+  };
+}
+function normalizeLocalFrame(input, resolver, connectionId) {
+  var _a, _b, _c, _d, _e, _f, _g;
+  const source = input != null ? input : {};
+  const xAxis = normalizeDirection(
+    source.xAxis,
+    { x: 1, y: 0, z: 0 },
+    "localFrame.xAxis"
+  );
+  const yAxis = normalizeDirection(
+    source.yAxis,
+    { x: 0, y: 1, z: 0 },
+    "localFrame.yAxis"
+  );
+  const derivedZ = cross(xAxis, yAxis);
+  if (Math.abs(dot(xAxis, yAxis)) > FRAME_TOLERANCE) {
+    throw new Error("localFrame.xAxis and localFrame.yAxis must be orthogonal.");
+  }
+  const zAxis = source.zAxis == null ? derivedZ : normalizeDirection(source.zAxis, derivedZ, "localFrame.zAxis");
+  if (Math.abs(dot(xAxis, zAxis)) > FRAME_TOLERANCE || Math.abs(dot(yAxis, zAxis)) > FRAME_TOLERANCE || dot(derivedZ, zAxis) < 1 - FRAME_TOLERANCE) {
+    throw new Error("localFrame must be orthonormal and right-handed (xAxis cross yAxis = zAxis).");
+  }
+  return {
+    id: (_a = source.id) != null ? _a : `${connectionId}:local-frame`,
+    origin: {
+      x: resolver.length(finite2(Number((_c = (_b = source.origin) == null ? void 0 : _b.x) != null ? _c : 0), "localFrame.origin.x")),
+      y: resolver.length(finite2(Number((_e = (_d = source.origin) == null ? void 0 : _d.y) != null ? _e : 0), "localFrame.origin.y")),
+      z: resolver.length(finite2(Number((_g = (_f = source.origin) == null ? void 0 : _f.z) != null ? _g : 0), "localFrame.origin.z"))
+    },
+    xAxis,
+    yAxis,
+    zAxis
+  };
+}
+function pointsCoincide(first, second) {
+  return first.x === second.x && first.y === second.y;
+}
+function normalizePlanPoint(input, resolver, label) {
+  return {
+    x: resolver.length(finite2(Number(input == null ? void 0 : input.x), `${label}.x`)),
+    y: resolver.length(finite2(Number(input == null ? void 0 : input.y), `${label}.y`))
+  };
+}
+function signedArea(points) {
+  return points.reduce((sum, point, index) => {
+    const next = points[(index + 1) % points.length];
+    return sum + point.x * next.y - next.x * point.y;
+  }, 0) / 2;
+}
+function normalizeRing(input, resolver, label) {
+  if (!Array.isArray(input) || input.length < 3) {
+    throw new Error(`${label} must contain at least three plan points.`);
+  }
+  const points = input.map((point, index) => normalizePlanPoint(point, resolver, `${label}[${index}]`));
+  if (points.length > 3 && pointsCoincide(points[0], points.at(-1))) {
+    points.pop();
+  }
+  if (points.length < 3 || Math.abs(signedArea(points)) <= 1e-9) {
+    throw new Error(`${label} must enclose a non-zero plan area.`);
+  }
+  return points;
+}
+function normalizeOpening(input, resolver, index) {
+  if (!(input == null ? void 0 : input.id)) {
+    throw new Error(`slab.openings[${index}].id is required.`);
+  }
+  return {
+    id: input.id,
+    boundary: normalizeRing(
+      input.boundary,
+      resolver,
+      `slab.openings[${index}].boundary`
+    )
+  };
+}
+function normalizeFootprint(input, resolver) {
+  var _a, _b;
+  if (!(input == null ? void 0 : input.shape)) {
+    throw new Error("support.footprint.shape is required.");
+  }
+  const center = normalizePlanPoint(
+    (_a = input.center) != null ? _a : { x: 0, y: 0 },
+    resolver,
+    "support.footprint.center"
+  );
+  if (input.shape === "circle") {
+    return {
+      shape: "circle",
+      center,
+      diameter: positive(
+        resolver.length(Number(input.diameter)),
+        "support.footprint.diameter"
+      )
+    };
+  }
+  if (input.shape === "rectangle") {
+    return {
+      shape: "rectangle",
+      center,
+      sizeX: positive(
+        resolver.length(Number(input.sizeX)),
+        "support.footprint.sizeX"
+      ),
+      sizeY: positive(
+        resolver.length(Number(input.sizeY)),
+        "support.footprint.sizeY"
+      ),
+      rotation: finite2(
+        Number((_b = input.rotation) != null ? _b : 0),
+        "support.footprint.rotation"
+      )
+    };
+  }
+  if (input.shape === "polygon") {
+    return {
+      shape: "polygon",
+      center,
+      boundary: normalizeRing(
+        input.boundary,
+        resolver,
+        "support.footprint.boundary"
+      )
+    };
+  }
+  throw new Error(`Unsupported support footprint shape: ${input.shape}.`);
+}
+function normalizeMemberIds(input, label) {
+  if (input == null) {
+    return [];
+  }
+  if (!Array.isArray(input) || input.some((id) => typeof id !== "string" || id.length === 0)) {
+    throw new Error(`${label} must be an array of non-empty member ids.`);
+  }
+  return [...input];
+}
+function normalizeSupportPosition(value) {
+  if (value == null) {
+    return null;
+  }
+  if (!["interior", "edge", "corner"].includes(value)) {
+    throw new Error("support.position must be interior, edge, corner or null.");
+  }
+  return value;
+}
+function normalizeFlexuralTension(input, resolver) {
+  var _a;
+  if (input == null) {
+    return null;
+  }
+  const normalizeDirection2 = (direction, label) => {
+    const ratio = positive(Number(direction == null ? void 0 : direction.ratio), `${label}.ratio`);
+    if (ratio >= 1) {
+      throw new Error(`${label}.ratio must be lower than 1.`);
+    }
+    return {
+      effectiveDepth: positive(
+        resolver.length(Number(direction == null ? void 0 : direction.effectiveDepth)),
+        `${label}.effectiveDepth`
+      ),
+      ratio
+    };
+  };
+  return {
+    x: normalizeDirection2(input.x, "reinforcement.flexuralTension.x"),
+    y: normalizeDirection2(input.y, "reinforcement.flexuralTension.y"),
+    source: structuredClone((_a = input.source) != null ? _a : { method: "explicit-effective-ratio" })
+  };
+}
+function normalizeReinforcement(input, resolver) {
+  const source = input != null ? input : {};
+  return {
+    ...structuredClone(source),
+    flexuralTension: normalizeFlexuralTension(source.flexuralTension, resolver)
+  };
+}
+function normalizeConcreteAggregate(input, resolver) {
+  if (input == null) {
+    return null;
+  }
+  return {
+    ...structuredClone(input),
+    lowerSize: positive(
+      resolver.length(Number(input.lowerSize)),
+      "materials.concreteAggregate.lowerSize"
+    )
+  };
+}
+function normalizeMaterials(materials, resolver) {
+  const concrete = materials.concrete;
+  const normalizedConcrete = concrete == null || typeof concrete.toJSON === "function" ? concrete != null ? concrete : null : {
+    ...structuredClone(concrete),
+    fck: positive(
+      resolver.stress(Number(concrete.fck)),
+      "materials.concrete.fck"
+    )
+  };
+  return {
+    ...materials,
+    concrete: normalizedConcrete,
+    concreteAggregate: normalizeConcreteAggregate(
+      materials.concreteAggregate,
+      resolver
+    )
+  };
+}
+function serializeMaterialMap(materials) {
+  return Object.fromEntries(
+    Object.entries(materials).map(([key, value]) => {
+      var _a, _b;
+      return [
+        key,
+        (_b = (_a = value == null ? void 0 : value.toJSON) == null ? void 0 : _a.call(value)) != null ? _b : value
+      ];
+    })
+  );
+}
+var PUNCHING_CONNECTION_SCHEMA_VERSION = "rc-punching-connection/v0";
+var PunchingConnectionModel = class {
+  constructor({
+    id,
+    units = null,
+    localFrame = {},
+    slab = {},
+    support = {},
+    materials = {},
+    reinforcement = {},
+    metadata = {}
+  } = {}) {
+    var _a, _b, _c, _d, _e;
+    if (!id) {
+      throw new Error("A punching connection id is required.");
+    }
+    assertExplicitUnitSystem(units, "PunchingConnectionModel");
+    const resolver = createUnitResolver(units, INTERNAL_UNITS9);
+    const thickness = positive(
+      resolver.length(Number(slab.thickness)),
+      "slab.thickness"
+    );
+    if (!Array.isArray((_a = slab.openings) != null ? _a : [])) {
+      throw new Error("slab.openings must be an array.");
+    }
+    const normalizedReinforcement = normalizeReinforcement(reinforcement, resolver);
+    if (normalizedReinforcement.flexuralTension != null && (normalizedReinforcement.flexuralTension.x.effectiveDepth >= thickness || normalizedReinforcement.flexuralTension.y.effectiveDepth >= thickness)) {
+      throw new Error("reinforcement.flexuralTension effective depths must be lower than slab.thickness.");
+    }
+    this.id = id;
+    this.schemaVersion = PUNCHING_CONNECTION_SCHEMA_VERSION;
+    this.units = INTERNAL_UNITS9;
+    this.localFrame = normalizeLocalFrame(localFrame, resolver, id);
+    this.slab = {
+      thickness,
+      boundary: normalizeRing(slab.boundary, resolver, "slab.boundary"),
+      openings: ((_b = slab.openings) != null ? _b : []).map((opening, index) => normalizeOpening(opening, resolver, index)),
+      beams: structuredClone((_c = slab.beams) != null ? _c : [])
+    };
+    this.support = {
+      id: (_d = support.id) != null ? _d : `${id}:support`,
+      kind: (_e = support.kind) != null ? _e : "supporting-area",
+      position: normalizeSupportPosition(support.position),
+      footprint: normalizeFootprint(support.footprint, resolver),
+      capital: support.capital == null ? null : structuredClone(support.capital),
+      memberIdsAbove: normalizeMemberIds(
+        support.memberIdsAbove,
+        "support.memberIdsAbove"
+      ),
+      memberIdsBelow: normalizeMemberIds(
+        support.memberIdsBelow,
+        "support.memberIdsBelow"
+      )
+    };
+    this.materials = normalizeMaterials(materials, resolver);
+    this.reinforcement = normalizedReinforcement;
+    this.metadata = {
+      ...metadata,
+      unitSystem: INTERNAL_UNITS9,
+      sourceUnitSystem: resolver.sourceUnitSystem,
+      geometryScope: "planar-slab-boundary-and-support-footprint"
+    };
+  }
+  toJSON() {
+    return {
+      id: this.id,
+      schemaVersion: this.schemaVersion,
+      units: { ...this.units },
+      localFrame: structuredClone(this.localFrame),
+      slab: structuredClone(this.slab),
+      support: structuredClone(this.support),
+      materials: serializeMaterialMap(this.materials),
+      reinforcement: structuredClone(this.reinforcement),
+      metadata: { ...this.metadata }
+    };
+  }
+};
+
+// src/domain/slabs/punching/resolvePunchingTransferFromJointActions.js
+var INTERNAL_UNITS10 = Object.freeze({ force: "N", length: "mm" });
+function finite3(value, label) {
+  if (!Number.isFinite(value)) {
+    throw new Error(`${label} must be finite.`);
+  }
+  return value;
+}
+function normalizeReferencePoint(input, resolver, label) {
+  var _a, _b, _c;
+  return {
+    x: resolver.length(finite3(Number((_a = input == null ? void 0 : input.x) != null ? _a : 0), `${label}.x`)),
+    y: resolver.length(finite3(Number((_b = input == null ? void 0 : input.y) != null ? _b : 0), `${label}.y`)),
+    z: resolver.length(finite3(Number((_c = input == null ? void 0 : input.z) != null ? _c : 0), `${label}.z`))
+  };
+}
+function normalizeComponents(input, resolver, label) {
+  var _a, _b, _c;
+  for (const key of ["fx", "fy", "mz"]) {
+    if ((input == null ? void 0 : input[key]) == null) {
+      continue;
+    }
+    const value = finite3(Number(input[key]), `${label}.${key}`);
+    if (Math.abs(value) > 0) {
+      throw new Error(`${label}.${key} is outside the punching transfer contract.`);
+    }
+  }
+  return {
+    fz: resolver.force(finite3(Number((_a = input == null ? void 0 : input.fz) != null ? _a : 0), `${label}.fz`)),
+    mx: resolver.moment(finite3(Number((_b = input == null ? void 0 : input.mx) != null ? _b : 0), `${label}.mx`)),
+    my: resolver.moment(finite3(Number((_c = input == null ? void 0 : input.my) != null ? _c : 0), `${label}.my`))
+  };
+}
+function reduceToReference(components, from, to) {
+  const deltaX = from.x - to.x;
+  const deltaY = from.y - to.y;
+  return {
+    fz: components.fz,
+    mx: components.mx + deltaY * components.fz,
+    my: components.my - deltaX * components.fz
+  };
+}
+function sumComponents(items) {
+  return items.reduce(
+    (sum, item) => ({
+      fz: sum.fz + item.reducedComponents.fz,
+      mx: sum.mx + item.reducedComponents.mx,
+      my: sum.my + item.reducedComponents.my
+    }),
+    { fz: 0, mx: 0, my: 0 }
+  );
+}
+function resolvePunchingTransferFromJointActions({
+  id,
+  connectionId,
+  localFrameId = null,
+  combinationType = null,
+  units = null,
+  referencePoint = {},
+  contributors = [],
+  metadata = {}
+} = {}) {
+  if (!id) {
+    throw new Error("A resolved punching action state id is required.");
+  }
+  if (!connectionId) {
+    throw new Error("Joint equilibrium requires a connectionId.");
+  }
+  if (!Array.isArray(contributors) || contributors.length === 0) {
+    throw new Error("Joint equilibrium requires at least one non-slab action contributor.");
+  }
+  assertExplicitUnitSystem(units, "resolvePunchingTransferFromJointActions");
+  const resolver = createUnitResolver(units, INTERNAL_UNITS10);
+  const target = normalizeReferencePoint(referencePoint, resolver, "referencePoint");
+  const normalizedContributors = contributors.map((contributor, index) => {
+    var _a, _b, _c;
+    if (!(contributor == null ? void 0 : contributor.id)) {
+      throw new Error(`contributors[${index}].id is required.`);
+    }
+    const sourcePoint = normalizeReferencePoint(
+      contributor.referencePoint,
+      resolver,
+      `contributors[${index}].referencePoint`
+    );
+    const components = normalizeComponents(
+      contributor.components,
+      resolver,
+      `contributors[${index}].components`
+    );
+    return {
+      id: contributor.id,
+      kind: (_a = contributor.kind) != null ? _a : "non-slab-action",
+      side: (_b = contributor.side) != null ? _b : null,
+      referencePoint: sourcePoint,
+      components,
+      reducedComponents: reduceToReference(components, sourcePoint, target),
+      metadata: { ...(_c = contributor.metadata) != null ? _c : {} }
+    };
+  });
+  const transfer = sumComponents(normalizedContributors);
+  const slabActionOnJoint = {
+    fz: -transfer.fz,
+    mx: -transfer.mx,
+    my: -transfer.my
+  };
+  return new PunchingActionState({
+    id,
+    connectionId,
+    localFrameId,
+    combinationType,
+    units: INTERNAL_UNITS10,
+    referencePoint: target,
+    components: transfer,
+    source: {
+      method: "joint-equilibrium",
+      inputConvention: "each contributor is the action exerted on the joint by a non-slab entity",
+      outputConvention: "the resolved state is the equal action exerted by the joint on the slab",
+      contributors: normalizedContributors,
+      balance: {
+        nonSlabActionsOnJoint: { ...transfer },
+        slabActionOnJoint,
+        residual: { fz: 0, mx: 0, my: 0 }
+      }
+    },
+    metadata
+  });
+}
+
 // src/domain/loads/ElementPointLoad.js
 var ElementPointLoad = class extends PointLoad {
   constructor({
@@ -27182,7 +27742,7 @@ var ReinforcementBar = class {
 };
 
 // src/domain/reinforcement/createLongitudinalReinforcementLayout.js
-var INTERNAL_UNITS8 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS11 = Object.freeze({ force: "N", length: "mm" });
 function isFinitePositive2(value) {
   return Number.isFinite(value) && value > 0;
 }
@@ -27267,7 +27827,7 @@ function createBarsForLayer({
   material,
   units
 }) {
-  const resolver = createUnitResolver(units, INTERNAL_UNITS8);
+  const resolver = createUnitResolver(units, INTERNAL_UNITS11);
   const positions = barPositionsForLayer({ section, layer, resolver });
   const diameter = resolver.length(layer.diameter);
   const bars = positions.map(
@@ -27281,7 +27841,7 @@ function createBarsForLayer({
         material: (_a = layer.material) != null ? _a : material,
         y: position.y,
         z: position.z,
-        units: INTERNAL_UNITS8,
+        units: INTERNAL_UNITS11,
         metadata: {
           ...layer.metadata,
           face: layer.face,
@@ -27308,7 +27868,7 @@ function createBarsForLayer({
 function createLongitudinalReinforcementLayout({
   section,
   material = null,
-  units = ((_b) => (_b = ((_a) => (_a = section == null ? void 0 : section.metadata) == null ? void 0 : _a.unitSystem)()) != null ? _b : INTERNAL_UNITS8)(),
+  units = ((_b) => (_b = ((_a) => (_a = section == null ? void 0 : section.metadata) == null ? void 0 : _a.unitSystem)()) != null ? _b : INTERNAL_UNITS11)(),
   top = null,
   bottom = null,
   additionalBars = [],
@@ -28059,7 +28619,7 @@ function subtractVectors4(left, right) {
 function scalarVector(scalar, vector) {
   return vector.map((value) => scalar * value);
 }
-function dot(left, right) {
+function dot2(left, right) {
   return left.reduce((sum, value, index) => sum + value * right[index], 0);
 }
 function norm(vector) {
@@ -28288,7 +28848,7 @@ var DisplacementControlNonlinearStaticSolver2D = class {
           internalFree
         );
         const residualNorm2 = norm(residual);
-        const controlGap = controlDisplacementIncrement - dot(reducedControlVector, deltaDisplacements);
+        const controlGap = controlDisplacementIncrement - dot2(reducedControlVector, deltaDisplacements);
         trialState = cloneState(evaluation.state);
         stepEvents.push(
           ...evaluation.events.map((event) => ({
@@ -28395,7 +28955,7 @@ var DisplacementControlNonlinearStaticSolver2D = class {
       state = cloneState(committedStepState.evaluation.state);
       finalEvaluation = committedStepState.evaluation;
       events.push(...stepEvents);
-      const controlDisplacement = dot(model.controlVector, displacements);
+      const controlDisplacement = dot2(model.controlVector, displacements);
       points.push({
         ...basePoint({
           step,
@@ -29529,7 +30089,7 @@ var MasonryOutOfPlaneModel = class {
 };
 
 // src/applications/masonry-piers/models/MasonryPierModel.js
-var INTERNAL_UNITS9 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS12 = Object.freeze({ force: "N", length: "mm" });
 function assertPositive14(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`MasonryPierModel requires a positive ${label}.`);
@@ -29567,7 +30127,7 @@ function normalizePlainMaterial(material) {
   if (!units) {
     return { ...material };
   }
-  const unitResolver = createUnitResolver(units, INTERNAL_UNITS9);
+  const unitResolver = createUnitResolver(units, INTERNAL_UNITS12);
   const convertProperties = (properties = {}) => ({
     ...properties,
     fm: unitResolver.stress(properties.fm),
@@ -29592,10 +30152,10 @@ function normalizePlainMaterial(material) {
     originalMechanicalProperties: convertProperties(material.originalMechanicalProperties),
     stateOfFactProperties: convertProperties(material.stateOfFactProperties),
     improvedMechanicalProperties: convertProperties(material.improvedMechanicalProperties),
-    units: INTERNAL_UNITS9,
+    units: INTERNAL_UNITS12,
     metadata: {
       ...material.metadata,
-      unitSystem: INTERNAL_UNITS9,
+      unitSystem: INTERNAL_UNITS12,
       sourceUnitSystem: (_k = (_j = material.metadata) == null ? void 0 : _j.sourceUnitSystem) != null ? _k : unitResolver.sourceUnitSystem
     }
   };
@@ -29626,7 +30186,7 @@ var MasonryPierModel = class {
       throw new Error("A masonry pier model id is required.");
     }
     assertExplicitUnitSystem(units, "MasonryPierModel");
-    const unitResolver = createUnitResolver(units, INTERNAL_UNITS9);
+    const unitResolver = createUnitResolver(units, INTERNAL_UNITS12);
     const resolvedHeight = unitResolver.length((_a = geometry.height) != null ? _a : geometry.h);
     const resolvedLength = unitResolver.length(
       (_d = (_c = (_b = geometry.length) != null ? _b : geometry.L) != null ? _c : geometry.b) != null ? _d : geometry.width
@@ -29653,7 +30213,7 @@ var MasonryPierModel = class {
       );
     }
     this.id = id;
-    this.units = INTERNAL_UNITS9;
+    this.units = INTERNAL_UNITS12;
     this.geometry = {
       baseX: unitResolver.length((_m = (_l = geometry.baseX) != null ? _l : geometry.x) != null ? _m : 0),
       baseY: unitResolver.length((_o = (_n = geometry.baseY) != null ? _n : geometry.y) != null ? _o : 0),
@@ -29726,7 +30286,7 @@ var MasonryPierModel = class {
     };
     this.metadata = {
       ...metadata,
-      unitSystem: INTERNAL_UNITS9,
+      unitSystem: INTERNAL_UNITS12,
       sourceUnitSystem: (_J = metadata.sourceUnitSystem) != null ? _J : unitResolver.sourceUnitSystem
     };
   }
@@ -30905,7 +31465,7 @@ var NTC2018_EXISTING_MASONRY_KNOWLEDGE_LEVELS = NTC2018_EXISTING_MATERIAL_KNOWLE
 
 // src/norms/ntc2018/materials/createNTC2018Material.js
 var NTC2018_REFERENCE = "DM 17/01/2018 - NTC 2018";
-var INTERNAL_UNITS10 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS13 = Object.freeze({ force: "N", length: "mm" });
 var round3 = (value, decimals = 2) => Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
 var assertCatalogEntry = (catalog, key, message) => {
   const entry = catalog[key];
@@ -30930,7 +31490,7 @@ function createNTC2018ConcreteMaterial({
 }) {
   var _a, _b;
   assertExplicitUnitSystem(units, "createNTC2018ConcreteMaterial");
-  const unitResolver = createUnitResolver(units, INTERNAL_UNITS10);
+  const unitResolver = createUnitResolver(units, INTERNAL_UNITS13);
   const preset = assertCatalogEntry(
     NTC2018_CONCRETE_CLASSES,
     strengthClass,
@@ -30962,7 +31522,7 @@ function createNTC2018ConcreteMaterial({
       fcm: round3(fcm, 2),
       elasticModulus: round3(ecm, 0)
     } : {},
-    units: INTERNAL_UNITS10,
+    units: INTERNAL_UNITS13,
     metadata: {
       ...metadata,
       normativePreset: "NTC2018",
@@ -30997,7 +31557,7 @@ function createNTC2018ReinforcementSteelMaterial({
 }) {
   var _a;
   assertExplicitUnitSystem(units, "createNTC2018ReinforcementSteelMaterial");
-  const unitResolver = createUnitResolver(units, INTERNAL_UNITS10);
+  const unitResolver = createUnitResolver(units, INTERNAL_UNITS13);
   const preset = assertCatalogEntry(
     NTC2018_REINFORCEMENT_STEEL_GRADES,
     grade,
@@ -31028,7 +31588,7 @@ function createNTC2018ReinforcementSteelMaterial({
     existing: existingState.existing,
     knowledgeLevel: (_a = existingState.knowledgeLevel) != null ? _a : knowledgeLevel,
     confidenceFactor: existingState.confidenceFactor,
-    units: INTERNAL_UNITS10,
+    units: INTERNAL_UNITS13,
     metadata: {
       ...metadata,
       normativePreset: "NTC2018",
@@ -31060,7 +31620,7 @@ function createNTC2018StructuralSteelMaterial({
   metadata = {}
 }) {
   assertExplicitUnitSystem(units, "createNTC2018StructuralSteelMaterial");
-  const unitResolver = createUnitResolver(units, INTERNAL_UNITS10);
+  const unitResolver = createUnitResolver(units, INTERNAL_UNITS13);
   const preset = assertCatalogEntry(
     NTC2018_STRUCTURAL_STEEL_GRADES,
     grade,
@@ -31075,7 +31635,7 @@ function createNTC2018StructuralSteelMaterial({
     fyk: preset.fyk,
     fyd: round3(preset.fyk / gammaM0, 2),
     ftk: preset.ftk,
-    units: INTERNAL_UNITS10,
+    units: INTERNAL_UNITS13,
     metadata: {
       ...metadata,
       normativePreset: "NTC2018",
@@ -31098,7 +31658,7 @@ function createNTC2018TimberMaterial({
 }) {
   var _a, _b, _c;
   assertExplicitUnitSystem(units, "createNTC2018TimberMaterial");
-  const unitResolver = createUnitResolver(units, INTERNAL_UNITS10);
+  const unitResolver = createUnitResolver(units, INTERNAL_UNITS13);
   const preset = assertCatalogEntry(
     NTC2018_TIMBER_STRENGTH_CLASSES,
     strengthClass,
@@ -31116,7 +31676,7 @@ function createNTC2018TimberMaterial({
     strengthStandard: preset.strengthStandard,
     serviceClass,
     kmod,
-    units: INTERNAL_UNITS10,
+    units: INTERNAL_UNITS13,
     fmK: preset.fmK,
     fc0K: preset.fc0K,
     ft0K: preset.ft0K,
@@ -31188,7 +31748,7 @@ function createNTC2018ExistingMasonryMaterial({
       modifierSelections,
       surveyFactors,
       improvementFactors,
-      units: INTERNAL_UNITS10,
+      units: INTERNAL_UNITS13,
       metadata: sharedMetadata,
       ...rest
     });
@@ -31206,7 +31766,7 @@ function createNTC2018ExistingMasonryMaterial({
 }
 
 // src/applications/steel-frames/models/SteelRingFramePushoverModel.js
-var INTERNAL_UNITS11 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS14 = Object.freeze({ force: "N", length: "mm" });
 var DEFAULT_REFERENCE_FORCE = 1;
 var DEFAULT_CONTROL_INCREMENT = 1;
 var DEFAULT_MAX_CONTROL_DISPLACEMENT = 120;
@@ -31303,7 +31863,7 @@ function normalizeSteelMaterial(materialLike, units, defaultGrade = "S275") {
   if ((materialLike == null ? void 0 : materialLike.category) === "steel" || (materialLike == null ? void 0 : materialLike.fyd) != null || (materialLike == null ? void 0 : materialLike.fyk) != null) {
     return new SteelMaterial({
       ...materialLike,
-      units: (_a = materialLike.units) != null ? _a : INTERNAL_UNITS11
+      units: (_a = materialLike.units) != null ? _a : INTERNAL_UNITS14
     });
   }
   if (typeof materialLike === "string" || materialLike == null) {
@@ -31467,7 +32027,7 @@ var SteelRingFramePushoverModel = class {
       throw new Error("A steel ring frame pushover model id is required.");
     }
     assertExplicitUnitSystem(units, "SteelRingFramePushoverModel");
-    const unitResolver = createUnitResolver(units, INTERNAL_UNITS11);
+    const unitResolver = createUnitResolver(units, INTERNAL_UNITS14);
     const resolvedBaseCondition = normalizeBaseCondition(baseCondition);
     const resolvedIncludeBottomBeam = includeBottomBeam == null ? resolvedBaseCondition !== "pinned-base-without-bottom-beam" && resolvedBaseCondition !== "fixed-base" : Boolean(includeBottomBeam);
     const width = unitResolver.length(
@@ -31479,7 +32039,7 @@ var SteelRingFramePushoverModel = class {
     assertPositive15(width, "geometry.clearWidth");
     assertPositive15(height, "geometry.clearHeight");
     this.id = id;
-    this.units = INTERNAL_UNITS11;
+    this.units = INTERNAL_UNITS14;
     this.geometry = {
       clearWidth: width,
       clearHeight: height,
@@ -31519,7 +32079,7 @@ var SteelRingFramePushoverModel = class {
     this.metadata = {
       ...metadata,
       analysisType: "steel-ring-frame-pushover",
-      unitSystem: INTERNAL_UNITS11,
+      unitSystem: INTERNAL_UNITS14,
       sourceUnitSystem: unitResolver.sourceUnitSystem
     };
     assertPositive15(
@@ -32455,7 +33015,7 @@ var SteelRingFramePushoverAnalysis = class {
 };
 
 // src/applications/masonry-wall-openings/models/MasonryWallPierModel.js
-var INTERNAL_UNITS12 = Object.freeze({ force: "N", length: "m" });
+var INTERNAL_UNITS15 = Object.freeze({ force: "N", length: "m" });
 function assertFiniteNonNegative(value, label) {
   if (!Number.isFinite(value) || value < 0) {
     throw new Error(`MasonryWallPierModel requires a finite non-negative ${label}.`);
@@ -32508,7 +33068,7 @@ var MasonryWallPierModel = class {
     assertFiniteNonNegative(resolvedEffectiveLength, "effectiveLength");
     assertFinitePositive(resolvedDeformableHeight, "deformableHeight");
     this.id = id;
-    this.units = INTERNAL_UNITS12;
+    this.units = INTERNAL_UNITS15;
     this.wallId = wallId;
     this.sourceWallIds = [...new Set(sourceWallIds.length > 0 ? sourceWallIds : [wallId])];
     this.alignmentId = alignmentId;
@@ -32559,7 +33119,7 @@ var MasonryWallPierModel = class {
 };
 
 // src/applications/masonry-wall-openings/models/MasonryWallSpandrelModel.js
-var INTERNAL_UNITS13 = Object.freeze({ force: "N", length: "m" });
+var INTERNAL_UNITS16 = Object.freeze({ force: "N", length: "m" });
 function assertFiniteNonNegative2(value, label) {
   if (!Number.isFinite(value) || value < 0) {
     throw new Error(
@@ -32603,7 +33163,7 @@ var MasonryWallSpandrelModel = class {
     const resolvedDeformableLength = deformableLength != null ? deformableLength : xEnd - xStart;
     assertFinitePositive2(resolvedDeformableLength, "deformableLength");
     this.id = id;
-    this.units = INTERNAL_UNITS13;
+    this.units = INTERNAL_UNITS16;
     this.alignmentId = alignmentId;
     this.xStart = xStart;
     this.xEnd = xEnd;
@@ -33275,7 +33835,7 @@ function extractEquivalentFrameMembers({
 }
 
 // src/applications/masonry-wall-openings/models/MasonryWallOpeningsModel.js
-var INTERNAL_UNITS14 = Object.freeze({ force: "N", length: "m" });
+var INTERNAL_UNITS17 = Object.freeze({ force: "N", length: "m" });
 function assertPositive17(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`MasonryWallOpeningsModel requires a positive ${label}.`);
@@ -33336,11 +33896,11 @@ var MasonryWallOpeningsModel = class {
       throw new Error("A masonry wall openings model id is required.");
     }
     assertExplicitUnitSystem(units, "MasonryWallOpeningsModel");
-    const unitResolver = createUnitResolver(units, INTERNAL_UNITS14);
+    const unitResolver = createUnitResolver(units, INTERNAL_UNITS17);
     let cursor = 0;
     this.id = id;
     this.label = label != null ? label : id;
-    this.units = INTERNAL_UNITS14;
+    this.units = INTERNAL_UNITS17;
     this.walls = walls.map((wall, index) => {
       var _a2, _b2, _c2;
       const resolvedLength = unitResolver.length(wall.length);
@@ -33406,7 +33966,7 @@ var MasonryWallOpeningsModel = class {
     };
     this.metadata = {
       ...metadata,
-      unitSystem: INTERNAL_UNITS14,
+      unitSystem: INTERNAL_UNITS17,
       sourceUnitSystem: (_g = metadata.sourceUnitSystem) != null ? _g : unitResolver.sourceUnitSystem
     };
   }
@@ -35802,7 +36362,7 @@ function verifySteelBeamColumnInteractionMyMz({
 }
 
 // src/applications/steel-frames/checks/SteelCompressionBuckling.js
-var INTERNAL_UNITS15 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS18 = Object.freeze({ force: "N", length: "mm" });
 var I_H_FAMILIES2 = /* @__PURE__ */ new Set(["IPE", "HEA", "HEB", "HEM"]);
 var CLOSED_HOLLOW_FAMILIES = /* @__PURE__ */ new Set(["CHS", "SHS", "RHS"]);
 var SOLID_DOUBLY_SYMMETRIC_FAMILIES = /* @__PURE__ */ new Set(["ROUND", "FLAT"]);
@@ -35824,8 +36384,8 @@ function normalizedFamily2(section) {
 function sectionResolver(section) {
   var _a, _b;
   return createUnitResolver(
-    (_b = (_a = section == null ? void 0 : section.metadata) == null ? void 0 : _a.unitSystem) != null ? _b : INTERNAL_UNITS15,
-    INTERNAL_UNITS15
+    (_b = (_a = section == null ? void 0 : section.metadata) == null ? void 0 : _a.unitSystem) != null ? _b : INTERNAL_UNITS18,
+    INTERNAL_UNITS18
   );
 }
 function resolveSectionLength(section, ...keys) {
@@ -36120,7 +36680,7 @@ function verifySteelCompressionBuckling({
 }
 
 // src/applications/steel-frames/checks/SteelLateralTorsionalBuckling.js
-var INTERNAL_UNITS16 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS19 = Object.freeze({ force: "N", length: "mm" });
 var I_H_FAMILIES3 = /* @__PURE__ */ new Set(["IPE", "HEA", "HEB", "HEM"]);
 var AUTOMATIC_MCR_FAMILIES = /* @__PURE__ */ new Set([...I_H_FAMILIES3, "RHS"]);
 var LTB_NOT_SUSCEPTIBLE_FAMILIES = /* @__PURE__ */ new Set(["CHS", "SHS", "ROUND"]);
@@ -36134,8 +36694,8 @@ function normalizedFamily3(section) {
 function sectionResolver2(section) {
   var _a, _b;
   return createUnitResolver(
-    (_b = (_a = section == null ? void 0 : section.metadata) == null ? void 0 : _a.unitSystem) != null ? _b : INTERNAL_UNITS16,
-    INTERNAL_UNITS16
+    (_b = (_a = section == null ? void 0 : section.metadata) == null ? void 0 : _a.unitSystem) != null ? _b : INTERNAL_UNITS19,
+    INTERNAL_UNITS19
   );
 }
 function resolveCatalogInertia(section, key, fallback) {
@@ -36148,7 +36708,7 @@ function resolveCatalogInertia(section, key, fallback) {
   if (Number.isFinite(rawValue) && ((_c = section == null ? void 0 : section.metadata) == null ? void 0 : _c.catalogUnitSystem)) {
     return createUnitResolver(
       section.metadata.catalogUnitSystem,
-      INTERNAL_UNITS16
+      INTERNAL_UNITS19
     ).inertia(rawValue);
   }
   return fallback;
@@ -36166,7 +36726,7 @@ function resolveWarpingConstant(section) {
   if (Number.isFinite(rawValue) && ((_c = section == null ? void 0 : section.metadata) == null ? void 0 : _c.catalogUnitSystem)) {
     return createUnitResolver(
       section.metadata.catalogUnitSystem,
-      INTERNAL_UNITS16
+      INTERNAL_UNITS19
     ).convert(rawValue, { lengthExponent: 6 });
   }
   return null;
@@ -36515,7 +37075,7 @@ function verifySteelLateralTorsionalBuckling({
 }
 
 // src/applications/steel-frames/checks/SteelSectionClassification.js
-var INTERNAL_UNITS17 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS20 = Object.freeze({ force: "N", length: "mm" });
 var I_H_FAMILIES4 = /* @__PURE__ */ new Set(["IPE", "HEA", "HEB", "HEM"]);
 var RECTANGULAR_HOLLOW_FAMILIES = /* @__PURE__ */ new Set(["SHS", "RHS"]);
 var CIRCULAR_HOLLOW_FAMILIES = /* @__PURE__ */ new Set(["CHS"]);
@@ -36551,8 +37111,8 @@ function normalizedFamily4(section) {
 function sectionResolver3(section) {
   var _a, _b;
   return createUnitResolver(
-    (_b = (_a = section == null ? void 0 : section.metadata) == null ? void 0 : _a.unitSystem) != null ? _b : INTERNAL_UNITS17,
-    INTERNAL_UNITS17
+    (_b = (_a = section == null ? void 0 : section.metadata) == null ? void 0 : _a.unitSystem) != null ? _b : INTERNAL_UNITS20,
+    INTERNAL_UNITS20
   );
 }
 function resolveProfileDimensions(section) {
@@ -37594,7 +38154,7 @@ function steelMemberFem3DToLegacyAnalysisResult(contract) {
 // src/applications/steel-frames/checks/SteelAdvancedMemberChecks.js
 var I_H_FAMILIES5 = /* @__PURE__ */ new Set(["IPE", "HEA", "HEB", "HEM"]);
 var round4 = (value, decimals = 6) => Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
-var positive = (value) => Number.isFinite(value) && value > 0;
+var positive2 = (value) => Number.isFinite(value) && value > 0;
 function familyOf(section) {
   var _a, _b, _c;
   return String((_c = (_b = section == null ? void 0 : section.family) != null ? _b : (_a = section == null ? void 0 : section.catalogProperties) == null ? void 0 : _a.family) != null ? _c : "").toUpperCase();
@@ -37604,7 +38164,7 @@ function gamma(material, key, fallback = 1.05) {
   return (_d = (_c = (_a = material == null ? void 0 : material.metadata) == null ? void 0 : _a[key]) != null ? _c : (_b = material == null ? void 0 : material.metadata) == null ? void 0 : _b.gammaM1) != null ? _d : fallback;
 }
 function uniformCheck({ id, description, demand, capacity, metadata = {}, warnings = [], assumptions = [] }) {
-  const ratio = positive(capacity) ? Math.abs(demand) / capacity : null;
+  const ratio = positive2(capacity) ? Math.abs(demand) / capacity : null;
   return {
     status: Number.isFinite(ratio) && ratio <= 1 ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
     check: {
@@ -37670,7 +38230,7 @@ function webGeometry(section) {
   const tw = section == null ? void 0 : section.webThickness;
   const tf = section == null ? void 0 : section.flangeThickness;
   const r = (_a = section == null ? void 0 : section.rootRadius) != null ? _a : 0;
-  return { h, tw, tf, hw: positive(h) && positive(tf) ? h - 2 * tf - 2 * r : null };
+  return { h, tw, tf, hw: positive2(h) && positive2(tf) ? h - 2 * tf - 2 * r : null };
 }
 function verifySteelWebShearBuckling({ section, material, vEd = 0, panel = {}, gammaM1 = null } = {}) {
   var _a, _b, _c, _d, _e;
@@ -37680,7 +38240,7 @@ function verifySteelWebShearBuckling({ section, material, vEd = 0, panel = {}, g
   const E = (_b = (_a = material == null ? void 0 : material.E) != null ? _a : material == null ? void 0 : material.elasticModulus) != null ? _b : 21e4;
   const a = (_c = panel.length) != null ? _c : Number.isFinite(panel.to) && Number.isFinite(panel.from) ? panel.to - panel.from : null;
   const resolvedGamma = gammaM1 != null ? gammaM1 : gamma(material, "gammaM1");
-  if (!I_H_FAMILIES5.has(family) || ![hw, tw, fy, E, a, resolvedGamma].every(positive)) {
+  if (!I_H_FAMILIES5.has(family) || ![hw, tw, fy, E, a, resolvedGamma].every(positive2)) {
     return { status: RESULT_STATUS.NOT_SUPPORTED, check: steelNotSupportedCheck({
       id: "steel-web-shear-buckling",
       description: "Web shear buckling",
@@ -37723,7 +38283,7 @@ function verifySteelConcentratedWebLoad({ section, material, load = {}, panel = 
   const force = (_e = (_d = load.force) != null ? _d : load.FEd) != null ? _e : 0;
   const a = (_f = panel.length) != null ? _f : load.panelLength;
   const resolvedGamma = gammaM1 != null ? gammaM1 : gamma(material, "gammaM1");
-  if (!I_H_FAMILIES5.has(family) || ![hw, tw, tf, b, fyw, E, ss, a, resolvedGamma].every(positive)) {
+  if (!I_H_FAMILIES5.has(family) || ![hw, tw, tf, b, fyw, E, ss, a, resolvedGamma].every(positive2)) {
     return { status: RESULT_STATUS.NOT_SUPPORTED, check: steelNotSupportedCheck({
       id: "steel-concentrated-web-load",
       description: "Transverse concentrated load on web",
@@ -37757,7 +38317,7 @@ function verifySteelBendingShearInteraction({ section, material, mEd = 0, vEd = 
   const fy = material == null ? void 0 : material.fyk;
   const Wpl = section == null ? void 0 : section.plasticSectionModulusY;
   const resolvedGamma = gammaM0 != null ? gammaM0 : gamma(material, "gammaM0");
-  if (![bendingCapacity, shearCapacity].every(positive)) {
+  if (![bendingCapacity, shearCapacity].every(positive2)) {
     return { status: RESULT_STATUS.NOT_SUPPORTED, check: steelNotSupportedCheck({ id: "steel-bending-shear-interaction", description: "Bending-shear interaction", missingInputs: ["plastic bending resistance", "shear resistance"], reference: "NTC 2018 \xA74.2.4.1.2.5; UNI EN 1993-1-1 \xA76.2.8" }), warnings: [] };
   }
   const shearRatio = Math.abs(vEd) / shearCapacity;
@@ -37765,7 +38325,7 @@ function verifySteelBendingShearInteraction({ section, material, mEd = 0, vEd = 
   let rho = 0;
   if (shearRatio > 0.5) {
     rho = Math.min(1, (2 * shearRatio - 1) ** 2);
-    if (I_H_FAMILIES5.has(familyOf(section)) && positive(Wpl) && positive(tw) && positive(fy)) {
+    if (I_H_FAMILIES5.has(familyOf(section)) && positive2(Wpl) && positive2(tw) && positive2(fy)) {
       const webArea = (_a = section == null ? void 0 : section.shearAreaY) != null ? _a : tw * webGeometry(section).hw;
       capacity = Math.min(bendingCapacity, Math.max(0, (Wpl - rho * webArea ** 2 / (4 * tw)) * fy / resolvedGamma));
     } else {
@@ -37778,7 +38338,7 @@ function verifySteelShearTorsionInteraction({ section, material, vEd = 0, tEd = 
   const WT = section == null ? void 0 : section.torsionalSectionModulus;
   const fy = material == null ? void 0 : material.fyk;
   const resolvedGamma = gamma(material, "gammaM0");
-  if (![WT, fy, shearCapacity].every(positive)) {
+  if (![WT, fy, shearCapacity].every(positive2)) {
     return { status: RESULT_STATUS.NOT_SUPPORTED, check: steelNotSupportedCheck({ id: "steel-shear-torsion-interaction", description: "Shear-Saint-Venant torsion interaction", missingInputs: ["torsional section modulus WT", "shear resistance", "steel fyk"], reference: "NTC 2018 \xA74.2.4.1.2.7; UNI EN 1993-1-1 \xA76.2.7" }), warnings: [] };
   }
   const tauT = Math.abs(tEd) / WT;
@@ -38029,7 +38589,7 @@ function resultEntries(resultMap = {}) {
 function normalizeLimitState2(limitState) {
   return String(limitState != null ? limitState : "").trim().toUpperCase();
 }
-function normalizeCombinationType(combinationType) {
+function normalizeCombinationType2(combinationType) {
   return String(combinationType != null ? combinationType : "").trim().toUpperCase().replaceAll("-", "_");
 }
 function steelSectionModulus(section, type = "elastic", axis = "Y") {
@@ -38114,7 +38674,7 @@ function createDeflectionChecks({
           resultId: result.id,
           resultType: result.resultType,
           limitState: (_h = (_g = result.context) == null ? void 0 : _g.limitState) != null ? _h : null,
-          combinationType: normalizeCombinationType((_i = result.context) == null ? void 0 : _i.combinationType),
+          combinationType: normalizeCombinationType2((_i = result.context) == null ? void 0 : _i.combinationType),
           station: round2(maxDeflection == null ? void 0 : maxDeflection.station),
           span: round2(span),
           deflectionLimitRatio,
@@ -38454,7 +39014,7 @@ function createLateralTorsionalBucklingChecks({
           resultType: result.resultType,
           station: sample.station,
           limitState: (_j = (_i = result.context) == null ? void 0 : _i.limitState) != null ? _j : null,
-          combinationType: normalizeCombinationType((_k = result.context) == null ? void 0 : _k.combinationType),
+          combinationType: normalizeCombinationType2((_k = result.context) == null ? void 0 : _k.combinationType),
           segmentId: segment.id,
           segmentFrom: round2(segment.from),
           segmentTo: round2(segment.to),
@@ -38583,7 +39143,7 @@ function createCompressionBucklingChecks({
         resultType: result.resultType,
         station: sample.station,
         limitState: (_l = (_k = result.context) == null ? void 0 : _k.limitState) != null ? _l : null,
-        combinationType: normalizeCombinationType((_m = result.context) == null ? void 0 : _m.combinationType),
+        combinationType: normalizeCombinationType2((_m = result.context) == null ? void 0 : _m.combinationType),
         nEd: round2((_n = sample.n) != null ? _n : 0),
         nEdSectionUnits: round2(nEdSectionUnits),
         mEd: round2(strongAxisMoment),
@@ -38851,7 +39411,7 @@ function createBeamColumnInteractionChecks({
           resultType: result.resultType,
           station: sample.station,
           limitState: (_w = (_v = result.context) == null ? void 0 : _v.limitState) != null ? _w : null,
-          combinationType: normalizeCombinationType((_x = result.context) == null ? void 0 : _x.combinationType),
+          combinationType: normalizeCombinationType2((_x = result.context) == null ? void 0 : _x.combinationType),
           nEd: round2((_y = sample.n) != null ? _y : 0),
           nEdSectionUnits: round2(nEdSectionUnits),
           myEd: round2(strongAxisMoment),
@@ -39525,7 +40085,7 @@ var EPS4 = 1e-9;
 function resultToJson(value) {
   return typeof (value == null ? void 0 : value.toJSON) === "function" ? value.toJSON() : value;
 }
-function normalizeCombinationType2(value = DEFAULT_COMBINATION_TYPE) {
+function normalizeCombinationType3(value = DEFAULT_COMBINATION_TYPE) {
   return String(value).trim().toUpperCase().replaceAll("-", "_").replaceAll(" ", "_");
 }
 function findAdjacentOpening(openings, coordinate, side) {
@@ -39630,7 +40190,7 @@ function resolveCombinedLineLoad({
 }) {
   var _a, _b;
   const entries2 = resolveLineLoadEntries(payload, wallId, warnings);
-  const normalizedCombination = normalizeCombinationType2(combinationType);
+  const normalizedCombination = normalizeCombinationType3(combinationType);
   if (entries2.length === 0) {
     return {
       value: 0,
@@ -39931,7 +40491,7 @@ function analyzeLintels({
           {
             id: "uls",
             limitState: "ULS",
-            combinationType: normalizeCombinationType2(combinationType),
+            combinationType: normalizeCombinationType3(combinationType),
             factors: {
               combined: 1
             }
@@ -40224,7 +40784,7 @@ var AlignmentStaticAnalysis = class {
       summary: "Static vertical analysis of the masonry wall alignment completed with pier tributary loads, optional ring-frame transfers and optional lintel beam checks.",
       outputs: {
         stage,
-        combinationType: normalizeCombinationType2(combinationType),
+        combinationType: normalizeCombinationType3(combinationType),
         wallLineLoads: Object.fromEntries(
           Object.entries(wallLineLoads).map(([wallId, resolution]) => {
             var _a2;
@@ -40310,7 +40870,7 @@ var AlignmentStaticAnalysis = class {
       ]),
       metadata: {
         stage,
-        combinationType: normalizeCombinationType2(combinationType),
+        combinationType: normalizeCombinationType3(combinationType),
         mechanicalState: mechanicalState.metadata,
         pierCount: pierResults.length,
         ringFrameCount: ringFrames.length,
@@ -45409,7 +45969,7 @@ var roundNullable = (value, decimals = 6) => Number.isFinite(value) ? round2(val
 function hasSignificantAction2(value, reference = 0, tolerance = 1e-9) {
   return Number.isFinite(value) && Math.abs(value) > Math.max(tolerance, Math.abs(reference) * tolerance);
 }
-function normalizeCombinationType3(value) {
+function normalizeCombinationType4(value) {
   return String(value != null ? value : "").trim().toUpperCase().replaceAll("-", "_");
 }
 function resolveReferencePoint(section, referencePoint = null) {
@@ -46579,16 +47139,16 @@ var RCServiceStressSolver = class {
 
 // src/applications/reinforced-concrete-sections/analysis/SectionFiberDiscretizer.js
 function isPointOnSegment(point, start, end, tolerance = 1e-9) {
-  const cross = (point.y - start.y) * (end.z - start.z) - (point.z - start.z) * (end.y - start.y);
-  if (Math.abs(cross) > tolerance) {
+  const cross2 = (point.y - start.y) * (end.z - start.z) - (point.z - start.z) * (end.y - start.y);
+  if (Math.abs(cross2) > tolerance) {
     return false;
   }
-  const dot2 = (point.y - start.y) * (end.y - start.y) + (point.z - start.z) * (end.z - start.z);
-  if (dot2 < -tolerance) {
+  const dot3 = (point.y - start.y) * (end.y - start.y) + (point.z - start.z) * (end.z - start.z);
+  if (dot3 < -tolerance) {
     return false;
   }
   const squaredLength = (end.y - start.y) ** 2 + (end.z - start.z) ** 2;
-  return dot2 <= squaredLength + tolerance;
+  return dot3 <= squaredLength + tolerance;
 }
 function isPointInsidePolygon(point, polygon) {
   let inside = false;
@@ -47088,16 +47648,16 @@ var SectionMomentCurvatureCurve = class {
     ].filter(
       (value) => Number.isFinite(value) && value <= resolvedMaxM
     );
-    const unique5 = [
+    const unique6 = [
       .../* @__PURE__ */ new Set([...roundedSampleMoments, ...exactCrackingThresholds])
     ].sort((a, b) => a - b);
-    this._positiveTable = unique5.map((m) => this._solvePoint(context, m));
+    this._positiveTable = unique6.map((m) => this._solvePoint(context, m));
     this._negativeTable = this._symmetric ? this._positiveTable.map((entry) => ({
       ...entry,
       kappa: -entry.kappa,
       kappaUncracked: -entry.kappaUncracked,
       kappaCracked: -entry.kappaCracked
-    })) : unique5.map((m) => this._solvePoint(context, -m));
+    })) : unique6.map((m) => this._solvePoint(context, -m));
     this._maxAbsM = resolvedMaxM;
   }
   /**
@@ -48001,7 +48561,7 @@ var RC_DEFLECTION_PERFORMANCE_PROFILES = Object.freeze({
   })
 });
 function isQuasiPermanent(type) {
-  return normalizeCombinationType3(type) === "SLE_QUASI_PERMANENT";
+  return normalizeCombinationType4(type) === "SLE_QUASI_PERMANENT";
 }
 function resolvePerformanceProfile(name) {
   var _a;
@@ -49121,7 +49681,7 @@ var createScaServiceDeflectionAnalysisResult = createServiceDeflectionAnalysisRe
 var runScaRcDeflectionAnalysis = runRcServiceDeflectionAnalysis;
 
 // src/applications/reinforced-concrete-plates/ReinforcedConcretePlateModel.js
-var INTERNAL_UNITS18 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS21 = Object.freeze({ force: "N", length: "mm" });
 var UNIT_WIDTH = 1e3;
 var DIRECTIONS = Object.freeze(["x", "y"]);
 var FACES = Object.freeze(["top", "bottom"]);
@@ -49139,13 +49699,13 @@ var RC_PLATE_ANALYSIS_TYPES = Object.freeze({
   SLS_SIMPLIFIED_DEFLECTION: "SLS_SIMPLIFIED_DEFLECTION"
 });
 var ANALYSIS_TYPES = new Set(Object.values(RC_PLATE_ANALYSIS_TYPES));
-function positive2(value, label) {
+function positive3(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be positive.`);
   }
   return value;
 }
-function normalizeCombinationType4(value) {
+function normalizeCombinationType5(value) {
   if (value == null || value === "") {
     return null;
   }
@@ -49177,15 +49737,15 @@ function normalizeLayer({ input, face, direction, thickness, resolver }) {
   if (!input) {
     throw new Error(`reinforcement.${face}.${direction} is required.`);
   }
-  const barsPerMeter = positive2(
+  const barsPerMeter = positive3(
     Number(input.barsPerMeter),
     `reinforcement.${face}.${direction}.barsPerMeter`
   );
-  const diameter = positive2(
+  const diameter = positive3(
     resolver.length(Number(input.diameter)),
     `reinforcement.${face}.${direction}.diameter`
   );
-  const clearCover = positive2(
+  const clearCover = positive3(
     resolver.length(Number(input.clearCover)),
     `reinforcement.${face}.${direction}.clearCover`
   );
@@ -49208,15 +49768,15 @@ function normalizeShearReinforcement({ input, thickness, resolver }) {
   if (input == null) {
     return null;
   }
-  const diameter = positive2(
+  const diameter = positive3(
     resolver.length(Number(input.diameter)),
     "reinforcement.shear.diameter"
   );
-  const spacingX = positive2(
+  const spacingX = positive3(
     resolver.length(Number(input.spacingX)),
     "reinforcement.shear.spacingX"
   );
-  const spacingY = positive2(
+  const spacingY = positive3(
     resolver.length(Number(input.spacingY)),
     "reinforcement.shear.spacingY"
   );
@@ -49284,8 +49844,8 @@ var ReinforcedConcretePlateModel = class {
       throw new Error("A reinforced concrete plate model id is required.");
     }
     assertExplicitUnitSystem(units, "ReinforcedConcretePlateModel");
-    const resolver = createUnitResolver(units, INTERNAL_UNITS18);
-    const thickness = positive2(
+    const resolver = createUnitResolver(units, INTERNAL_UNITS21);
+    const thickness = positive3(
       resolver.length(Number(geometry.thickness)),
       "geometry.thickness"
     );
@@ -49326,13 +49886,13 @@ var ReinforcedConcretePlateModel = class {
     if (!ANALYSIS_TYPES.has(type)) {
       throw new Error(`Unsupported reinforced concrete plate analysis type: ${type}.`);
     }
-    const defaultCombinationType = normalizeCombinationType4(analysis.combinationType);
+    const defaultCombinationType = normalizeCombinationType5(analysis.combinationType);
     const defaultActions = normalizeActions(analysis.actions, resolver, "analysis.actions");
     const states = Array.isArray(analysis.states) && analysis.states.length > 0 ? analysis.states.map((state, index) => {
       var _a2, _b2;
       return {
         id: (_a2 = state.id) != null ? _a2 : `state-${index + 1}`,
-        combinationType: normalizeCombinationType4(
+        combinationType: normalizeCombinationType5(
           (_b2 = state.combinationType) != null ? _b2 : defaultCombinationType
         ),
         actions: normalizeActions(
@@ -49348,11 +49908,11 @@ var ReinforcedConcretePlateModel = class {
     }];
     const deflection = normalizeDeflection(analysis.deflection, resolver);
     if (type === RC_PLATE_ANALYSIS_TYPES.SLS_SIMPLIFIED_DEFLECTION) {
-      positive2(deflection.spanX, "analysis.deflection.spanX");
-      positive2(deflection.spanY, "analysis.deflection.spanY");
+      positive3(deflection.spanX, "analysis.deflection.spanX");
+      positive3(deflection.spanY, "analysis.deflection.spanY");
     }
     this.id = id;
-    this.units = INTERNAL_UNITS18;
+    this.units = INTERNAL_UNITS21;
     this.materials = { ...materials };
     this.geometry = { thickness, unitWidth };
     this.reinforcement = normalizedReinforcement;
@@ -49369,7 +49929,7 @@ var ReinforcedConcretePlateModel = class {
     };
     this.metadata = {
       ...metadata,
-      unitSystem: INTERNAL_UNITS18,
+      unitSystem: INTERNAL_UNITS21,
       sourceUnitSystem: resolver.sourceUnitSystem
     };
   }
@@ -49401,7 +49961,7 @@ var ReinforcedConcretePlateModel = class {
 
 // src/applications/reinforced-concrete-plates/actions/rotatePlateMoments.js
 var ZERO_TOLERANCE = 1e-12;
-function finite(value, name) {
+function finite4(value, name) {
   if (!Number.isFinite(value)) {
     throw new Error(`rotatePlateMoments requires a finite ${name}.`);
   }
@@ -49411,10 +49971,10 @@ function clean(value) {
   return Math.abs(value) <= ZERO_TOLERANCE ? 0 : value;
 }
 function rotatePlateMoments({ mxx, myy, mxy, angle = 0 } = {}) {
-  finite(mxx, "mxx");
-  finite(myy, "myy");
-  finite(mxy, "mxy");
-  finite(angle, "angle");
+  finite4(mxx, "mxx");
+  finite4(myy, "myy");
+  finite4(mxy, "mxy");
+  finite4(angle, "angle");
   const angleRadians = angle * Math.PI / 180;
   const c = Math.cos(angleRadians);
   const s = Math.sin(angleRadians);
@@ -52932,7 +53492,7 @@ var ReinforcedConcreteSectionVerification = class {
 };
 
 // src/applications/reinforced-concrete-plates/sections/createPlateStripSection.js
-var INTERNAL_UNITS19 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS22 = Object.freeze({ force: "N", length: "mm" });
 function equivalentBarForLayer({ layer, width, material, idPrefix }) {
   const grade = ["B450A", "B450C"].includes(material == null ? void 0 : material.grade) ? material.grade : "B450C";
   return new ReinforcementBar({
@@ -52944,7 +53504,7 @@ function equivalentBarForLayer({ layer, width, material, idPrefix }) {
     material,
     y: layer.axis,
     z: width / 2,
-    units: INTERNAL_UNITS19,
+    units: INTERNAL_UNITS22,
     metadata: {
       face: layer.face,
       direction: layer.direction,
@@ -52966,7 +53526,7 @@ function createPlateStripSection({ model, direction } = {}) {
     name: `${direction.toUpperCase()} plate strip concrete`,
     width,
     height: model.geometry.thickness,
-    units: INTERNAL_UNITS19
+    units: INTERNAL_UNITS22
   });
   const groups = [];
   const reinforcementBars2 = [];
@@ -53003,7 +53563,7 @@ function createPlateStripSection({ model, direction } = {}) {
     concreteMaterial: model.materials.concreteMaterial,
     reinforcementMaterial: model.materials.reinforcementMaterial,
     referenceModularRatio: (_b = (_a = model.analysis.serviceability) == null ? void 0 : _a.modularRatio) != null ? _b : 15,
-    units: INTERNAL_UNITS19,
+    units: INTERNAL_UNITS22,
     metadata: {
       direction,
       plateModelId: model.id,
@@ -53056,7 +53616,7 @@ function uniqueStrings2(values) {
 }
 
 // src/applications/reinforced-concrete-plates/checks/verifyPlateBending.js
-var INTERNAL_UNITS20 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS23 = Object.freeze({ force: "N", length: "mm" });
 var METHOD = "wood-armer-equivalent-strip-rc-uls-uniaxial-fiber-solver";
 function plateStripMesh(model) {
   var _a, _b;
@@ -53084,7 +53644,7 @@ function verifyPlateBending({ model, transformedState } = {}) {
       mesh: plateStripMesh(model),
       solver: model.analysis.solver,
       actions: { nEd: 0, mEd },
-      units: INTERNAL_UNITS20
+      units: INTERNAL_UNITS23
     });
     const sectionResult = new ReinforcedConcreteSectionVerification().verify(sectionModel);
     const baseCheck = (_a = sectionResult.checks[0]) != null ? _a : {
@@ -54259,7 +54819,7 @@ var ReinforcedConcreteShearVerification = class {
 };
 
 // src/applications/reinforced-concrete-plates/checks/verifyPlateShear.js
-var INTERNAL_UNITS21 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS24 = Object.freeze({ force: "N", length: "mm" });
 var METHOD_WITHOUT = "ntc2018-4.1.2.3.5.1-wood-armer-strip";
 var METHOD_WITH = "ntc2018-4.1.2.3.5.2-wood-armer-strip-s-links";
 var MOMENT_TOLERANCE2 = 1e-9;
@@ -54315,7 +54875,7 @@ function verifyFace({ model, transformedState, direction, face, section }) {
       tensionFace: face,
       transverseReinforcement
     },
-    units: INTERNAL_UNITS21
+    units: INTERNAL_UNITS24
   });
 }
 function verifyPlateShear({ model, transformedState } = {}) {
@@ -54485,7 +55045,7 @@ var MAX_BAR_SPACING_TABLE = Object.freeze([
 function crackWidthLimit({ environment, combinationType }) {
   var _a, _b;
   const normalizedEnvironment = normalizeEnvironment(environment);
-  const normalizedCombination = normalizeCombinationType3(combinationType);
+  const normalizedCombination = normalizeCombinationType4(combinationType);
   return (_b = (_a = CRACK_WIDTH_BY_COMBINATION[normalizedEnvironment]) == null ? void 0 : _a[normalizedCombination]) != null ? _b : null;
 }
 function interpolateTable(table, sigma, widthClass) {
@@ -54688,7 +55248,7 @@ function createIndirectCrackControlChecks({
 
 // src/applications/reinforced-concrete-sections/checks/ReinforcedConcreteServiceabilityVerification.js
 function concreteStressLimit({ combinationType, concreteMaterial }) {
-  const normalizedCombination = normalizeCombinationType3(combinationType);
+  const normalizedCombination = normalizeCombinationType4(combinationType);
   const fck = concreteMaterial == null ? void 0 : concreteMaterial.fck;
   if (!isFinitePositive3(fck)) {
     return null;
@@ -54712,7 +55272,7 @@ function concreteStressLimit({ combinationType, concreteMaterial }) {
   return null;
 }
 function steelStressLimit({ combinationType, reinforcementMaterial }) {
-  const normalizedCombination = normalizeCombinationType3(combinationType);
+  const normalizedCombination = normalizeCombinationType4(combinationType);
   const fyk = reinforcementMaterial == null ? void 0 : reinforcementMaterial.fyk;
   if (!isFinitePositive3(fyk)) {
     return null;
@@ -56923,7 +57483,7 @@ var BeamReportBuilder = class {
       ])
     );
     const verification = verificationResult ? toPlain3(verificationResult) : null;
-    const governingCheck4 = governingCheckFromVerification(verification);
+    const governingCheck5 = governingCheckFromVerification(verification);
     const warnings = collectWarnings(
       analysisResult,
       verification,
@@ -56963,7 +57523,7 @@ var BeamReportBuilder = class {
       governing: {
         verification: (_g = (_f = verification == null ? void 0 : verification.outputs) == null ? void 0 : _f.governing) != null ? _g : null,
         utilizationRatio: (_h = verification == null ? void 0 : verification.utilizationRatio) != null ? _h : null,
-        checkId: (_k = (_j = (_i = verification == null ? void 0 : verification.metadata) == null ? void 0 : _i.governingCheckId) != null ? _j : governingCheck4 == null ? void 0 : governingCheck4.id) != null ? _k : null,
+        checkId: (_k = (_j = (_i = verification == null ? void 0 : verification.metadata) == null ? void 0 : _i.governingCheckId) != null ? _j : governingCheck5 == null ? void 0 : governingCheck5.id) != null ? _k : null,
         ulsMoment: toPlain3((_m = (_l = analysisResult.envelopes) == null ? void 0 : _l.uls) == null ? void 0 : _m.maxAbsBendingMoment),
         ulsMomentY: toPlain3(
           (_o = (_n = analysisResult.envelopes) == null ? void 0 : _n.uls) == null ? void 0 : _o.maxAbsBendingMomentY
@@ -57859,7 +58419,7 @@ var TimberConcreteCompositeBeamVerification = class {
         ...weakAxisMetadata
       }
     }));
-    const governingCheck4 = checks.reduce(
+    const governingCheck5 = checks.reduce(
       (max, current) => current.utilizationRatio > max.utilizationRatio ? current : max
     );
     const warnings = [];
@@ -57881,13 +58441,13 @@ var TimberConcreteCompositeBeamVerification = class {
     }
     return {
       status: checks.every((check) => check.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
-      utilizationRatio: governingCheck4.utilizationRatio,
-      demand: governingCheck4.demand,
-      capacity: governingCheck4.capacity,
+      utilizationRatio: governingCheck5.utilizationRatio,
+      demand: governingCheck5.demand,
+      capacity: governingCheck5.capacity,
       checks,
       warnings,
       metadata: {
-        governingCheckId: governingCheck4.id,
+        governingCheckId: governingCheck5.id,
         method: "gelfi-gamma-method-section-actions",
         bendingEd: round7(bendingEd),
         shearEd: round7(shearEd),
@@ -58062,16 +58622,16 @@ var TimberConcreteCompositeBeamVerification = class {
       ...actionChecks,
       checks.find((check) => check.id === "deflection")
     ];
-    const governingCheck4 = combinedChecks.reduce(
+    const governingCheck5 = combinedChecks.reduce(
       (max, current) => current.utilizationRatio > max.utilizationRatio ? current : max
     );
     return new VerificationResult({
       applicationId: "timber-concrete-composite-beams",
       status: combinedChecks.every((check) => check.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       summary: "Verification of timber beam with collaborating concrete slab according to the Gelfi-style gamma method implemented from the workbook.",
-      utilizationRatio: round7(governingCheck4.utilizationRatio, 6),
-      demand: round7(governingCheck4.demand, 6),
-      capacity: round7(governingCheck4.capacity, 6),
+      utilizationRatio: round7(governingCheck5.utilizationRatio, 6),
+      demand: round7(governingCheck5.demand, 6),
+      capacity: round7(governingCheck5.capacity, 6),
       checks: combinedChecks.map((check) => ({
         ...check,
         demand: round7(check.demand, 6),
@@ -58123,11 +58683,11 @@ var TimberConcreteCompositeBeamVerification = class {
         connectorFvrk: round7(connectorFvrk, 6),
         deflectionSle: round7(deflectionSle, 6),
         governing: {
-          checkId: governingCheck4.id,
-          utilizationRatio: round7(governingCheck4.utilizationRatio, 6),
-          demand: round7(governingCheck4.demand, 6),
-          capacity: round7(governingCheck4.capacity, 6),
-          metadata: (_h = governingCheck4.metadata) != null ? _h : null
+          checkId: governingCheck5.id,
+          utilizationRatio: round7(governingCheck5.utilizationRatio, 6),
+          demand: round7(governingCheck5.demand, 6),
+          capacity: round7(governingCheck5.capacity, 6),
+          metadata: (_h = governingCheck5.metadata) != null ? _h : null
         },
         sectionActionVerification: sectionActionVerification ? {
           stationResultCount: sectionActionVerification.outputs.stationResultCount,
@@ -58144,7 +58704,7 @@ var TimberConcreteCompositeBeamVerification = class {
         method: "gelfi-gamma-method",
         verificationStations,
         actionSource: sectionActionVerification ? "fem-section-actions" : (_j = demands == null ? void 0 : demands.source) != null ? _j : "workbook-closed-form",
-        governingCheckId: governingCheck4.id
+        governingCheckId: governingCheck5.id
       }
     });
   }
@@ -58362,7 +58922,7 @@ function createTimberConcreteCompositeBeamSectionProvider(options = {}) {
 }
 
 // src/applications/timber-concrete-composite-beams/models/TimberConcreteCompositeBeamModel.js
-var INTERNAL_UNITS22 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS25 = Object.freeze({ force: "N", length: "mm" });
 var TimberConcreteCompositeBeamModel = class {
   constructor({
     id,
@@ -58450,7 +59010,7 @@ var TimberConcreteCompositeBeamModel = class {
           centroidY: this.timberCentroidY(),
           modularRatio: 1,
           role: "timber",
-          units: INTERNAL_UNITS22
+          units: INTERNAL_UNITS25
         }),
         new CompositeSectionComponent({
           name: "Concrete slab",
@@ -58459,10 +59019,10 @@ var TimberConcreteCompositeBeamModel = class {
           centroidY: this.slabCentroidY(),
           modularRatio,
           role: "slab",
-          units: INTERNAL_UNITS22
+          units: INTERNAL_UNITS25
         })
       ],
-      units: INTERNAL_UNITS22,
+      units: INTERNAL_UNITS25,
       metadata: {
         ...this.metadata,
         modularRatio
@@ -58745,7 +59305,7 @@ var TimberXlamCompositeBeamVerification = class {
         ...weakAxisMetadata
       }
     }));
-    const governingCheck4 = checks.reduce(
+    const governingCheck5 = checks.reduce(
       (max, current) => current.utilizationRatio > max.utilizationRatio ? current : max
     );
     const warnings = [];
@@ -58767,13 +59327,13 @@ var TimberXlamCompositeBeamVerification = class {
     }
     return {
       status: checks.every((check) => check.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
-      utilizationRatio: governingCheck4.utilizationRatio,
-      demand: governingCheck4.demand,
-      capacity: governingCheck4.capacity,
+      utilizationRatio: governingCheck5.utilizationRatio,
+      demand: governingCheck5.demand,
+      capacity: governingCheck5.capacity,
       checks,
       warnings,
       metadata: {
-        governingCheckId: governingCheck4.id,
+        governingCheckId: governingCheck5.id,
         method: "timber-xlam-gamma-method-section-actions",
         bendingEd: round8(bendingEd),
         shearEd: round8(shearEd),
@@ -58944,16 +59504,16 @@ var TimberXlamCompositeBeamVerification = class {
       checks.find((check) => check.id === "deflection-short"),
       checks.find((check) => check.id === "deflection-long")
     ];
-    const governingCheck4 = combinedChecks.reduce(
+    const governingCheck5 = combinedChecks.reduce(
       (max, current) => current.utilizationRatio > max.utilizationRatio ? current : max
     );
     return new VerificationResult({
       applicationId: "timber-xlam-composite-beams",
       status: combinedChecks.every((check) => check.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       summary: "Verification of timber beams collaborating with an XLAM panel based on the workbook gamma-method and timber-timber connector checks.",
-      utilizationRatio: round8(governingCheck4.utilizationRatio),
-      demand: round8(governingCheck4.demand),
-      capacity: round8(governingCheck4.capacity),
+      utilizationRatio: round8(governingCheck5.utilizationRatio),
+      demand: round8(governingCheck5.demand),
+      capacity: round8(governingCheck5.capacity),
       checks: combinedChecks.map((check) => ({
         ...check,
         demand: round8(check.demand),
@@ -59012,11 +59572,11 @@ var TimberXlamCompositeBeamVerification = class {
           designResistance: round8(timberTimberResistance.designResistance)
         },
         governing: {
-          checkId: governingCheck4.id,
-          utilizationRatio: round8(governingCheck4.utilizationRatio),
-          demand: round8(governingCheck4.demand),
-          capacity: round8(governingCheck4.capacity),
-          metadata: (_g = governingCheck4.metadata) != null ? _g : null
+          checkId: governingCheck5.id,
+          utilizationRatio: round8(governingCheck5.utilizationRatio),
+          demand: round8(governingCheck5.demand),
+          capacity: round8(governingCheck5.capacity),
+          metadata: (_g = governingCheck5.metadata) != null ? _g : null
         },
         sectionActionVerification: sectionActionVerification ? {
           stationResultCount: sectionActionVerification.outputs.stationResultCount,
@@ -59038,7 +59598,7 @@ var TimberXlamCompositeBeamVerification = class {
         serviceClass,
         verificationStations,
         actionSource: sectionActionVerification ? "fem-section-actions" : (_i = demands == null ? void 0 : demands.source) != null ? _i : "workbook-closed-form",
-        governingCheckId: governingCheck4.id
+        governingCheckId: governingCheck5.id
       }
     });
   }
@@ -59524,7 +60084,7 @@ var DEFAULT_SECTION_UNITS3 = Object.freeze({ force: "N", length: "mm" });
 function normalizeLimitState3(limitState) {
   return String(limitState != null ? limitState : "").trim().toUpperCase();
 }
-function normalizeCombinationType5(combinationType) {
+function normalizeCombinationType6(combinationType) {
   return String(combinationType != null ? combinationType : "").trim().toUpperCase().replaceAll("-", "_");
 }
 function designStrength4(value, { kmod, gammaM }) {
@@ -59837,7 +60397,7 @@ function createLateralTorsionalStabilityChecks({
           resultType: result.resultType,
           station: selectedSample.station,
           limitState: (_d = (_c = result.context) == null ? void 0 : _c.limitState) != null ? _d : null,
-          combinationType: normalizeCombinationType5((_e = result.context) == null ? void 0 : _e.combinationType),
+          combinationType: normalizeCombinationType6((_e = result.context) == null ? void 0 : _e.combinationType),
           segmentId: segment.id,
           segmentFrom: round2(segment.from),
           segmentTo: round2(segment.to),
@@ -60076,7 +60636,7 @@ var TimberBeamVerification = class {
         return acc;
       }, {})
     );
-    const governingCheck4 = groupedChecks.reduce(
+    const governingCheck5 = groupedChecks.reduce(
       (selected, check) => moreSevereCheck(check, selected),
       null
     );
@@ -60088,9 +60648,9 @@ var TimberBeamVerification = class {
       applicationId: "timber-beams",
       status: ulsOk && lateralStabilityOk && deflectionOk ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       summary: "Timber beam bending, shear, lateral stability and deflection verification from FEM beam results.",
-      utilizationRatio: (_m = governingCheck4 == null ? void 0 : governingCheck4.utilizationRatio) != null ? _m : null,
-      demand: (_n = governingCheck4 == null ? void 0 : governingCheck4.demand) != null ? _n : null,
-      capacity: (_o = governingCheck4 == null ? void 0 : governingCheck4.capacity) != null ? _o : null,
+      utilizationRatio: (_m = governingCheck5 == null ? void 0 : governingCheck5.utilizationRatio) != null ? _m : null,
+      demand: (_n = governingCheck5 == null ? void 0 : governingCheck5.demand) != null ? _n : null,
+      capacity: (_o = governingCheck5 == null ? void 0 : governingCheck5.capacity) != null ? _o : null,
       checks: groupedChecks,
       outputs: {
         stationResultCount: actionVerification.outputs.stationResultCount,
@@ -60111,11 +60671,11 @@ var TimberBeamVerification = class {
             ...finalDeflectionCheck ? [finalDeflectionCheck] : []
           ].map(copyCheck)
         },
-        governing: governingCheck4 ? {
-          utilizationRatio: governingCheck4.utilizationRatio,
-          demand: governingCheck4.demand,
-          capacity: governingCheck4.capacity,
-          metadata: copyMetadata(governingCheck4.metadata)
+        governing: governingCheck5 ? {
+          utilizationRatio: governingCheck5.utilizationRatio,
+          demand: governingCheck5.demand,
+          capacity: governingCheck5.capacity,
+          metadata: copyMetadata(governingCheck5.metadata)
         } : null
       },
       warnings: uniqueStrings([
@@ -60131,7 +60691,7 @@ var TimberBeamVerification = class {
       metadata: {
         code: this.code,
         beamId,
-        governingCheckId: (_p = governingCheck4 == null ? void 0 : governingCheck4.id) != null ? _p : null,
+        governingCheckId: (_p = governingCheck5 == null ? void 0 : governingCheck5.id) != null ? _p : null,
         verificationStations,
         ...this.metadata
       }
@@ -60321,16 +60881,16 @@ var XlamOutOfPlanePanelVerification = class {
         )
       }
     ];
-    const governingCheck4 = checks.reduce(
+    const governingCheck5 = checks.reduce(
       (max, current) => current.utilizationRatio > max.utilizationRatio ? current : max
     );
     return new VerificationResult({
       applicationId: "xlam-panels-out-of-plane",
       status: checks.every((check) => check.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       summary: "Out-of-plane verification of a standalone XLAM panel following the CLTdesigner/WCTE2010 1D-plate approach based on Timoshenko beam theory.",
-      utilizationRatio: round9(governingCheck4.utilizationRatio),
-      demand: round9(governingCheck4.demand),
-      capacity: round9(governingCheck4.capacity),
+      utilizationRatio: round9(governingCheck5.utilizationRatio),
+      demand: round9(governingCheck5.demand),
+      capacity: round9(governingCheck5.capacity),
       checks: checks.map((check) => ({
         ...check,
         demand: round9(check.demand),
@@ -60453,6 +61013,649 @@ var XlamOutOfPlanePanelModel = class {
     return 2;
   }
 };
+
+// src/applications/reinforced-concrete-punching/punchingDesignCodes.js
+var RC_PUNCHING_DESIGN_CODE_IDS = Object.freeze({
+  EN_1992_1_1_2004: "EN1992_1_1_2004_A1_2014",
+  EN_1992_1_1_2023: "EN1992_1_1_2023"
+});
+var DESIGN_CODE_MANIFESTS = Object.freeze({
+  [RC_PUNCHING_DESIGN_CODE_IDS.EN_1992_1_1_2004]: Object.freeze({
+    id: RC_PUNCHING_DESIGN_CODE_IDS.EN_1992_1_1_2004,
+    family: "EN1992",
+    standard: "EN 1992-1-1",
+    edition: "2004",
+    amendments: Object.freeze(["AC:2010", "A1:2014"]),
+    title: "Eurocode 2 - Design of concrete structures - First generation",
+    punchingReference: "6.4"
+  }),
+  [RC_PUNCHING_DESIGN_CODE_IDS.EN_1992_1_1_2023]: Object.freeze({
+    id: RC_PUNCHING_DESIGN_CODE_IDS.EN_1992_1_1_2023,
+    family: "EN1992",
+    standard: "EN 1992-1-1",
+    edition: "2023",
+    amendments: Object.freeze([]),
+    title: "Eurocode 2 - Design of concrete structures - Second generation",
+    punchingReference: "8.4"
+  })
+});
+var RC_PUNCHING_DESIGN_CODE_ID_VALUES = Object.freeze(
+  Object.values(RC_PUNCHING_DESIGN_CODE_IDS)
+);
+function getRcPunchingDesignCodeManifest(codeId) {
+  const manifest = DESIGN_CODE_MANIFESTS[codeId];
+  if (!manifest) {
+    throw new Error(`Unsupported RC punching design code: ${codeId}.`);
+  }
+  return {
+    ...manifest,
+    amendments: [...manifest.amendments]
+  };
+}
+
+// src/applications/reinforced-concrete-punching/PunchingVerificationRequest.js
+var PUNCHING_VERIFICATION_REQUEST_SCHEMA_VERSION = "rc-punching-verification-request/v0";
+function normalizeCodeSelection(code) {
+  var _a, _b;
+  const selection = typeof code === "string" ? { id: code } : code;
+  if (!selection || typeof selection !== "object" || Array.isArray(selection)) {
+    throw new Error("PunchingVerificationRequest requires code as an id or selection object.");
+  }
+  if (!selection.id) {
+    throw new Error("Punching verification code.id is required.");
+  }
+  const manifest = getRcPunchingDesignCodeManifest(selection.id);
+  if (selection.nationalAnnex != null && (typeof selection.nationalAnnex !== "object" || Array.isArray(selection.nationalAnnex))) {
+    throw new Error("Punching verification code.nationalAnnex must be an object or null.");
+  }
+  if (selection.parameters != null && (typeof selection.parameters !== "object" || Array.isArray(selection.parameters))) {
+    throw new Error("Punching verification code.parameters must be an object.");
+  }
+  return {
+    ...manifest,
+    nationalAnnex: selection.nationalAnnex == null ? null : structuredClone(selection.nationalAnnex),
+    parameterProfile: (_a = selection.parameterProfile) != null ? _a : null,
+    parameters: structuredClone((_b = selection.parameters) != null ? _b : {})
+  };
+}
+function normalizeActionState(input, connection) {
+  const state = input instanceof PunchingActionState ? input : new PunchingActionState(input);
+  if (state.connectionId !== connection.id) {
+    throw new Error(
+      `Punching action state ${state.id} targets connection ${state.connectionId}, expected ${connection.id}.`
+    );
+  }
+  if (state.localFrameId != null && state.localFrameId !== connection.localFrame.id) {
+    throw new Error(
+      `Punching action state ${state.id} uses local frame ${state.localFrameId}, expected ${connection.localFrame.id}.`
+    );
+  }
+  return state;
+}
+var PunchingVerificationRequest = class {
+  constructor({
+    id,
+    connection,
+    actionStates = [],
+    code = null,
+    metadata = {}
+  } = {}) {
+    if (!id) {
+      throw new Error("A punching verification request id is required.");
+    }
+    const normalizedConnection = connection instanceof PunchingConnectionModel ? connection : new PunchingConnectionModel(connection);
+    if (!Array.isArray(actionStates) || actionStates.length === 0) {
+      throw new Error("PunchingVerificationRequest requires at least one action state.");
+    }
+    this.id = id;
+    this.schemaVersion = PUNCHING_VERIFICATION_REQUEST_SCHEMA_VERSION;
+    this.connection = normalizedConnection;
+    this.actionStates = actionStates.map((state) => normalizeActionState(state, normalizedConnection));
+    this.code = normalizeCodeSelection(code);
+    this.metadata = { ...metadata };
+  }
+  toJSON() {
+    return {
+      id: this.id,
+      schemaVersion: this.schemaVersion,
+      connection: this.connection.toJSON(),
+      actionStates: this.actionStates.map((state) => state.toJSON()),
+      code: structuredClone(this.code),
+      metadata: { ...this.metadata }
+    };
+  }
+};
+
+// src/norms/en1992/punching/en1992Punching2004.js
+function positive4(value, label) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${label} must be finite and positive.`);
+  }
+  return value;
+}
+function finite5(value, label) {
+  if (!Number.isFinite(value)) {
+    throw new Error(`${label} must be finite.`);
+  }
+  return value;
+}
+function calculateEn1992Punching2004WithoutShearReinforcement({
+  fck,
+  effectiveDepth,
+  reinforcementRatioX,
+  reinforcementRatioY,
+  gammaC,
+  alphaCc = 1,
+  cRdc = 0.18 / gammaC,
+  k1 = 0.1,
+  sigmaCp = 0
+}) {
+  const resolvedFck = positive4(fck, "fck");
+  const d = positive4(effectiveDepth, "effectiveDepth");
+  const rhoX = positive4(reinforcementRatioX, "reinforcementRatioX");
+  const rhoY = positive4(reinforcementRatioY, "reinforcementRatioY");
+  const resolvedGammaC = positive4(gammaC, "gammaC");
+  const resolvedAlphaCc = positive4(alphaCc, "alphaCc");
+  const resolvedCRdc = positive4(cRdc, "cRdc");
+  const resolvedK1 = finite5(k1, "k1");
+  const resolvedSigmaCp = finite5(sigmaCp, "sigmaCp");
+  const rawRhoL = Math.sqrt(rhoX * rhoY);
+  const rhoL = Math.min(rawRhoL, 0.02);
+  const k = Math.min(1 + Math.sqrt(200 / d), 2);
+  const vMin = 0.035 * k ** 1.5 * Math.sqrt(resolvedFck);
+  const concreteTerm = resolvedCRdc * k * Math.cbrt(100 * rhoL * resolvedFck);
+  const vRdc = Math.max(
+    concreteTerm + resolvedK1 * resolvedSigmaCp,
+    vMin + resolvedK1 * resolvedSigmaCp
+  );
+  const nu = 0.6 * (1 - resolvedFck / 250);
+  const fcd = resolvedAlphaCc * resolvedFck / resolvedGammaC;
+  const vRdMax = 0.5 * nu * fcd;
+  return {
+    fck: resolvedFck,
+    effectiveDepth: d,
+    reinforcementRatioX: rhoX,
+    reinforcementRatioY: rhoY,
+    rawReinforcementRatio: rawRhoL,
+    reinforcementRatio: rhoL,
+    reinforcementRatioLimit: 0.02,
+    k,
+    kLimit: 2,
+    cRdc: resolvedCRdc,
+    k1: resolvedK1,
+    sigmaCp: resolvedSigmaCp,
+    vMin,
+    concreteTerm,
+    vRdc,
+    alphaCc: resolvedAlphaCc,
+    gammaC: resolvedGammaC,
+    nu,
+    fcd,
+    vRdMax,
+    units: { length: "mm", stress: "N/mm2" },
+    reference: {
+      standard: "EN 1992-1-1:2004+A1:2014",
+      clauses: ["6.4.4", "6.4.5"],
+      equations: ["6.47"]
+    }
+  };
+}
+
+// src/norms/en1992/punching/en1992Punching2023.js
+function positive5(value, label) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${label} must be finite and positive.`);
+  }
+  return value;
+}
+function clamp3(value, lower, upper) {
+  return Math.min(Math.max(value, lower), upper);
+}
+function calculateEn1992Punching2023WithoutShearReinforcement({
+  fck,
+  shearEffectiveDepth,
+  reinforcementRatioX,
+  reinforcementRatioY,
+  lowerAggregateSize,
+  supportPerimeter: supportPerimeter2,
+  controlPerimeter,
+  gammaV
+}) {
+  const resolvedFck = positive5(fck, "fck");
+  const dv = positive5(shearEffectiveDepth, "shearEffectiveDepth");
+  const rhoX = positive5(reinforcementRatioX, "reinforcementRatioX");
+  const rhoY = positive5(reinforcementRatioY, "reinforcementRatioY");
+  const dLower = positive5(lowerAggregateSize, "lowerAggregateSize");
+  const b0 = positive5(supportPerimeter2, "supportPerimeter");
+  const b05 = positive5(controlPerimeter, "controlPerimeter");
+  const resolvedGammaV = positive5(gammaV, "gammaV");
+  if (b05 <= b0) {
+    throw new Error("controlPerimeter must be greater than supportPerimeter.");
+  }
+  const rhoL = Math.sqrt(rhoX * rhoY);
+  const aggregateStrengthFactor = Math.min((60 / resolvedFck) ** 2, 1);
+  const rawDdg = 16 + dLower * aggregateStrengthFactor;
+  const dDg = Math.min(rawDdg, 40);
+  const rawKpb = 3.6 * Math.sqrt(1 - b0 / b05);
+  const kpb = clamp3(rawKpb, 1, 2.5);
+  const uncappedResistance = 0.6 / resolvedGammaV * kpb * Math.cbrt(100 * rhoL * resolvedFck * dDg / dv);
+  const resistanceLimit = 0.5 / resolvedGammaV * Math.sqrt(resolvedFck);
+  const tauRdc = Math.min(uncappedResistance, resistanceLimit);
+  return {
+    fck: resolvedFck,
+    shearEffectiveDepth: dv,
+    reinforcementRatioX: rhoX,
+    reinforcementRatioY: rhoY,
+    reinforcementRatio: rhoL,
+    lowerAggregateSize: dLower,
+    aggregateStrengthFactor,
+    rawDdg,
+    dDg,
+    dDgLimit: 40,
+    supportPerimeter: b0,
+    controlPerimeter: b05,
+    rawKpb,
+    kpb,
+    kpbLimits: { minimum: 1, maximum: 2.5 },
+    gammaV: resolvedGammaV,
+    uncappedResistance,
+    resistanceLimit,
+    tauRdc,
+    units: { length: "mm", stress: "N/mm2" },
+    reference: {
+      standard: "EN 1992-1-1:2023",
+      clause: "8.4.3",
+      backgroundEquations: ["10", "13", "14"]
+    }
+  };
+}
+
+// src/applications/reinforced-concrete-punching/PunchingVerification.js
+var RC_PUNCHING_PARAMETER_PROFILES = Object.freeze({
+  EN_RECOMMENDED: "EN_RECOMMENDED"
+});
+var APPLICATION_ID2 = "reinforced-concrete-punching";
+var REFERENCE_URLS = Object.freeze({
+  firstGenerationWorkedExample: "https://www.concretecentre.com/TCC/media/TCCMediaLibrary/Events/Online%20course/CCIP_Worked_Examples_EC2.pdf",
+  secondGenerationBackground: "https://doi.org/10.33586/hya.2022.3091"
+});
+function unique5(values) {
+  return [...new Set(values)];
+}
+function supportPerimeter(footprint) {
+  if (footprint.shape === "rectangle") {
+    return 2 * (footprint.sizeX + footprint.sizeY);
+  }
+  if (footprint.shape === "circle") {
+    return Math.PI * footprint.diameter;
+  }
+  return null;
+}
+function supportBoundingRadius(footprint) {
+  if (footprint.shape === "rectangle") {
+    return Math.hypot(footprint.sizeX / 2, footprint.sizeY / 2);
+  }
+  if (footprint.shape === "circle") {
+    return footprint.diameter / 2;
+  }
+  return Infinity;
+}
+function pointInRing(point, ring) {
+  let inside = false;
+  for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index++) {
+    const first = ring[index];
+    const second = ring[previous];
+    const crosses = first.y > point.y !== second.y > point.y && point.x < (second.x - first.x) * (point.y - first.y) / (second.y - first.y) + first.x;
+    if (crosses) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+function pointSegmentDistance(point, first, second) {
+  const dx = second.x - first.x;
+  const dy = second.y - first.y;
+  const denominator = dx ** 2 + dy ** 2;
+  const parameter = denominator === 0 ? 0 : Math.min(1, Math.max(
+    0,
+    ((point.x - first.x) * dx + (point.y - first.y) * dy) / denominator
+  ));
+  return Math.hypot(
+    point.x - (first.x + parameter * dx),
+    point.y - (first.y + parameter * dy)
+  );
+}
+function conservativeBoundaryClearance(connection) {
+  const center = connection.support.footprint.center;
+  const boundary = connection.slab.boundary;
+  if (!pointInRing(center, boundary)) {
+    return -Infinity;
+  }
+  const centerDistance = boundary.reduce((minimum, point, index) => {
+    const next = boundary[(index + 1) % boundary.length];
+    return Math.min(minimum, pointSegmentDistance(center, point, next));
+  }, Infinity);
+  return centerDistance - supportBoundingRadius(connection.support.footprint);
+}
+function resolveConcreteStrength(connection) {
+  var _a;
+  return (_a = connection.materials.concrete) == null ? void 0 : _a.fck;
+}
+function resolveStateParameter(parameters, singularKey, mapKey, stateId) {
+  var _a, _b;
+  return (_b = (_a = parameters[mapKey]) == null ? void 0 : _a[stateId]) != null ? _b : parameters[singularKey];
+}
+function recommendedParameters(codeId) {
+  if (codeId === RC_PUNCHING_DESIGN_CODE_IDS.EN_1992_1_1_2004) {
+    return {
+      gammaC: 1.5,
+      alphaCc: 1,
+      k1: 0.1,
+      sigmaCp: 0,
+      beta: 1.15
+    };
+  }
+  return {
+    gammaV: 1.4,
+    betaE: 1.15
+  };
+}
+function resolveParameters(request) {
+  const profile = request.code.parameterProfile;
+  if (profile != null && profile !== RC_PUNCHING_PARAMETER_PROFILES.EN_RECOMMENDED) {
+    return {
+      error: `Unsupported punching parameter profile: ${profile}.`,
+      values: {}
+    };
+  }
+  const values = {
+    ...profile === RC_PUNCHING_PARAMETER_PROFILES.EN_RECOMMENDED ? recommendedParameters(request.code.id) : {},
+    ...request.code.parameters
+  };
+  if (profile === RC_PUNCHING_PARAMETER_PROFILES.EN_RECOMMENDED && request.code.id === RC_PUNCHING_DESIGN_CODE_IDS.EN_1992_1_1_2004 && request.code.parameters.cRdc == null) {
+    values.cRdc = 0.18 / values.gammaC;
+  }
+  return {
+    error: null,
+    values
+  };
+}
+function notSupported2(request, warnings, assumptions = [], outputs = {}) {
+  return new VerificationResult({
+    applicationId: APPLICATION_ID2,
+    status: RESULT_STATUS.NOT_SUPPORTED,
+    summary: "Punching verification is outside the implemented kernel scope.",
+    checks: [],
+    outputs,
+    warnings: unique5(warnings),
+    assumptions: unique5(assumptions),
+    metadata: resultMetadata(request)
+  });
+}
+function resultMetadata(request) {
+  return {
+    applicationId: APPLICATION_ID2,
+    requestId: request.id,
+    connectionId: request.connection.id,
+    code: structuredClone(request.code),
+    method: "closed-form-interior-support-without-punching-reinforcement",
+    unitSystem: { force: "N", length: "mm", stress: "N/mm2" },
+    scope: {
+      implemented: [
+        "interior column",
+        "constant-thickness flat slab",
+        "rectangular or circular support",
+        "no openings, beams, capitals or punching reinforcement",
+        "ULS action states with externally supplied concentration factor"
+      ],
+      excluded: [
+        "edge and corner supports",
+        "walls and wall ends",
+        "openings affecting a control perimeter",
+        "beams, capitals, drops and varying slab thickness",
+        "punching reinforcement",
+        "automatic beta or beta_e derivation from moments",
+        "prestress and membrane compression"
+      ]
+    },
+    references: { ...REFERENCE_URLS }
+  };
+}
+function validateScope(request, parameters) {
+  var _a, _b;
+  const { connection } = request;
+  const warnings = [];
+  if (connection.support.position !== "interior") {
+    warnings.push("support.position must be explicitly set to interior.");
+  }
+  if (connection.support.kind !== "column") {
+    warnings.push("Only support.kind = column is implemented.");
+  }
+  if (!["rectangle", "circle"].includes(connection.support.footprint.shape)) {
+    warnings.push("Only rectangular and circular support footprints are implemented.");
+  }
+  if (connection.slab.openings.length > 0) {
+    warnings.push("Openings are not implemented in the normative control perimeter.");
+  }
+  if (!Array.isArray(connection.slab.beams) || connection.slab.beams.length > 0) {
+    warnings.push("Beams connected to the slab-support node are not implemented.");
+  }
+  if (connection.support.capital != null) {
+    warnings.push("Column capitals or slab drops are not implemented.");
+  }
+  if (((_a = connection.reinforcement.punching) == null ? void 0 : _a.present) === true) {
+    warnings.push("Punching shear reinforcement is not implemented.");
+  }
+  const flexural = connection.reinforcement.flexuralTension;
+  if (flexural == null) {
+    warnings.push("reinforcement.flexuralTension with x and y effective data is required.");
+  }
+  if (!Number.isFinite(resolveConcreteStrength(connection))) {
+    warnings.push("materials.concrete.fck is required in the connection unit system.");
+  }
+  const invalidState = request.actionStates.find((state) => {
+    var _a2;
+    return !((_a2 = state.combinationType) == null ? void 0 : _a2.startsWith("ULS"));
+  });
+  if (invalidState) {
+    warnings.push(`Action state ${invalidState.id} is not an ULS combination.`);
+  }
+  const coefficientNames = request.code.id === RC_PUNCHING_DESIGN_CODE_IDS.EN_1992_1_1_2004 ? ["gammaC", "alphaCc", "cRdc", "k1"] : ["gammaV"];
+  for (const name of coefficientNames) {
+    if (!Number.isFinite(parameters[name]) || parameters[name] <= 0) {
+      warnings.push(`A finite positive code parameter ${name} is required.`);
+    }
+  }
+  if (request.code.id === RC_PUNCHING_DESIGN_CODE_IDS.EN_1992_1_1_2004 && parameters.sigmaCp !== 0) {
+    warnings.push("The implemented 2004 kernel requires sigmaCp = 0; prestress and membrane compression are excluded.");
+  }
+  for (const state of request.actionStates) {
+    const beta = request.code.id === RC_PUNCHING_DESIGN_CODE_IDS.EN_1992_1_1_2004 ? resolveStateParameter(parameters, "beta", "betaByState", state.id) : resolveStateParameter(parameters, "betaE", "betaEByState", state.id);
+    if (!Number.isFinite(beta) || beta <= 0) {
+      warnings.push(`A finite positive concentration factor is required for state ${state.id}.`);
+    }
+    if (state.components.fz === 0) {
+      warnings.push(`Action state ${state.id} has zero vertical punching force.`);
+    }
+  }
+  if (request.code.id === RC_PUNCHING_DESIGN_CODE_IDS.EN_1992_1_1_2023 && !Number.isFinite((_b = connection.materials.concreteAggregate) == null ? void 0 : _b.lowerSize)) {
+    warnings.push("materials.concreteAggregate.lowerSize is required by the 2023 method.");
+  }
+  return warnings;
+}
+function createCheck({ id, stateId, location, demand, capacity, reference }) {
+  const utilizationRatio = demand / capacity;
+  return {
+    id,
+    stateId,
+    type: "punching-shear-stress",
+    location,
+    demand,
+    capacity,
+    utilizationRatio,
+    ok: utilizationRatio <= 1,
+    units: "N/mm2",
+    reference
+  };
+}
+function verify2004(request, parameters, geometry) {
+  const { connection } = request;
+  const flexural = connection.reinforcement.flexuralTension;
+  const effectiveDepth = (flexural.x.effectiveDepth + flexural.y.effectiveDepth) / 2;
+  const u0 = geometry.supportPerimeter;
+  const u1 = u0 + 4 * Math.PI * effectiveDepth;
+  const resistance = calculateEn1992Punching2004WithoutShearReinforcement({
+    fck: resolveConcreteStrength(connection),
+    effectiveDepth,
+    reinforcementRatioX: flexural.x.ratio,
+    reinforcementRatioY: flexural.y.ratio,
+    gammaC: parameters.gammaC,
+    alphaCc: parameters.alphaCc,
+    cRdc: parameters.cRdc,
+    k1: parameters.k1,
+    sigmaCp: parameters.sigmaCp
+  });
+  const stateResults = request.actionStates.map((state) => {
+    const beta = resolveStateParameter(parameters, "beta", "betaByState", state.id);
+    const designForce = Math.abs(state.components.fz);
+    const faceDemand = beta * designForce / (u0 * effectiveDepth);
+    const basicDemand = beta * designForce / (u1 * effectiveDepth);
+    const checks = [
+      createCheck({
+        id: `${state.id}:support-face`,
+        stateId: state.id,
+        location: "support-face-u0",
+        demand: faceDemand,
+        capacity: resistance.vRdMax,
+        reference: "EN 1992-1-1:2004+A1:2014 6.4.5(3)"
+      }),
+      createCheck({
+        id: `${state.id}:basic-control-perimeter`,
+        stateId: state.id,
+        location: "u1-at-2d",
+        demand: basicDemand,
+        capacity: resistance.vRdc,
+        reference: "EN 1992-1-1:2004+A1:2014 6.4.4(1), Eq. (6.47)"
+      })
+    ];
+    return {
+      stateId: state.id,
+      sourceActions: { ...state.components },
+      designForce,
+      beta,
+      effectiveDepth,
+      perimeters: { u0, u1 },
+      demands: { supportFace: faceDemand, basicControlPerimeter: basicDemand },
+      checks
+    };
+  });
+  return { resistance, stateResults, requiredOffset: 2 * effectiveDepth };
+}
+function verify2023(request, parameters, geometry) {
+  const { connection } = request;
+  const flexural = connection.reinforcement.flexuralTension;
+  const shearEffectiveDepth = (flexural.x.effectiveDepth + flexural.y.effectiveDepth) / 2;
+  const b0 = geometry.supportPerimeter;
+  const b05 = b0 + Math.PI * shearEffectiveDepth;
+  const resistance = calculateEn1992Punching2023WithoutShearReinforcement({
+    fck: resolveConcreteStrength(connection),
+    shearEffectiveDepth,
+    reinforcementRatioX: flexural.x.ratio,
+    reinforcementRatioY: flexural.y.ratio,
+    lowerAggregateSize: connection.materials.concreteAggregate.lowerSize,
+    supportPerimeter: b0,
+    controlPerimeter: b05,
+    gammaV: parameters.gammaV
+  });
+  const stateResults = request.actionStates.map((state) => {
+    const betaE = resolveStateParameter(parameters, "betaE", "betaEByState", state.id);
+    const designForce = Math.abs(state.components.fz);
+    const demand = betaE * designForce / (b05 * shearEffectiveDepth);
+    const checks = [createCheck({
+      id: `${state.id}:control-perimeter-b0.5`,
+      stateId: state.id,
+      location: "b0.5-at-dv-over-2",
+      demand,
+      capacity: resistance.tauRdc,
+      reference: "EN 1992-1-1:2023 8.4.3"
+    })];
+    return {
+      stateId: state.id,
+      sourceActions: { ...state.components },
+      designForce,
+      betaE,
+      shearEffectiveDepth,
+      perimeters: { b0, b05 },
+      demands: { controlPerimeter: demand },
+      checks
+    };
+  });
+  return { resistance, stateResults, requiredOffset: shearEffectiveDepth / 2 };
+}
+function governingCheck4(checks) {
+  return checks.reduce((governing, check) => governing == null || check.utilizationRatio > governing.utilizationRatio ? check : governing, null);
+}
+var PunchingVerification = class {
+  verify(input) {
+    const request = input instanceof PunchingVerificationRequest ? input : new PunchingVerificationRequest(input);
+    const resolved = resolveParameters(request);
+    if (resolved.error) {
+      return notSupported2(request, [resolved.error]);
+    }
+    const scopeWarnings = validateScope(request, resolved.values);
+    if (scopeWarnings.length > 0) {
+      return notSupported2(request, scopeWarnings);
+    }
+    const geometry = {
+      supportPerimeter: supportPerimeter(request.connection.support.footprint),
+      conservativeBoundaryClearance: conservativeBoundaryClearance(request.connection)
+    };
+    const calculated = request.code.id === RC_PUNCHING_DESIGN_CODE_IDS.EN_1992_1_1_2004 ? verify2004(request, resolved.values, geometry) : verify2023(request, resolved.values, geometry);
+    if (geometry.conservativeBoundaryClearance < calculated.requiredOffset) {
+      return notSupported2(
+        request,
+        [
+          "The declared interior support does not have sufficient conservatively evaluated boundary clearance for the normative control perimeter."
+        ],
+        [],
+        { geometry, requiredOffset: calculated.requiredOffset }
+      );
+    }
+    const checks = calculated.stateResults.flatMap((state) => state.checks);
+    const governing = governingCheck4(checks);
+    const status = checks.every((check) => check.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED;
+    const momentWarning = request.actionStates.some((state) => state.components.mx !== 0 || state.components.my !== 0) ? [
+      "Mx and My are retained in sourceActions but are not converted internally into beta or beta_e; the supplied concentration factor must account for eccentricity."
+    ] : [];
+    return new VerificationResult({
+      applicationId: APPLICATION_ID2,
+      status,
+      summary: status === RESULT_STATUS.OK ? "Punching resistance is verified within the implemented scope." : "Punching resistance is not verified without punching reinforcement.",
+      utilizationRatio: governing.utilizationRatio,
+      demand: governing.demand,
+      capacity: governing.capacity,
+      checks,
+      outputs: {
+        geometry,
+        requiredOffset: calculated.requiredOffset,
+        resistance: calculated.resistance,
+        stateResults: calculated.stateResults,
+        governingCheck: governing
+      },
+      warnings: momentWarning,
+      assumptions: [
+        "The mean of the two supplied effective depths is used as d (2004) or dv (2023).",
+        "The flexural reinforcement field is uniform over the normative support band represented by the supplied ratios.",
+        "The punching force magnitude is the absolute value of signed local Fz; its original sign is preserved in sourceActions.",
+        "No prestress or membrane compression contribution is considered."
+      ],
+      metadata: resultMetadata(request)
+    });
+  }
+};
+function verifyPunching(input) {
+  return new PunchingVerification().verify(input);
+}
 
 // src/applications/xlam-beams/checks/XlamBeamVerification.js
 var DEFAULT_SECTION_UNITS4 = Object.freeze({ force: "N", length: "mm" });
@@ -60869,7 +62072,7 @@ function listItalianHistoricalReinforcementSteelGrades() {
 }
 
 // src/norms/italian-historical/materials/createItalianHistoricalMaterial.js
-var INTERNAL_UNITS23 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS26 = Object.freeze({ force: "N", length: "mm" });
 var HISTORICAL_REINFORCEMENT_ELONGATION_CHARACTERISTIC = 0.075;
 var round10 = (value, decimals = 2) => Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
 function assertCatalogEntry2(catalog, key, message) {
@@ -60896,7 +62099,7 @@ function createItalianHistoricalReinforcementSteelMaterial({
 }) {
   var _a, _b;
   assertExplicitUnitSystem(units, "createItalianHistoricalReinforcementSteelMaterial");
-  const unitResolver = createUnitResolver(units, INTERNAL_UNITS23);
+  const unitResolver = createUnitResolver(units, INTERNAL_UNITS26);
   const preset = assertCatalogEntry2(
     ITALIAN_HISTORICAL_REINFORCEMENT_STEEL_GRADES,
     grade,
@@ -60927,7 +62130,7 @@ function createItalianHistoricalReinforcementSteelMaterial({
     existing: existingState.existing,
     knowledgeLevel: (_a = existingState.knowledgeLevel) != null ? _a : knowledgeLevel,
     confidenceFactor: existingState.confidenceFactor,
-    units: INTERNAL_UNITS23,
+    units: INTERNAL_UNITS26,
     metadata: {
       ...metadata,
       normativePreset: "ITALIAN_HISTORICAL_REINFORCEMENT",
@@ -61072,9 +62275,16 @@ export {
   NTC2018_VARIABLE_ACTION_CATEGORIES,
   NodalLoad,
   Node,
+  PUNCHING_ACTION_SCHEMA_VERSION,
+  PUNCHING_CONNECTION_SCHEMA_VERSION,
+  PUNCHING_VERIFICATION_REQUEST_SCHEMA_VERSION,
   PermanentAction,
   PointLoad,
   PolygonSection,
+  PunchingActionState,
+  PunchingConnectionModel,
+  PunchingVerification,
+  PunchingVerificationRequest,
   RCBiaxialDomainBuilder,
   RCMomentCurvatureAnalyzer,
   RCSectionStateIntegrator,
@@ -61083,6 +62293,9 @@ export {
   RCUniaxialDomainBuilder,
   RC_DEFLECTION_PERFORMANCE_PROFILES,
   RC_PLATE_ANALYSIS_TYPES,
+  RC_PUNCHING_DESIGN_CODE_IDS,
+  RC_PUNCHING_DESIGN_CODE_ID_VALUES,
+  RC_PUNCHING_PARAMETER_PROFILES,
   RCrackedDeflectionApplication,
   RESULT_STATUS,
   RESULT_STATUS_FAILED,
@@ -61246,6 +62459,7 @@ export {
   getNTC2018SlabWeightValue,
   getTabulatedMechanicalProperties as getNTC2018TabulatedMasonryProperties,
   getNTC2018TimberKmod,
+  getRcPunchingDesignCodeManifest,
   getSteelProfileSectionData,
   getSteelVerificationCapabilities,
   getTecnariaConnectorData,
@@ -61272,6 +62486,7 @@ export {
   resolveNTC2018GoverningLoadDuration,
   resolveMasonryTypology as resolveNTC2018MasonryTypology,
   resolvePrincipalSectionFrame,
+  resolvePunchingTransferFromJointActions,
   rotatePlateMoments,
   rotatePlateShear,
   rotateSecondMoments,
@@ -61296,6 +62511,7 @@ export {
   verifyPlateServiceability,
   verifyPlateShear,
   verifyPlateSlenderness,
+  verifyPunching,
   verifySteelBeamColumnInteractionMy,
   verifySteelBeamColumnInteractionMyMz,
   verifySteelBendingShearInteraction,

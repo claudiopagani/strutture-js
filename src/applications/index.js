@@ -74,6 +74,16 @@ export {
   verifyPlateSlenderness,
   woodArmer,
 } from "./reinforced-concrete-plates/index.js";
+export {
+  PUNCHING_VERIFICATION_REQUEST_SCHEMA_VERSION,
+  PunchingVerification,
+  PunchingVerificationRequest,
+  RC_PUNCHING_PARAMETER_PROFILES,
+  RC_PUNCHING_DESIGN_CODE_IDS,
+  RC_PUNCHING_DESIGN_CODE_ID_VALUES,
+  getRcPunchingDesignCodeManifest,
+  verifyPunching,
+} from "./reinforced-concrete-punching/index.js";
 export { ReinforcedConcreteSectionApplication } from "./reinforced-concrete-sections/index.js";
 export { ReinforcedConcreteBeamVerification } from "./reinforced-concrete-sections/index.js";
 export { ReinforcedConcreteShearVerification } from "./reinforced-concrete-sections/index.js";

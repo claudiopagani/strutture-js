@@ -7,3 +7,10 @@ export { LinearLoadFromVolumeWeight } from "./LinearLoadFromVolumeWeight.js";
 export { VariableLoad } from "./VariableLoad.js";
 export { FloorSlab } from "./FloorSlab.js";
 export { NTC2018SlabLoadAnalysis } from "./NTC2018SlabLoadAnalysis.js";
+export {
+  PUNCHING_ACTION_SCHEMA_VERSION,
+  PUNCHING_CONNECTION_SCHEMA_VERSION,
+  PunchingActionState,
+  PunchingConnectionModel,
+  resolvePunchingTransferFromJointActions,
+} from "./punching/index.js";
