@@ -84,6 +84,14 @@ export const APPLICATION_CATALOG = [
       "Local NTC 2018 joint-panel, confinement and strong-column weak-beam checks from assigned seismic actions and capacities.",
   },
   {
+    id: "reinforced-concrete-strut-and-tie",
+    name: "RC Strut-and-Tie Models",
+    domain: "reinforced-concrete",
+    maturity: "partial",
+    primaryFocus:
+      "Analysis and EN 1992 verification of assigned two-dimensional strut-and-tie topologies for D-regions.",
+  },
+  {
     id: "timber-beams",
     name: "Timber Beams",
     domain: "timber",

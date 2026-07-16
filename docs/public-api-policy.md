@@ -13,9 +13,11 @@ Sono supportati il package root e i subpath ufficiali correnti:
 - `strutture-js/applications/<application-id>`;
 - `strutture-js/domain/fem`;
 - `strutture-js/domain/math`;
+- `strutture-js/domain/strut-and-tie`;
 - `strutture-js/catalogs/steel-profiles`;
 - `strutture-js/norms/italian-historical`;
-- `strutture-js/norms/ntc2018`.
+- `strutture-js/norms/ntc2018`;
+- `strutture-js/norms/en1992`.
 
 I consumer non devono usare deep import come
 `strutture-js/src/...`, percorsi relativi dentro `node_modules` o file di

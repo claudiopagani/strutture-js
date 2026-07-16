@@ -16,7 +16,9 @@
     "./applications/*": "./src/applications/*/index.js",
     "./domain/fem": "./src/domain/fem/index.js",
     "./domain/math": "./src/domain/math/index.js",
+    "./domain/strut-and-tie": "./src/domain/strut-and-tie/index.js",
     "./catalogs/steel-profiles": "./src/catalogs/steel-profiles.js",
+    "./norms/en1992": "./src/norms/en1992/index.js",
     "./norms/italian-historical": "./src/norms/italian-historical/index.js",
     "./norms/ntc2018": "./src/norms/ntc2018/index.js"
   },

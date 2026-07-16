@@ -23,8 +23,8 @@ test("default application registry exposes all scaffolded structural application
   const catalogIds = APPLICATION_CATALOG.map((application) => application.id);
 
   assert.ok(registry instanceof ApplicationRegistry);
-  assert.equal(registry.list().length, 18);
-  assert.equal(APPLICATION_CATALOG.length, 18);
+  assert.equal(registry.list().length, 19);
+  assert.equal(APPLICATION_CATALOG.length, 19);
   assert.deepEqual(registryIds, catalogIds);
   assert.ok(registry.has("single-beam-design"));
   assert.ok(registry.has("steel-frames"));
@@ -39,6 +39,7 @@ test("default application registry exposes all scaffolded structural application
   assert.ok(registry.has("reinforced-concrete-isolated-footings"));
   assert.ok(registry.has("reinforced-concrete-foundation-beams"));
   assert.ok(registry.has("reinforced-concrete-beam-column-joints"));
+  assert.ok(registry.has("reinforced-concrete-strut-and-tie"));
 });
 
 test("application registry returns manifests and placeholder results", () => {

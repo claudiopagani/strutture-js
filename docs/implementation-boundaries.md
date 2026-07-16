@@ -27,6 +27,9 @@ Esempi attuali:
 * il workflow dei nodi trave-pilastro RC verifica localmente una direzione
   sismica assegnata secondo NTC 2018; non genera azioni o capacita dal telaio e
   non include ancora ancoraggi, trasferimento eccentrico o interazione 3D;
+* il workflow tirante-puntone RC risolve e verifica una topologia 2D assegnata;
+  non genera i percorsi di carico, non rimuove iterativamente aste con segno
+  incompatibile e non verifica ancora ancoraggi o armature di splitting;
 * le verifiche legno/XLAM sono validate sui casi coperti, ma richiedono campagne piu ampie per usi fuori da quei domini.
 
 Nei risultati, questi casi dovrebbero emergere come `not-implemented` se il workflow non esiste ancora, oppure `not-supported` se il workflow esiste ma il caso richiesto esce dal campo coperto.

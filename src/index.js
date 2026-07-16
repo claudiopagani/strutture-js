@@ -81,6 +81,12 @@ export {
   integrateFootingPressureStrip,
 } from "./domain/foundations/index.js";
 export {
+  AxialMember2D,
+  STRUT_AND_TIE_MEMBER_TYPES,
+  StrutAndTieAnalysis2D,
+  StrutAndTieModel2D,
+} from "./domain/strut-and-tie/index.js";
+export {
   AccidentalAction,
   Action,
   ClimaticAction,
@@ -270,6 +276,10 @@ export {
   ReinforcedConcreteBeamColumnJointApplication,
   ReinforcedConcreteBeamColumnJointModel,
   ReinforcedConcreteBeamColumnJointVerification,
+  RC_STRUT_AND_TIE_SUPPORTED_CODE,
+  ReinforcedConcreteStrutAndTieApplication,
+  ReinforcedConcreteStrutAndTieModel,
+  ReinforcedConcreteStrutAndTieVerification,
   createPlateStripSection,
   rotatePlateMoments,
   rotatePlateShear,
@@ -356,6 +366,15 @@ export {
   createTimberXlamCompositeBeamSectionProvider,
   createDefaultApplicationRegistry,
 } from "./applications/index.js";
+
+export {
+  calculateEn1992NodalDesignStrength,
+  calculateEn1992StrutAndTieNuPrime,
+  calculateEn1992StrutDesignStrength,
+  calculateEn1992TieResistance,
+  EN1992_STRUT_AND_TIE_NODE_TYPES,
+  EN1992_STRUT_STRENGTH_MODELS,
+} from "./norms/en1992/strut-and-tie/index.js";
 
 export {
   NTC2018_ACTION_COMBINATION_FACTORS,

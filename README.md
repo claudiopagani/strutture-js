@@ -142,6 +142,7 @@ Stato sintetico dei moduli applicativi:
 | `reinforced-concrete-isolated-footings` | Parziale | Contatto rigido, resistenze geotecniche assegnate e verifiche strutturali locali di plinti rettangolari centrati. |
 | `reinforced-concrete-foundation-beams` | Parziale | Analisi lineare di travi orizzontali su letto di Winkler assegnato e verifiche sezionali locali in c.a. |
 | `reinforced-concrete-beam-column-joints` | Parziale | Verifica locale NTC 2018 del pannello nodale, confinamento e gerarchia pilastro-trave da azioni e capacita assegnate. |
+| `reinforced-concrete-strut-and-tie` | Parziale | Analisi e verifica EN 1992 di modelli tirante-puntone 2D con topologia e zone nodali assegnate. |
 | `timber-beams` | Parziale | Verifiche di travi in legno da risultati FEM disponibili. |
 | `timber-concrete-composite-beams` | Implementato | Verifica gamma-method di travi legno-calcestruzzo con connettori. |
 | `timber-xlam-composite-beams` | Implementato | Verifica gamma-method di travi lignee collaboranti con pannelli XLAM. |
@@ -159,7 +160,7 @@ La libreria e organizzata in livelli.
 | `src/core` | Contratti comuni per applicazioni, codici normativi e risultati. |
 | `src/domain` | Entita riusabili: materiali, geometrie, carichi, azioni, FEM, sezioni, travi, solutori, unita. |
 | `src/applications` | Workflow verticali: modelli, analisi, verifiche, report e manifest applicativi. |
-| `src/norms` | Preset, cataloghi e factory normative. Oggi include NTC 2018 e acciai storici italiani. |
+| `src/norms` | Preset, cataloghi e kernel normativi. Include NTC 2018, EN 1992 e acciai storici italiani. |
 | `src/config` | Cataloghi e manifesti di alto livello. |
 | `docs` | Note metodologiche, limiti implementativi e contratti tecnici. |
 | `examples` | Esempi eseguibili e generatori di report. |
@@ -365,6 +366,7 @@ Documentazione utile:
 - [docs/reinforced-concrete-isolated-footings-method.md](docs/reinforced-concrete-isolated-footings-method.md).
 - [docs/reinforced-concrete-foundation-beams-method.md](docs/reinforced-concrete-foundation-beams-method.md).
 - [docs/reinforced-concrete-beam-column-joints-method.md](docs/reinforced-concrete-beam-column-joints-method.md).
+- [docs/reinforced-concrete-strut-and-tie-method.md](docs/reinforced-concrete-strut-and-tie-method.md).
 
 ## Collaborazione
 

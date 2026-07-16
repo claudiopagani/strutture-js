@@ -10,11 +10,14 @@ import * as RcColumnsApi from "strutture-js/applications/reinforced-concrete-col
 import * as RcFootingsApi from "strutture-js/applications/reinforced-concrete-isolated-footings";
 import * as RcFoundationBeamsApi from "strutture-js/applications/reinforced-concrete-foundation-beams";
 import * as RcBeamColumnJointsApi from "strutture-js/applications/reinforced-concrete-beam-column-joints";
+import * as RcStrutAndTieApi from "strutture-js/applications/reinforced-concrete-strut-and-tie";
 import * as FemApi from "strutture-js/domain/fem";
 import * as MathApi from "strutture-js/domain/math";
+import * as StrutAndTieApi from "strutture-js/domain/strut-and-tie";
 import * as SteelProfilesApi from "strutture-js/catalogs/steel-profiles";
 import * as ItalianHistoricalApi from "strutture-js/norms/italian-historical";
 import * as Ntc2018Api from "strutture-js/norms/ntc2018";
+import * as En1992Api from "strutture-js/norms/en1992";
 
 test("package root export exposes the main public API", () => {
   assert.equal(typeof PublicApi.SingleBeamAnalysis, "function");
@@ -50,6 +53,11 @@ test("package root export exposes the main public API", () => {
     "function",
   );
   assert.equal(typeof PublicApi.calculateNTC2018JointShearDemand, "function");
+  assert.equal(typeof PublicApi.StrutAndTieAnalysis2D, "function");
+  assert.equal(
+    typeof PublicApi.ReinforcedConcreteStrutAndTieApplication,
+    "function",
+  );
   assert.equal(typeof PublicApi.ReinforcedConcreteTorsionVerification, "function");
   assert.equal(typeof PublicApi.HyperstaticDeflectionIteration, "function");
   assert.equal(typeof PublicApi.SectionMomentCurvatureCurve, "function");
@@ -94,8 +102,13 @@ test("granular ESM subpaths expose applications, solvers and catalogs", () => {
     typeof RcBeamColumnJointsApi.ReinforcedConcreteBeamColumnJointVerification,
     "function",
   );
+  assert.equal(
+    typeof RcStrutAndTieApi.ReinforcedConcreteStrutAndTieVerification,
+    "function",
+  );
   assert.equal(typeof FemApi.LinearStaticSolver2D, "function");
   assert.equal(typeof MathApi.BandedLinearSolver, "function");
+  assert.equal(typeof StrutAndTieApi.StrutAndTieAnalysis2D, "function");
   assert.ok(SteelProfilesApi.STEEL_PROFILE_FAMILIES.includes("IPE"));
   assert.equal(
     SteelProfilesApi.getSteelProfileSectionData("UPN200").family,
@@ -108,6 +121,11 @@ test("ntc2018 subpath export exposes normative adapters", () => {
   assert.equal(typeof Ntc2018Api.createNTC2018BeamCombinations, "function");
   assert.equal(typeof Ntc2018Api.NTC2018_CONCRETE_CLASSES, "object");
   assert.equal(typeof Ntc2018Api.calculateNTC2018JointCompressionCapacity, "function");
+});
+
+test("en1992 subpath export exposes strut-and-tie normative helpers", () => {
+  assert.equal(typeof En1992Api.calculateEn1992StrutDesignStrength, "function");
+  assert.equal(typeof En1992Api.calculateEn1992NodalDesignStrength, "function");
 });
 
 test("italian historical subpath export exposes reinforcement steel adapters", () => {

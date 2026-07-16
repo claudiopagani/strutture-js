@@ -11,6 +11,7 @@ import {
   ReinforcedConcretePlateApplication,
   ReinforcedConcreteColumnApplication,
   ReinforcedConcreteColumnModel,
+  ReinforcedConcreteStrutAndTieApplication,
   ReinforcedConcreteSection,
   ReinforcedConcreteShearVerification,
   ReinforcedConcreteTorsionVerification,
@@ -699,6 +700,118 @@ function rcBeamColumnJointNtcIndependentArithmeticCase() {
       { id: "confining-stress", path: "requiredConfiningStress", expected: 11.510541, tolerance: 0.000001 },
       { id: "tie-force", path: "requiredTieForce", expected: 1071631.336, tolerance: 0.01 },
       { id: "fully-confined", path: "confinementClass", expected: "fully-confined", type: "equal" },
+    ],
+  };
+}
+
+function rcStrutAndTieEcpCorbelCase() {
+  return {
+    id: "rc-strut-and-tie-ecp-corbel-equilibrium",
+    title: "EN 1992 strut-and-tie equilibrium for a thick short corbel",
+    category: "reinforced-concrete-strut-and-tie",
+    source:
+      "European Concrete Platform, EC2 Worked Examples rev. A 31-03-2017, Example 6.9, pages 49-52",
+    sourceKind: "external-reference",
+    notes:
+      "Uses the published FEd=700 kN, horizontal offset 169 mm, lever arm 288 mm, C35/45, B450C and k2=1.0. The two-bar determinate model independently resolves the reported 411 kN main tie force.",
+    evaluate() {
+      const units = { force: "N", length: "mm" };
+      const concreteMaterial = createNTC2018ConcreteMaterial({
+        strengthClass: "C35/45",
+        units,
+      });
+      const reinforcementMaterial = createNTC2018ReinforcementSteelMaterial({
+        grade: "B450C",
+        units,
+      });
+      const result = new ReinforcedConcreteStrutAndTieApplication().run({
+        model: {
+          id: "validation-ecp-corbel-stm",
+          units,
+          materials: { concreteMaterial, reinforcementMaterial },
+          nodes: [
+            { id: "A", x: 0, y: 0 },
+            { id: "B", x: 0, y: 288 },
+            { id: "C", x: 169, y: 288 },
+          ],
+          members: [
+            {
+              id: "C1",
+              type: "strut",
+              startNodeId: "A",
+              endNodeId: "C",
+              area: 100000,
+              strengthModel: "transverse-tension",
+            },
+            {
+              id: "T1",
+              type: "tie",
+              startNodeId: "B",
+              endNodeId: "C",
+              area: 1232,
+            },
+          ],
+          loads: [{ id: "P", nodeId: "C", fy: -700000 }],
+          supports: [
+            { id: "SA", nodeId: "A", ux: true, uy: true },
+            { id: "SB", nodeId: "B", ux: true, uy: true },
+          ],
+          nodalZones: [
+            {
+              id: "load-face",
+              nodeId: "C",
+              type: "cct",
+              area: 45000,
+              forceReference: {
+                kind: "load",
+                id: "P",
+                normal: { x: 0, y: 1 },
+              },
+              factors: { k2: 1 },
+            },
+            {
+              id: "strut-face",
+              nodeId: "A",
+              type: "ccc",
+              area: 100000,
+              forceReference: { kind: "member", id: "C1" },
+            },
+          ],
+        },
+      });
+      const tie = result.outputs.analysis.members.find(
+        (member) => member.id === "T1",
+      );
+      const strut = result.outputs.analysis.members.find(
+        (member) => member.id === "C1",
+      );
+      const loadZone = result.outputs.nodalZones.find(
+        (zone) => zone.id === "load-face",
+      );
+
+      return {
+        status: result.status,
+        tieForce: tie.force,
+        strutForce: strut.force,
+        requiredTieArea: tie.force / reinforcementMaterial.fyd,
+        loadZoneStress: loadZone.stress,
+        loadZoneStrength: loadZone.strength.designStrength,
+        equilibriumFx: result.outputs.analysis.equilibrium.residual.fx,
+        equilibriumFy: result.outputs.analysis.equilibrium.residual.fy,
+        staticIndeterminacy:
+          result.outputs.analysis.topology.staticIndeterminacy,
+      };
+    },
+    expectations: [
+      { id: "status", path: "status", expected: "ok", type: "equal" },
+      { id: "tie-force", path: "tieForce", expected: 410763.888889, tolerance: 0.01 },
+      { id: "strut-force", path: "strutForce", expected: -811619.967975, tolerance: 0.01 },
+      { id: "required-tie-area", path: "requiredTieArea", expected: 1049.741602, tolerance: 0.000001 },
+      { id: "load-zone-stress", path: "loadZoneStress", expected: 15.555555556, tolerance: 0.000001 },
+      { id: "load-zone-strength", path: "loadZoneStrength", expected: 17.0538, tolerance: 0.000001 },
+      { id: "equilibrium-x", path: "equilibriumFx", expected: 0, tolerance: 1e-9 },
+      { id: "equilibrium-y", path: "equilibriumFy", expected: 0, tolerance: 1e-9 },
+      { id: "determinate-topology", path: "staticIndeterminacy", expected: 0, tolerance: 1e-12 },
     ],
   };
 }
@@ -2914,6 +3027,7 @@ export function createBeamValidationCases() {
     rcFootingRigidContactIndependentArithmeticCase(),
     winklerFoundationBeamUniformSolutionCase(),
     rcBeamColumnJointNtcIndependentArithmeticCase(),
+    rcStrutAndTieEcpCorbelCase(),
     jrcEc2ColumnInteractionCase(),
     structvilleEc5TimberBeamCase(),
     xlamAuleGrandeLuceReportCase(),

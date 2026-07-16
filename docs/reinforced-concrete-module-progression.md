@@ -57,6 +57,7 @@ essere aggiunti al catalogo delle applicazioni come funzionalita disponibili.
 | Plinti isolati in c.a. | `partial` | Contatto completo, perdita di contatto monoassiale e verifiche strutturali locali; resistenze geotecniche assegnate. |
 | Travi di fondazione in c.a. | `partial` | Trave orizzontale su letto di Winkler lineare bilaterale, rigidezza per tratti, carichi e cedimenti imposti; verifiche sezionali locali. |
 | Nodi trave-pilastro in c.a. | `partial` | Verifica locale NTC 2018 in una direzione assegnata: pannello nodale, confinamento, staffe e gerarchia; ancoraggi esclusi. |
+| Regioni D e modelli tirante-puntone | `partial` | Kernel 2D e verifica EN 1992 di topologie assegnate; nessuna generazione automatica dello schema resistente. |
 | FEM generico | `partial` | Componenti FEM riusabili prevalentemente 2D; non costituisce ancora il verificatore globale per strutture in c.a. |
 
 ## Mappa delle dipendenze
@@ -191,7 +192,7 @@ resistenze delle aste sono assegnate; le resistenze dei pilastri devono essere
 gia selezionate rispetto ai segni dei momenti. Ancoraggio delle barre,
 eccentricita e interazione tridimensionale restano fuori dal perimetro.
 
-### 6. Regioni D e modelli tirante-puntone
+### 6. Regioni D e modelli tirante-puntone (`partial`)
 
 Prima deve essere implementato un kernel generico e verificabile per nodi,
 puntoni e tiranti. Su tale kernel potranno essere costruiti workflow specifici
@@ -206,6 +207,14 @@ per:
 Destinazione: kernel condiviso e micro-app soltanto per schemi con topologia e
 campo di validita non ambigui. La generazione automatica di un modello
 tirante-puntone arbitrario non rientra nel primo perimetro.
+
+Il primo MVP generico e implementato per tralicci piani a topologia assegnata.
+Risolve forze assiali e reazioni, controlla la compatibilita di segno di
+puntoni e tiranti e verifica puntoni, armature e facce nodali secondo
+EN 1992-1-1:2004. Le zone nodali e i parametri nazionali sono input espliciti.
+Topologia automatica, modelli 3D, ancoraggi e armature di splitting restano
+fuori dal perimetro. I workflow geometrici per mensole, travi parete e plinti
+su pali devono essere validati separatamente sopra questo kernel.
 
 ## Progressione dei moduli dipendenti dal FEM globale
 

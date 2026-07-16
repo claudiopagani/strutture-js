@@ -23,6 +23,7 @@ import "./reinforcedConcreteIsolatedFootingApplication.test.js";
 import "./foundationBeamAnalysis.test.js";
 import "./reinforcedConcreteFoundationBeamApplication.test.js";
 import "./reinforcedConcreteBeamColumnJointApplication.test.js";
+import "./reinforcedConcreteStrutAndTieApplication.test.js";
 import "./reinforcedConcreteColumnApplication.test.js";
 import "./reinforcedConcreteServiceabilityVerification.test.js";
 import "./reinforcedConcretePlateApplication.test.js";
