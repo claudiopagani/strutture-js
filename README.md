@@ -138,6 +138,10 @@ Stato sintetico dei moduli applicativi:
 | `reinforced-concrete-sections` | Implementato | Analisi SLU/SLE di sezioni in c.a. a fibre. |
 | `reinforced-concrete-plates` | Implementato | Verifica locale SLU/SLE di piastre piane in c.a. mediante strisce equivalenti Wood-Armer. |
 | `reinforced-concrete-punching` | MVP | Verifica locale a punzonamento con contratto serializzabile e campo di applicazione documentato. |
+| `reinforced-concrete-columns` | Parziale | Screening NTC della snellezza e verifica biassiale; i momenti del secondo ordine delle aste snelle devono essere forniti. |
+| `reinforced-concrete-isolated-footings` | Parziale | Contatto rigido, resistenze geotecniche assegnate e verifiche strutturali locali di plinti rettangolari centrati. |
+| `reinforced-concrete-foundation-beams` | Parziale | Analisi lineare di travi orizzontali su letto di Winkler assegnato e verifiche sezionali locali in c.a. |
+| `reinforced-concrete-beam-column-joints` | Parziale | Verifica locale NTC 2018 del pannello nodale, confinamento e gerarchia pilastro-trave da azioni e capacita assegnate. |
 | `timber-beams` | Parziale | Verifiche di travi in legno da risultati FEM disponibili. |
 | `timber-concrete-composite-beams` | Implementato | Verifica gamma-method di travi legno-calcestruzzo con connettori. |
 | `timber-xlam-composite-beams` | Implementato | Verifica gamma-method di travi lignee collaboranti con pannelli XLAM. |
@@ -356,6 +360,11 @@ Documentazione utile:
 - [docs/steel-beam-method.md](docs/steel-beam-method.md);
 - [docs/reinforced-concrete-sle-method.md](docs/reinforced-concrete-sle-method.md).
 - [docs/reinforced-concrete-plates-method.md](docs/reinforced-concrete-plates-method.md).
+- [docs/reinforced-concrete-columns-method.md](docs/reinforced-concrete-columns-method.md).
+- [docs/reinforced-concrete-torsion-method.md](docs/reinforced-concrete-torsion-method.md).
+- [docs/reinforced-concrete-isolated-footings-method.md](docs/reinforced-concrete-isolated-footings-method.md).
+- [docs/reinforced-concrete-foundation-beams-method.md](docs/reinforced-concrete-foundation-beams-method.md).
+- [docs/reinforced-concrete-beam-column-joints-method.md](docs/reinforced-concrete-beam-column-joints-method.md).
 
 ## Collaborazione
 

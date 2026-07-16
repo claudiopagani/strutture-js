@@ -2,12 +2,18 @@ import {
   BeamSectionActionVerifier,
   ConcreteMaterial,
   ConcreteParabolaRectangleLaw,
+  ElasticBeamSectionProvider,
+  FoundationBeamAnalysis,
+  RectangularFootingContactAnalysis,
   RectangularSection,
   RC_PLATE_ANALYSIS_TYPES,
   RCUltimateSectionSolver,
   ReinforcedConcretePlateApplication,
+  ReinforcedConcreteColumnApplication,
+  ReinforcedConcreteColumnModel,
   ReinforcedConcreteSection,
   ReinforcedConcreteShearVerification,
+  ReinforcedConcreteTorsionVerification,
   ReinforcedConcreteServiceabilityVerification,
   ReinforcementBar,
   SectionFiberDiscretizer,
@@ -22,6 +28,11 @@ import {
   TimberXlamCompositeBeamModel,
   XlamPanelSection,
   bilinearizeCapacityCurve,
+  calculateNTC2018EffectiveJointWidth,
+  calculateNTC2018JointCompressionCapacity,
+  calculateNTC2018JointShearDemand,
+  calculateNTC2018JointTensionReinforcement,
+  classifyNTC2018JointConfinement,
   classifySteelSection,
   createLongitudinalReinforcementLayout,
   createNTC2018ConcreteMaterial,
@@ -30,6 +41,7 @@ import {
   createNTC2018TimberMaterial,
   createSteelProfileSection,
   createTecnariaConnector,
+  integrateFootingPressureStrip,
   rotatePlateMoments,
   rotatePlateShear,
   woodArmer,
@@ -459,6 +471,234 @@ function rglRampFoundationPressureCase() {
       },
       { id: "n-slu", path: "nSlu", expected: 35.6, tolerance: 1e-12 },
       { id: "soil-pressure", path: "soilPressure", expected: 0.033, tolerance: 1e-12 },
+    ],
+  };
+}
+
+function rcFootingRigidContactIndependentArithmeticCase() {
+  return {
+    id: "rc-footing-rigid-contact-independent-arithmetic",
+    title: "RC footing rigid contact and cantilever-strip equilibrium",
+    category: "reinforced-concrete-foundations",
+    source:
+      "JRC EUR 26566 EN sections 4.2.1 and 5.4; independent rigid-base equilibrium constants",
+    sourceKind: "primary-method-reference",
+    notes:
+      "Checks a 2x2 m base under N and My, a separate uniaxial contact-loss state, and direct integration of net pressure on a cantilever strip.",
+    evaluate() {
+      const analysis = new RectangularFootingContactAnalysis();
+      const full = analysis.analyze({
+        widthX: 2000,
+        widthY: 2000,
+        nEd: 4_000_000,
+        mxEd: 0,
+        myEd: 400_000_000,
+      });
+      const partial = analysis.analyze({
+        widthX: 2000,
+        widthY: 2000,
+        nEd: 4_000_000,
+        mxEd: 0,
+        myEd: 1_600_000_000,
+      });
+      const centered = analysis.analyze({
+        widthX: 2000,
+        widthY: 2000,
+        nEd: 4_000_000,
+      });
+      const strip = integrateFootingPressureStrip({
+        contact: centered,
+        axis: "x",
+        from: 250,
+        to: 1000,
+        fixedCoordinate: 0,
+        momentOrigin: 250,
+        uniformDownwardPressure: 0.1,
+      });
+
+      return {
+        fullContactType: full.contactType,
+        eccentricityX: full.eccentricityX,
+        qMin: full.minimumPressure,
+        qMax: full.maximumPressure,
+        equilibriumUtilization: full.equilibriumUtilization,
+        partialContactType: partial.contactType,
+        contactLength: partial.partialContact.contactLength,
+        partialQMax: partial.maximumPressure,
+        stripNetForce: strip.netForce,
+        stripNetMoment: strip.netMoment,
+      };
+    },
+    expectations: [
+      { id: "full-type", path: "fullContactType", expected: "full", type: "equal" },
+      { id: "eccentricity-x", path: "eccentricityX", expected: 100, tolerance: 1e-12 },
+      { id: "q-min", path: "qMin", expected: 0.7, tolerance: 1e-12 },
+      { id: "q-max", path: "qMax", expected: 1.3, tolerance: 1e-12 },
+      {
+        id: "equilibrium-utilization",
+        path: "equilibriumUtilization",
+        expected: 0.1,
+        tolerance: 1e-12,
+      },
+      {
+        id: "partial-type",
+        path: "partialContactType",
+        expected: "partial-uniaxial",
+        type: "equal",
+      },
+      { id: "contact-length", path: "contactLength", expected: 1800, tolerance: 1e-12 },
+      { id: "partial-q-max", path: "partialQMax", expected: 20 / 9, tolerance: 1e-12 },
+      { id: "strip-net-force", path: "stripNetForce", expected: 675, tolerance: 1e-12 },
+      {
+        id: "strip-net-moment",
+        path: "stripNetMoment",
+        expected: 253_125,
+        tolerance: 1e-9,
+      },
+    ],
+  };
+}
+
+function winklerFoundationBeamUniformSolutionCase() {
+  return {
+    id: "foundation-beam-winkler-uniform-solution",
+    title: "Uniform load on a prismatic beam over a uniform Winkler bed",
+    category: "reinforced-concrete-foundations",
+    source:
+      "PyCBA theoretical basis, continuous Winkler reaction q(x)=-kf*v(x); independent constant-field solution",
+    sourceKind: "independent-analytical-benchmark",
+    notes:
+      "For uniform q and kf=ks*b, the constant solution has w=q/kf, zero curvature and total soil reaction qL. The tributary-lumped model is checked after mesh convergence.",
+    evaluate() {
+      const units = { force: "kN", length: "m" };
+      const result = new FoundationBeamAnalysis().analyze({
+        id: "uniform-winkler-validation",
+        units,
+        geometry: {
+          start: { x: 0, y: 0 },
+          end: { x: 10, y: 0 },
+        },
+        sectionProvider: new ElasticBeamSectionProvider({
+          units,
+          propertyResolver: () => ({
+            axialRigidity: 1e7,
+            flexuralRigidity: 2e4,
+            units,
+          }),
+        }),
+        foundation: {
+          contactWidth: 1,
+          subgradeModulus: 10000,
+        },
+        loads: [{
+          id: "uniform-load",
+          actionType: "G1",
+          type: "uniform",
+          value: -10,
+        }],
+        combinations: false,
+        discretization: { elementCount: 100 },
+      }).loadCases.G1;
+
+      return {
+        totalReaction: result.foundation.totalReaction,
+        maximumDisplacement: result.displacements.maxAbsVerticalDisplacement.uy,
+        minimumPressure: result.foundation.minPressure.pressure,
+        maximumPressure: result.foundation.maxPressure.pressure,
+        maximumMoment: Math.abs(result.internalForces.maxAbsBendingMoment.m),
+      };
+    },
+    expectations: [
+      { id: "vertical-equilibrium", path: "totalReaction", expected: 100, tolerance: 2e-6 },
+      { id: "constant-displacement", path: "maximumDisplacement", expected: -0.001, tolerance: 2e-7 },
+      { id: "minimum-pressure", path: "minimumPressure", expected: 10, tolerance: 0.006 },
+      { id: "maximum-pressure", path: "maximumPressure", expected: 10, tolerance: 0.002 },
+      { id: "vanishing-bending", path: "maximumMoment", expected: 0, tolerance: 0.013 },
+    ],
+  };
+}
+
+function rcBeamColumnJointNtcIndependentArithmeticCase() {
+  return {
+    id: "rc-beam-column-joint-ntc-independent-arithmetic",
+    title: "NTC 2018 internal beam-column joint panel arithmetic",
+    category: "reinforced-concrete-joints",
+    source:
+      "D.M. 17 January 2018, NTC 2018 sections 7.4.4.3.1 and 7.4.6.2.3, equations 7.4.7-7.4.10; independent constants",
+    sourceKind: "primary-method-reference",
+    notes:
+      "Uses the published 350 mm internal-joint geometry, As1=As2=509 mm2, fyd=391.3 MPa, Vc=8.38 kN, fck=29.05 MPa and nuD=0.044. Exact eta is retained instead of the source's rounded 0.530.",
+    evaluate() {
+      const effectiveWidth = calculateNTC2018EffectiveJointWidth({
+        columnWidth: 350,
+        beamWidth: 300,
+        columnDepth: 350,
+      });
+      const demand = calculateNTC2018JointShearDemand({
+        jointType: "internal",
+        gammaRd: 1.2,
+        topReinforcementArea: 509,
+        bottomReinforcementArea: 509,
+        reinforcementDesignStrength: 391.3,
+        columnShearAbove: 8380,
+      });
+      const compression = calculateNTC2018JointCompressionCapacity({
+        jointType: "internal",
+        fck: 29.05,
+        fcd: 16.46,
+        normalizedAxialForce: 0.044,
+        effectiveJointWidth: effectiveWidth,
+        columnLongitudinalLayerDistance: 262,
+      });
+      const tension = calculateNTC2018JointTensionReinforcement({
+        method: "diagonal-tension",
+        jointType: "internal",
+        jointShearDemand: demand.demand,
+        effectiveJointWidth: effectiveWidth,
+        columnLongitudinalLayerDistance: 262,
+        beamLongitudinalLayerDistance: 266,
+        normalizedAxialForce: 0.044,
+        fcd: 16.46,
+        fctd: 1.32,
+        gammaRd: 1.2,
+        topReinforcementArea: 509,
+        bottomReinforcementArea: 509,
+        reinforcementDesignStrength: 391.3,
+      });
+      const confinement = classifyNTC2018JointConfinement({
+        faceCoverageRatios: {
+          positiveX: 0.75,
+          negativeX: 0.8,
+          positiveZ: 0.9,
+          negativeZ: 1,
+        },
+        oppositeBeamOverlapRatios: { x: 0.75, z: 0.8 },
+      });
+
+      return {
+        effectiveWidth,
+        jointDemand: demand.demand,
+        beamForce: demand.beamForce,
+        alphaJ: compression.alphaJ,
+        eta: compression.eta,
+        compressionCapacity: compression.capacity,
+        shearStress: tension.shearStress,
+        requiredConfiningStress: tension.requiredConfiningStress,
+        requiredTieForce: tension.requiredHorizontalTieForce,
+        confinementClass: confinement.classification,
+      };
+    },
+    expectations: [
+      { id: "effective-width", path: "effectiveWidth", expected: 350, tolerance: 1e-12 },
+      { id: "beam-force", path: "beamForce", expected: 478012.08, tolerance: 0.01 },
+      { id: "joint-demand", path: "jointDemand", expected: 469632.08, tolerance: 0.01 },
+      { id: "alpha-j", path: "alphaJ", expected: 0.6, tolerance: 1e-12 },
+      { id: "eta", path: "eta", expected: 0.53028, tolerance: 1e-12 },
+      { id: "compression-capacity", path: "compressionCapacity", expected: 766469.706, tolerance: 0.01 },
+      { id: "shear-stress", path: "shearStress", expected: 5.121397, tolerance: 0.000001 },
+      { id: "confining-stress", path: "requiredConfiningStress", expected: 11.510541, tolerance: 0.000001 },
+      { id: "tie-force", path: "requiredTieForce", expected: 1071631.336, tolerance: 0.01 },
+      { id: "fully-confined", path: "confinementClass", expected: "fully-confined", type: "equal" },
     ],
   };
 }
@@ -2156,6 +2396,184 @@ function rcShearExcelRegressionCase() {
   };
 }
 
+function rcTorsionNtcIndependentArithmeticCase() {
+  return {
+    id: "rc-torsion-ntc2018-independent-arithmetic",
+    title: "RC rectangular beam torsion and shear-torsion interaction",
+    category: "reinforced-concrete-torsion",
+    source:
+      "NTC 2018 4.1.2.3.6, equations 4.1.35-4.1.40; independent hand-calculation values stored as constants",
+    sourceKind: "primary-method-reference",
+    notes:
+      "The reference uses a 300x500 mm solid section, C25/30 with fcd=14.17 N/mm2, B450C with fyd=391.3 N/mm2, 8/150 closed stirrups, four 20 mm longitudinal bars assigned to torsion and cotTheta=1.5.",
+    evaluate() {
+      const concreteMaterial = createNTC2018ConcreteMaterial({
+        strengthClass: "C25/30",
+        units: sectionUnits,
+      });
+      const reinforcementMaterial = createNTC2018ReinforcementSteelMaterial({
+        grade: "B450C",
+        units: sectionUnits,
+      });
+      const section = new ReinforcedConcreteSection({
+        id: "validation-rc-torsion",
+        concreteSection: new RectangularSection({
+          width: 300,
+          height: 500,
+          units: sectionUnits,
+        }),
+        concreteMaterial,
+        reinforcementMaterial,
+        units: sectionUnits,
+      });
+      const result = new ReinforcedConcreteTorsionVerification().verify({
+        section,
+        concreteMaterial,
+        reinforcementMaterial,
+        actions: { tEd: 20_000_000, vEd: 50_000 },
+        torsion: {
+          edgeToLongitudinalBarCenter: 40,
+          cotTheta: 1.5,
+          transverseReinforcement: {
+            closed: true,
+            diameter: 8,
+            spacing: 150,
+            material: reinforcementMaterial,
+          },
+          longitudinalReinforcement: {
+            area: 4 * Math.PI * 20 ** 2 / 4,
+            material: reinforcementMaterial,
+          },
+        },
+        shear: {
+          mode: "with-transverse-reinforcement",
+          effectiveDepth: 450,
+          longitudinalReinforcementArea: 4 * Math.PI * 20 ** 2 / 4,
+          transverseReinforcement: {
+            diameter: 8,
+            legs: 2,
+            spacing: 150,
+            material: reinforcementMaterial,
+          },
+        },
+        units: sectionUnits,
+      });
+      const interaction = result.checks.find(
+        (check) => check.id === "rc-shear-torsion-concrete-interaction",
+      );
+
+      return {
+        status: result.status,
+        effectiveWallThickness: result.outputs.geometry.effectiveWallThickness,
+        medianArea: result.outputs.geometry.medianArea,
+        medianPerimeter: result.outputs.geometry.medianPerimeter,
+        trcd: result.outputs.trcd,
+        trsd: result.outputs.trsd,
+        trld: result.outputs.trld,
+        vRcd: result.outputs.shearAtCotTheta.vRcd,
+        interaction: interaction.utilizationRatio,
+      };
+    },
+    expectations: [
+      { id: "status", path: "status", expected: "ok", type: "equal" },
+      { id: "t", path: "effectiveWallThickness", expected: 93.75, tolerance: 1e-9 },
+      { id: "Ak", path: "medianArea", expected: 83789.0625, tolerance: 1e-6 },
+      { id: "um", path: "medianPerimeter", expected: 1225, tolerance: 1e-9 },
+      { id: "TRcd", path: "trcd", expected: 51373168.945313, tolerance: 1 },
+      { id: "TRsd", path: "trsd", expected: 32960745.818438, tolerance: 1 },
+      { id: "TRld", path: "trld", expected: 44844552.13393, tolerance: 1 },
+      { id: "VRcd", path: "vRcd", expected: 397305, tolerance: 1 },
+      { id: "V-T", path: "interaction", expected: 0.515156, tolerance: 1e-9 },
+    ],
+  };
+}
+
+function rcColumnNtcSlendernessScreeningCase() {
+  return {
+    id: "rc-column-ntc2018-slenderness-screening",
+    title: "RC column NTC slenderness screening about both section components",
+    category: "reinforced-concrete-columns",
+    source:
+      "NTC 2018 4.1.2.3.9.2, equations 4.1.41-4.1.42; independent section-property arithmetic",
+    sourceKind: "primary-method-reference",
+    notes:
+      "Checks only the independent stability-screening arithmetic using fcd=14.17 N/mm2. Biaxial section resistance remains covered by the existing RC fiber-solver validation cases.",
+    evaluate() {
+      const concreteMaterial = createNTC2018ConcreteMaterial({
+        strengthClass: "C25/30",
+        units: sectionUnits,
+      });
+      const reinforcementMaterial = createNTC2018ReinforcementSteelMaterial({
+        grade: "B450C",
+        units: sectionUnits,
+      });
+      const concreteSection = new RectangularSection({
+        width: 300,
+        height: 500,
+        units: sectionUnits,
+      });
+      const section = new ReinforcedConcreteSection({
+        id: "validation-rc-column",
+        concreteSection,
+        concreteMaterial,
+        reinforcementMaterial,
+        reinforcementBars: [
+          [50, 50],
+          [50, 250],
+          [450, 50],
+          [450, 250],
+        ].map(([y, z], index) => new ReinforcementBar({
+          id: `column-bar-${index + 1}`,
+          diameter: 20,
+          y,
+          z,
+          material: reinforcementMaterial,
+          units: sectionUnits,
+        })),
+        units: sectionUnits,
+      });
+      const model = new ReinforcedConcreteColumnModel({
+        id: "validation-column",
+        section,
+        concreteMaterial,
+        reinforcementMaterial,
+        length: 3000,
+        stability: {
+          effectiveLengthMx: 3000,
+          effectiveLengthMy: 3000,
+          biaxialAngleCount: 24,
+        },
+        actions: { nEd: -800_000, mxEd: 20_000_000, myEd: 10_000_000 },
+        units: sectionUnits,
+      });
+      const result = new ReinforcedConcreteColumnApplication().run({ model });
+
+      return {
+        status: result.status,
+        normalizedAxialForce: result.outputs.normalizedAxialForce,
+        lambdaLimit: result.outputs.lambdaLimit,
+        radiusMx: result.outputs.axes.mx.radiusOfGyration,
+        radiusMy: result.outputs.axes.my.radiusOfGyration,
+        lambdaMx: result.outputs.axes.mx.slenderness,
+        lambdaMy: result.outputs.axes.my.slenderness,
+        secondOrderMx: result.outputs.axes.mx.secondOrderRequired,
+        secondOrderMy: result.outputs.axes.my.secondOrderRequired,
+      };
+    },
+    expectations: [
+      { id: "status", path: "status", expected: "ok", type: "equal" },
+      { id: "nu", path: "normalizedAxialForce", expected: 0.376382028, tolerance: 1e-9 },
+      { id: "lambda-lim", path: "lambdaLimit", expected: 40.749808, tolerance: 1e-6 },
+      { id: "i-mx", path: "radiusMx", expected: 144.337567, tolerance: 1e-6 },
+      { id: "i-my", path: "radiusMy", expected: 86.60254, tolerance: 1e-6 },
+      { id: "lambda-mx", path: "lambdaMx", expected: 20.78461, tolerance: 1e-6 },
+      { id: "lambda-my", path: "lambdaMy", expected: 34.641016, tolerance: 1e-6 },
+      { id: "second-order-mx", path: "secondOrderMx", expected: false, type: "equal" },
+      { id: "second-order-my", path: "secondOrderMy", expected: false, type: "equal" },
+    ],
+  };
+}
+
 function rcPlateActionTransformationCase() {
   return {
     id: "rc-plate-rotation-wood-armer-manual",
@@ -2479,6 +2897,8 @@ export function createBeamValidationCases() {
     sciP364UnrestrainedBeamLtbCase(),
     sciP364PinnedColumnBucklingCase(),
     rcShearExcelRegressionCase(),
+    rcTorsionNtcIndependentArithmeticCase(),
+    rcColumnNtcSlendernessScreeningCase(),
     rcPlateActionTransformationCase(),
     rcPlateFlatSlabSlendernessInterpolationCase(),
     rcPlateVerticalSLinksShearCase(),
@@ -2491,6 +2911,9 @@ export function createBeamValidationCases() {
     gradoSlabLoadCombinationCase(),
     triesteSlabLoadCombinationCase(),
     rglRampFoundationPressureCase(),
+    rcFootingRigidContactIndependentArithmeticCase(),
+    winklerFoundationBeamUniformSolutionCase(),
+    rcBeamColumnJointNtcIndependentArithmeticCase(),
     jrcEc2ColumnInteractionCase(),
     structvilleEc5TimberBeamCase(),
     xlamAuleGrandeLuceReportCase(),

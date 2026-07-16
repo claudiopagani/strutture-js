@@ -330,6 +330,47 @@ test("beam section action verifier checks FEM samples through a common contract"
   assert.ok(verification.utilizationRatio > 1);
 });
 
+test("beam section action verifier forwards an available torsional action", () => {
+  const received = [];
+  const analysisResult = {
+    units: sectionUnits,
+    combinations: {
+      uls: {
+        id: "uls",
+        resultType: "combination",
+        context: { limitState: "ULS" },
+        internalForces: {
+          samples: [{ station: 0, n: 0, v: 0, m: 0, t: 12.5 }],
+        },
+      },
+    },
+  };
+  const verification = new BeamSectionActionVerifier({
+    sectionVerifier: {
+      verifySectionActions: ({ tEd }) => {
+        received.push(tEd);
+        return {
+          status: "ok",
+          checks: [
+            {
+              id: "torsion-contract",
+              demand: Math.abs(tEd),
+              capacity: 20,
+              utilizationRatio: Math.abs(tEd) / 20,
+              ok: Math.abs(tEd) <= 20,
+            },
+          ],
+        };
+      },
+    },
+    limitStates: "ULS",
+  }).verify({ analysisResult });
+
+  assert.equal(verification.status, "ok");
+  assert.deepEqual(received, [12.5]);
+  assert.equal(verification.checks[0].demand, 12.5);
+});
+
 test("beam section action verifier can restrict checks to requested stations", () => {
   const analysisResult = new SingleBeamAnalysis().analyze(
     createSimpleBeamInput({

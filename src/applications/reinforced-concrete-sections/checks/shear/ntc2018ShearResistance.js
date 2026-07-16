@@ -263,6 +263,83 @@ function computeWithTransverseResistance({ params, shear, units, warnings }) {
   };
 }
 
+export function computeWithTransverseResistanceAtCotTheta({
+  params,
+  shear = {},
+  units,
+  cotTheta,
+} = {}) {
+  const warnings = [];
+  const cotThetaRange = resolveCotThetaRange(shear);
+
+  if (cotThetaRange.warning) {
+    warnings.push(cotThetaRange.warning);
+  }
+
+  if (
+    !Number.isFinite(cotTheta) ||
+    cotTheta < cotThetaRange.min ||
+    cotTheta > cotThetaRange.max
+  ) {
+    return {
+      available: false,
+      warnings: [
+        ...warnings,
+        `cotTheta must lie in [${cotThetaRange.min}, ${cotThetaRange.max}] for the fixed-angle shear resistance.`,
+      ],
+    };
+  }
+
+  if (!params?.transverseReinforcement) {
+    return {
+      available: false,
+      warnings: [
+        ...warnings,
+        "Fixed-angle shear resistance requires transverse reinforcement parameters.",
+      ],
+    };
+  }
+
+  const cotAlpha = shear.cotAlpha ?? 0;
+
+  if (cotAlpha !== 0) {
+    warnings.push("Only vertical stirrups are supported; cotAlpha was forced to 0.");
+  }
+
+  const z = Number.isFinite(shear.leverArm)
+    ? createUnitResolver(units, DEFAULT_RC_SHEAR_UNITS).length(shear.leverArm)
+    : (shear.leverArmFactor ?? 0.9) * params.effectiveDepth;
+  const fcdPrime = Number.isFinite(shear.fcdPrime)
+    ? createUnitResolver(units, DEFAULT_RC_SHEAR_UNITS).stress(shear.fcdPrime)
+    : (shear.fcdPrimeFactor ?? 0.5) * params.fcd;
+  const alphaC = shear.alphaC ?? shear.alphaCw ?? alphaCForShear(params);
+  const vRsd =
+    params.transverseReinforcement.areaPerSpacing *
+    z *
+    params.transverseReinforcement.fyd *
+    cotTheta;
+  const vRcd =
+    (params.bw * z * alphaC * fcdPrime * cotTheta) /
+    (1 + cotTheta ** 2);
+
+  return {
+    available:
+      isFinitePositive(z) &&
+      isFinitePositive(fcdPrime) &&
+      isFinitePositive(alphaC) &&
+      isFinitePositive(vRsd) &&
+      isFinitePositive(vRcd),
+    warnings,
+    cotTheta,
+    cotThetaRange,
+    z,
+    fcdPrime,
+    alphaC,
+    vRsd,
+    vRcd,
+  };
+}
+
 export function verifyWithTransverseReinforcement({ vEd, params, shear, units }) {
   const warnings = [...params.warnings];
   const missing = requiredParametersMissing(
@@ -357,7 +434,9 @@ export function verifyWithTransverseReinforcement({ vEd, params, shear, units })
   });
 
   warnings.push(
-    "Minimum shear reinforcement detailing, spacing limits, anchorage and torsion are not included in this MVP check.",
+    shear.torsionHandled === true
+      ? "Minimum shear reinforcement detailing, spacing limits and anchorage are not included in this MVP check."
+      : "Minimum shear reinforcement detailing, spacing limits, anchorage and torsion are not included in this MVP check.",
   );
 
   return {

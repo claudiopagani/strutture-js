@@ -87,3 +87,14 @@ export { NTC2018SlabLoadAnalysis } from "./loads/NTC2018SlabLoadAnalysis.js";
 export {
   createNTC2018BeamCombinations,
 } from "./beams/createNTC2018BeamCombinations.js";
+
+export {
+  NTC2018_BEAM_COLUMN_JOINT_TENSION_METHODS,
+  NTC2018_BEAM_COLUMN_JOINT_TYPES,
+  calculateNTC2018EffectiveJointWidth,
+  calculateNTC2018JointCompressionCapacity,
+  calculateNTC2018JointShearDemand,
+  calculateNTC2018JointTensionReinforcement,
+  classifyNTC2018JointConfinement,
+  ntc2018JointOverstrengthFactor,
+} from "./reinforced-concrete/ntc2018BeamColumnJoint.js";

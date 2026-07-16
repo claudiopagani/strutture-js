@@ -6,6 +6,10 @@ import { MasonryRingBeamApplication } from "./masonry-ring-beams/index.js";
 import { MicropileBromsApplication } from "./micropiles-broms/index.js";
 import { RCrackedDeflectionApplication } from "./rc-cracked-deflection/index.js";
 import { ReinforcedConcretePlateApplication } from "./reinforced-concrete-plates/index.js";
+import { ReinforcedConcreteColumnApplication } from "./reinforced-concrete-columns/index.js";
+import { ReinforcedConcreteIsolatedFootingApplication } from "./reinforced-concrete-isolated-footings/index.js";
+import { ReinforcedConcreteFoundationBeamApplication } from "./reinforced-concrete-foundation-beams/index.js";
+import { ReinforcedConcreteBeamColumnJointApplication } from "./reinforced-concrete-beam-column-joints/index.js";
 import { ReinforcedConcreteSectionApplication } from "./reinforced-concrete-sections/index.js";
 import { SingleBeamDesignApplication } from "./single-beam-design/index.js";
 import { SteelFrameApplication } from "./steel-frames/index.js";
@@ -75,6 +79,28 @@ export {
   woodArmer,
 } from "./reinforced-concrete-plates/index.js";
 export {
+  ReinforcedConcreteColumnApplication,
+  ReinforcedConcreteColumnModel,
+  ReinforcedConcreteColumnVerification,
+} from "./reinforced-concrete-columns/index.js";
+export {
+  ReinforcedConcreteIsolatedFootingApplication,
+  ReinforcedConcreteIsolatedFootingModel,
+  ReinforcedConcreteIsolatedFootingVerification,
+} from "./reinforced-concrete-isolated-footings/index.js";
+export {
+  FoundationBeamAnalysis,
+  FoundationBeamFemBuilder,
+  FoundationBeamModel,
+  ReinforcedConcreteFoundationBeamApplication,
+  ReinforcedConcreteFoundationBeamModel,
+} from "./reinforced-concrete-foundation-beams/index.js";
+export {
+  ReinforcedConcreteBeamColumnJointApplication,
+  ReinforcedConcreteBeamColumnJointModel,
+  ReinforcedConcreteBeamColumnJointVerification,
+} from "./reinforced-concrete-beam-column-joints/index.js";
+export {
   PUNCHING_VERIFICATION_REQUEST_SCHEMA_VERSION,
   PunchingVerification,
   PunchingVerificationRequest,
@@ -87,6 +113,7 @@ export {
 export { ReinforcedConcreteSectionApplication } from "./reinforced-concrete-sections/index.js";
 export { ReinforcedConcreteBeamVerification } from "./reinforced-concrete-sections/index.js";
 export { ReinforcedConcreteShearVerification } from "./reinforced-concrete-sections/index.js";
+export { ReinforcedConcreteTorsionVerification } from "./reinforced-concrete-sections/index.js";
 export { ReinforcedConcreteServiceabilityVerification } from "./reinforced-concrete-sections/index.js";
 export { RCBiaxialDomainBuilder } from "./reinforced-concrete-sections/index.js";
 export { RCMomentCurvatureAnalyzer } from "./reinforced-concrete-sections/index.js";
@@ -158,6 +185,10 @@ export function createDefaultApplicationRegistry() {
     new MasonryWallOpeningsApplication(),
     new ReinforcedConcreteSectionApplication(),
     new ReinforcedConcretePlateApplication(),
+    new ReinforcedConcreteColumnApplication(),
+    new ReinforcedConcreteIsolatedFootingApplication(),
+    new ReinforcedConcreteFoundationBeamApplication(),
+    new ReinforcedConcreteBeamColumnJointApplication(),
     new TimberBeamApplication(),
     new TimberConcreteCompositeBeamApplication(),
     new TimberXlamCompositeBeamApplication(),

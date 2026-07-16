@@ -52,7 +52,11 @@ essere aggiunti al catalogo delle applicazioni come funzionalita disponibili.
 | Sezioni in c.a. | `implemented` | SLU/SLE a fibre, dominio monoassiale e biassiale, momento-curvatura e verifiche sezionali coperte dai workflow pubblici. |
 | Piastre in c.a. | `implemented` | Verifica locale di risultanti di piastra mediante strisce equivalenti Wood-Armer; non esegue l'analisi globale della piastra. |
 | Punzonamento | `implemented` | Verificatore locale con contratto serializzabile e campagna di validazione nel campo documentato. |
-| Trave singola in c.a. | `partial` | Analisi 2D, verifiche sezionali e integrazione delle curvature fessurate; torsione, dettaglio completo e duttilita non sono completi. |
+| Trave singola in c.a. | `partial` | Analisi 2D, verifiche sezionali, curvature fessurate e verificatore locale di torsione; il FEM 2D non genera torsione e dettaglio completo e duttilita non sono completi. |
+| Pilastri in c.a. | `partial` | Screening NTC della snellezza e resistenza biassiale; le aste snelle richiedono momenti totali assegnati. |
+| Plinti isolati in c.a. | `partial` | Contatto completo, perdita di contatto monoassiale e verifiche strutturali locali; resistenze geotecniche assegnate. |
+| Travi di fondazione in c.a. | `partial` | Trave orizzontale su letto di Winkler lineare bilaterale, rigidezza per tratti, carichi e cedimenti imposti; verifiche sezionali locali. |
+| Nodi trave-pilastro in c.a. | `partial` | Verifica locale NTC 2018 in una direzione assegnata: pannello nodale, confinamento, staffe e gerarchia; ancoraggi esclusi. |
 | FEM generico | `partial` | Componenti FEM riusabili prevalentemente 2D; non costituisce ancora il verificatore globale per strutture in c.a. |
 
 ## Mappa delle dipendenze
@@ -90,12 +94,12 @@ di sezione integrati lungo l'altezza sia verifiche locali delle shell.
 
 ## Progressione dei moduli locali
 
-### 1. Consolidamento delle travi in c.a.
+### 1. Consolidamento delle travi in c.a. (`partial`)
 
 Estensione dei workflow esistenti, senza creare una seconda applicazione per lo
 stesso elemento:
 
-- torsione e interazione taglio-torsione;
+- torsione e interazione taglio-torsione: primo verificatore locale implementato;
 - dettaglio di armature longitudinali e trasversali;
 - ancoraggi, sovrapposizioni e interruzione delle barre;
 - zone critiche, duttilita e gerarchia delle resistenze;
@@ -103,7 +107,7 @@ stesso elemento:
 
 Destinazione: micro-app esistente `single-beam-design` e verificatori riusabili.
 
-### 2. Pilastri in c.a.
+### 2. Pilastri in c.a. (`partial`)
 
 Nuovo verificatore di asta che riutilizza i domini resistenti sezionali:
 
@@ -113,10 +117,15 @@ Nuovo verificatore di asta che riutilizza i domini resistenti sezionali:
   contorno esplicite;
 - taglio, dettaglio delle armature, confinamento e duttilita.
 
+Il primo MVP con screening della snellezza e dominio resistente biassiale e
+implementato. Per aste snelle non genera ancora i momenti del secondo ordine:
+richiede momenti totali espliciti o risultati provenienti da un'analisi
+adeguata.
+
 Destinazione: micro-app, con azioni e lunghezze efficaci assegnate manualmente;
 in seguito gli stessi input potranno essere prodotti dal FEM globale.
 
-### 3. Plinti e fondazioni superficiali locali
+### 3. Plinti e fondazioni superficiali locali (`partial`)
 
 Workflow costruito sopra piastre, punzonamento e verifiche sezionali:
 
@@ -130,10 +139,15 @@ Workflow costruito sopra piastre, punzonamento e verifiche sezionali:
 La capacita portante geotecnica del terreno resta distinta dalla verifica
 strutturale del plinto.
 
+Il primo MVP per plinti rettangolari con pilastro centrato e implementato. Le
+verifiche strutturali richiedono contatto completo; la perdita di contatto
+monoassiale viene risolta e restituita, mentre quella biassiale resta
+`not-supported`. Capacita portante e scorrimento sono resistenze assegnate.
+
 Destinazione iniziale: micro-app per plinti isolati; plinti combinati e
 fondazioni geometricamente complesse richiederanno un perimetro separato.
 
-### 4. Travi di fondazione
+### 4. Travi di fondazione (`partial`)
 
 Prima versione limitata a una trave su suolo elastico con legge e parametri
 espliciti:
@@ -146,7 +160,15 @@ espliciti:
 Destinazione: micro-app 1D; platee e interazioni spaziali terreno-struttura
 restano nel percorso FEM.
 
-### 5. Nodi trave-pilastro
+Il primo MVP e implementato per una trave prismatica orizzontale. Il letto di
+Winkler e condensato in molle nodali tributarie e puo variare per tratti; sono
+supportati carichi distribuiti e concentrati, combinazioni e cedimenti imposti
+per tratti. Le pressioni di trazione sono rilevate e portano a
+`not-supported`: il contatto monolatero non e ancora risolto. Il modulo di
+sottofondo e i cedimenti restano input geotecnici assegnati; il ricalcolo
+fessurato delle deformazioni sul letto di molle non e ancora disponibile.
+
+### 5. Nodi trave-pilastro (`partial`)
 
 Verificatore locale alimentato dalla geometria, dalle armature e dalle azioni o
 capacita delle aste concorrenti:
@@ -160,6 +182,14 @@ capacita delle aste concorrenti:
 Destinazione: prima contratto locale con input manuale, poi post-processore dei
 nodi estratti dal telaio FEM. La presenza di un input locale non autorizza a
 inferire automaticamente azioni globali mancanti.
+
+Il primo MVP e implementato per nodi interni ed esterni dissipativi NTC 2018,
+una direzione sismica per stato di input. Verifica domanda e compressione del
+pannello nodale, armatura orizzontale con una delle due formulazioni normative,
+confinamento, staffe e gerarchia pilastro-trave. Azioni, aree di armatura e
+resistenze delle aste sono assegnate; le resistenze dei pilastri devono essere
+gia selezionate rispetto ai segni dei momenti. Ancoraggio delle barre,
+eccentricita e interazione tridimensionale restano fuori dal perimetro.
 
 ### 6. Regioni D e modelli tirante-puntone
 

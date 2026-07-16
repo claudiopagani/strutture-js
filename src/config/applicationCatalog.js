@@ -52,6 +52,38 @@ export const APPLICATION_CATALOG = [
       "Local ULS and SLE verification of flat RC plates through rotated Wood-Armer equivalent strips.",
   },
   {
+    id: "reinforced-concrete-columns",
+    name: "RC Columns",
+    domain: "reinforced-concrete",
+    maturity: "partial",
+    primaryFocus:
+      "Local NTC 2018 slenderness screening and biaxial resistance verification of reinforced-concrete columns.",
+  },
+  {
+    id: "reinforced-concrete-isolated-footings",
+    name: "RC Isolated Footings",
+    domain: "reinforced-concrete",
+    maturity: "partial",
+    primaryFocus:
+      "Local contact, assigned geotechnical resistance and structural verification of centered rectangular isolated footings.",
+  },
+  {
+    id: "reinforced-concrete-foundation-beams",
+    name: "RC Foundation Beams",
+    domain: "reinforced-concrete",
+    maturity: "partial",
+    primaryFocus:
+      "Linear Winkler-foundation analysis and local section verification of horizontal reinforced-concrete foundation beams.",
+  },
+  {
+    id: "reinforced-concrete-beam-column-joints",
+    name: "RC Beam-Column Joints",
+    domain: "reinforced-concrete",
+    maturity: "partial",
+    primaryFocus:
+      "Local NTC 2018 joint-panel, confinement and strong-column weak-beam checks from assigned seismic actions and capacities.",
+  },
+  {
     id: "timber-beams",
     name: "Timber Beams",
     domain: "timber",

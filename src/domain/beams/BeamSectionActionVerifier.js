@@ -533,6 +533,7 @@ export class BeamSectionActionVerifier {
             nEd: sample.n,
             vEd: sample.v,
             mEd: sample.m,
+            tEd: sample.t ?? sample.tEd ?? sample.torsion ?? 0,
             principalActions: sample.principalActions ?? null,
             vYEd: sample.principalActions?.vY ?? sample.vY ?? null,
             vZEd: sample.principalActions?.vZ ?? sample.vZ ?? null,

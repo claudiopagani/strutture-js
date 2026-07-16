@@ -6,6 +6,7 @@ import { ReinforcedConcreteSectionModel } from "../models/ReinforcedConcreteSect
 import { ReinforcedConcreteServiceabilityVerification } from "./ReinforcedConcreteServiceabilityVerification.js";
 import { ReinforcedConcreteSectionVerification } from "./ReinforcedConcreteSectionVerification.js";
 import { ReinforcedConcreteShearVerification } from "./ReinforcedConcreteShearVerification.js";
+import { ReinforcedConcreteTorsionVerification } from "./ReinforcedConcreteTorsionVerification.js";
 import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const DEFAULT_SECTION_UNITS = Object.freeze({ force: "N", length: "mm" });
@@ -79,14 +80,18 @@ function createRcActionVerifier({
   mesh,
   solver,
   shear = null,
+  torsion = null,
 }) {
   const sectionVerification = new ReinforcedConcreteSectionVerification({ code });
   const shearVerification = shear
     ? new ReinforcedConcreteShearVerification({ code })
     : null;
+  const torsionVerification = torsion
+    ? new ReinforcedConcreteTorsionVerification({ code, torsion, shear })
+    : null;
 
   return {
-    verifySectionActions({ nEd, vEd, mEd, principalActions, context }) {
+    verifySectionActions({ nEd, vEd, mEd, tEd, principalActions, context }) {
       const convertedNEd = resultToSectionUnits.force(nEd ?? 0);
       const convertedVEd = resultToSectionUnits.force(
         principalActions?.vY ?? vEd ?? 0,
@@ -100,6 +105,7 @@ function createRcActionVerifier({
       const convertedMZEd = resultToSectionUnits.moment(
         principalActions?.mZ ?? 0,
       );
+      const convertedTEd = resultToSectionUnits.moment(tEd ?? 0);
       const isBiaxial = Math.abs(convertedMZEd) > Math.max(1e-9, Math.abs(convertedMEd) * 1e-9);
       const hasWeakAxisShear = hasSignificantAction(convertedVZEd, convertedVEd);
       const model = new ReinforcedConcreteSectionModel({
@@ -163,6 +169,30 @@ function createRcActionVerifier({
               ...check.metadata,
             },
           }));
+      const torsionResult = torsionVerification?.verifySectionActions({
+        tEd: convertedTEd,
+        vEd: convertedVEd,
+        nEd: convertedNEd,
+        mEd: convertedMEd,
+        context: {
+          ...context,
+          section,
+          concreteMaterial,
+          reinforcementMaterial,
+          torsion,
+          shear,
+          units: DEFAULT_SECTION_UNITS,
+        },
+      });
+      const shearForStation =
+        shear && torsionResult?.outputs?.cotTheta != null
+          ? {
+              ...shear,
+              thetaSelection: "fixed",
+              cotTheta: torsionResult.outputs.cotTheta,
+              torsionHandled: true,
+            }
+          : shear;
       const shearResult = shearVerification?.verifySectionActions({
         nEd: convertedNEd,
         vEd: convertedVEd,
@@ -172,18 +202,20 @@ function createRcActionVerifier({
           section,
           concreteMaterial,
           reinforcementMaterial,
-          shear,
+          shear: shearForStation,
           units: DEFAULT_SECTION_UNITS,
         },
       });
       const checks = [
         ...bendingChecks,
         ...(shearResult?.checks ?? []),
+        ...(torsionResult?.checks ?? []),
       ];
       const governing = governingCheck(checks);
       const statuses = [
         result.status,
         ...(shearResult ? [shearResult.status] : []),
+        ...(torsionResult ? [torsionResult.status] : []),
       ];
 
       return {
@@ -198,6 +230,7 @@ function createRcActionVerifier({
         warnings: [
           ...result.warnings,
           ...(shearResult?.warnings ?? []),
+          ...(torsionResult?.warnings ?? []),
           ...(hasWeakAxisShear
             ? [
                 "RC shear verification uses the principal vY component; vZ from section rotation is reported and its effects are neglected in this MVP.",
@@ -207,6 +240,7 @@ function createRcActionVerifier({
         assumptions: [
           ...result.assumptions,
           ...(shearResult?.assumptions ?? []),
+          ...(torsionResult?.assumptions ?? []),
         ],
         metadata: {
           governingCheckId:
@@ -218,6 +252,7 @@ function createRcActionVerifier({
           biaxial: isBiaxial,
           vYEd: convertedVEd,
           vZEd: convertedVZEd,
+          tEd: convertedTEd,
           weakAxisShearVerified: !hasWeakAxisShear,
           weakAxisShearNeglected: hasWeakAxisShear,
           shearResult: shearResult
@@ -228,6 +263,16 @@ function createRcActionVerifier({
                 capacity: shearResult.capacity,
                 outputs: shearResult.outputs,
                 metadata: shearResult.metadata,
+              }
+            : null,
+          torsionResult: torsionResult
+            ? {
+                status: torsionResult.status,
+                utilizationRatio: torsionResult.utilizationRatio,
+                demand: torsionResult.demand,
+                capacity: torsionResult.capacity,
+                outputs: torsionResult.outputs,
+                metadata: torsionResult.metadata,
               }
             : null,
         },
@@ -307,6 +352,7 @@ export class ReinforcedConcreteBeamVerification {
     mesh = { targetFiberCount: 80 },
     solver = { tolerance: 1e-6, maxIterations: 100 },
     shear = null,
+    torsion = null,
     serviceability = {},
     verificationStations = null,
     metadata = {},
@@ -315,6 +361,7 @@ export class ReinforcedConcreteBeamVerification {
     this.mesh = { ...mesh };
     this.solver = { ...solver };
     this.shear = shear;
+    this.torsion = torsion;
     this.serviceability = serviceability;
     this.verificationStations = verificationStations;
     this.metadata = { ...metadata };
@@ -330,6 +377,7 @@ export class ReinforcedConcreteBeamVerification {
     mesh = this.mesh,
     solver = this.solver,
     shear = this.shear,
+    torsion = this.torsion,
     serviceability = this.serviceability,
     verificationStations = this.verificationStations,
   } = {}) {
@@ -365,6 +413,7 @@ export class ReinforcedConcreteBeamVerification {
         mesh,
         solver,
         shear,
+        torsion,
       }),
       limitStates: "ULS",
       verificationStations,
@@ -392,7 +441,7 @@ export class ReinforcedConcreteBeamVerification {
             verificationStations,
           }).verify({ analysisResult });
     const deflectionVerification =
-      serviceability === false
+      serviceability === false || serviceability?.deflection === false
         ? null
         : new CrackedSectionDeflectionAnalysis({
             code: this.code,
@@ -535,10 +584,14 @@ export class ReinforcedConcreteBeamVerification {
         ...actionVerification.warnings,
         ...(shear
           ? [
-              "Full member detailing and second-order effects are not included in this RC beam verification step.",
+              torsion
+                ? "Full member detailing and second-order effects are not included in this RC beam verification step."
+                : "Torsion, full member detailing and second-order effects are not included in this RC beam verification step.",
             ]
           : [
-              "Shear resistance, full member detailing and second-order effects are not included in this RC beam verification step.",
+              torsion
+                ? "Shear resistance, full member detailing and second-order effects are not included in this RC beam verification step."
+                : "Shear resistance, torsion, full member detailing and second-order effects are not included in this RC beam verification step.",
             ]),
       ],
       assumptions: [
