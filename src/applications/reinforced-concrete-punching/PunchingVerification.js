@@ -1,8 +1,14 @@
 import { VerificationResult } from "../../core/results/VerificationResult.js";
 import { RESULT_STATUS } from "../../core/results/resultStatus.js";
 import {
+  calculateEn1992Punching2004WithShearReinforcement,
   calculateEn1992Punching2004WithoutShearReinforcement,
+  calculateEn1992Punching2023WithShearReinforcement,
   calculateEn1992Punching2023WithoutShearReinforcement,
+  calculateEn1992PunchingBeta2004,
+  calculateEn1992PunchingBetaE2023,
+  generateEn1992PunchingPerimeterAtOffset,
+  generateEn1992PunchingPerimeters,
 } from "../../norms/en1992/punching/index.js";
 import { PunchingVerificationRequest } from "./PunchingVerificationRequest.js";
 import { RC_PUNCHING_DESIGN_CODE_IDS } from "./punchingDesignCodes.js";
@@ -17,83 +23,14 @@ const REFERENCE_URLS = Object.freeze({
     "https://www.concretecentre.com/TCC/media/TCCMediaLibrary/Events/Online%20course/CCIP_Worked_Examples_EC2.pdf",
   secondGenerationBackground:
     "https://doi.org/10.33586/hya.2022.3091",
+  externalColumnBackground:
+    "https://doi.org/10.1016/j.engstruct.2021.113326",
+  cornerColumnBackground:
+    "https://doi.org/10.1016/j.istruc.2023.03.049",
 });
 
 function unique(values) {
   return [...new Set(values)];
-}
-
-function supportPerimeter(footprint) {
-  if (footprint.shape === "rectangle") {
-    return 2 * (footprint.sizeX + footprint.sizeY);
-  }
-
-  if (footprint.shape === "circle") {
-    return Math.PI * footprint.diameter;
-  }
-
-  return null;
-}
-
-function supportBoundingRadius(footprint) {
-  if (footprint.shape === "rectangle") {
-    return Math.hypot(footprint.sizeX / 2, footprint.sizeY / 2);
-  }
-
-  if (footprint.shape === "circle") {
-    return footprint.diameter / 2;
-  }
-
-  return Infinity;
-}
-
-function pointInRing(point, ring) {
-  let inside = false;
-
-  for (let index = 0, previous = ring.length - 1; index < ring.length; previous = index++) {
-    const first = ring[index];
-    const second = ring[previous];
-    const crosses = (first.y > point.y) !== (second.y > point.y)
-      && point.x < (second.x - first.x) * (point.y - first.y)
-        / (second.y - first.y) + first.x;
-
-    if (crosses) {
-      inside = !inside;
-    }
-  }
-
-  return inside;
-}
-
-function pointSegmentDistance(point, first, second) {
-  const dx = second.x - first.x;
-  const dy = second.y - first.y;
-  const denominator = dx ** 2 + dy ** 2;
-  const parameter = denominator === 0
-    ? 0
-    : Math.min(1, Math.max(0,
-      ((point.x - first.x) * dx + (point.y - first.y) * dy) / denominator));
-
-  return Math.hypot(
-    point.x - (first.x + parameter * dx),
-    point.y - (first.y + parameter * dy),
-  );
-}
-
-function conservativeBoundaryClearance(connection) {
-  const center = connection.support.footprint.center;
-  const boundary = connection.slab.boundary;
-
-  if (!pointInRing(center, boundary)) {
-    return -Infinity;
-  }
-
-  const centerDistance = boundary.reduce((minimum, point, index) => {
-    const next = boundary[(index + 1) % boundary.length];
-    return Math.min(minimum, pointSegmentDistance(center, point, next));
-  }, Infinity);
-
-  return centerDistance - supportBoundingRadius(connection.support.footprint);
 }
 
 function resolveConcreteStrength(connection) {
@@ -104,20 +41,24 @@ function resolveStateParameter(parameters, singularKey, mapKey, stateId) {
   return parameters[mapKey]?.[stateId] ?? parameters[singularKey];
 }
 
-function recommendedParameters(codeId) {
+function recommendedParameters(codeId, position) {
   if (codeId === RC_PUNCHING_DESIGN_CODE_IDS.EN_1992_1_1_2004) {
     return {
       gammaC: 1.5,
       alphaCc: 1,
       k1: 0.1,
       sigmaCp: 0,
-      beta: 1.15,
+      beta: {
+        interior: 1.15,
+        edge: 1.4,
+        corner: 1.5,
+      }[position],
     };
   }
 
   return {
     gammaV: 1.4,
-    betaE: 1.15,
+    betaE: position === "interior" ? 1.15 : undefined,
   };
 }
 
@@ -133,7 +74,7 @@ function resolveParameters(request) {
 
   const values = {
     ...(profile === RC_PUNCHING_PARAMETER_PROFILES.EN_RECOMMENDED
-      ? recommendedParameters(request.code.id)
+      ? recommendedParameters(request.code.id, request.connection.support.position)
       : {}),
     ...request.code.parameters,
   };
@@ -171,23 +112,25 @@ function resultMetadata(request) {
     requestId: request.id,
     connectionId: request.connection.id,
     code: structuredClone(request.code),
-    method: "closed-form-interior-support-without-punching-reinforcement",
+    method: "closed-form-generated-or-explicit-perimeter-with-optional-vertical-punching-reinforcement",
     unitSystem: { force: "N", length: "mm", stress: "N/mm2" },
     scope: {
       implemented: [
-        "interior column",
+        "interior, edge and corner columns",
         "constant-thickness flat slab",
-        "rectangular or circular support",
-        "no openings, beams, capitals or punching reinforcement",
-        "ULS action states with externally supplied concentration factor",
+        "rectangular supports; circular external supports require explicit perimeters",
+        "generated normative perimeters or explicit segment-based perimeters",
+        "support reaction, enclosed-load reduction or direct perimeter force",
+        "no openings, beams or capitals",
+        "automatic or explicit concentration factor",
+        "vertical studs or links with explicit layout data",
       ],
       excluded: [
-        "edge and corner supports",
         "walls and wall ends",
         "openings affecting a control perimeter",
         "beams, capitals, drops and varying slab thickness",
-        "punching reinforcement",
-        "automatic beta or beta_e derivation from moments",
+        "inclined or bent-up punching reinforcement",
+        "proprietary reinforcement-system enhancements beyond EN system categories",
         "prestress and membrane compression",
       ],
     },
@@ -199,8 +142,8 @@ function validateScope(request, parameters) {
   const { connection } = request;
   const warnings = [];
 
-  if (connection.support.position !== "interior") {
-    warnings.push("support.position must be explicitly set to interior.");
+  if (!["interior", "edge", "corner"].includes(connection.support.position)) {
+    warnings.push("support.position must be explicitly set to interior, edge or corner.");
   }
 
   if (connection.support.kind !== "column") {
@@ -209,6 +152,14 @@ function validateScope(request, parameters) {
 
   if (!["rectangle", "circle"].includes(connection.support.footprint.shape)) {
     warnings.push("Only rectangular and circular support footprints are implemented.");
+  }
+
+  if (
+    connection.support.position !== "interior"
+    && connection.support.footprint.shape === "circle"
+    && request.perimeterDefinition.method === "generated"
+  ) {
+    warnings.push("Generated circular edge and corner support perimeters are not implemented; use an explicit perimeter or a rectangular support.");
   }
 
   if (connection.slab.openings.length > 0) {
@@ -221,10 +172,6 @@ function validateScope(request, parameters) {
 
   if (connection.support.capital != null) {
     warnings.push("Column capitals or slab drops are not implemented.");
-  }
-
-  if (connection.reinforcement.punching?.present === true) {
-    warnings.push("Punching shear reinforcement is not implemented.");
   }
 
   const flexural = connection.reinforcement.flexuralTension;
@@ -267,12 +214,51 @@ function validateScope(request, parameters) {
       ? resolveStateParameter(parameters, "beta", "betaByState", state.id)
       : resolveStateParameter(parameters, "betaE", "betaEByState", state.id);
 
-    if (!Number.isFinite(beta) || beta <= 0) {
+    const automatic = parameters.concentrationMethod === "automatic"
+      || (parameters.concentrationMethod == null && beta == null);
+
+    if (!automatic && (!Number.isFinite(beta) || beta <= 0)) {
       warnings.push(`A finite positive concentration factor is required for state ${state.id}.`);
     }
 
-    if (state.components.fz === 0) {
+    if (
+      state.components.fz === 0
+      && state.punchingDemand?.supportReaction == null
+      && state.punchingDemand?.punchingForce == null
+      && Object.keys(state.punchingDemand?.punchingForceByPerimeter ?? {}).length === 0
+    ) {
       warnings.push(`Action state ${state.id} has zero vertical punching force.`);
+    }
+  }
+
+  const punching = connection.reinforcement.punching;
+
+  if (punching?.present === true) {
+    const commonFields = [
+      [punching.layout.radialSpacing, "layout.radialSpacing"],
+      [punching.layout.tangentialSpacing, "layout.tangentialSpacing"],
+      [punching.layout.firstPerimeterOffset, "layout.firstPerimeterOffset"],
+    ];
+    const editionFields = request.code.id
+      === RC_PUNCHING_DESIGN_CODE_IDS.EN_1992_1_1_2004
+      ? [[punching.layout.areaPerPerimeter, "layout.areaPerPerimeter"]]
+      : [
+          [punching.layout.legArea, "layout.legArea"],
+          [punching.layout.legDiameter, "layout.legDiameter"],
+        ];
+
+    for (const [value, label] of [...commonFields, ...editionFields]) {
+      if (!Number.isFinite(value) || value <= 0) {
+        warnings.push(`reinforcement.punching.${label} is required and must be positive.`);
+      }
+    }
+
+    const fywd = punching.steel.fywd;
+    const canDeriveFywd = Number.isFinite(punching.steel.fywk)
+      && Number.isFinite(punching.steel.gammaS);
+
+    if (!Number.isFinite(fywd) && !canDeriveFywd) {
+      warnings.push("reinforcement.punching.steel requires fywd or both fywk and gammaS.");
     }
   }
 
@@ -284,6 +270,225 @@ function validateScope(request, parameters) {
   }
 
   return warnings;
+}
+
+function perimeterByRole(perimeters, role) {
+  const matches = perimeters.filter((perimeter) => perimeter.role === role);
+
+  if (matches.length !== 1) {
+    throw new Error(`Exactly one ${role} punching control perimeter is required.`);
+  }
+
+  return matches[0];
+}
+
+function resolvePerimeters(request, effectiveDepth) {
+  const perimeters = request.perimeterDefinition.method === "explicit"
+    ? request.perimeterDefinition.perimeters
+    : generateEn1992PunchingPerimeters({
+        connection: request.connection,
+        codeId: request.code.id,
+        edition: request.code.edition,
+        effectiveDepth,
+      });
+  const supportFace = perimeterByRole(perimeters, "support-face");
+  const basicControl = perimeterByRole(perimeters, "basic-control");
+  const expectedOffset = request.code.edition === "2004"
+    ? 2 * effectiveDepth
+    : effectiveDepth / 2;
+  const tolerance = 1e-6 * Math.max(1, expectedOffset);
+
+  if (Math.abs(supportFace.offset) > tolerance) {
+    throw new Error("The support-face perimeter must have zero offset.");
+  }
+
+  if (Math.abs(basicControl.offset - expectedOffset) > tolerance) {
+    throw new Error(`The basic control perimeter offset must equal ${expectedOffset} mm for the selected code.`);
+  }
+
+  return { perimeters, supportFace, basicControl, expectedOffset };
+}
+
+function resolvePunchingForce(state, role) {
+  const demand = state.punchingDemand;
+  const directByRole = demand?.punchingForceByPerimeter?.[role];
+  const direct = directByRole ?? demand?.punchingForce;
+  const supportReaction = demand?.supportReaction ?? Math.abs(state.components.fz);
+  const enclosedLoad = demand?.enclosedLoadByPerimeter?.[role] ?? 0;
+
+  if (direct != null) {
+    return {
+      value: direct,
+      method: directByRole != null ? "direct-perimeter-force" : "direct-punching-force",
+      supportReaction,
+      enclosedLoad: null,
+    };
+  }
+
+  if (enclosedLoad > supportReaction) {
+    throw new Error(`State ${state.id} enclosed load exceeds the support reaction at ${role}.`);
+  }
+
+  return {
+    value: supportReaction - enclosedLoad,
+    method: enclosedLoad > 0 ? "reaction-minus-enclosed-load" : "support-reaction",
+    supportReaction,
+    enclosedLoad,
+  };
+}
+
+function resolveLineOfAction(state) {
+  if (state.punchingDemand?.lineOfAction != null) {
+    return {
+      ...state.punchingDemand.lineOfAction,
+      method: "explicit-line-of-action",
+    };
+  }
+
+  if (state.components.fz === 0) {
+    throw new Error(`State ${state.id} requires punchingDemand.lineOfAction because Fz is zero.`);
+  }
+
+  return {
+    x: state.referencePoint.x - state.components.my / state.components.fz,
+    y: state.referencePoint.y + state.components.mx / state.components.fz,
+    method: "resultant-from-fz-mx-my",
+  };
+}
+
+function angleOnArc(angle, start, sweep) {
+  const twoPi = 2 * Math.PI;
+  const normalize = (value) => ((value % twoPi) + twoPi) % twoPi;
+  const relative = normalize(angle - start);
+
+  return sweep >= 0
+    ? relative <= sweep + 1e-12
+    : normalize(start - angle) <= -sweep + 1e-12;
+}
+
+function perimeterBounds(perimeter) {
+  const points = [];
+
+  for (const component of perimeter.components) {
+    for (const segment of component.segments) {
+      if (segment.type === "line") {
+        points.push(segment.start, segment.end);
+        continue;
+      }
+
+      const angles = [
+        segment.startAngle,
+        segment.startAngle + segment.sweepAngle,
+        0,
+        Math.PI / 2,
+        Math.PI,
+        3 * Math.PI / 2,
+      ];
+
+      for (const angle of angles) {
+        if (angleOnArc(angle, segment.startAngle, segment.sweepAngle)) {
+          points.push({
+            x: segment.center.x + segment.radius * Math.cos(angle),
+            y: segment.center.y + segment.radius * Math.sin(angle),
+          });
+        }
+      }
+    }
+  }
+
+  const xs = points.map((point) => point.x);
+  const ys = points.map((point) => point.y);
+
+  return {
+    xMin: Math.min(...xs),
+    xMax: Math.max(...xs),
+    yMin: Math.min(...ys),
+    yMax: Math.max(...ys),
+    widthX: Math.max(...xs) - Math.min(...xs),
+    widthY: Math.max(...ys) - Math.min(...ys),
+  };
+}
+
+function resolveConcentration({ request, parameters, state, perimeter, effectiveDepth }) {
+  const key = request.code.id === RC_PUNCHING_DESIGN_CODE_IDS.EN_1992_1_1_2004
+    ? ["beta", "betaByState"]
+    : ["betaE", "betaEByState"];
+  const supplied = resolveStateParameter(parameters, key[0], key[1], state.id);
+  const automatic = parameters.concentrationMethod === "automatic"
+    || (parameters.concentrationMethod == null && supplied == null);
+
+  if (!automatic) {
+    return {
+      value: supplied,
+      details: {
+        method: request.code.parameterProfile != null
+          && request.code.parameters[key[0]] == null
+          ? "simplified-profile"
+          : "explicit",
+        lineOfAction: null,
+      },
+    };
+  }
+
+  const lineOfAction = resolveLineOfAction(state);
+
+  if (request.code.id === RC_PUNCHING_DESIGN_CODE_IDS.EN_1992_1_1_2004) {
+    const details = calculateEn1992PunchingBeta2004({
+      position: request.connection.support.position,
+      footprint: request.connection.support.footprint,
+      effectiveDepth,
+      controlPerimeter: perimeter.properties.length,
+      lineOfAction,
+    });
+
+    return { value: details.beta, details: { ...details, lineOfAction } };
+  }
+
+  const bounds = perimeterBounds(perimeter);
+  const details = calculateEn1992PunchingBetaE2023({
+    position: request.connection.support.position,
+    controlPerimeterCentroid: perimeter.properties.lineCentroid,
+    controlPerimeterWidths: { x: bounds.widthX, y: bounds.widthY },
+    lineOfAction,
+  });
+
+  return { value: details.betaE, details: { ...details, lineOfAction } };
+}
+
+function resolveFywd(punching) {
+  return punching.steel.fywd
+    ?? punching.steel.fywk / punching.steel.gammaS;
+}
+
+function resolveOuterPerimeter(request, perimeterSet, effectiveDepth, offset) {
+  if (request.perimeterDefinition.method === "explicit") {
+    const matches = perimeterSet.perimeters.filter((perimeter) =>
+      perimeter.role === "outer-control");
+
+    if (matches.length !== 1) {
+      throw new Error("Explicit reinforced punching verification requires exactly one outer-control perimeter.");
+    }
+
+    const tolerance = 1e-6 * Math.max(1, offset);
+
+    if (Math.abs(matches[0].offset - offset) > tolerance) {
+      throw new Error(`The outer-control perimeter offset must equal ${offset} mm for the supplied reinforcement layout.`);
+    }
+
+    return matches[0];
+  }
+
+  const perimeter = generateEn1992PunchingPerimeterAtOffset({
+    connection: request.connection,
+    codeId: request.code.id,
+    edition: request.code.edition,
+    effectiveDepth,
+    offset,
+    role: "outer-control",
+  });
+  perimeterSet.perimeters.push(perimeter);
+
+  return perimeter;
 }
 
 function createCheck({ id, stateId, location, demand, capacity, reference }) {
@@ -303,12 +508,43 @@ function createCheck({ id, stateId, location, demand, capacity, reference }) {
   };
 }
 
-function verify2004(request, parameters, geometry) {
+function createLimitCheck({ id, stateId, location, value, limit, units, reference }) {
+  return {
+    id,
+    stateId,
+    type: "punching-reinforcement-detailing",
+    location,
+    demand: value,
+    capacity: limit,
+    utilizationRatio: value / limit,
+    ok: value <= limit,
+    units,
+    reference,
+  };
+}
+
+function createMinimumCheck({ id, stateId, location, value, minimum, units, reference }) {
+  return {
+    id,
+    stateId,
+    type: "punching-reinforcement-detailing",
+    location,
+    demand: minimum,
+    capacity: value,
+    utilizationRatio: minimum / value,
+    ok: value >= minimum,
+    units,
+    reference,
+  };
+}
+
+function verify2004(request, parameters) {
   const { connection } = request;
   const flexural = connection.reinforcement.flexuralTension;
   const effectiveDepth = (flexural.x.effectiveDepth + flexural.y.effectiveDepth) / 2;
-  const u0 = geometry.supportPerimeter;
-  const u1 = u0 + 4 * Math.PI * effectiveDepth;
+  const perimeterSet = resolvePerimeters(request, effectiveDepth);
+  const u0 = perimeterSet.supportFace.properties.length;
+  const u1 = perimeterSet.basicControl.properties.length;
   const resistance = calculateEn1992Punching2004WithoutShearReinforcement({
     fck: resolveConcreteStrength(connection),
     effectiveDepth,
@@ -320,11 +556,43 @@ function verify2004(request, parameters, geometry) {
     k1: parameters.k1,
     sigmaCp: parameters.sigmaCp,
   });
+  const punching = connection.reinforcement.punching;
+  const reinforced = punching.present === true;
+  let reinforcementResistance = null;
+  let outerControl = null;
+
+  if (reinforced) {
+    reinforcementResistance = calculateEn1992Punching2004WithShearReinforcement({
+      concreteResistance: resistance.vRdc,
+      effectiveDepth,
+      controlPerimeter: u1,
+      radialSpacing: punching.layout.radialSpacing,
+      areaPerPerimeter: punching.layout.areaPerPerimeter,
+      fywd: resolveFywd(punching),
+    });
+    const outermostOffset = punching.layout.firstPerimeterOffset
+      + (punching.layout.perimeterCount - 1) * punching.layout.radialSpacing;
+    outerControl = resolveOuterPerimeter(
+      request,
+      perimeterSet,
+      effectiveDepth,
+      outermostOffset + 1.5 * effectiveDepth,
+    );
+  }
+
   const stateResults = request.actionStates.map((state) => {
-    const beta = resolveStateParameter(parameters, "beta", "betaByState", state.id);
-    const designForce = Math.abs(state.components.fz);
-    const faceDemand = beta * designForce / (u0 * effectiveDepth);
-    const basicDemand = beta * designForce / (u1 * effectiveDepth);
+    const concentration = resolveConcentration({
+      request,
+      parameters,
+      state,
+      perimeter: perimeterSet.basicControl,
+      effectiveDepth,
+    });
+    const beta = concentration.value;
+    const faceForce = resolvePunchingForce(state, "support-face");
+    const basicForce = resolvePunchingForce(state, "basic-control");
+    const faceDemand = beta * faceForce.value / (u0 * effectiveDepth);
+    const basicDemand = beta * basicForce.value / (u1 * effectiveDepth);
     const checks = [
       createCheck({
         id: `${state.id}:support-face`,
@@ -339,33 +607,130 @@ function verify2004(request, parameters, geometry) {
         stateId: state.id,
         location: "u1-at-2d",
         demand: basicDemand,
-        capacity: resistance.vRdc,
-        reference: "EN 1992-1-1:2004+A1:2014 6.4.4(1), Eq. (6.47)",
+        capacity: reinforced ? reinforcementResistance.vRdCs : resistance.vRdc,
+        reference: reinforced
+          ? "EN 1992-1-1:2004+A1:2014 6.4.5(1), Eq. (6.52)"
+          : "EN 1992-1-1:2004+A1:2014 6.4.4(1), Eq. (6.47)",
       }),
     ];
+
+    let outer = null;
+
+    if (reinforced) {
+      const outerForce = resolvePunchingForce(state, "outer-control");
+      const outerDemand = beta * outerForce.value
+        / (outerControl.properties.length * effectiveDepth);
+      outer = {
+        perimeter: outerControl.properties.length,
+        offset: outerControl.offset,
+        demand: outerDemand,
+        force: outerForce,
+      };
+      checks.push(
+        createCheck({
+          id: `${state.id}:outer-control-perimeter`,
+          stateId: state.id,
+          location: "uout-at-1.5d-from-outermost-reinforcement",
+          demand: outerDemand,
+          capacity: resistance.vRdc,
+          reference: "EN 1992-1-1:2004+A1:2014 6.4.5(4), Eq. (6.54)",
+        }),
+        createMinimumCheck({
+          id: `${state.id}:minimum-reinforcement-perimeters`,
+          stateId: state.id,
+          location: "punching-reinforcement-layout",
+          value: punching.layout.perimeterCount,
+          minimum: 2,
+          units: "count",
+          reference: "EN 1992-1-1:2004+A1:2014 9.4.3",
+        }),
+        createMinimumCheck({
+          id: `${state.id}:first-perimeter-minimum-offset`,
+          stateId: state.id,
+          location: "first-punching-reinforcement-perimeter",
+          value: punching.layout.firstPerimeterOffset,
+          minimum: 0.3 * effectiveDepth,
+          units: "mm",
+          reference: "EN 1992-1-1:2004+A1:2014 9.4.3, Figure 9.10",
+        }),
+        createLimitCheck({
+          id: `${state.id}:first-perimeter-maximum-offset`,
+          stateId: state.id,
+          location: "first-punching-reinforcement-perimeter",
+          value: punching.layout.firstPerimeterOffset,
+          limit: 0.5 * effectiveDepth,
+          units: "mm",
+          reference: "EN 1992-1-1:2004+A1:2014 9.4.3, Figure 9.10",
+        }),
+        createLimitCheck({
+          id: `${state.id}:radial-spacing`,
+          stateId: state.id,
+          location: "punching-reinforcement-layout",
+          value: punching.layout.radialSpacing,
+          limit: 0.75 * effectiveDepth,
+          units: "mm",
+          reference: "EN 1992-1-1:2004+A1:2014 9.4.3, Figure 9.10",
+        }),
+        createLimitCheck({
+          id: `${state.id}:tangential-spacing`,
+          stateId: state.id,
+          location: "punching-reinforcement-layout-within-2d",
+          value: punching.layout.tangentialSpacing,
+          limit: 1.5 * effectiveDepth,
+          units: "mm",
+          reference: "EN 1992-1-1:2004+A1:2014 9.4.3, Figure 9.10",
+        }),
+      );
+    }
 
     return {
       stateId: state.id,
       sourceActions: { ...state.components },
-      designForce,
+      punchingDemand: structuredClone(state.punchingDemand),
+      designForce: basicForce.value,
+      designForces: {
+        supportFace: faceForce,
+        basicControl: basicForce,
+      },
       beta,
+      concentration: concentration.details,
       effectiveDepth,
       perimeters: { u0, u1 },
-      demands: { supportFace: faceDemand, basicControlPerimeter: basicDemand },
+      demands: {
+        supportFace: faceDemand,
+        basicControlPerimeter: basicDemand,
+        ...(outer == null ? {} : { outerControlPerimeter: outer.demand }),
+      },
+      punchingReinforcement: reinforced
+        ? {
+            layout: structuredClone(punching.layout),
+            system: punching.system,
+            fywd: resolveFywd(punching),
+            resistance: reinforcementResistance,
+            outerControl: outer,
+          }
+        : null,
       checks,
     };
   });
 
-  return { resistance, stateResults, requiredOffset: 2 * effectiveDepth };
+  return {
+    resistance,
+    stateResults,
+    requiredOffset: 2 * effectiveDepth,
+    perimeterSet,
+    reinforcementResistance,
+  };
 }
 
-function verify2023(request, parameters, geometry) {
+function verify2023(request, parameters) {
   const { connection } = request;
   const flexural = connection.reinforcement.flexuralTension;
   const shearEffectiveDepth =
     (flexural.x.effectiveDepth + flexural.y.effectiveDepth) / 2;
-  const b0 = geometry.supportPerimeter;
-  const b05 = b0 + Math.PI * shearEffectiveDepth;
+  const perimeterSet = resolvePerimeters(request, shearEffectiveDepth);
+  const b0 = perimeterSet.supportFace.properties.length;
+  const b05 = perimeterSet.basicControl.properties.length;
   const resistance = calculateEn1992Punching2023WithoutShearReinforcement({
     fck: resolveConcreteStrength(connection),
     shearEffectiveDepth,
@@ -376,32 +741,191 @@ function verify2023(request, parameters, geometry) {
     controlPerimeter: b05,
     gammaV: parameters.gammaV,
   });
+  const punching = connection.reinforcement.punching;
+  const reinforced = punching.present === true;
+  let outerControl = null;
+  let outerResistance = null;
+
+  if (reinforced) {
+    const outermostOffset = punching.layout.firstPerimeterOffset
+      + (punching.layout.perimeterCount - 1) * punching.layout.radialSpacing;
+    outerControl = resolveOuterPerimeter(
+      request,
+      perimeterSet,
+      shearEffectiveDepth,
+      outermostOffset + 0.5 * shearEffectiveDepth,
+    );
+    outerResistance = calculateEn1992Punching2023WithoutShearReinforcement({
+      fck: resolveConcreteStrength(connection),
+      shearEffectiveDepth,
+      reinforcementRatioX: flexural.x.ratio,
+      reinforcementRatioY: flexural.y.ratio,
+      lowerAggregateSize: connection.materials.concreteAggregate.lowerSize,
+      supportPerimeter: b0,
+      controlPerimeter: outerControl.properties.length,
+      gammaV: parameters.gammaV,
+    });
+  }
+
   const stateResults = request.actionStates.map((state) => {
-    const betaE = resolveStateParameter(parameters, "betaE", "betaEByState", state.id);
-    const designForce = Math.abs(state.components.fz);
-    const demand = betaE * designForce / (b05 * shearEffectiveDepth);
+    const concentration = resolveConcentration({
+      request,
+      parameters,
+      state,
+      perimeter: perimeterSet.basicControl,
+      effectiveDepth: shearEffectiveDepth,
+    });
+    const betaE = concentration.value;
+    const basicForce = resolvePunchingForce(state, "basic-control");
+    const demand = betaE * basicForce.value / (b05 * shearEffectiveDepth);
+    const reinforcementResistance = reinforced
+      ? calculateEn1992Punching2023WithShearReinforcement({
+          concreteResistance: resistance.tauRdc,
+          actingStress: demand,
+          shearEffectiveDepth,
+          dDg: resistance.dDg,
+          kpb: resistance.kpb,
+          legArea: punching.layout.legArea,
+          radialSpacing: punching.layout.radialSpacing,
+          tangentialSpacing: punching.layout.tangentialSpacing,
+          legDiameter: punching.layout.legDiameter,
+          fywd: resolveFywd(punching),
+          system: punching.system,
+          supportPerimeter: b0,
+        })
+      : null;
     const checks = [createCheck({
       id: `${state.id}:control-perimeter-b0.5`,
       stateId: state.id,
       location: "b0.5-at-dv-over-2",
       demand,
-      capacity: resistance.tauRdc,
-      reference: "EN 1992-1-1:2023 8.4.3",
+      capacity: reinforced ? reinforcementResistance.tauRdCs : resistance.tauRdc,
+      reference: reinforced
+        ? "EN 1992-1-1:2023 8.4.4, Eq. (8.104)"
+        : "EN 1992-1-1:2023 8.4.3",
     })];
+
+    let outer = null;
+
+    if (reinforced) {
+      const outerConcentration = resolveConcentration({
+        request,
+        parameters,
+        state,
+        perimeter: outerControl,
+        effectiveDepth: shearEffectiveDepth,
+      });
+      const outerForce = resolvePunchingForce(state, "outer-control");
+      const outerDemand = outerConcentration.value * outerForce.value
+        / (outerControl.properties.length * shearEffectiveDepth);
+      outer = {
+        perimeter: outerControl.properties.length,
+        offset: outerControl.offset,
+        demand: outerDemand,
+        force: outerForce,
+        betaE: outerConcentration.value,
+        concentration: outerConcentration.details,
+        resistance: outerResistance,
+      };
+      checks.push(
+        createCheck({
+          id: `${state.id}:maximum-punching-resistance`,
+          stateId: state.id,
+          location: "b0.5-maximum-resistance",
+          demand,
+          capacity: reinforcementResistance.tauRdMax,
+          reference: "EN 1992-1-1:2023 8.4.4, Eqs. (8.109)-(8.111)",
+        }),
+        createCheck({
+          id: `${state.id}:outer-control-perimeter`,
+          stateId: state.id,
+          location: "b0.5-out-at-dv-over-2-from-outermost-reinforcement",
+          demand: outerDemand,
+          capacity: outerResistance.tauRdc,
+          reference: "EN 1992-1-1:2023 8.4.4",
+        }),
+        createMinimumCheck({
+          id: `${state.id}:minimum-slab-thickness`,
+          stateId: state.id,
+          location: "vertical-punching-reinforcement",
+          value: connection.slab.thickness,
+          minimum: 200,
+          units: "mm",
+          reference: "EN 1992-1-1:2023 12.5.1(2)",
+        }),
+        createMinimumCheck({
+          id: `${state.id}:minimum-reinforcement-perimeters`,
+          stateId: state.id,
+          location: "punching-reinforcement-layout",
+          value: punching.layout.perimeterCount,
+          minimum: 2,
+          units: "count",
+          reference: "EN 1992-1-1:2023 12.5.1",
+        }),
+        createLimitCheck({
+          id: `${state.id}:first-perimeter-offset`,
+          stateId: state.id,
+          location: "first-punching-reinforcement-perimeter",
+          value: punching.layout.firstPerimeterOffset,
+          limit: 0.5 * shearEffectiveDepth,
+          units: "mm",
+          reference: "EN 1992-1-1:2023 12.5.1",
+        }),
+        createLimitCheck({
+          id: `${state.id}:radial-spacing`,
+          stateId: state.id,
+          location: "punching-reinforcement-layout",
+          value: punching.layout.radialSpacing,
+          limit: 0.75 * shearEffectiveDepth,
+          units: "mm",
+          reference: "EN 1992-1-1:2023 12.5.1",
+        }),
+        createLimitCheck({
+          id: `${state.id}:tangential-spacing`,
+          stateId: state.id,
+          location: "punching-reinforcement-layout-within-2dv",
+          value: punching.layout.tangentialSpacing,
+          limit: 1.5 * shearEffectiveDepth,
+          units: "mm",
+          reference: "EN 1992-1-1:2023 12.5.1",
+        }),
+      );
+    }
 
     return {
       stateId: state.id,
       sourceActions: { ...state.components },
-      designForce,
+      punchingDemand: structuredClone(state.punchingDemand),
+      designForce: basicForce.value,
+      designForces: { basicControl: basicForce },
       betaE,
+      concentration: concentration.details,
       shearEffectiveDepth,
       perimeters: { b0, b05 },
-      demands: { controlPerimeter: demand },
+      demands: {
+        controlPerimeter: demand,
+        ...(outer == null ? {} : { outerControlPerimeter: outer.demand }),
+      },
+      punchingReinforcement: reinforced
+        ? {
+            layout: structuredClone(punching.layout),
+            system: punching.system,
+            fywd: resolveFywd(punching),
+            resistance: reinforcementResistance,
+            outerControl: outer,
+          }
+        : null,
       checks,
     };
   });
 
-  return { resistance, stateResults, requiredOffset: shearEffectiveDepth / 2 };
+  return {
+    resistance,
+    stateResults,
+    requiredOffset: shearEffectiveDepth / 2,
+    perimeterSet,
+    outerResistance,
+  };
 }
 
 function governingCheck(checks) {
@@ -428,24 +952,17 @@ export class PunchingVerification {
       return notSupported(request, scopeWarnings);
     }
 
-    const geometry = {
-      supportPerimeter: supportPerimeter(request.connection.support.footprint),
-      conservativeBoundaryClearance: conservativeBoundaryClearance(request.connection),
-    };
-    const calculated = request.code.id
-      === RC_PUNCHING_DESIGN_CODE_IDS.EN_1992_1_1_2004
-      ? verify2004(request, resolved.values, geometry)
-      : verify2023(request, resolved.values, geometry);
+    let calculated;
 
-    if (geometry.conservativeBoundaryClearance < calculated.requiredOffset) {
-      return notSupported(
-        request,
-        [
-          "The declared interior support does not have sufficient conservatively evaluated boundary clearance for the normative control perimeter.",
-        ],
-        [],
-        { geometry, requiredOffset: calculated.requiredOffset },
-      );
+    try {
+      calculated = request.code.id
+        === RC_PUNCHING_DESIGN_CODE_IDS.EN_1992_1_1_2004
+        ? verify2004(request, resolved.values)
+        : verify2023(request, resolved.values);
+    } catch (error) {
+      return notSupported(request, [
+        error instanceof Error ? error.message : String(error),
+      ]);
     }
 
     const checks = calculated.stateResults.flatMap((state) => state.checks);
@@ -453,36 +970,39 @@ export class PunchingVerification {
     const status = checks.every((check) => check.ok)
       ? RESULT_STATUS.OK
       : RESULT_STATUS.NOT_VERIFIED;
-    const momentWarning = request.actionStates.some((state) =>
-      state.components.mx !== 0 || state.components.my !== 0)
-      ? [
-          "Mx and My are retained in sourceActions but are not converted internally into beta or beta_e; the supplied concentration factor must account for eccentricity.",
-        ]
-      : [];
-
     return new VerificationResult({
       applicationId: APPLICATION_ID,
       status,
       summary: status === RESULT_STATUS.OK
         ? "Punching resistance is verified within the implemented scope."
-        : "Punching resistance is not verified without punching reinforcement.",
+        : "Punching resistance or reinforcement detailing is not verified.",
       utilizationRatio: governing.utilizationRatio,
       demand: governing.demand,
       capacity: governing.capacity,
       checks,
       outputs: {
-        geometry,
+        geometry: {
+          perimeterMethod: request.perimeterDefinition.method,
+          perimeters: calculated.perimeterSet.perimeters.map((perimeter) =>
+            perimeter.toJSON()),
+        },
         requiredOffset: calculated.requiredOffset,
         resistance: calculated.resistance,
         stateResults: calculated.stateResults,
         governingCheck: governing,
       },
-      warnings: momentWarning,
+      warnings: [],
       assumptions: [
         "The mean of the two supplied effective depths is used as d (2004) or dv (2023).",
         "The flexural reinforcement field is uniform over the normative support band represented by the supplied ratios.",
-        "The punching force magnitude is the absolute value of signed local Fz; its original sign is preserved in sourceActions.",
+        "When no explicit punchingDemand is supplied, the punching force magnitude is the absolute value of signed local Fz; its original sign is preserved in sourceActions.",
         "No prestress or membrane compression contribution is considered.",
+        ...(request.code.parameterProfile === RC_PUNCHING_PARAMETER_PROFILES.EN_RECOMMENDED
+          ? ["The caller has confirmed that the structural and eccentricity conditions for any concentration factor supplied by the EN_RECOMMENDED profile are applicable."]
+          : []),
+        ...(request.perimeterDefinition.method === "explicit"
+          ? ["Explicit perimeter topology and its relationship with slab boundaries are supplied by the caller; segment lengths and continuity are recalculated by the engine."]
+          : []),
       ],
       metadata: resultMetadata(request),
     });

@@ -1,6 +1,7 @@
 import {
   PunchingActionState,
   PunchingConnectionModel,
+  PunchingControlPerimeter,
 } from "../../domain/slabs/punching/index.js";
 import { getRcPunchingDesignCodeManifest } from "./punchingDesignCodes.js";
 
@@ -65,12 +66,50 @@ function normalizeActionState(input, connection) {
   return state;
 }
 
+function normalizePerimeterDefinition(input, connection, code) {
+  const source = input ?? { method: "generated" };
+
+  if (!source || typeof source !== "object" || Array.isArray(source)) {
+    throw new Error("Punching perimeterDefinition must be an object.");
+  }
+
+  if (source.method === "generated") {
+    return { method: "generated", perimeters: [] };
+  }
+
+  if (source.method !== "explicit") {
+    throw new Error("Punching perimeterDefinition.method must be generated or explicit.");
+  }
+
+  if (!Array.isArray(source.perimeters) || source.perimeters.length === 0) {
+    throw new Error("Explicit punching perimeterDefinition requires perimeters.");
+  }
+
+  const perimeters = source.perimeters.map((perimeter) =>
+    perimeter instanceof PunchingControlPerimeter
+      ? perimeter
+      : new PunchingControlPerimeter(perimeter));
+
+  for (const perimeter of perimeters) {
+    if (perimeter.codeId !== code.id) {
+      throw new Error(`Explicit perimeter ${perimeter.id} targets ${perimeter.codeId}, expected ${code.id}.`);
+    }
+
+    if (perimeter.position !== connection.support.position) {
+      throw new Error(`Explicit perimeter ${perimeter.id} position does not match the connection support position.`);
+    }
+  }
+
+  return { method: "explicit", perimeters };
+}
+
 export class PunchingVerificationRequest {
   constructor({
     id,
     connection,
     actionStates = [],
     code = null,
+    perimeterDefinition = { method: "generated" },
     metadata = {},
   } = {}) {
     if (!id) {
@@ -85,12 +124,20 @@ export class PunchingVerificationRequest {
       throw new Error("PunchingVerificationRequest requires at least one action state.");
     }
 
+    const normalizedActionStates = actionStates.map((state) =>
+      normalizeActionState(state, normalizedConnection));
+    const normalizedCode = normalizeCodeSelection(code);
+
     this.id = id;
     this.schemaVersion = PUNCHING_VERIFICATION_REQUEST_SCHEMA_VERSION;
     this.connection = normalizedConnection;
-    this.actionStates = actionStates.map((state) =>
-      normalizeActionState(state, normalizedConnection));
-    this.code = normalizeCodeSelection(code);
+    this.actionStates = normalizedActionStates;
+    this.code = normalizedCode;
+    this.perimeterDefinition = normalizePerimeterDefinition(
+      perimeterDefinition,
+      normalizedConnection,
+      normalizedCode,
+    );
     this.metadata = { ...metadata };
   }
 
@@ -101,6 +148,11 @@ export class PunchingVerificationRequest {
       connection: this.connection.toJSON(),
       actionStates: this.actionStates.map((state) => state.toJSON()),
       code: structuredClone(this.code),
+      perimeterDefinition: {
+        method: this.perimeterDefinition.method,
+        perimeters: this.perimeterDefinition.perimeters.map((perimeter) =>
+          perimeter.toJSON()),
+      },
       metadata: { ...this.metadata },
     };
   }

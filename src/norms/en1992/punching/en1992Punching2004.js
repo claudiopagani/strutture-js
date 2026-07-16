@@ -85,3 +85,41 @@ export function calculateEn1992Punching2004WithoutShearReinforcement({
     },
   };
 }
+
+/** EN 1992-1-1:2004+A1:2014, 6.4.5, Eq. (6.52), vertical reinforcement. */
+export function calculateEn1992Punching2004WithShearReinforcement({
+  concreteResistance,
+  effectiveDepth,
+  controlPerimeter,
+  radialSpacing,
+  areaPerPerimeter,
+  fywd,
+}) {
+  const vRdc = positive(concreteResistance, "concreteResistance");
+  const d = positive(effectiveDepth, "effectiveDepth");
+  const u1 = positive(controlPerimeter, "controlPerimeter");
+  const sr = positive(radialSpacing, "radialSpacing");
+  const asw = positive(areaPerPerimeter, "areaPerPerimeter");
+  const resolvedFywd = positive(fywd, "fywd");
+  const fywdEffective = Math.min(250 + 0.25 * d, resolvedFywd);
+  const concreteContribution = 0.75 * vRdc;
+  const reinforcementContribution = 1.5 * d / sr * asw * fywdEffective / (u1 * d);
+
+  return {
+    vRdCs: concreteContribution + reinforcementContribution,
+    concreteContribution,
+    reinforcementContribution,
+    fywd: resolvedFywd,
+    fywdEffective,
+    effectiveDepth: d,
+    controlPerimeter: u1,
+    radialSpacing: sr,
+    areaPerPerimeter: asw,
+    units: { length: "mm", area: "mm2", stress: "N/mm2" },
+    reference: {
+      standard: "EN 1992-1-1:2004+A1:2014",
+      clause: "6.4.5(1)",
+      equation: "6.52",
+    },
+  };
+}

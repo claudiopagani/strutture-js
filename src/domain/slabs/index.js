@@ -12,5 +12,7 @@ export {
   PUNCHING_CONNECTION_SCHEMA_VERSION,
   PunchingActionState,
   PunchingConnectionModel,
+  PUNCHING_CONTROL_PERIMETER_SCHEMA_VERSION,
+  PunchingControlPerimeter,
   resolvePunchingTransferFromJointActions,
 } from "./punching/index.js";

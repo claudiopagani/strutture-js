@@ -41,6 +41,81 @@ function normalizeSource(source) {
   return normalized;
 }
 
+function optionalNonNegativeForce(value, resolver, label) {
+  if (value == null) {
+    return null;
+  }
+
+  const normalized = resolver.force(finite(Number(value), label));
+
+  if (normalized < 0) {
+    throw new Error(`${label} must be non-negative.`);
+  }
+
+  return normalized;
+}
+
+function normalizePerimeterForceMap(input, resolver, label) {
+  if (input == null) {
+    return {};
+  }
+
+  if (typeof input !== "object" || Array.isArray(input)) {
+    throw new Error(`${label} must be an object.`);
+  }
+
+  return Object.fromEntries(Object.entries(input).map(([role, value]) => [
+    role,
+    optionalNonNegativeForce(value, resolver, `${label}.${role}`),
+  ]));
+}
+
+function normalizePunchingDemand(input, resolver) {
+  if (input == null) {
+    return null;
+  }
+
+  if (typeof input !== "object" || Array.isArray(input)) {
+    throw new Error("punchingDemand must be an object or null.");
+  }
+
+  return {
+    supportReaction: optionalNonNegativeForce(
+      input.supportReaction,
+      resolver,
+      "punchingDemand.supportReaction",
+    ),
+    punchingForce: optionalNonNegativeForce(
+      input.punchingForce,
+      resolver,
+      "punchingDemand.punchingForce",
+    ),
+    punchingForceByPerimeter: normalizePerimeterForceMap(
+      input.punchingForceByPerimeter,
+      resolver,
+      "punchingDemand.punchingForceByPerimeter",
+    ),
+    enclosedLoadByPerimeter: normalizePerimeterForceMap(
+      input.enclosedLoadByPerimeter,
+      resolver,
+      "punchingDemand.enclosedLoadByPerimeter",
+    ),
+    lineOfAction: input.lineOfAction == null
+      ? null
+      : {
+          x: resolver.length(finite(
+            Number(input.lineOfAction.x),
+            "punchingDemand.lineOfAction.x",
+          )),
+          y: resolver.length(finite(
+            Number(input.lineOfAction.y),
+            "punchingDemand.lineOfAction.y",
+          )),
+        },
+    source: structuredClone(input.source ?? { method: "explicit" }),
+  };
+}
+
 export const PUNCHING_ACTION_SCHEMA_VERSION = "rc-punching-action-state/v0";
 
 export class PunchingActionState {
@@ -52,6 +127,7 @@ export class PunchingActionState {
     units = null,
     referencePoint = {},
     components = {},
+    punchingDemand = null,
     source = { method: "manual" },
     metadata = {},
   } = {}) {
@@ -82,6 +158,7 @@ export class PunchingActionState {
       mx: resolver.moment(finite(Number(components.mx ?? 0), "components.mx")),
       my: resolver.moment(finite(Number(components.my ?? 0), "components.my")),
     };
+    this.punchingDemand = normalizePunchingDemand(punchingDemand, resolver);
     this.source = normalizeSource(source);
     this.metadata = {
       ...metadata,
@@ -101,6 +178,7 @@ export class PunchingActionState {
       units: { ...this.units },
       referencePoint: { ...this.referencePoint },
       components: { ...this.components },
+      punchingDemand: structuredClone(this.punchingDemand),
       source: structuredClone(this.source),
       metadata: { ...this.metadata },
     };

@@ -263,12 +263,103 @@ function normalizeFlexuralTension(input, resolver) {
   };
 }
 
+function optionalPositive(value, converter, label) {
+  if (value == null) {
+    return null;
+  }
+
+  return positive(converter(Number(value)), label);
+}
+
+function normalizePunchingReinforcement(input, resolver) {
+  if (input == null || input.present !== true) {
+    return { present: false };
+  }
+
+  const system = input.system;
+  const orientation = input.orientation ?? "vertical";
+
+  if (!["studs", "links"].includes(system)) {
+    throw new Error("reinforcement.punching.system must be studs or links.");
+  }
+
+  if (orientation !== "vertical") {
+    throw new Error("Only vertical punching reinforcement is represented by this contract version.");
+  }
+
+  const steel = input.steel ?? {};
+  const layout = input.layout ?? {};
+  const perimeterCount = Number(layout.perimeterCount);
+
+  if (!Number.isInteger(perimeterCount) || perimeterCount <= 0) {
+    throw new Error("reinforcement.punching.layout.perimeterCount must be a positive integer.");
+  }
+
+  return {
+    present: true,
+    system,
+    orientation,
+    steel: {
+      fywk: optionalPositive(
+        steel.fywk,
+        resolver.stress,
+        "reinforcement.punching.steel.fywk",
+      ),
+      gammaS: optionalPositive(
+        steel.gammaS,
+        (value) => value,
+        "reinforcement.punching.steel.gammaS",
+      ),
+      fywd: optionalPositive(
+        steel.fywd,
+        resolver.stress,
+        "reinforcement.punching.steel.fywd",
+      ),
+    },
+    layout: {
+      legDiameter: optionalPositive(
+        layout.legDiameter,
+        resolver.length,
+        "reinforcement.punching.layout.legDiameter",
+      ),
+      legArea: optionalPositive(
+        layout.legArea,
+        resolver.area,
+        "reinforcement.punching.layout.legArea",
+      ),
+      areaPerPerimeter: optionalPositive(
+        layout.areaPerPerimeter,
+        resolver.area,
+        "reinforcement.punching.layout.areaPerPerimeter",
+      ),
+      radialSpacing: optionalPositive(
+        layout.radialSpacing,
+        resolver.length,
+        "reinforcement.punching.layout.radialSpacing",
+      ),
+      tangentialSpacing: optionalPositive(
+        layout.tangentialSpacing,
+        resolver.length,
+        "reinforcement.punching.layout.tangentialSpacing",
+      ),
+      firstPerimeterOffset: optionalPositive(
+        layout.firstPerimeterOffset,
+        resolver.length,
+        "reinforcement.punching.layout.firstPerimeterOffset",
+      ),
+      perimeterCount,
+    },
+    source: structuredClone(input.source ?? { method: "explicit-layout" }),
+  };
+}
+
 function normalizeReinforcement(input, resolver) {
   const source = input ?? {};
 
   return {
     ...structuredClone(source),
     flexuralTension: normalizeFlexuralTension(source.flexuralTension, resolver),
+    punching: normalizePunchingReinforcement(source.punching, resolver),
   };
 }
 

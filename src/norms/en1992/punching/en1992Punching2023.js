@@ -81,3 +81,78 @@ export function calculateEn1992Punching2023WithoutShearReinforcement({
     },
   };
 }
+
+/**
+ * EN 1992-1-1:2023, 8.4.4, vertical studs or links.
+ * Formula background: Muttoni et al. (2023), equations (17)-(20).
+ */
+export function calculateEn1992Punching2023WithShearReinforcement({
+  concreteResistance,
+  actingStress,
+  shearEffectiveDepth,
+  dDg,
+  kpb,
+  legArea,
+  radialSpacing,
+  tangentialSpacing,
+  legDiameter,
+  fywd,
+  system,
+  supportPerimeter,
+}) {
+  const tauRdc = positive(concreteResistance, "concreteResistance");
+  const tauEd = positive(actingStress, "actingStress");
+  const dv = positive(shearEffectiveDepth, "shearEffectiveDepth");
+  const resolvedDdg = positive(dDg, "dDg");
+  const resolvedKpb = positive(kpb, "kpb");
+  const asw = positive(legArea, "legArea");
+  const sr = positive(radialSpacing, "radialSpacing");
+  const st = positive(tangentialSpacing, "tangentialSpacing");
+  const diameter = positive(legDiameter, "legDiameter");
+  const resolvedFywd = positive(fywd, "fywd");
+  const b0 = positive(supportPerimeter, "supportPerimeter");
+
+  if (!["studs", "links"].includes(system)) {
+    throw new Error("system must be studs or links.");
+  }
+
+  const etaC = Math.min(tauRdc / tauEd, 1);
+  const rhoW = asw / (sr * st);
+  const rawEtaS = Math.sqrt(15 * resolvedDdg / dv)
+    * (1 / (etaC * resolvedKpb)) ** 1.5
+    + dv / (150 * diameter);
+  const etaS = Math.min(rawEtaS, 0.8);
+  const concreteContribution = etaC * tauRdc;
+  const reinforcementContribution = etaS * rhoW * resolvedFywd;
+  const minimumResistance = rhoW * resolvedFywd;
+  const tauRdCs = Math.max(
+    concreteContribution + reinforcementContribution,
+    minimumResistance,
+  );
+  const rawEtaSys = (system === "studs" ? 0.7 : 0.5)
+    + 0.63 * (b0 / dv) ** 0.25;
+  const etaSys = Math.max(1, rawEtaSys);
+
+  return {
+    tauRdCs,
+    tauRdMax: etaSys * tauRdc,
+    concreteContribution,
+    reinforcementContribution,
+    minimumResistance,
+    etaC,
+    rawEtaS,
+    etaS,
+    etaSLimit: 0.8,
+    rhoW,
+    rawEtaSys,
+    etaSys,
+    system,
+    fywd: resolvedFywd,
+    units: { length: "mm", area: "mm2", stress: "N/mm2" },
+    reference: {
+      standard: "EN 1992-1-1:2023",
+      clause: "8.4.4",
+      equations: ["8.104", "8.105", "8.106", "8.109", "8.110", "8.111"],
+    },
+  };
+}

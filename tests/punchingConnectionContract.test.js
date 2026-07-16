@@ -4,9 +4,11 @@ import assert from "node:assert/strict";
 import {
   PUNCHING_ACTION_SCHEMA_VERSION,
   PUNCHING_CONNECTION_SCHEMA_VERSION,
+  PUNCHING_CONTROL_PERIMETER_SCHEMA_VERSION,
   PUNCHING_VERIFICATION_REQUEST_SCHEMA_VERSION,
   PunchingActionState,
   PunchingConnectionModel,
+  PunchingControlPerimeter,
   PunchingVerificationRequest,
   RC_PUNCHING_DESIGN_CODE_IDS,
   RC_PUNCHING_DESIGN_CODE_ID_VALUES,
@@ -124,6 +126,37 @@ test("punching connection normalizes verification material and reinforcement dat
   assert.equal(connection.reinforcement.flexuralTension.x.ratio, 0.008);
 });
 
+test("punching reinforcement layout is normalized into the shared serializable contract", () => {
+  const connection = new PunchingConnectionModel(connectionInput({
+    materials: { concrete: { fck: 30_000 } },
+    reinforcement: {
+      punching: {
+        present: true,
+        system: "studs",
+        steel: { fywk: 500_000, gammaS: 1.15 },
+        layout: {
+          legDiameter: 0.012,
+          legArea: 0.000113,
+          areaPerPerimeter: 0.0012,
+          radialSpacing: 0.15,
+          tangentialSpacing: 0.2,
+          firstPerimeterOffset: 0.1,
+          perimeterCount: 4,
+        },
+      },
+    },
+  }));
+  const punching = connection.reinforcement.punching;
+
+  assert.equal(punching.system, "studs");
+  assert.equal(punching.steel.fywk, 500);
+  assert.equal(punching.layout.legDiameter, 12);
+  assert.equal(punching.layout.legArea, 113);
+  assert.equal(punching.layout.areaPerPerimeter, 1200);
+  assert.equal(punching.layout.radialSpacing, 150);
+  assert.doesNotThrow(() => JSON.stringify(connection.toJSON()));
+});
+
 test("manual punching action state preserves signs and converts units", () => {
   const state = new PunchingActionState({
     id: "ULS-01",
@@ -146,6 +179,88 @@ test("manual punching action state preserves signs and converts units", () => {
   });
   assert.equal(state.source.method, "manual");
   assert.doesNotThrow(() => JSON.stringify(state.toJSON()));
+});
+
+test("punching demand normalizes reaction, direct force and enclosed loads", () => {
+  const state = new PunchingActionState({
+    id: "ULS-demand",
+    connectionId: "C1-L2",
+    units,
+    punchingDemand: {
+      supportReaction: 900,
+      punchingForceByPerimeter: { "support-face": 880 },
+      enclosedLoadByPerimeter: { "basic-control": 35 },
+      source: { method: "tributary-load-balance" },
+    },
+  });
+
+  assert.equal(state.punchingDemand.supportReaction, 900_000);
+  assert.equal(
+    state.punchingDemand.punchingForceByPerimeter["support-face"],
+    880_000,
+  );
+  assert.equal(
+    state.punchingDemand.enclosedLoadByPerimeter["basic-control"],
+    35_000,
+  );
+  assert.equal(state.punchingDemand.source.method, "tributary-load-balance");
+  assert.throws(
+    () => new PunchingActionState({
+      id: "ULS-negative-demand",
+      connectionId: "C1-L2",
+      units,
+      punchingDemand: { supportReaction: -1 },
+    }),
+    /must be non-negative/,
+  );
+});
+
+test("segment-based punching perimeter calculates length and line centroid", () => {
+  const perimeter = new PunchingControlPerimeter({
+    id: "u-open",
+    codeId: RC_PUNCHING_DESIGN_CODE_IDS.EN_1992_1_1_2004,
+    role: "basic-control",
+    position: "edge",
+    offset: 0.5,
+    units,
+    components: [{
+      closed: false,
+      segments: [
+        { type: "line", start: { x: 0, y: 0 }, end: { x: 1, y: 0 } },
+        {
+          type: "arc",
+          center: { x: 1, y: 0.5 },
+          radius: 0.5,
+          startAngle: -Math.PI / 2,
+          sweepAngle: Math.PI,
+        },
+        { type: "line", start: { x: 1, y: 1 }, end: { x: 0, y: 1 } },
+      ],
+    }],
+  });
+
+  assert.equal(perimeter.schemaVersion, PUNCHING_CONTROL_PERIMETER_SCHEMA_VERSION);
+  assert.ok(Math.abs(perimeter.properties.length - (2000 + 500 * Math.PI)) < 1e-9);
+  assert.ok(Math.abs(perimeter.properties.lineCentroid.y - 500) < 1e-9);
+  assert.equal(perimeter.properties.segmentCount, 3);
+  assert.doesNotThrow(() => JSON.stringify(perimeter.toJSON()));
+
+  assert.throws(
+    () => new PunchingControlPerimeter({
+      id: "discontinuous",
+      codeId: RC_PUNCHING_DESIGN_CODE_IDS.EN_1992_1_1_2004,
+      role: "basic-control",
+      position: "edge",
+      units,
+      components: [{
+        segments: [
+          { type: "line", start: { x: 0, y: 0 }, end: { x: 1, y: 0 } },
+          { type: "line", start: { x: 2, y: 0 }, end: { x: 3, y: 0 } },
+        ],
+      }],
+    }),
+    /continuous curve/,
+  );
 });
 
 test("joint equilibrium reduces eccentric vertical actions to a common point", () => {

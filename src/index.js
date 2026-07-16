@@ -96,6 +96,8 @@ export {
   PUNCHING_CONNECTION_SCHEMA_VERSION,
   PunchingActionState,
   PunchingConnectionModel,
+  PUNCHING_CONTROL_PERIMETER_SCHEMA_VERSION,
+  PunchingControlPerimeter,
   SlabLoad,
   SurfaceLoad,
   VariableLoad,

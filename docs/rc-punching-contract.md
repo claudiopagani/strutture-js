@@ -16,20 +16,29 @@ Lo schema `v0` implementa:
 
 Il primo kernel normativo implementa inoltre, tramite `verifyPunching`:
 
-- pilastro interno rettangolare o circolare;
+- pilastri interni, di bordo e d'angolo;
+- pilastri rettangolari; i pilastri circolari esterni richiedono perimetri
+  espliciti;
 - soletta piana a spessore costante;
-- assenza di aperture, travi, capitelli e armatura a punzonamento;
-- stati ULS con fattore di concentrazione `beta` o `betaE` assegnato;
+- assenza di aperture, travi e capitelli;
+- perimetri normativi generati dal motore oppure perimetri espliciti a segmenti;
+- domanda ottenuta dalla reazione, dalla reazione meno il carico racchiuso o
+  da una forza di punzonamento gia determinata;
+- stati ULS con fattore di concentrazione `beta` o `betaE` assegnato,
+  semplificato da profilo o calcolato dalla risultante `Fz`, `Mx`, `My`;
 - EN 1992-1-1:2004+A1:2014, inclusi il controllo al supporto e a `u1`;
-- EN 1992-1-1:2023, resistenza senza armatura a punzonamento a `b0.5`.
+- EN 1992-1-1:2023, controllo a `b0.5`;
+- armatura verticale a punzonamento costituita da pioli o staffe, inclusi
+  resistenza nella zona armata, resistenza massima, dettagli geometrici e
+  perimetro esterno.
 
 Non implementa ancora:
 
-- classificazione geometrica automatica centrale, di bordo o d'angolo;
-- pilastri di bordo e d'angolo, pareti e teste di parete;
+- classificazione automatica della posizione del supporto;
+- pareti e teste di parete;
 - aperture, travi, capitelli, drop panel e spessore variabile;
-- calcolo dei coefficienti di eccentricita o distribuzioni tangenziali;
-- progetto o verifica dell'armatura a punzonamento;
+- distribuzioni tangenziali ricavate da tensioni FEM nodali;
+- armatura inclinata, barre piegate e coefficienti proprietari di sistema;
 - estrazione automatica di azioni da un modello FEM.
 
 Queste capacita non devono essere presentate da un consumer come disponibili.
@@ -117,15 +126,54 @@ Le forme iniziali dell'impronta sono `circle`, `rectangle` e `polygon`.
 determinano da soli la domanda di punzonamento.
 
 `support.position` e obbligatorio per il kernel corrente e deve valere
-`interior`. La classificazione e deliberatamente assegnata, non dedotta dalla
-mesh. Il verificatore esegue anche un controllo conservativo che il perimetro
-normativo resti entro il bordo della soletta.
+`interior`, `edge` o `corner`. La classificazione e deliberatamente assegnata,
+non dedotta dalla mesh.
+
+Per i perimetri generati di bordo e d'angolo vale una convenzione geometrica
+canonica. Il bordo libero coincide con la faccia `xMin` del supporto e della
+soletta; nel nodo d'angolo anche le facce `yMin` coincidono. Gli assi `+X` e
+`+Y` puntano quindi verso l'interno della soletta. Il boundary deve essere un
+rettangolo allineato alla terna locale e l'impronta un rettangolo senza
+rotazione. Un consumer che parte da coordinate globali puo scegliere la terna
+locale e trasformare geometria e azioni prima di costruire la connessione.
+
+Il generatore controlla inoltre lo spazio disponibile fino al bordo. Nei nodi
+esterni, i casi allungati oltre i limiti geometrici gestiti dal kernel, le
+rotazioni e i contorni generali restituiscono `not-supported`: possono essere
+rappresentati con un perimetro esplicito, ma non vengono approssimati dal
+generatore.
 
 `reinforcement.flexuralTension` contiene i rapporti geometrici efficaci e le
 profondita efficaci nelle due direzioni locali. I rapporti devono descrivere
 l'armatura tesa aderente nella fascia richiesta dalla norma. In questa prima
 versione il campo e assunto uniforme; un futuro preprocessore potra ricavare
 gli stessi valori da barre e fasce esplicite.
+
+L'armatura a punzonamento opzionale usa un layout esplicito e indipendente da
+cataloghi di prodotto:
+
+```js
+punching: {
+  present: true,
+  system: "studs", // oppure "links"
+  orientation: "vertical",
+  steel: { fywk: 500e3, gammaS: 1.15 },
+  layout: {
+    legDiameter: 0.012,
+    legArea: 0.000113,
+    areaPerPerimeter: 0.0015,
+    radialSpacing: 0.15,
+    tangentialSpacing: 0.20,
+    firstPerimeterOffset: 0.10,
+    perimeterCount: 6,
+  },
+}
+```
+
+`areaPerPerimeter` e l'area totale `Asw` di una corona richiesta dalla
+formula 2004. `legArea` e `tangentialSpacing` definiscono invece `rhoW` nel
+metodo 2023. Il motore non converte implicitamente un modello nell'altro.
+`fywd` puo essere assegnato direttamente oppure ricavato da `fywk/gammaS`.
 
 Per il metodo 2023 `materials.concreteAggregate.lowerSize` e la dimensione
 inferiore `D_lower` dell'aggregato. Le lunghezze e le tensioni sono espresse
@@ -150,6 +198,14 @@ const state = new PunchingActionState({
     mx: 120,
     my: -40,
   },
+  punchingDemand: {
+    supportReaction: 850,
+    lineOfAction: { x: 0.047, y: 0.141 },
+    enclosedLoadByPerimeter: {
+      "basic-control": 35,
+    },
+    source: { method: "tributary-load-balance" },
+  },
   source: { method: "manual" },
 });
 ```
@@ -157,6 +213,58 @@ const state = new PunchingActionState({
 `fz`, `mx` e `my` sono firmati secondo la terna destrorsa. Il futuro modulo
 normativo stabilira come trasformare questi componenti nella domanda di
 progetto e non deve perdere i segni originali.
+
+`punchingDemand` e facoltativo e distingue esplicitamente grandezze che non
+sono intercambiabili:
+
+- `supportReaction`: modulo della reazione del supporto;
+- `enclosedLoadByPerimeter`: carico verticale racchiuso, indicizzato con
+  `support-face` o `basic-control`, che viene sottratto alla reazione;
+- `punchingForce`: forza di punzonamento gia risolta e comune ai perimetri;
+- `punchingForceByPerimeter`: forza gia risolta per ciascun ruolo;
+- `lineOfAction`: punto nel piano locale attraversato dalla risultante
+  verticale; se omesso e `Fz` e diverso da zero, il motore usa
+  `x = xRef - My/Fz` e `y = yRef + Mx/Fz`.
+
+La precedenza e: forza assegnata al ruolo, forza assegnata globale, reazione
+meno carico racchiuso. In assenza di `punchingDemand`, il kernel usa
+`abs(components.fz)` e conserva comunque il segno originario in
+`sourceActions`. Tutte le forze sono normalizzate nelle unita dello stato.
+
+## Perimetri di controllo
+
+La richiesta accetta due modalita:
+
+```js
+perimeterDefinition: { method: "generated" }
+```
+
+oppure:
+
+```js
+perimeterDefinition: {
+  method: "explicit",
+  perimeters: [supportFacePerimeter, basicControlPerimeter],
+}
+```
+
+Ogni `PunchingControlPerimeter` dichiara `codeId`, `position`, `role`,
+`offset`, unita e uno o piu componenti. Un componente e una curva aperta o
+chiusa composta da segmenti consecutivi `line` e `arc`. Il motore ricalcola
+continuita, lunghezza totale e baricentro lineare; non accetta una lunghezza
+scalare non accompagnata dalla geometria. I due ruoli base richiesti dal
+kernel sono `support-face` e `basic-control`, con offset rispettivamente nullo e pari
+a `2d` per il 2004 oppure `dv/2` per il 2023.
+Con armatura il generatore aggiunge `outer-control`: a `1.5d` dall'ultima
+corona nel metodo 2004 e a `dv/2` dall'ultima corona nel metodo 2023. In
+modalita esplicita il consumer deve fornire anche questo perimetro con l'offset
+coerente col layout.
+Gli angoli `startAngle` e `sweepAngle` degli archi sono espressi in radianti.
+
+Il perimetro esplicito e il punto di estensione per un futuro motore geometrico
+capace di trattare aperture, contorni non rettangolari e intersezioni. Non
+rende tuttavia disponibili tali verifiche nel kernel attuale: aperture,
+travi e capitelli restano esclusi.
 
 ## Equilibrio del nodo
 
@@ -201,6 +309,12 @@ Il contorno di estrazione FEM non coincide necessariamente con un perimetro di
 controllo normativo. La trasformazione fra domanda globale e verifica resta
 responsabilita del successivo workflow normativo.
 
+In pratica il futuro workflow potra fornire nello stesso DTO una
+`punchingForceByPerimeter` ottenuta dall'integrazione FEM e una
+`perimeterDefinition` esplicita ottenuta dal motore geometrico. L'app singola
+puo invece usare la geometria generata e una reazione assegnata: il kernel di
+verifica rimane lo stesso e non dipende dalla mesh.
+
 ## Selezione della norma
 
 `PunchingVerificationRequest` associa una connessione e uno o piu stati di
@@ -236,11 +350,24 @@ un'Appendice Nazionale o i valori raccomandati. Il profilo
 assegnano i coefficienti in `parameters`. Se mancano parametri necessari, il
 verificatore restituisce `not-supported` senza eseguire controlli normativi.
 
+Nel metodo 2004 il profilo usa i fattori semplificati `beta` associati alla
+posizione `interior`, `edge` e `corner`. Nel metodo 2023 il profilo assegna il
+valore interno, mentre per bordo e angolo `betaE` deve essere fornito
+esplicitamente oppure calcolato automaticamente.
+
 Senza profilo, per la prima generazione si assegnano `gammaC`, `alphaCc`,
-`cRdc`, `k1`, `sigmaCp: 0` e `beta` (oppure `betaByState`); per la seconda
-si assegnano `gammaV` e `betaE` (oppure `betaEByState`). Il motore conserva
-`Mx` e `My`, ma non ricava ancora il fattore di concentrazione dai momenti:
-il risultato segnala esplicitamente questa responsabilita dell'input.
+`cRdc`, `k1` e `sigmaCp: 0`; per la seconda si assegna `gammaV`. Se `beta` o
+`betaE` non sono presenti, il motore usa automaticamente la linea d'azione.
+`concentrationMethod: "automatic"` forza tale scelta anche in presenza di un
+profilo; `betaByState` e `betaEByState` restano disponibili per risultati FEM
+o valutazioni esterne gia consolidate.
+
+Il calcolo automatico 2004 copre pilastri interni rettangolari e circolari e,
+nella geometria canonica, eccentricita dirette verso l'interno per bordo e
+angolo. Per eccentricita dirette verso un bordo libero il metodo 2004 richiede
+un `beta` esplicito. Il metodo 2023 applica la definizione di `betaE` della
+Tabella 8.3 a pilastri interni, di bordo e d'angolo, usando baricentro e
+ingombri del perimetro attivo.
 
 Uso del verificatore:
 
@@ -260,10 +387,13 @@ Eurocode 2* della European Concrete Platform. Le formule 2023 e il relativo
 caso numerico sono controllati su Muttoni et al., *A Mechanical Approach for
 the Punching Shear Provisions in the Second Generation of Eurocode 2*,
 Hormigon y Acero 74 (2023), DOI `10.33586/hya.2022.3091`.
+Le regressioni aggiuntive coprono le equazioni di `beta`, `betaE`, la
+resistenza dell'armatura verticale, il limite massimo e il perimetro esterno.
 
-I benchmark automatici sono descritti in
-`validation/reinforced-concrete-punching-sources.md`. La validazione copre
-solo il campo dichiarato e non si estende alle configurazioni escluse.
+I benchmark automatici e le verifiche geometriche per bordo e angolo sono
+descritti in `validation/reinforced-concrete-punching-sources.md`. La
+validazione copre solo il campo dichiarato e non si estende alle configurazioni
+escluse.
 
 Per confrontare le due generazioni si costruiscono due richieste con la stessa
 connessione e gli stessi stati di azione, cambiando soltanto `code`. I
@@ -277,6 +407,7 @@ Gli identificativi iniziali sono:
 ```text
 rc-punching-connection/v0
 rc-punching-action-state/v0
+rc-punching-control-perimeter/v0
 rc-punching-verification-request/v0
 ```
 

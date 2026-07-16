@@ -22,6 +22,7 @@ test("package root export exposes the main public API", () => {
   assert.equal(typeof PublicApi.runScaRcDeflectionAnalysis, "function");
   assert.equal(typeof PublicApi.ReinforcedConcretePlateApplication, "function");
   assert.equal(typeof PublicApi.PunchingConnectionModel, "function");
+  assert.equal(typeof PublicApi.PunchingControlPerimeter, "function");
   assert.equal(typeof PublicApi.PunchingActionState, "function");
   assert.equal(typeof PublicApi.resolvePunchingTransferFromJointActions, "function");
   assert.equal(typeof PublicApi.PunchingVerificationRequest, "function");
