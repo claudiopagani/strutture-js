@@ -137,6 +137,7 @@ Stato sintetico dei moduli applicativi:
 | `masonry-ring-beams` | Scaffold | Modello e placeholder per cerchiature in muratura. |
 | `reinforced-concrete-sections` | Implementato | Analisi SLU/SLE di sezioni in c.a. a fibre. |
 | `reinforced-concrete-plates` | Implementato | Verifica locale SLU/SLE di piastre piane in c.a. mediante strisce equivalenti Wood-Armer. |
+| `reinforced-concrete-punching` | MVP | Verifica locale a punzonamento con contratto serializzabile e campo di applicazione documentato. |
 | `timber-beams` | Parziale | Verifiche di travi in legno da risultati FEM disponibili. |
 | `timber-concrete-composite-beams` | Implementato | Verifica gamma-method di travi legno-calcestruzzo con connettori. |
 | `timber-xlam-composite-beams` | Implementato | Verifica gamma-method di travi lignee collaboranti con pannelli XLAM. |
@@ -350,6 +351,7 @@ Documentazione utile:
 - [docs/public-api-policy.md](docs/public-api-policy.md);
 - [docs/consumer-integration.md](docs/consumer-integration.md);
 - [docs/implementation-boundaries.md](docs/implementation-boundaries.md);
+- [docs/reinforced-concrete-module-progression.md](docs/reinforced-concrete-module-progression.md);
 - [docs/result-status.md](docs/result-status.md);
 - [docs/steel-beam-method.md](docs/steel-beam-method.md);
 - [docs/reinforced-concrete-sle-method.md](docs/reinforced-concrete-sle-method.md).
@@ -470,6 +472,11 @@ Direzioni naturali di crescita:
 - migliorare prestazioni e robustezza numerica;
 - evolvere i moduli FEM pubblici e generici;
 - migliorare documentazione e stabilita delle API.
+
+La progressione tecnica specifica dei moduli in calcestruzzo armato, con la
+separazione tra micro-app, kernel riusabili e verificatori dipendenti dal FEM
+globale, e mantenuta in
+[docs/reinforced-concrete-module-progression.md](docs/reinforced-concrete-module-progression.md).
 
 ## Licenza
 
