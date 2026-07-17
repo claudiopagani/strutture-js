@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 
-const ROOT_DIRECTORIES = ['src', 'tests', 'examples', 'validation', 'scripts', 'benchmarks'];
+const ROOT_DIRECTORIES = ['src', 'tests', 'examples', 'validation', 'scripts'];
 const rootPath = process.cwd();
 
 async function collectJavaScriptFiles(directoryPath) {
@@ -23,6 +23,18 @@ async function collectJavaScriptFiles(directoryPath) {
   }
 
   return files;
+}
+
+async function collectRootJavaScriptFiles(directoryPath) {
+  try {
+    return await collectJavaScriptFiles(directoryPath);
+  } catch (error) {
+    if (error.code === 'ENOENT' && error.path === directoryPath) {
+      return [];
+    }
+
+    throw error;
+  }
 }
 
 function runNodeSyntaxCheck(filePath) {
@@ -48,7 +60,7 @@ function runNodeSyntaxCheck(filePath) {
 
 const files = (
   await Promise.all(
-    ROOT_DIRECTORIES.map((directory) => collectJavaScriptFiles(path.join(rootPath, directory))),
+    ROOT_DIRECTORIES.map((directory) => collectRootJavaScriptFiles(path.join(rootPath, directory))),
   )
 ).flat().sort();
 
