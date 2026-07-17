@@ -95,6 +95,13 @@ test("RC foundation-beam application analyzes soil response and reuses section c
   assert.equal(combination.foundation.contactAssumptionViolated, false);
   assert.ok(Math.abs(combination.foundation.totalReaction - 78000) < 1e-4);
   assert.ok(result.outputs.verification.outputs.stationResultCount > 0);
+  assert.ok(result.checks.length > 0);
+  assert.equal(
+    result.utilizationRatio,
+    result.outputs.verification.utilizationRatio,
+  );
+  assert.equal(result.demand, result.outputs.verification.demand);
+  assert.equal(result.capacity, result.outputs.verification.capacity);
   assert.equal(combination.foundationIteration.contactModel, "compression-only");
   assert.equal(combination.foundationIteration.stiffnessIteration, true);
   assert.equal(combination.foundationIteration.converged, true);

@@ -37,6 +37,7 @@ modello globale geometria, azioni e contesto strutturale.
 | Stato | Significato |
 | --- | --- |
 | `implemented` | Capacita disponibile, testata e documentata nel campo dichiarato. |
+| `implemented-local` | Verificatore locale disponibile, testato e validato nel campo dichiarato; azioni e contesto globale restano input del consumer. |
 | `partial` | Esiste una capacita operativa, ma non copre ancora l'intero elemento o workflow. |
 | `planned-local` | Candidato a modulo o micro-app con input locale. Non implementato. |
 | `planned-kernel` | Nucleo riusabile necessario a piu workflow. Non implementato. |
@@ -52,11 +53,11 @@ essere aggiunti al catalogo delle applicazioni come funzionalita disponibili.
 | Sezioni in c.a. | `implemented` | SLU/SLE a fibre, dominio monoassiale e biassiale, momento-curvatura e verifiche sezionali coperte dai workflow pubblici. |
 | Piastre in c.a. | `implemented` | Verifica locale di risultanti di piastra mediante strisce equivalenti Wood-Armer; non esegue l'analisi globale della piastra. |
 | Punzonamento | `implemented` | Verificatore locale con contratto serializzabile e campagna di validazione nel campo documentato. |
-| Trave singola in c.a. | `partial` | Analisi 2D, verifiche sezionali, curvature fessurate e verificatore locale di torsione; il FEM 2D non genera torsione e dettaglio completo e duttilita non sono completi. |
-| Pilastri in c.a. | `partial` | Screening NTC della snellezza e resistenza biassiale; le aste snelle richiedono momenti totali assegnati. |
-| Plinti isolati in c.a. | `partial` | Contatto completo, perdita di contatto monoassiale e verifiche strutturali locali; resistenze geotecniche assegnate. |
-| Travi di fondazione in c.a. | `partial` | Trave orizzontale su letto di Winkler lineare bilaterale, rigidezza per tratti, carichi e cedimenti imposti; verifiche sezionali locali. |
-| Nodi trave-pilastro in c.a. | `partial` | Verifica locale NTC 2018 in una direzione assegnata: pannello nodale, confinamento, staffe e gerarchia; ancoraggi esclusi. |
+| Trave singola in c.a. | `implemented-local` | Analisi 2D e verifiche locali di sezione, taglio, torsione, dettaglio, ancoraggio, duttilita e deformazione a lungo termine; la torsione resta un'azione assegnata. |
+| Pilastri in c.a. | `implemented-local` | Secondo ordine a rigidezza nominale per lunghezze efficaci assegnate, resistenza biassiale, taglio, dettaglio, confinamento e duttilita; il P-Delta globale resta escluso. |
+| Plinti isolati in c.a. | `implemented-local` | Contatto rigido completo o parziale anche biassiale, verifiche strutturali, schiacciamento e ancoraggi; le resistenze geotecniche restano assegnate. |
+| Travi di fondazione in c.a. | `implemented-local` | Trave prismatica orizzontale su Winkler, contatto monolatero, rigidezza fessurata iterativa, carichi, cedimenti e verifiche locali. |
+| Nodi trave-pilastro in c.a. | `implemented-local` | Verifica locale NTC 2018 di nodi interni, esterni e d'angolo, ancoraggi, eccentricita e stati 3D concorrenti con azioni e capacita assegnate. |
 | Regioni D e modelli tirante-puntone | `partial` | Kernel 2D e verifica EN 1992 di topologie assegnate; nessuna generazione automatica dello schema resistente. |
 | FEM generico | `partial` | Componenti FEM riusabili prevalentemente 2D; non costituisce ancora il verificatore globale per strutture in c.a. |
 
@@ -217,6 +218,33 @@ EN 1992-1-1:2004. Le zone nodali e i parametri nazionali sono input espliciti.
 Topologia automatica, modelli 3D, ancoraggi e armature di splitting restano
 fuori dal perimetro. I workflow geometrici per mensole, travi parete e plinti
 su pali devono essere validati separatamente sopra questo kernel.
+
+## Stato di chiusura del percorso c.a.
+
+I cinque verificatori locali per travi, pilastri, plinti isolati, travi di
+fondazione e nodi trave-pilastro sono `implemented-local`. Ognuno dispone di
+un caso applicativo bloccante nella campagna di validazione, oltre ai test
+unitari e ai benchmark dei kernel riusati. Lo stato certifica esclusivamente
+il campo locale dichiarato: non include la generazione delle azioni o del
+contesto resistente da un modello strutturale globale.
+
+Per completare l'intero percorso dei verificatori in c.a. restano:
+
+1. completamento dei modelli tirante-puntone per ancoraggi, armature di
+   splitting e workflow geometrici validati per mensole, travi parete e
+   plinti su pali;
+2. contratto generico e serializzabile delle risultanti di superficie;
+3. kernel di pannello a membrana, da usare come benchmark e nucleo del guscio,
+   non come micro-app autonoma;
+4. verificatore locale di guscio con formulazione Baumann precisamente
+   identificata e validata, inclusi `N + M`, taglio trasversale e controlli
+   SLE nel rispettivo campo di validita;
+5. post-processore generico dei risultati shell FEM;
+6. verificatori globali di sistema per setti e nuclei, pareti accoppiate,
+   platee, diaframmi, serbatoi, silos e strutture scatolari.
+
+I punti 2-6 seguono la progressione FEM descritta di seguito; non sono
+funzionalita locali mancanti dei cinque moduli appena chiusi.
 
 ## Progressione dei moduli dipendenti dal FEM globale
 

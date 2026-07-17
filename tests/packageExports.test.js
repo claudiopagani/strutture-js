@@ -34,6 +34,7 @@ test("package root export exposes the main public API", () => {
   assert.equal(typeof PublicApi.resolvePunchingTransferFromJointActions, "function");
   assert.equal(typeof PublicApi.PunchingVerificationRequest, "function");
   assert.equal(typeof PublicApi.PunchingVerification, "function");
+  assert.equal(typeof PublicApi.ReinforcedConcretePunchingApplication, "function");
   assert.equal(typeof PublicApi.verifyPunching, "function");
   assert.equal(typeof PublicApi.RC_PUNCHING_DESIGN_CODE_IDS, "object");
   assert.equal(typeof PublicApi.rotatePlateMoments, "function");
@@ -86,6 +87,10 @@ test("granular ESM subpaths expose applications, solvers and catalogs", () => {
   assert.equal(typeof RcPlatesApi.ReinforcedConcretePlateVerification, "function");
   assert.equal(typeof RcPlatesApi.woodArmer, "function");
   assert.equal(typeof RcPunchingApi.PunchingVerificationRequest, "function");
+  assert.equal(
+    typeof RcPunchingApi.ReinforcedConcretePunchingApplication,
+    "function",
+  );
   assert.equal(typeof RcPunchingApi.verifyPunching, "function");
   assert.equal(typeof RcPunchingApi.getRcPunchingDesignCodeManifest, "function");
   assert.equal(typeof RcColumnsApi.ReinforcedConcreteColumnVerification, "function");
@@ -108,6 +113,7 @@ test("granular ESM subpaths expose applications, solvers and catalogs", () => {
   );
   assert.equal(typeof FemApi.LinearStaticSolver2D, "function");
   assert.equal(typeof MathApi.BandedLinearSolver, "function");
+  assert.equal(typeof MathApi.rayPolygonCapacity, "function");
   assert.equal(typeof StrutAndTieApi.StrutAndTieAnalysis2D, "function");
   assert.ok(SteelProfilesApi.STEEL_PROFILE_FAMILIES.includes("IPE"));
   assert.equal(

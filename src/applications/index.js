@@ -6,6 +6,7 @@ import { MasonryRingBeamApplication } from "./masonry-ring-beams/index.js";
 import { MicropileBromsApplication } from "./micropiles-broms/index.js";
 import { RCrackedDeflectionApplication } from "./rc-cracked-deflection/index.js";
 import { ReinforcedConcretePlateApplication } from "./reinforced-concrete-plates/index.js";
+import { ReinforcedConcretePunchingApplication } from "./reinforced-concrete-punching/index.js";
 import { ReinforcedConcreteColumnApplication } from "./reinforced-concrete-columns/index.js";
 import { ReinforcedConcreteIsolatedFootingApplication } from "./reinforced-concrete-isolated-footings/index.js";
 import { ReinforcedConcreteFoundationBeamApplication } from "./reinforced-concrete-foundation-beams/index.js";
@@ -117,6 +118,7 @@ export {
   RC_PUNCHING_PARAMETER_PROFILES,
   RC_PUNCHING_DESIGN_CODE_IDS,
   RC_PUNCHING_DESIGN_CODE_ID_VALUES,
+  ReinforcedConcretePunchingApplication,
   getRcPunchingDesignCodeManifest,
   verifyPunching,
 } from "./reinforced-concrete-punching/index.js";
@@ -196,6 +198,7 @@ export function createDefaultApplicationRegistry() {
     new MasonryWallOpeningsApplication(),
     new ReinforcedConcreteSectionApplication(),
     new ReinforcedConcretePlateApplication(),
+    new ReinforcedConcretePunchingApplication(),
     new ReinforcedConcreteColumnApplication(),
     new ReinforcedConcreteIsolatedFootingApplication(),
     new ReinforcedConcreteFoundationBeamApplication(),

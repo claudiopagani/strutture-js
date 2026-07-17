@@ -38,6 +38,7 @@ import "./compositeSections.test.js";
 import "./beamLinePreprocessor2D.test.js";
 import "./singleBeamAnalysis.test.js";
 import "./denseLinearSolver.test.js";
+import "./rayPolygonCapacity.test.js";
 import "./displacementControlNonlinearStaticSolver2D.test.js";
 import "./femCore2D.test.js";
 import "./femBeamValidation.test.js";

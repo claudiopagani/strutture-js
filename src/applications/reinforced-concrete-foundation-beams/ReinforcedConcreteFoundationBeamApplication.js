@@ -1,6 +1,6 @@
 import { StructuralApplication } from "../../core/applications/StructuralApplication.js";
-import { CalculationResult } from "../../core/results/CalculationResult.js";
 import { RESULT_STATUS } from "../../core/results/resultStatus.js";
+import { VerificationResult } from "../../core/results/VerificationResult.js";
 import { FoundationBeamAnalysis } from "../../domain/foundations/FoundationBeamAnalysis.js";
 import { ReinforcedConcreteBeamVerification } from "../reinforced-concrete-sections/checks/ReinforcedConcreteBeamVerification.js";
 import { SectionMomentCurvatureCurve } from "../rc-cracked-deflection/analysis/SectionMomentCurvatureCurve.js";
@@ -113,7 +113,7 @@ export class ReinforcedConcreteFoundationBeamApplication extends StructuralAppli
       supportedCodes: ["NTC2018"],
       tags: ["rc", "beam", "foundation", "winkler", "soil-springs"],
       metadata: {
-        maturity: "partial",
+        maturity: "implemented-local",
         limitations: [
           "horizontal prismatic beam only",
           "independent tributary-lumped Winkler springs",
@@ -173,7 +173,7 @@ export class ReinforcedConcreteFoundationBeamApplication extends StructuralAppli
       ? RESULT_STATUS.NOT_SUPPORTED
       : verification.status;
 
-    return new CalculationResult({
+    return new VerificationResult({
       applicationId: this.id,
       status,
       summary: contactViolation || iterationFailure
@@ -184,6 +184,10 @@ export class ReinforcedConcreteFoundationBeamApplication extends StructuralAppli
         analysis,
         verification: verificationJson,
       },
+      demand: verificationJson.demand ?? null,
+      capacity: verificationJson.capacity ?? null,
+      utilizationRatio: verificationJson.utilizationRatio ?? null,
+      checks: verificationJson.checks ?? [],
       warnings: [
         ...analysis.warnings,
         ...(verificationJson.warnings ?? []),

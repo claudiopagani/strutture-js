@@ -8,6 +8,13 @@ import {
 
 test("beam validation campaign runs declared numerical cases", () => {
   const campaign = runBeamValidationCampaign();
+  const completedLocalRcCases = [
+    "rc-beam-local-detailing-ductility-anchorage",
+    "rc-column-local-second-order-shear-confinement",
+    "rc-footing-local-biaxial-contact-bearing-anchorage",
+    "rc-foundation-beam-local-unilateral-cracked-iteration",
+    "rc-joint-local-corner-eccentric-3d-anchorage",
+  ];
 
   assert.equal(campaign.status, "ok");
   assert.equal(campaign.failed, 0);
@@ -20,6 +27,12 @@ test("beam validation campaign runs declared numerical cases", () => {
         result.checks.length > 0 &&
         result.checks.every((check) => check.status === "ok"),
     ),
+  );
+  assert.deepEqual(
+    campaign.results
+      .filter((result) => completedLocalRcCases.includes(result.id))
+      .map((result) => result.id),
+    completedLocalRcCases,
   );
 });
 

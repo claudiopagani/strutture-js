@@ -1,5 +1,6 @@
 import { VerificationResult } from "../../../core/results/VerificationResult.js";
 import { BeamSectionActionVerifier } from "../../../domain/beams/BeamSectionActionVerifier.js";
+import { rayPolygonCapacity } from "../../../domain/math/rayPolygonCapacity.js";
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
 import { CrackedSectionDeflectionAnalysis } from "../../rc-cracked-deflection/analysis/CrackedSectionDeflectionAnalysis.js";
 import { ReinforcedConcreteSectionModel } from "../models/ReinforcedConcreteSectionModel.js";
@@ -33,43 +34,6 @@ function hasSignificantAction(value, reference = 0, tolerance = 1e-9) {
 
 function compressedEdgeForMoment(mEd) {
   return mEd >= 0 ? "top" : "bottom";
-}
-
-function momentVectorCapacityFromDomain(points, mxEd, myEd) {
-  const demandNorm = Math.sqrt(mxEd ** 2 + myEd ** 2);
-
-  if (demandNorm <= 1e-9) {
-    return {
-      demandNorm: 0,
-      capacityNorm: Infinity,
-      utilizationRatio: 0,
-      governingPoint: null,
-    };
-  }
-
-  const ux = mxEd / demandNorm;
-  const uy = myEd / demandNorm;
-  const candidates = points
-    .map((point) => ({
-      point,
-      projection: point.MxRd * ux + point.MyRd * uy,
-    }))
-    .filter((candidate) => Number.isFinite(candidate.projection) && candidate.projection > 0);
-  const selected = candidates.reduce(
-    (best, candidate) =>
-      !best || candidate.projection > best.projection ? candidate : best,
-    null,
-  );
-
-  return {
-    demandNorm,
-    capacityNorm: selected?.projection ?? null,
-    utilizationRatio:
-      selected?.projection && selected.projection > 0
-        ? demandNorm / selected.projection
-        : Infinity,
-    governingPoint: selected?.point ?? null,
-  };
 }
 
 function createRcActionVerifier({
@@ -138,8 +102,11 @@ function createRcActionVerifier({
       const result = sectionVerification.verify(model);
       const bendingChecks = isBiaxial
         ? (() => {
-            const capacity = momentVectorCapacityFromDomain(
-              result.outputs?.points ?? [],
+            const capacity = rayPolygonCapacity(
+              (result.outputs?.points ?? []).map((point) => ({
+                x: point.MxRd,
+                y: point.MyRd,
+              })),
               convertedMEd,
               convertedMZEd,
             );
@@ -153,11 +120,17 @@ function createRcActionVerifier({
                 utilizationRatio: capacity.utilizationRatio,
                 ok: capacity.utilizationRatio <= 1,
                 metadata: {
-                  method: "sampled-biaxial-domain-projection",
+                  method: "sampled-biaxial-domain-ray-intersection",
                   mxEd: convertedMEd,
                   myEd: convertedMZEd,
                   angleCount: model.analysisSettings.angleCount,
-                  governingPoint: capacity.governingPoint,
+                  intersection: capacity.intersection
+                    ? {
+                        mxRd: capacity.intersection.x,
+                        myRd: capacity.intersection.y,
+                        segmentIndex: capacity.intersection.segmentIndex,
+                      }
+                    : null,
                 },
               },
             ];
@@ -388,7 +361,7 @@ export class ReinforcedConcreteBeamVerification {
     if (!section || !analysisResult) {
       return new VerificationResult({
         applicationId: "reinforced-concrete-beams",
-        status: RESULT_STATUS.NOT_IMPLEMENTED,
+        status: RESULT_STATUS.NOT_ANALYZED,
         summary: "RC beam verification requires a section and a FEM beam analysis result.",
         warnings: [
           "RC beam verification from FEM actions was not run because required inputs are missing.",

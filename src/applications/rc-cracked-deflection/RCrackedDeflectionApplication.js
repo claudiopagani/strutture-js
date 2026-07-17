@@ -1,6 +1,6 @@
 import { StructuralApplication } from "../../core/applications/StructuralApplication.js";
 import { CrackedSectionDeflectionAnalysis } from "./analysis/CrackedSectionDeflectionAnalysis.js";
-import { RESULT_STATUS } from "../../core/results/resultStatus.js";
+import { CrackedSectionBeamModel } from "./models/CrackedSectionBeamModel.js";
 
 export class RCrackedDeflectionApplication extends StructuralApplication {
   constructor() {
@@ -13,53 +13,47 @@ export class RCrackedDeflectionApplication extends StructuralApplication {
       supportedCodes: ["NTC2018", "Eurocode 2"],
       tags: ["rc", "deflection", "cracking", "sls"],
       metadata: {
-        maturity: "partial",
-        plannedCapabilities: [
-          "effective inertia evaluation",
-          "load history and quasi-permanent combinations",
-          "short- and long-term deflections",
-          "support for staged cracking assumptions",
+        maturity: "implemented",
+        limitations: [
+          "time-dependent parameters and shrinkage strain are explicit caller inputs",
+          "hyperstatic iteration requires an analyzable beam model or an external callback",
+          "global staged-construction history remains a consumer responsibility",
         ],
       },
     });
   }
 
   run(input = {}) {
+    const model = input.model instanceof CrackedSectionBeamModel
+      ? input.model
+      : input.model
+        ? new CrackedSectionBeamModel(input.model)
+        : null;
     const analysis = new CrackedSectionDeflectionAnalysis({
       code: input.code ?? "NTC2018",
+      metadata: input.metadata ?? model?.metadata ?? {},
     }).analyze({
-      beamId: input.model?.id ?? null,
-      analysisResult: input.analysisResult ?? input.model?.analysisResult ?? null,
-      section: input.section ?? input.model?.section ?? null,
-      concreteMaterial: input.concreteMaterial ?? input.model?.concreteMaterial,
+      beamId: model?.id ?? null,
+      analysisResult: input.analysisResult ?? model?.analysisResult ?? null,
+      section: input.section ?? model?.section ?? null,
+      concreteMaterial: input.concreteMaterial ?? model?.concreteMaterial,
       reinforcementMaterial:
-        input.reinforcementMaterial ?? input.model?.reinforcementMaterial,
-      serviceability: input.serviceability ?? input.model?.serviceability ?? {},
-      mesh: input.mesh ?? input.model?.mesh ?? { targetFiberCount: 100 },
-      solver: input.solver ?? input.model?.solver ?? { tolerance: 1e-2, maxIterations: 50 },
+        input.reinforcementMaterial ?? model?.reinforcementMaterial,
+      serviceability: input.serviceability ?? model?.serviceability ?? {},
+      mesh: input.mesh ?? model?.mesh ?? { targetFiberCount: 100 },
+      solver: input.solver ?? model?.solver ?? { tolerance: 1e-2, maxIterations: 50 },
       beamModel:
         input.beamModel ??
-        input.model?.beamModel ??
-        input.model?.beamInput ??
+        model?.beamModel ??
+        model?.beamInput ??
         null,
-      hyperstatic: input.hyperstatic ?? input.model?.hyperstatic ?? null,
+      hyperstatic: input.hyperstatic ?? model?.hyperstatic ?? null,
+      performanceProfile:
+        input.performanceProfile ?? model?.performanceProfile ?? null,
+      sampling: input.sampling ?? model?.sampling ?? {},
+      output: input.output ?? model?.output ?? {},
     });
 
-    if (analysis.status !== RESULT_STATUS.NOT_IMPLEMENTED) {
-      return analysis;
-    }
-
-    return this.createPlaceholderResult({
-      summary:
-        "Cracked RC deflection module scaffold created with a dedicated analysis entrypoint.",
-      warnings: analysis.warnings,
-      outputs: {
-        beamId: input.model?.id ?? null,
-        analysis: analysis.toJSON(),
-      },
-      assumptions: [
-        "The implementation should separate section cracking logic from beam-line deflection integration.",
-      ],
-    });
+    return analysis;
   }
 }

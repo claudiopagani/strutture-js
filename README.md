@@ -130,7 +130,7 @@ Stato sintetico dei moduli applicativi:
 
 | Modulo | Stato | Cosa fa oggi |
 | --- | --- | --- |
-| `single-beam-design` | MVP | Analisi FEM 2D di trave semplice, verifiche opzionali e report JSON/Markdown. |
+| `single-beam-design` | Implementato locale | Analisi FEM 2D e verifiche locali; il percorso c.a. include torsione assegnata, dettaglio, ancoraggi, duttilita e deformazioni a lungo termine. |
 | `steel-frames` | Parziale | Verifiche di aste in acciaio da risultati FEM e pushover standalone di cerchiature metalliche rettangolari. |
 | `masonry-piers` | Parziale | Verifica verticale NTC 2018 di maschi murari e idealizzazione 2D a telaio equivalente. |
 | `masonry-wall-openings` | Implementato | Verifiche di cerchiature su allineamenti murari, confronto pre/post e contributo laterale della cerchiatura. |
@@ -138,16 +138,16 @@ Stato sintetico dei moduli applicativi:
 | `reinforced-concrete-sections` | Implementato | Analisi SLU/SLE di sezioni in c.a. a fibre. |
 | `reinforced-concrete-plates` | Implementato | Verifica locale SLU/SLE di piastre piane in c.a. mediante strisce equivalenti Wood-Armer. |
 | `reinforced-concrete-punching` | MVP | Verifica locale a punzonamento con contratto serializzabile e campo di applicazione documentato. |
-| `reinforced-concrete-columns` | Parziale | Screening NTC della snellezza e verifica biassiale; i momenti del secondo ordine delle aste snelle devono essere forniti. |
-| `reinforced-concrete-isolated-footings` | Parziale | Contatto rigido, resistenze geotecniche assegnate e verifiche strutturali locali di plinti rettangolari centrati. |
-| `reinforced-concrete-foundation-beams` | Parziale | Analisi lineare di travi orizzontali su letto di Winkler assegnato e verifiche sezionali locali in c.a. |
-| `reinforced-concrete-beam-column-joints` | Parziale | Verifica locale NTC 2018 del pannello nodale, confinamento e gerarchia pilastro-trave da azioni e capacita assegnate. |
+| `reinforced-concrete-columns` | Implementato locale | Secondo ordine a rigidezza nominale, verifica biassiale, taglio, confinamento e duttilita per azioni e lunghezze efficaci assegnate. |
+| `reinforced-concrete-isolated-footings` | Implementato locale | Contatto rigido parziale anche biassiale, schiacciamento, ancoraggi e verifiche strutturali di plinti rettangolari centrati; resistenze geotecniche assegnate. |
+| `reinforced-concrete-foundation-beams` | Implementato locale | Contatto monolatero, rigidezza fessurata iterativa e verifiche locali di travi prismatiche orizzontali su letto di Winkler assegnato. |
+| `reinforced-concrete-beam-column-joints` | Implementato locale | Verifica locale NTC 2018 di nodi interni, esterni e d'angolo, inclusi ancoraggi, eccentricita e stati 3D concorrenti. |
 | `reinforced-concrete-strut-and-tie` | Parziale | Analisi e verifica EN 1992 di modelli tirante-puntone 2D con topologia e zone nodali assegnate. |
 | `timber-beams` | Parziale | Verifiche di travi in legno da risultati FEM disponibili. |
 | `timber-concrete-composite-beams` | Implementato | Verifica gamma-method di travi legno-calcestruzzo con connettori. |
 | `timber-xlam-composite-beams` | Implementato | Verifica gamma-method di travi lignee collaboranti con pannelli XLAM. |
 | `xlam-panels-out-of-plane` | Implementato | Verifica fuori piano di pannelli XLAM/CLT come strip 1D. |
-| `rc-cracked-deflection` | Parziale | Integrazione delle curvature fessurate su risultati FEM SLE. |
+| `rc-cracked-deflection` | Implementato nel perimetro dichiarato | Integrazione delle curvature fessurate su risultati FEM SLE. |
 | `masonry-out-of-plane` | Scaffold | Modello e placeholder per cinematismi fuori piano. |
 | `micropiles-broms` | Scaffold | Modello e placeholder per analisi Broms dei micropali. |
 

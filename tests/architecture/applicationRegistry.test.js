@@ -23,8 +23,8 @@ test("default application registry exposes all scaffolded structural application
   const catalogIds = APPLICATION_CATALOG.map((application) => application.id);
 
   assert.ok(registry instanceof ApplicationRegistry);
-  assert.equal(registry.list().length, 19);
-  assert.equal(APPLICATION_CATALOG.length, 19);
+  assert.equal(registry.list().length, 20);
+  assert.equal(APPLICATION_CATALOG.length, 20);
   assert.deepEqual(registryIds, catalogIds);
   assert.ok(registry.has("single-beam-design"));
   assert.ok(registry.has("steel-frames"));
@@ -35,6 +35,7 @@ test("default application registry exposes all scaffolded structural application
   assert.ok(registry.has("timber-xlam-composite-beams"));
   assert.ok(registry.has("xlam-panels-out-of-plane"));
   assert.ok(registry.has("reinforced-concrete-plates"));
+  assert.ok(registry.has("reinforced-concrete-punching"));
   assert.ok(registry.has("reinforced-concrete-columns"));
   assert.ok(registry.has("reinforced-concrete-isolated-footings"));
   assert.ok(registry.has("reinforced-concrete-foundation-beams"));
@@ -52,6 +53,28 @@ test("application registry returns manifests and placeholder results", () => {
   assert.ok(manifests.some((manifest) => manifest.metadata.maturity === "scaffolded"));
   assert.equal(result.status, RESULT_STATUS.NOT_IMPLEMENTED);
   assert.equal(result.outputs.beamId, "beam-01");
+});
+
+test("completed local RC applications expose implemented-local maturity", () => {
+  const registry = createDefaultApplicationRegistry();
+  const completedLocalIds = [
+    "single-beam-design",
+    "reinforced-concrete-columns",
+    "reinforced-concrete-isolated-footings",
+    "reinforced-concrete-foundation-beams",
+    "reinforced-concrete-beam-column-joints",
+  ];
+  const manifests = new Map(
+    registry.listManifests().map((manifest) => [manifest.id, manifest]),
+  );
+  const catalog = new Map(
+    APPLICATION_CATALOG.map((application) => [application.id, application]),
+  );
+
+  for (const applicationId of completedLocalIds) {
+    assert.equal(manifests.get(applicationId)?.metadata.maturity, "implemented-local");
+    assert.equal(catalog.get(applicationId)?.maturity, "implemented-local");
+  }
 });
 
 test("application registry rejects duplicate application ids", () => {

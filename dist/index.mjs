@@ -1,4 +1,4 @@
-// strutture-js v0.6.0 — bundled ESM
+// strutture-js v0.7.0 — bundled ESM
 var __defProp = Object.defineProperty;
 var __typeError = (msg) => {
   throw TypeError(msg);
@@ -30917,6 +30917,66 @@ var BandedLinearSolver = class {
   }
 };
 
+// src/domain/math/rayPolygonCapacity.js
+var DEFAULT_TOLERANCE = 1e-9;
+function cross2(a, b) {
+  return a.x * b.y - a.y * b.x;
+}
+function rayPolygonCapacity(points, demandX, demandY, { tolerance = DEFAULT_TOLERANCE } = {}) {
+  var _a, _b, _c;
+  if (!Number.isFinite(demandX) || !Number.isFinite(demandY)) {
+    throw new Error("Ray-polygon demand components must be finite.");
+  }
+  if (!Number.isFinite(tolerance) || tolerance <= 0) {
+    throw new Error("Ray-polygon tolerance must be positive and finite.");
+  }
+  const demandNorm = Math.hypot(demandX, demandY);
+  if (demandNorm <= tolerance) {
+    return {
+      demandNorm: 0,
+      capacityNorm: Number.POSITIVE_INFINITY,
+      utilizationRatio: 0,
+      intersection: null
+    };
+  }
+  const direction = { x: demandX / demandNorm, y: demandY / demandNorm };
+  const intersections = [];
+  for (let index = 0; index < ((_a = points == null ? void 0 : points.length) != null ? _a : 0); index += 1) {
+    const start = points[index];
+    const end = points[(index + 1) % points.length];
+    if (!Number.isFinite(start == null ? void 0 : start.x) || !Number.isFinite(start == null ? void 0 : start.y) || !Number.isFinite(end == null ? void 0 : end.x) || !Number.isFinite(end == null ? void 0 : end.y)) {
+      continue;
+    }
+    const segment = {
+      x: end.x - start.x,
+      y: end.y - start.y
+    };
+    const denominator = cross2(direction, segment);
+    if (Math.abs(denominator) <= tolerance) {
+      continue;
+    }
+    const distance = cross2(start, segment) / denominator;
+    const segmentParameter = cross2(start, direction) / denominator;
+    if (distance >= -tolerance && segmentParameter >= -tolerance && segmentParameter <= 1 + tolerance) {
+      const nonNegativeDistance = Math.max(0, distance);
+      intersections.push({
+        distance: nonNegativeDistance,
+        x: direction.x * nonNegativeDistance,
+        y: direction.y * nonNegativeDistance,
+        segmentIndex: index,
+        segmentParameter: Math.min(1, Math.max(0, segmentParameter))
+      });
+    }
+  }
+  const selected = (_b = intersections.filter((item) => item.distance > tolerance).sort((a, b) => a.distance - b.distance)[0]) != null ? _b : null;
+  return {
+    demandNorm,
+    capacityNorm: (_c = selected == null ? void 0 : selected.distance) != null ? _c : null,
+    utilizationRatio: selected ? demandNorm / selected.distance : Number.POSITIVE_INFINITY,
+    intersection: selected
+  };
+}
+
 // src/domain/solvers/IllinoisRootSolver.js
 var IllinoisRootSolver = class {
   constructor({ tolerance = 1e-6, maxIterations = 100 } = {}) {
@@ -31642,7 +31702,7 @@ var APPLICATION_CATALOG = [
     id: "single-beam-design",
     name: "Single Beam Design",
     domain: "beams",
-    maturity: "mvp",
+    maturity: "implemented-local",
     primaryFocus: "End-to-end simple beam analysis, verification and reporting."
   },
   {
@@ -31688,31 +31748,38 @@ var APPLICATION_CATALOG = [
     primaryFocus: "Local ULS and SLE verification of flat RC plates through rotated Wood-Armer equivalent strips."
   },
   {
+    id: "reinforced-concrete-punching",
+    name: "RC Punching",
+    domain: "reinforced-concrete",
+    maturity: "implemented",
+    primaryFocus: "Local punching verification of RC slabs through a serializable connection, action-state and control-perimeter contract."
+  },
+  {
     id: "reinforced-concrete-columns",
     name: "RC Columns",
     domain: "reinforced-concrete",
-    maturity: "partial",
+    maturity: "implemented-local",
     primaryFocus: "Local NTC 2018 second-order, biaxial resistance, shear, confinement and ductility verification of RC columns."
   },
   {
     id: "reinforced-concrete-isolated-footings",
     name: "RC Isolated Footings",
     domain: "reinforced-concrete",
-    maturity: "partial",
+    maturity: "implemented-local",
     primaryFocus: "Rigid compression-only contact, assigned geotechnical resistance, crushing, anchorage and structural checks of rectangular isolated footings."
   },
   {
     id: "reinforced-concrete-foundation-beams",
     name: "RC Foundation Beams",
     domain: "reinforced-concrete",
-    maturity: "partial",
+    maturity: "implemented-local",
     primaryFocus: "Compression-only Winkler analysis with iterative cracked stiffness and local RC verification of horizontal foundation beams."
   },
   {
     id: "reinforced-concrete-beam-column-joints",
     name: "RC Beam-Column Joints",
     domain: "reinforced-concrete",
-    maturity: "partial",
+    maturity: "implemented-local",
     primaryFocus: "Directional and concurrent-3D NTC 2018 joint checks including anchorage, corner joints and eccentric transfer."
   },
   {
@@ -31754,7 +31821,7 @@ var APPLICATION_CATALOG = [
     id: "rc-cracked-deflection",
     name: "RC Cracked Deflection",
     domain: "reinforced-concrete",
-    maturity: "partial",
+    maturity: "implemented",
     primaryFocus: "Deflection analysis of cracked RC beams."
   },
   {
@@ -33544,7 +33611,7 @@ var DEFAULT_CONTROL_INCREMENT = 1;
 var DEFAULT_MAX_CONTROL_DISPLACEMENT = 120;
 var DEFAULT_MAX_STEPS = 200;
 var DEFAULT_MAX_ITERATIONS = 100;
-var DEFAULT_TOLERANCE = 0.01;
+var DEFAULT_TOLERANCE2 = 0.01;
 var DEFAULT_YIELD_TOLERANCE = 1e-9;
 var DEFAULT_BASE_CONDITION = "pinned-base-with-bottom-beam";
 function assertPositive15(value, label) {
@@ -33843,7 +33910,7 @@ var SteelRingFramePushoverModel = class {
       maxControlDisplacement: unitResolver.length(
         (_p = (_o = solver.maxControlDisplacement) != null ? _o : solver.maxDisplacement) != null ? _p : DEFAULT_MAX_CONTROL_DISPLACEMENT
       ),
-      tolerance: (_r = (_q = solver.tolerance) != null ? _q : solver.toll) != null ? _r : DEFAULT_TOLERANCE,
+      tolerance: (_r = (_q = solver.tolerance) != null ? _q : solver.toll) != null ? _r : DEFAULT_TOLERANCE2,
       maxIterations: (_t = (_s = solver.maxIterations) != null ? _s : solver.itemax) != null ? _t : DEFAULT_MAX_ITERATIONS,
       maxSteps: (_u = solver.maxSteps) != null ? _u : DEFAULT_MAX_STEPS,
       yieldTolerance: (_v = solver.yieldTolerance) != null ? _v : DEFAULT_YIELD_TOLERANCE
@@ -45228,7 +45295,7 @@ var FEM_UNITS11 = Object.freeze({ force: "kN", length: "m" });
 var DEFAULT_TOP_ROTATION2 = "free";
 var DEFAULT_CONTROL_POINT_COUNT = 120;
 var DEFAULT_SAMPLE_COUNT = 6;
-var DEFAULT_TOLERANCE2 = 1e-6;
+var DEFAULT_TOLERANCE3 = 1e-6;
 var DEFAULT_MAX_ITERATIONS2 = 60;
 var DEFAULT_YIELD_TOLERANCE2 = 1e-9;
 var EPS9 = 1e-9;
@@ -45503,7 +45570,7 @@ var MasonryPierCapacityCurveComparisonAnalysis = class {
       },
       controlDisplacementIncrement: contributorDefinition.failureDisplacement / controlPointCount,
       maxControlDisplacement: contributorDefinition.failureDisplacement,
-      tolerance: (_h = options.tolerance) != null ? _h : DEFAULT_TOLERANCE2,
+      tolerance: (_h = options.tolerance) != null ? _h : DEFAULT_TOLERANCE3,
       maxIterations: (_i = options.maxIterations) != null ? _i : DEFAULT_MAX_ITERATIONS2,
       maxSteps: controlPointCount + 2,
       yieldTolerance: (_j = options.yieldTolerance) != null ? _j : DEFAULT_YIELD_TOLERANCE2
@@ -45663,7 +45730,7 @@ var FEM_UNITS12 = Object.freeze({ force: "kN", length: "m" });
 var DEFAULT_TOP_ROTATION3 = "free";
 var DEFAULT_CONTROL_POINT_COUNT2 = 120;
 var DEFAULT_SAMPLE_COUNT2 = 6;
-var DEFAULT_TOLERANCE3 = 1e-6;
+var DEFAULT_TOLERANCE4 = 1e-6;
 var DEFAULT_MAX_ITERATIONS3 = 60;
 var DEFAULT_YIELD_TOLERANCE3 = 1e-9;
 var DIRECT_MASONRY_MECHANISM_MODEL = "equivalent-frame-hinges-and-shear-plateau";
@@ -46168,7 +46235,7 @@ var AlignmentEquivalentFramePushoverAnalysis = class {
             contributorsByElementId: contributorConfigs,
             controlDisplacementIncrement: maxControlDisplacement / controlPointCount,
             maxControlDisplacement,
-            tolerance: (_l = options.tolerance) != null ? _l : DEFAULT_TOLERANCE3,
+            tolerance: (_l = options.tolerance) != null ? _l : DEFAULT_TOLERANCE4,
             maxIterations: (_m = options.maxIterations) != null ? _m : DEFAULT_MAX_ITERATIONS3,
             maxSteps: controlPointCount + 2,
             yieldTolerance: (_n = options.yieldTolerance) != null ? _n : DEFAULT_YIELD_TOLERANCE3
@@ -50851,7 +50918,7 @@ var CrackedSectionDeflectionAnalysis = class {
     if (!analysisResult || !(section == null ? void 0 : section.concreteSection)) {
       return new VerificationResult({
         applicationId: "rc-cracked-deflection",
-        status: RESULT_STATUS.NOT_IMPLEMENTED,
+        status: RESULT_STATUS.NOT_ANALYZED,
         summary: "Cracked-section deflection analysis requires a beam analysis result and an RC section.",
         warnings: [
           "Cracked inertia, tension stiffening and time-dependent effects were not evaluated because required inputs are missing."
@@ -51476,6 +51543,54 @@ var CrackedSectionDeflectionAnalysis = class {
   }
 };
 
+// src/applications/rc-cracked-deflection/models/CrackedSectionBeamModel.js
+var CrackedSectionBeamModel = class {
+  constructor({
+    id,
+    span = null,
+    section = {},
+    reinforcement = {},
+    material = {},
+    loading = {},
+    analysisResult = null,
+    concreteMaterial = ((_c) => (_c = ((_b) => (_b = ((_a) => (_a = material.concreteMaterial) != null ? _a : material.concrete)()) != null ? _b : section == null ? void 0 : section.concreteMaterial)()) != null ? _c : null)(),
+    reinforcementMaterial = ((_f) => (_f = ((_e) => (_e = ((_d) => (_d = material.reinforcementMaterial) != null ? _d : material.reinforcement)()) != null ? _e : section == null ? void 0 : section.reinforcementMaterial)()) != null ? _f : null)(),
+    serviceability = {},
+    mesh = { targetFiberCount: 100 },
+    solver = { tolerance: 0.01, maxIterations: 50 },
+    beamModel = null,
+    beamInput = null,
+    hyperstatic = null,
+    performanceProfile = null,
+    sampling = {},
+    output = {},
+    metadata = {}
+  }) {
+    if (!id) {
+      throw new Error("A cracked section beam model id is required.");
+    }
+    this.id = id;
+    this.span = span;
+    this.section = section;
+    this.reinforcement = { ...reinforcement };
+    this.material = { ...material };
+    this.loading = { ...loading };
+    this.analysisResult = analysisResult;
+    this.concreteMaterial = concreteMaterial;
+    this.reinforcementMaterial = reinforcementMaterial;
+    this.serviceability = { ...serviceability };
+    this.mesh = { ...mesh };
+    this.solver = { ...solver };
+    this.beamModel = beamModel != null ? beamModel : beamInput;
+    this.beamInput = beamInput != null ? beamInput : beamModel;
+    this.hyperstatic = hyperstatic;
+    this.performanceProfile = performanceProfile;
+    this.sampling = { ...sampling };
+    this.output = { ...output };
+    this.metadata = { ...metadata };
+  }
+};
+
 // src/applications/rc-cracked-deflection/RCrackedDeflectionApplication.js
 var RCrackedDeflectionApplication = class extends StructuralApplication {
   constructor() {
@@ -51487,70 +51602,37 @@ var RCrackedDeflectionApplication = class extends StructuralApplication {
       supportedCodes: ["NTC2018", "Eurocode 2"],
       tags: ["rc", "deflection", "cracking", "sls"],
       metadata: {
-        maturity: "partial",
-        plannedCapabilities: [
-          "effective inertia evaluation",
-          "load history and quasi-permanent combinations",
-          "short- and long-term deflections",
-          "support for staged cracking assumptions"
+        maturity: "implemented",
+        limitations: [
+          "time-dependent parameters and shrinkage strain are explicit caller inputs",
+          "hyperstatic iteration requires an analyzable beam model or an external callback",
+          "global staged-construction history remains a consumer responsibility"
         ]
       }
     });
   }
   run(input = {}) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A;
+    const model = input.model instanceof CrackedSectionBeamModel ? input.model : input.model ? new CrackedSectionBeamModel(input.model) : null;
     const analysis = new CrackedSectionDeflectionAnalysis({
-      code: (_a = input.code) != null ? _a : "NTC2018"
+      code: (_a = input.code) != null ? _a : "NTC2018",
+      metadata: (_c = (_b = input.metadata) != null ? _b : model == null ? void 0 : model.metadata) != null ? _c : {}
     }).analyze({
-      beamId: (_c = (_b = input.model) == null ? void 0 : _b.id) != null ? _c : null,
-      analysisResult: (_f = (_e = input.analysisResult) != null ? _e : (_d = input.model) == null ? void 0 : _d.analysisResult) != null ? _f : null,
-      section: (_i = (_h = input.section) != null ? _h : (_g = input.model) == null ? void 0 : _g.section) != null ? _i : null,
-      concreteMaterial: (_k = input.concreteMaterial) != null ? _k : (_j = input.model) == null ? void 0 : _j.concreteMaterial,
-      reinforcementMaterial: (_m = input.reinforcementMaterial) != null ? _m : (_l = input.model) == null ? void 0 : _l.reinforcementMaterial,
-      serviceability: (_p = (_o = input.serviceability) != null ? _o : (_n = input.model) == null ? void 0 : _n.serviceability) != null ? _p : {},
-      mesh: (_s = (_r = input.mesh) != null ? _r : (_q = input.model) == null ? void 0 : _q.mesh) != null ? _s : { targetFiberCount: 100 },
-      solver: (_v = (_u = input.solver) != null ? _u : (_t = input.model) == null ? void 0 : _t.solver) != null ? _v : { tolerance: 0.01, maxIterations: 50 },
-      beamModel: (_A = (_z = (_x = input.beamModel) != null ? _x : (_w = input.model) == null ? void 0 : _w.beamModel) != null ? _z : (_y = input.model) == null ? void 0 : _y.beamInput) != null ? _A : null,
-      hyperstatic: (_D = (_C = input.hyperstatic) != null ? _C : (_B = input.model) == null ? void 0 : _B.hyperstatic) != null ? _D : null
+      beamId: (_d = model == null ? void 0 : model.id) != null ? _d : null,
+      analysisResult: (_f = (_e = input.analysisResult) != null ? _e : model == null ? void 0 : model.analysisResult) != null ? _f : null,
+      section: (_h = (_g = input.section) != null ? _g : model == null ? void 0 : model.section) != null ? _h : null,
+      concreteMaterial: (_i = input.concreteMaterial) != null ? _i : model == null ? void 0 : model.concreteMaterial,
+      reinforcementMaterial: (_j = input.reinforcementMaterial) != null ? _j : model == null ? void 0 : model.reinforcementMaterial,
+      serviceability: (_l = (_k = input.serviceability) != null ? _k : model == null ? void 0 : model.serviceability) != null ? _l : {},
+      mesh: (_n = (_m = input.mesh) != null ? _m : model == null ? void 0 : model.mesh) != null ? _n : { targetFiberCount: 100 },
+      solver: (_p = (_o = input.solver) != null ? _o : model == null ? void 0 : model.solver) != null ? _p : { tolerance: 0.01, maxIterations: 50 },
+      beamModel: (_s = (_r = (_q = input.beamModel) != null ? _q : model == null ? void 0 : model.beamModel) != null ? _r : model == null ? void 0 : model.beamInput) != null ? _s : null,
+      hyperstatic: (_u = (_t = input.hyperstatic) != null ? _t : model == null ? void 0 : model.hyperstatic) != null ? _u : null,
+      performanceProfile: (_w = (_v = input.performanceProfile) != null ? _v : model == null ? void 0 : model.performanceProfile) != null ? _w : null,
+      sampling: (_y = (_x = input.sampling) != null ? _x : model == null ? void 0 : model.sampling) != null ? _y : {},
+      output: (_A = (_z = input.output) != null ? _z : model == null ? void 0 : model.output) != null ? _A : {}
     });
-    if (analysis.status !== RESULT_STATUS.NOT_IMPLEMENTED) {
-      return analysis;
-    }
-    return this.createPlaceholderResult({
-      summary: "Cracked RC deflection module scaffold created with a dedicated analysis entrypoint.",
-      warnings: analysis.warnings,
-      outputs: {
-        beamId: (_F = (_E = input.model) == null ? void 0 : _E.id) != null ? _F : null,
-        analysis: analysis.toJSON()
-      },
-      assumptions: [
-        "The implementation should separate section cracking logic from beam-line deflection integration."
-      ]
-    });
-  }
-};
-
-// src/applications/rc-cracked-deflection/models/CrackedSectionBeamModel.js
-var CrackedSectionBeamModel = class {
-  constructor({
-    id,
-    span = null,
-    section = {},
-    reinforcement = {},
-    material = {},
-    loading = {},
-    metadata = {}
-  }) {
-    if (!id) {
-      throw new Error("A cracked section beam model id is required.");
-    }
-    this.id = id;
-    this.span = span;
-    this.section = { ...section };
-    this.reinforcement = { ...reinforcement };
-    this.material = { ...material };
-    this.loading = { ...loading };
-    this.metadata = { ...metadata };
+    return analysis;
   }
 };
 
@@ -51787,7 +51869,7 @@ function runRcServiceDeflectionAnalysis({
     return {
       kind: "serviceDeflection",
       applicationId: "rc-cracked-deflection",
-      status: RESULT_STATUS.NOT_IMPLEMENTED,
+      status: RESULT_STATUS.NOT_ANALYZED,
       summary: "Service deflection requires a reinforced concrete section.",
       checks: [],
       outputs: {},
@@ -55605,10 +55687,10 @@ function missingSectionResult(input, { code, metadata }) {
   const { sectionId = null, loadCase = null } = input;
   return new VerificationResult({
     applicationId: "reinforced-concrete-sections",
-    status: RESULT_STATUS.NOT_IMPLEMENTED,
-    summary: "RC section biaxial/uniaxial verification scaffolded.",
+    status: RESULT_STATUS.NOT_ANALYZED,
+    summary: "RC section verification requires a section.",
     warnings: [
-      "Interaction domains, strain compatibility and detailing checks are placeholders."
+      "RC section verification was not run because the section input is missing."
     ],
     metadata: {
       code,
@@ -58377,1057 +58459,6 @@ var ReinforcedConcretePlateApplication = class extends StructuralApplication {
   }
 };
 
-// src/applications/reinforced-concrete-columns/ReinforcedConcreteColumnDetailingVerification.js
-function positive11(value, label) {
-  if (!Number.isFinite(value) || value <= 0) {
-    throw new Error(`${label} must be positive.`);
-  }
-  return value;
-}
-function minCheck(id, description, required, provided, metadata = {}) {
-  return utilizationCheck({ id, description, demand: required, capacity: provided, metadata });
-}
-function maxCheck(id, description, provided, allowed, metadata = {}) {
-  return utilizationCheck({ id, description, demand: provided, capacity: allowed, metadata });
-}
-function ductilityClass(value) {
-  const normalized = String(value != null ? value : "").toUpperCase().replaceAll('"', "").replaceAll("-", "");
-  if (["CDA", "A"].includes(normalized)) return "CDA";
-  if (["CDB", "B"].includes(normalized)) return "CDB";
-  throw new Error(`Unsupported NTC 2018 ductility class: ${value}.`);
-}
-var ReinforcedConcreteColumnDetailingVerification = class {
-  constructor({ code = "NTC2018" } = {}) {
-    this.code = code;
-  }
-  verify({ model, compression, normalizedAxialForce } = {}) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w;
-    const detailing = model.detailing;
-    if (!detailing) {
-      return new VerificationResult({
-        applicationId: "reinforced-concrete-columns",
-        status: RESULT_STATUS.NOT_ANALYZED,
-        summary: "Column detailing was not requested.",
-        warnings: ["Pass the detailing contract to verify column reinforcement and confinement."],
-        metadata: { code: this.code }
-      });
-    }
-    const concrete = (_a = model.section.concreteSection) != null ? _a : model.section;
-    const width = positive11(Number(concrete.width), "column width");
-    const depth = positive11(Number(concrete.height), "column depth");
-    const area = positive11(Number(concrete.area), "column concrete area");
-    const longitudinal = (_b = detailing.longitudinal) != null ? _b : {};
-    const transverse = (_c = detailing.transverse) != null ? _c : {};
-    const reinforcementArea = positive11(
-      Number((_f = longitudinal.area) != null ? _f : (_e = (_d = model.section).totalReinforcementArea) == null ? void 0 : _e.call(_d)),
-      "detailing.longitudinal.area"
-    );
-    const minBarDiameter = positive11(
-      Number(longitudinal.minimumBarDiameter),
-      "detailing.longitudinal.minimumBarDiameter"
-    );
-    const maxBarDiameter = positive11(
-      Number((_g = longitudinal.maximumBarDiameter) != null ? _g : minBarDiameter),
-      "detailing.longitudinal.maximumBarDiameter"
-    );
-    const maxBarSpacing = positive11(
-      Number(longitudinal.maximumBarSpacing),
-      "detailing.longitudinal.maximumBarSpacing"
-    );
-    const hoopDiameter = positive11(Number(transverse.diameter), "detailing.transverse.diameter");
-    const hoopSpacing = positive11(Number(transverse.spacing), "detailing.transverse.spacing");
-    const fyd = positive11(Number((_h = model.reinforcementMaterial) == null ? void 0 : _h.fyd), "reinforcement fyd");
-    const fyk = positive11(Number((_i = model.reinforcementMaterial) == null ? void 0 : _i.fyk), "reinforcement fyk");
-    const fywd = positive11(
-      Number((_k = transverse.designStrength) != null ? _k : (_j = model.reinforcementMaterial) == null ? void 0 : _j.fyd),
-      "transverse design strength"
-    );
-    const minimumArea = Math.max(0.1 * compression / fyd, 3e-3 * area);
-    const maximumArea = 0.04 * area;
-    const ordinaryHoopSpacing = Math.min(12 * minBarDiameter, 250);
-    const ordinaryHoopDiameter = Math.max(6, maxBarDiameter / 4);
-    const checks = [
-      minCheck("rc-column-minimum-longitudinal-area", "Minimum column longitudinal reinforcement", minimumArea, reinforcementArea, { reference: "NTC2018-4.1.46" }),
-      maxCheck("rc-column-maximum-longitudinal-area", "Maximum column longitudinal reinforcement outside lap zones", reinforcementArea, maximumArea, { reference: "NTC2018-4.1.6.1.2" }),
-      maxCheck("rc-column-maximum-longitudinal-spacing", "Maximum column longitudinal bar spacing", maxBarSpacing, 300, { reference: "NTC2018-4.1.6.1.2" }),
-      minCheck("rc-column-minimum-longitudinal-diameter", "Minimum column longitudinal bar diameter", 12, minBarDiameter, { reference: "NTC2018-4.1.6.1.2" }),
-      maxCheck("rc-column-ordinary-hoop-spacing", "Ordinary column hoop spacing", hoopSpacing, ordinaryHoopSpacing, { reference: "NTC2018-4.1.6.1.2" }),
-      minCheck("rc-column-ordinary-hoop-diameter", "Ordinary column hoop diameter", ordinaryHoopDiameter, hoopDiameter, { reference: "NTC2018-4.1.6.1.2" })
-    ];
-    let seismicOutputs = null;
-    if (((_l = detailing.seismic) == null ? void 0 : _l.enabled) === true) {
-      const dc = ductilityClass(detailing.seismic.ductilityClass);
-      const isCda = dc === "CDA";
-      const clearHeight = positive11(
-        Number((_m = detailing.seismic.clearHeight) != null ? _m : model.length),
-        "detailing.seismic.clearHeight"
-      );
-      const sectionDepthInBending = positive11(
-        Number((_n = detailing.seismic.sectionDepthInBending) != null ? _n : Math.max(width, depth)),
-        "detailing.seismic.sectionDepthInBending"
-      );
-      const criticalZoneLength = clearHeight < 3 * sectionDepthInBending ? clearHeight : Math.max(sectionDepthInBending, clearHeight / 6, 450);
-      const longitudinalRatio = reinforcementArea / area;
-      const seismicHoopDiameter = isCda ? Math.max(6, 0.4 * maxBarDiameter * Math.sqrt(fyd / fywd)) : 6;
-      const seismicHoopSpacing = Math.min(
-        Math.min(width, depth) / (isCda ? 3 : 2),
-        isCda ? 125 : 175,
-        (isCda ? 6 : 8) * minBarDiameter
-      );
-      const restrainedSpacingLimit = isCda ? 150 : 200;
-      const confinement = (_o = detailing.confinement) != null ? _o : {};
-      const coreWidth = positive11(Number(confinement.coreWidth), "confinement.coreWidth");
-      const coreDepth = positive11(Number(confinement.coreDepth), "confinement.coreDepth");
-      const volumePerSet = positive11(Number(confinement.volumePerSet), "confinement.volumePerSet");
-      const restrainedSpacings = (_p = confinement.restrainedBarSpacings) != null ? _p : [];
-      if (restrainedSpacings.length === 0) {
-        throw new Error("confinement.restrainedBarSpacings must not be empty.");
-      }
-      const alphaN = Math.max(
-        0,
-        1 - restrainedSpacings.reduce((sum, value) => sum + value ** 2, 0) / (6 * coreWidth * coreDepth)
-      );
-      const alphaS = Math.max(0, 1 - hoopSpacing / (2 * coreWidth)) * Math.max(0, 1 - hoopSpacing / (2 * coreDepth));
-      const alpha = alphaN * alphaS;
-      const volumetricRatio = volumePerSet / (coreWidth * coreDepth * hoopSpacing);
-      const omegaWd = volumetricRatio * fywd / model.concreteMaterial.fcd;
-      const epsilonSyD = fyd / positive11(
-        Number(model.reinforcementMaterial.elasticModulus),
-        "reinforcement elastic modulus"
-      );
-      const muPhi = positive11(
-        Number(detailing.seismic.curvatureDuctilityDemand),
-        "detailing.seismic.curvatureDuctilityDemand"
-      );
-      const ductilityDemand = Math.max(
-        0,
-        30 * muPhi * epsilonSyD * normalizedAxialForce * (Math.min(width, depth) / Math.min(coreWidth, coreDepth)) - 0.035
-      );
-      const omegaMinimum = isCda ? 0.12 : 0.08;
-      checks.push(
-        minCheck("rc-column-seismic-minimum-dimension", "Minimum dissipative column dimension", 250, Math.min(width, depth), { reference: "NTC2018-7.4.6.1.2" }),
-        minCheck("rc-column-seismic-longitudinal-ratio-min", "Minimum seismic longitudinal reinforcement ratio", 0.01, longitudinalRatio, { reference: "NTC2018-7.4.28" }),
-        maxCheck("rc-column-seismic-longitudinal-ratio-max", "Maximum seismic longitudinal reinforcement ratio", longitudinalRatio, 0.04, { reference: "NTC2018-7.4.28" }),
-        maxCheck("rc-column-seismic-longitudinal-spacing", "Maximum seismic longitudinal bar spacing", maxBarSpacing, 250, { reference: "NTC2018-7.4.6.2.2" }),
-        minCheck("rc-column-seismic-hoop-diameter", "Minimum confinement hoop diameter", seismicHoopDiameter, hoopDiameter, { reference: "NTC2018-7.4.6.2.2" }),
-        maxCheck("rc-column-seismic-hoop-spacing", "Maximum confinement hoop spacing", hoopSpacing, seismicHoopSpacing, { reference: "NTC2018-7.4.6.2.2" }),
-        maxCheck("rc-column-seismic-restrained-bar-spacing", "Maximum spacing between laterally restrained bars", Math.max(...restrainedSpacings), restrainedSpacingLimit, { reference: "NTC2018-7.4.6.2.2" }),
-        minCheck("rc-column-seismic-omega-wd", "Minimum mechanical confinement ratio", omegaMinimum, omegaWd, { reference: "NTC2018-7.4.30" }),
-        minCheck("rc-column-seismic-ductility-confinement", "Confinement for curvature ductility demand", ductilityDemand, alpha * omegaWd, { reference: "NTC2018-7.4.29-7.4.31" })
-      );
-      seismicOutputs = {
-        ductilityClass: dc,
-        criticalZoneLength,
-        longitudinalRatio,
-        seismicHoopDiameter,
-        seismicHoopSpacing,
-        alphaN,
-        alphaS,
-        alpha,
-        volumetricRatio,
-        omegaWd,
-        omegaMinimum,
-        curvatureDuctilityDemand: muPhi,
-        ductilityConfinementDemand: ductilityDemand
-      };
-    }
-    let anchorageOutput = null;
-    if (detailing.anchorage) {
-      const anchor = detailing.anchorage;
-      const fctd = positive11(
-        Number((_q = anchor.fctd) != null ? _q : 0.7 * model.concreteMaterial.fctm / model.concreteMaterial.metadata.gammaC),
-        "anchorage.fctd"
-      );
-      const bond = calculateEn1992DesignBondStrength({
-        fctd,
-        barDiameter: anchor.barDiameter,
-        bondConditionFactor: (_r = anchor.bondConditionFactor) != null ? _r : 1
-      });
-      const base = calculateEn1992AnchorageLength({
-        barDiameter: anchor.barDiameter,
-        designSteelStress: (_s = anchor.designSteelStress) != null ? _s : fyd,
-        fbd: bond.fbd,
-        tension: anchor.tension !== false,
-        nationalMinimumDiameterMultiple: 20,
-        nationalMinimumLength: 150
-      });
-      const axialTension = compression <= 0 && Math.abs(model.actions.nEd) > 0;
-      const requiredLength = base.designLength * (axialTension ? 1.5 : 1);
-      checks.push(minCheck("rc-column-longitudinal-anchorage", "Column longitudinal bar anchorage", requiredLength, anchor.availableLength, { reference: axialTension ? "NTC2018-7.4.6.2.2" : "NTC2018-4.1.2.3.10", fbd: round3(bond.fbd), axialTensionFactor: axialTension ? 1.5 : 1 }));
-      anchorageOutput = { ...base, requiredLength, fbd: bond.fbd };
-    }
-    const governing = governingCheck(checks);
-    const ok = checks.every((check) => check.ok === true);
-    return new VerificationResult({
-      applicationId: "reinforced-concrete-columns",
-      status: ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
-      summary: "NTC 2018 column reinforcement, confinement and ductility verification.",
-      utilizationRatio: (_t = governing == null ? void 0 : governing.utilizationRatio) != null ? _t : null,
-      demand: (_u = governing == null ? void 0 : governing.demand) != null ? _u : null,
-      capacity: (_v = governing == null ? void 0 : governing.capacity) != null ? _v : null,
-      checks,
-      outputs: {
-        reinforcementArea,
-        longitudinalRatio: reinforcementArea / area,
-        seismic: seismicOutputs,
-        anchorage: anchorageOutput
-      },
-      assumptions: [
-        "Confinement volumePerSet is the total steel volume effective in one transverse-reinforcement set inside the core.",
-        "restrainedBarSpacings contains every clear centre-line spacing between consecutive laterally restrained longitudinal bars around the core."
-      ],
-      metadata: { code: this.code, governingCheckId: (_w = governing == null ? void 0 : governing.id) != null ? _w : null }
-    });
-  }
-};
-
-// src/applications/reinforced-concrete-columns/ReinforcedConcreteColumnVerification.js
-var INTERNAL_UNITS27 = Object.freeze({ force: "N", length: "mm" });
-var EPS12 = 1e-9;
-function concreteSectionFrom2(section) {
-  var _a;
-  return (_a = section == null ? void 0 : section.concreteSection) != null ? _a : section;
-}
-function compressionFrom(nEd, convention) {
-  if (convention === "compression-positive") {
-    return Math.max(nEd, 0);
-  }
-  if (convention === "compression-negative" || convention === "tension-positive") {
-    return Math.max(-nEd, 0);
-  }
-  throw new Error(`Unsupported compression sign convention: ${convention}.`);
-}
-function cross2(a, b) {
-  return a.x * b.y - a.y * b.x;
-}
-function rayCapacity(points, demandX, demandY) {
-  var _a, _b;
-  const demandNorm = Math.hypot(demandX, demandY);
-  if (demandNorm <= EPS12) {
-    return {
-      demandNorm: 0,
-      capacityNorm: Number.POSITIVE_INFINITY,
-      utilizationRatio: 0,
-      intersection: null
-    };
-  }
-  const direction = { x: demandX / demandNorm, y: demandY / demandNorm };
-  const intersections = [];
-  for (let index = 0; index < points.length; index += 1) {
-    const start = {
-      x: points[index].MxRd,
-      y: points[index].MyRd
-    };
-    const endPoint = points[(index + 1) % points.length];
-    const segment = {
-      x: endPoint.MxRd - start.x,
-      y: endPoint.MyRd - start.y
-    };
-    const denominator = cross2(direction, segment);
-    if (Math.abs(denominator) <= EPS12) {
-      continue;
-    }
-    const distance = cross2(start, segment) / denominator;
-    const segmentParameter = cross2(start, direction) / denominator;
-    if (distance >= -EPS12 && segmentParameter >= -EPS12 && segmentParameter <= 1 + EPS12) {
-      intersections.push({
-        distance: Math.max(0, distance),
-        x: direction.x * Math.max(0, distance),
-        y: direction.y * Math.max(0, distance),
-        segmentIndex: index
-      });
-    }
-  }
-  const positive20 = intersections.filter((item) => item.distance > EPS12).sort((a, b) => a.distance - b.distance);
-  const selected = (_a = positive20[0]) != null ? _a : null;
-  return {
-    demandNorm,
-    capacityNorm: (_b = selected == null ? void 0 : selected.distance) != null ? _b : null,
-    utilizationRatio: (selected == null ? void 0 : selected.distance) && selected.distance > 0 ? demandNorm / selected.distance : Number.POSITIVE_INFINITY,
-    intersection: selected
-  };
-}
-function resolveAxis({
-  id,
-  inertia,
-  concreteArea,
-  effectiveLength,
-  firstOrderMoment,
-  totalMoment,
-  secondOrderFlag,
-  compression,
-  lambdaLimit,
-  nominalRigidity,
-  momentDistributionFactor,
-  includeImperfectionWhenMomentIsZero,
-  memberLength
-}) {
-  const radiusOfGyration = Number.isFinite(inertia) && inertia > 0 && concreteArea > 0 ? Math.sqrt(inertia / concreteArea) : null;
-  const slenderness = radiusOfGyration ? effectiveLength / radiusOfGyration : null;
-  const secondOrderRequired = compression > 0 && Number.isFinite(slenderness) && Number.isFinite(lambdaLimit) && slenderness > lambdaLimit;
-  const explicitTotal = Number.isFinite(totalMoment);
-  const imperfectionEccentricity = includeImperfectionWhenMomentIsZero && compression > 0 && Math.abs(firstOrderMoment) <= EPS12 ? memberLength / 300 : 0;
-  const firstOrderWithImperfection = firstOrderMoment + (firstOrderMoment < 0 ? -1 : 1) * compression * imperfectionEccentricity;
-  const criticalLoad = Number.isFinite(nominalRigidity) && nominalRigidity > 0 ? Math.PI ** 2 * nominalRigidity / effectiveLength ** 2 : null;
-  const stableForMagnification = Number.isFinite(criticalLoad) && criticalLoad > compression;
-  const magnificationFactor = secondOrderRequired && stableForMagnification ? 1 + momentDistributionFactor / (criticalLoad / compression - 1) : 1;
-  const generatedTotalMoment = secondOrderRequired && stableForMagnification ? firstOrderWithImperfection * magnificationFactor : null;
-  const secondOrderIncluded = !secondOrderRequired || explicitTotal || secondOrderFlag === true || Number.isFinite(generatedTotalMoment);
-  const designMoment = explicitTotal ? totalMoment : Number.isFinite(generatedTotalMoment) ? generatedTotalMoment : firstOrderWithImperfection;
-  const ratio = Number.isFinite(slenderness) && Number.isFinite(lambdaLimit) && lambdaLimit > 0 ? slenderness / lambdaLimit : 0;
-  return {
-    id,
-    inertia,
-    effectiveLength,
-    radiusOfGyration,
-    slenderness,
-    lambdaLimit,
-    slendernessRatio: ratio,
-    secondOrderRequired,
-    secondOrderIncluded,
-    firstOrderMoment,
-    firstOrderWithImperfection,
-    imperfectionEccentricity,
-    nominalRigidity,
-    criticalLoad,
-    magnificationFactor,
-    stableForMagnification,
-    generatedTotalMoment,
-    totalMoment: explicitTotal ? totalMoment : null,
-    designMoment,
-    check: {
-      id: `rc-column-second-order-${id}`,
-      description: `Second-order treatment for column ${id} bending component`,
-      demand: round3(slenderness),
-      capacity: round3(lambdaLimit),
-      utilizationRatio: round3(ratio),
-      ok: secondOrderIncluded,
-      metadata: {
-        reference: "NTC2018-4.1.41-4.1.42",
-        screeningExceeded: secondOrderRequired,
-        secondOrderIncluded,
-        momentSource: explicitTotal ? "explicit-total" : Number.isFinite(generatedTotalMoment) ? "generated-ntc2018-nominal-stiffness" : secondOrderFlag === true ? "input-declared-inclusive" : "first-order-screened"
-      }
-    }
-  };
-}
-var ReinforcedConcreteColumnVerification = class {
-  constructor({ code = "NTC2018", metadata = {} } = {}) {
-    this.code = code;
-    this.metadata = { ...metadata };
-  }
-  verify(model) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u;
-    if (!(model == null ? void 0 : model.section) || !(model == null ? void 0 : model.concreteMaterial)) {
-      return new VerificationResult({
-        applicationId: "reinforced-concrete-columns",
-        status: RESULT_STATUS.NOT_VERIFIED,
-        summary: "RC column verification requires a section and concrete material.",
-        warnings: ["Column verification was not run because required inputs are missing."],
-        metadata: { code: this.code, ...this.metadata }
-      });
-    }
-    const concreteSection = concreteSectionFrom2(model.section);
-    const concreteArea = concreteSection == null ? void 0 : concreteSection.area;
-    const fcd = (_a = model.concreteMaterial) == null ? void 0 : _a.fcd;
-    if (!Number.isFinite(concreteArea) || concreteArea <= 0 || !Number.isFinite(fcd) || fcd <= 0) {
-      return new VerificationResult({
-        applicationId: "reinforced-concrete-columns",
-        status: RESULT_STATUS.NOT_VERIFIED,
-        summary: "RC column stability parameters are incomplete.",
-        warnings: ["A positive concrete area and design concrete strength fcd are required."],
-        metadata: {
-          code: this.code,
-          missingParameters: ["concreteArea", "fcd"],
-          ...this.metadata
-        }
-      });
-    }
-    const compression = compressionFrom(
-      model.actions.nEd,
-      model.stability.compressionSignConvention
-    );
-    const normalizedAxialForce = compression / (concreteArea * fcd);
-    const lambdaLimit = normalizedAxialForce > 0 ? 25 / Math.sqrt(normalizedAxialForce) : Number.POSITIVE_INFINITY;
-    const creepCoefficient = model.stability.creepCoefficient;
-    const gammaCE = (_b = model.stability.gammaCE) != null ? _b : 1.2;
-    const concreteElasticModulus = (_c = model.concreteMaterial) == null ? void 0 : _c.elasticModulus;
-    const concreteDesignModulus = Number.isFinite(concreteElasticModulus) && concreteElasticModulus > 0 ? concreteElasticModulus / gammaCE : null;
-    const rigidityFactor = Number.isFinite(creepCoefficient) && creepCoefficient >= 0 ? 0.3 / (1 + 0.5 * creepCoefficient) : null;
-    const nominalRigidityFor = (inertia) => model.stability.secondOrderMethod === "ntc2018-nominal-stiffness" && Number.isFinite(rigidityFactor) && Number.isFinite(concreteDesignModulus) && Number.isFinite(inertia) && inertia > 0 ? rigidityFactor * concreteDesignModulus * inertia : null;
-    const sharedSecondOrderFlag = model.stability.designMomentsIncludeSecondOrder === true;
-    const axisMx = resolveAxis({
-      id: "mx",
-      inertia: concreteSection.inertiaY,
-      concreteArea,
-      effectiveLength: model.stability.effectiveLengthMx,
-      firstOrderMoment: model.actions.mxEd,
-      totalMoment: model.actions.mxEdTotal,
-      secondOrderFlag: (_d = model.stability.mxIncludesSecondOrder) != null ? _d : sharedSecondOrderFlag,
-      compression,
-      lambdaLimit,
-      nominalRigidity: nominalRigidityFor(concreteSection.inertiaY),
-      momentDistributionFactor: model.stability.momentDistributionFactor,
-      includeImperfectionWhenMomentIsZero: model.stability.includeImperfectionWhenMomentIsZero,
-      memberLength: model.length
-    });
-    const axisMy = resolveAxis({
-      id: "my",
-      inertia: concreteSection.inertiaZ,
-      concreteArea,
-      effectiveLength: model.stability.effectiveLengthMy,
-      firstOrderMoment: model.actions.myEd,
-      totalMoment: model.actions.myEdTotal,
-      secondOrderFlag: (_e = model.stability.myIncludesSecondOrder) != null ? _e : sharedSecondOrderFlag,
-      compression,
-      lambdaLimit,
-      nominalRigidity: nominalRigidityFor(concreteSection.inertiaZ),
-      momentDistributionFactor: model.stability.momentDistributionFactor,
-      includeImperfectionWhenMomentIsZero: model.stability.includeImperfectionWhenMomentIsZero,
-      memberLength: model.length
-    });
-    const axes = [axisMx, axisMy];
-    const unresolvedAxes = axes.filter(
-      (axis) => axis.secondOrderRequired && !axis.secondOrderIncluded
-    );
-    const baseOutputs2 = {
-      columnId: model.id,
-      nEd: round3(model.actions.nEd),
-      compression: round3(compression),
-      concreteArea: round3(concreteArea),
-      fcd: round3(fcd),
-      normalizedAxialForce: round3(normalizedAxialForce, 9),
-      lambdaLimit: round3(lambdaLimit),
-      secondOrder: {
-        method: model.stability.secondOrderMethod,
-        creepCoefficient,
-        gammaCE,
-        concreteDesignModulus: round3(concreteDesignModulus),
-        rigidityFactor: round3(rigidityFactor)
-      },
-      axes: Object.fromEntries(
-        axes.map((axis) => [
-          axis.id,
-          {
-            inertia: round3(axis.inertia),
-            effectiveLength: round3(axis.effectiveLength),
-            radiusOfGyration: round3(axis.radiusOfGyration),
-            slenderness: round3(axis.slenderness),
-            slendernessRatio: round3(axis.slendernessRatio),
-            secondOrderRequired: axis.secondOrderRequired,
-            secondOrderIncluded: axis.secondOrderIncluded,
-            firstOrderMoment: round3(axis.firstOrderMoment),
-            firstOrderWithImperfection: round3(axis.firstOrderWithImperfection),
-            imperfectionEccentricity: round3(axis.imperfectionEccentricity),
-            nominalRigidity: round3(axis.nominalRigidity),
-            criticalLoad: round3(axis.criticalLoad),
-            magnificationFactor: round3(axis.magnificationFactor),
-            stableForMagnification: axis.stableForMagnification,
-            generatedTotalMoment: round3(axis.generatedTotalMoment),
-            totalMoment: round3(axis.totalMoment),
-            designMoment: round3(axis.designMoment),
-            secondOrderMethod: axis.secondOrderRequired ? model.stability.secondOrderMethod : null
-          }
-        ])
-      )
-    };
-    if (unresolvedAxes.length > 0) {
-      return new VerificationResult({
-        applicationId: "reinforced-concrete-columns",
-        status: RESULT_STATUS.NOT_SUPPORTED,
-        summary: "RC column is slender and requires design moments including second-order effects.",
-        checks: axes.map((axis) => axis.check),
-        outputs: baseOutputs2,
-        warnings: [
-          `Second-order moments are missing for: ${unresolvedAxes.map((axis) => axis.id).join(", ")}.`,
-          "Provide a non-negative stability.creepCoefficient to generate moments with the NTC 2018 nominal stiffness, or supply explicit total moments from an adequate analysis."
-        ],
-        assumptions: [
-          "The NTC 2018 single-column slenderness screening is applied independently to the two section bending components."
-        ],
-        metadata: {
-          code: this.code,
-          method: "ntc2018-4.1.2.3.9.2-screening-and-4.1.44",
-          unresolvedAxes: unresolvedAxes.map((axis) => axis.id),
-          ...this.metadata
-        }
-      });
-    }
-    const sectionModel = new ReinforcedConcreteSectionModel({
-      id: `${model.id}-design-section`,
-      section: model.section,
-      materials: {
-        concreteMaterial: model.concreteMaterial,
-        reinforcementMaterial: model.reinforcementMaterial
-      },
-      analysisType: "uls-biaxial-domain",
-      analysisSettings: {
-        angleCount: (_f = model.stability.biaxialAngleCount) != null ? _f : 64
-      },
-      mesh: model.mesh,
-      solver: model.solver,
-      actions: {
-        nEd: model.actions.nEd,
-        mxEd: axisMx.designMoment,
-        myEd: axisMy.designMoment
-      },
-      units: INTERNAL_UNITS27,
-      metadata: {
-        sourceColumnId: model.id
-      }
-    });
-    const sectionResult = new ReinforcedConcreteSectionVerification({
-      code: this.code
-    }).verify(sectionModel);
-    const capacity = rayCapacity(
-      (_h = (_g = sectionResult.outputs) == null ? void 0 : _g.points) != null ? _h : [],
-      axisMx.designMoment,
-      axisMy.designMoment
-    );
-    const resistanceCheck = {
-      id: "rc-column-biaxial-resistance",
-      description: "Column biaxial bending resistance at the assigned axial force",
-      demand: round3(capacity.demandNorm),
-      capacity: round3(capacity.capacityNorm),
-      utilizationRatio: round3(capacity.utilizationRatio),
-      ok: sectionResult.status === RESULT_STATUS.OK && Number.isFinite(capacity.utilizationRatio) && capacity.utilizationRatio <= 1,
-      metadata: {
-        method: "fiber-domain-ray-intersection",
-        mxEd: round3(axisMx.designMoment),
-        myEd: round3(axisMy.designMoment),
-        intersection: capacity.intersection ? {
-          mxRd: round3(capacity.intersection.x),
-          myRd: round3(capacity.intersection.y),
-          segmentIndex: capacity.intersection.segmentIndex
-        } : null
-      }
-    };
-    const capacityDesign = (_i = model.shear) == null ? void 0 : _i.capacityDesign;
-    const seismicGammaRd = ((_k = (_j = model.detailing) == null ? void 0 : _j.seismic) == null ? void 0 : _k.enabled) ? String(model.detailing.seismic.ductilityClass).toUpperCase().includes("A") ? 1.2 : 1 : 1;
-    const shearResults = Object.fromEntries(
-      [
-        ["x", (_l = model.shear) == null ? void 0 : _l.x, model.actions.vxEd, axisMx.designMoment],
-        ["y", (_m = model.shear) == null ? void 0 : _m.y, model.actions.vyEd, axisMy.designMoment]
-      ].filter(([, shear]) => shear).map(([axisId, shear, action, moment]) => {
-        var _a2, _b2, _c2;
-        const endMoments = (_a2 = capacityDesign == null ? void 0 : capacityDesign[axisId === "x" ? "endMomentsX" : "endMomentsY"]) != null ? _a2 : [];
-        const capacityDesignShear = endMoments.length > 0 ? seismicGammaRd * endMoments.reduce(
-          (sum, value) => sum + Math.abs(value),
-          0
-        ) / capacityDesign.clearLength : 0;
-        const vEd = Math.max(Math.abs((_c2 = (_b2 = shear.vEd) != null ? _b2 : action) != null ? _c2 : 0), capacityDesignShear);
-        const result = new ReinforcedConcreteShearVerification({
-          code: this.code
-        }).verifySectionActions({
-          nEd: model.actions.nEd,
-          vEd,
-          mEd: moment,
-          section: model.section,
-          concreteMaterial: model.concreteMaterial,
-          reinforcementMaterial: model.reinforcementMaterial,
-          shear,
-          units: INTERNAL_UNITS27
-        });
-        result.checks = result.checks.map((check) => {
-          var _a3, _b3, _c3;
-          return {
-            ...check,
-            id: `${check.id}-${axisId}`,
-            metadata: {
-              ...check.metadata,
-              axis: axisId,
-              analysisShear: round3(Math.abs((_b3 = (_a3 = shear.vEd) != null ? _a3 : action) != null ? _b3 : 0)),
-              capacityDesignShear: round3(capacityDesignShear),
-              gammaRd: seismicGammaRd,
-              reference: capacityDesignShear > 0 ? "NTC2018-7.4.5" : (_c3 = check.metadata) == null ? void 0 : _c3.reference
-            }
-          };
-        });
-        return [axisId, result];
-      })
-    );
-    const detailingResult = model.detailing ? new ReinforcedConcreteColumnDetailingVerification({
-      code: this.code
-    }).verify({ model, compression, normalizedAxialForce }) : null;
-    const checks = [
-      ...axes.map((axis) => axis.check),
-      resistanceCheck,
-      ...Object.values(shearResults).flatMap((result) => result.checks),
-      ...(_n = detailingResult == null ? void 0 : detailingResult.checks) != null ? _n : []
-    ];
-    const governing = governingCheck(checks);
-    const componentStatuses = [
-      sectionResult.status,
-      ...Object.values(shearResults).map((result) => result.status),
-      ...detailingResult ? [detailingResult.status] : []
-    ];
-    const ok = checks.every((check) => check.ok === true) && componentStatuses.every((status) => status === RESULT_STATUS.OK);
-    return new VerificationResult({
-      applicationId: "reinforced-concrete-columns",
-      status: ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
-      summary: "RC column NTC 2018 slenderness screening and biaxial section resistance verification.",
-      utilizationRatio: (_o = governing == null ? void 0 : governing.utilizationRatio) != null ? _o : null,
-      demand: (_p = governing == null ? void 0 : governing.demand) != null ? _p : null,
-      capacity: (_q = governing == null ? void 0 : governing.capacity) != null ? _q : null,
-      checks,
-      outputs: {
-        ...baseOutputs2,
-        designActions: {
-          nEd: round3(model.actions.nEd),
-          mxEd: round3(axisMx.designMoment),
-          myEd: round3(axisMy.designMoment)
-        },
-        sectionResult: sectionResult.toJSON(),
-        shear: Object.fromEntries(
-          Object.entries(shearResults).map(([axis, result]) => {
-            var _a2, _b2;
-            return [
-              axis,
-              (_b2 = (_a2 = result.toJSON) == null ? void 0 : _a2.call(result)) != null ? _b2 : result
-            ];
-          })
-        ),
-        detailing: (_r = detailingResult == null ? void 0 : detailingResult.toJSON()) != null ? _r : null
-      },
-      warnings: [
-        ...sectionResult.warnings,
-        ...Object.values(shearResults).flatMap((result) => result.warnings),
-        ...(_s = detailingResult == null ? void 0 : detailingResult.warnings) != null ? _s : [],
-        ...!model.shear ? ["Column shear was not checked because no shear contract was supplied."] : [],
-        ...!model.detailing ? ["Column reinforcement, confinement and ductility were not checked because no detailing contract was supplied."] : []
-      ],
-      assumptions: [
-        ...sectionResult.assumptions,
-        ...Object.values(shearResults).flatMap((result) => result.assumptions),
-        ...(_t = detailingResult == null ? void 0 : detailingResult.assumptions) != null ? _t : [],
-        "Compression is negative by default; change stability.compressionSignConvention explicitly when required.",
-        "mxEd is paired with concreteSection.inertiaY and myEd with concreteSection.inertiaZ, following the existing RC section action convention.",
-        "Explicit total moments are assumed to include imperfections, cracking, creep and second-order effects; generated moments use the documented NTC nominal-stiffness isolated-member method."
-      ],
-      metadata: {
-        code: this.code,
-        method: "ntc2018-column-stability-resistance-shear-detailing",
-        governingCheckId: (_u = governing == null ? void 0 : governing.id) != null ? _u : null,
-        ...this.metadata
-      }
-    });
-  }
-};
-
-// src/applications/reinforced-concrete-columns/ReinforcedConcreteColumnApplication.js
-var ReinforcedConcreteColumnApplication = class extends StructuralApplication {
-  constructor() {
-    super({
-      id: "reinforced-concrete-columns",
-      name: "RC Columns",
-      description: "Local RC column verification with NTC 2018 second-order generation, biaxial resistance, shear, confinement and detailing.",
-      domain: "reinforced-concrete",
-      supportedCodes: ["NTC2018"],
-      tags: ["rc", "columns", "biaxial-bending", "stability", "uls"],
-      metadata: {
-        maturity: "partial",
-        limitations: [
-          "nominal-stiffness moment generation applies to isolated members with assigned effective lengths",
-          "global frame P-Delta analysis and automatic effective lengths remain consumer responsibilities",
-          "shear and detailing require explicit serializable reinforcement contracts"
-        ]
-      }
-    });
-  }
-  run(input = {}) {
-    var _a;
-    if (!input.model) {
-      throw new Error("ReinforcedConcreteColumnApplication requires a model.");
-    }
-    return new ReinforcedConcreteColumnVerification({
-      code: (_a = input.code) != null ? _a : "NTC2018"
-    }).verify(input.model);
-  }
-};
-
-// src/applications/reinforced-concrete-columns/ReinforcedConcreteColumnModel.js
-var INTERNAL_UNITS28 = Object.freeze({ force: "N", length: "mm" });
-function positiveLength(value, label) {
-  if (!Number.isFinite(value) || value <= 0) {
-    throw new Error(`${label} must be a positive length.`);
-  }
-  return value;
-}
-function convertShearAxis(input, resolver, label) {
-  var _a;
-  if (!input) return null;
-  return {
-    ...input,
-    vEd: resolver.force(Number((_a = input.vEd) != null ? _a : 0)),
-    bw: resolver.length(Number(input.bw)),
-    effectiveDepth: resolver.length(Number(input.effectiveDepth)),
-    longitudinalReinforcementArea: resolver.area(
-      Number(input.longitudinalReinforcementArea)
-    ),
-    transverseReinforcement: input.transverseReinforcement ? {
-      ...input.transverseReinforcement,
-      areaPerSpacing: resolver.length(
-        Number(input.transverseReinforcement.areaPerSpacing)
-      ),
-      spacing: input.transverseReinforcement.spacing == null ? null : resolver.length(Number(input.transverseReinforcement.spacing)),
-      area: input.transverseReinforcement.area == null ? null : resolver.area(Number(input.transverseReinforcement.area))
-    } : null,
-    label
-  };
-}
-function convertDetailing(input, resolver) {
-  var _a;
-  if (!input) return null;
-  const length = (value) => value == null ? null : resolver.length(Number(value));
-  const area = (value) => value == null ? null : resolver.area(Number(value));
-  return {
-    ...structuredClone(input),
-    longitudinal: input.longitudinal ? {
-      ...input.longitudinal,
-      area: area(input.longitudinal.area),
-      minimumBarDiameter: length(input.longitudinal.minimumBarDiameter),
-      maximumBarDiameter: length(input.longitudinal.maximumBarDiameter),
-      maximumBarSpacing: length(input.longitudinal.maximumBarSpacing)
-    } : null,
-    transverse: input.transverse ? {
-      ...input.transverse,
-      diameter: length(input.transverse.diameter),
-      spacing: length(input.transverse.spacing)
-    } : null,
-    confinement: input.confinement ? {
-      ...input.confinement,
-      coreWidth: length(input.confinement.coreWidth),
-      coreDepth: length(input.confinement.coreDepth),
-      volumePerSet: input.confinement.volumePerSet == null ? null : resolver.convert(Number(input.confinement.volumePerSet), {
-        lengthExponent: 3
-      }),
-      restrainedBarSpacings: ((_a = input.confinement.restrainedBarSpacings) != null ? _a : []).map((value) => length(value))
-    } : null,
-    anchorage: input.anchorage ? {
-      ...input.anchorage,
-      barDiameter: length(input.anchorage.barDiameter),
-      availableLength: length(input.anchorage.availableLength)
-    } : null
-  };
-}
-var ReinforcedConcreteColumnModel = class {
-  constructor({
-    id,
-    section,
-    concreteMaterial = ((_a) => (_a = section == null ? void 0 : section.concreteMaterial) != null ? _a : null)(),
-    reinforcementMaterial = ((_b) => (_b = section == null ? void 0 : section.reinforcementMaterial) != null ? _b : null)(),
-    length,
-    stability = {},
-    actions = {},
-    shear = null,
-    detailing = null,
-    mesh = { targetFiberCount: 120 },
-    solver = { tolerance: 1e-6, maxIterations: 100 },
-    units = null,
-    metadata = {}
-  } = {}) {
-    var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w;
-    if (!id) {
-      throw new Error("A reinforced concrete column model id is required.");
-    }
-    if (!section) {
-      throw new Error("ReinforcedConcreteColumnModel requires a section.");
-    }
-    assertExplicitUnitSystem(units, "ReinforcedConcreteColumnModel");
-    const resolver = createUnitResolver(units, INTERNAL_UNITS28);
-    const resolvedLength = positiveLength(
-      resolver.length(length),
-      "ReinforcedConcreteColumnModel length"
-    );
-    const effectiveLengthMx = resolver.length(
-      (_c = (_b2 = (_a2 = stability.effectiveLengthMx) != null ? _a2 : stability.effectiveLengthY) != null ? _b2 : stability.l0y) != null ? _c : length
-    );
-    const effectiveLengthMy = resolver.length(
-      (_f = (_e = (_d = stability.effectiveLengthMy) != null ? _d : stability.effectiveLengthZ) != null ? _e : stability.l0z) != null ? _f : length
-    );
-    positiveLength(effectiveLengthMx, "stability.effectiveLengthMx");
-    positiveLength(effectiveLengthMy, "stability.effectiveLengthMy");
-    this.id = id;
-    this.section = section;
-    this.concreteMaterial = concreteMaterial;
-    this.reinforcementMaterial = reinforcementMaterial;
-    this.length = resolvedLength;
-    this.stability = {
-      ...stability,
-      effectiveLengthMx,
-      effectiveLengthMy,
-      compressionSignConvention: (_g = stability.compressionSignConvention) != null ? _g : "compression-negative",
-      designMomentsIncludeSecondOrder: (_h = stability.designMomentsIncludeSecondOrder) != null ? _h : false,
-      secondOrderMethod: (_i = stability.secondOrderMethod) != null ? _i : "ntc2018-nominal-stiffness",
-      creepCoefficient: stability.creepCoefficient == null ? null : Number(stability.creepCoefficient),
-      momentDistributionFactor: stability.momentDistributionFactor == null ? 1 : Number(stability.momentDistributionFactor),
-      includeImperfectionWhenMomentIsZero: (_j = stability.includeImperfectionWhenMomentIsZero) != null ? _j : true
-    };
-    this.actions = {
-      ...actions,
-      nEd: resolver.force((_l = (_k = actions.nEd) != null ? _k : actions.n) != null ? _l : 0),
-      mxEd: resolver.moment((_n = (_m = actions.mxEd) != null ? _m : actions.mzEd) != null ? _n : 0),
-      myEd: resolver.moment((_o = actions.myEd) != null ? _o : 0),
-      mxEdTotal: resolver.moment(
-        (_q = (_p = actions.mxEdTotal) != null ? _p : actions.mzEdTotal) != null ? _q : null
-      ),
-      myEdTotal: resolver.moment((_r = actions.myEdTotal) != null ? _r : null),
-      vxEd: resolver.force((_s = actions.vxEd) != null ? _s : 0),
-      vyEd: resolver.force((_t = actions.vyEd) != null ? _t : 0)
-    };
-    this.shear = shear ? {
-      x: convertShearAxis(shear.x, resolver, "x"),
-      y: convertShearAxis(shear.y, resolver, "y"),
-      capacityDesign: shear.capacityDesign ? {
-        ...shear.capacityDesign,
-        clearLength: resolver.length(
-          Number((_u = shear.capacityDesign.clearLength) != null ? _u : length)
-        ),
-        endMomentsX: ((_v = shear.capacityDesign.endMomentsX) != null ? _v : []).map((value) => resolver.moment(Number(value))),
-        endMomentsY: ((_w = shear.capacityDesign.endMomentsY) != null ? _w : []).map((value) => resolver.moment(Number(value)))
-      } : null
-    } : null;
-    this.detailing = convertDetailing(detailing, resolver);
-    this.mesh = { ...mesh };
-    this.solver = { ...solver };
-    this.units = INTERNAL_UNITS28;
-    this.metadata = {
-      ...metadata,
-      unitSystem: INTERNAL_UNITS28,
-      sourceUnitSystem: resolver.sourceUnitSystem
-    };
-  }
-};
-
-// src/applications/reinforced-concrete-isolated-footings/ReinforcedConcreteIsolatedFootingModel.js
-var INTERNAL_UNITS29 = Object.freeze({ force: "N", length: "mm" });
-function positive12(value, label) {
-  if (!Number.isFinite(value) || value <= 0) {
-    throw new Error(`${label} must be positive.`);
-  }
-  return value;
-}
-function nonNegative2(value, label) {
-  if (!Number.isFinite(value) || value < 0) {
-    throw new Error(`${label} must be non-negative.`);
-  }
-  return value;
-}
-function normalizeLayer2(input, resolver, label) {
-  var _a;
-  if (!input) {
-    throw new Error(`${label} is required.`);
-  }
-  const diameter = positive12(
-    resolver.length(Number(input.diameter)),
-    `${label}.diameter`
-  );
-  const spacing = positive12(
-    resolver.length(Number(input.spacing)),
-    `${label}.spacing`
-  );
-  const clearCover = positive12(
-    resolver.length(Number(input.clearCover)),
-    `${label}.clearCover`
-  );
-  const layerOffset = nonNegative2(
-    resolver.length(Number((_a = input.layerOffset) != null ? _a : 0)),
-    `${label}.layerOffset`
-  );
-  const barsPerMeter = 1e3 / spacing;
-  return {
-    diameter,
-    spacing,
-    clearCover,
-    layerOffset,
-    axisFromBottom: clearCover + layerOffset + diameter / 2,
-    barsPerMeter,
-    areaPerMeter: barsPerMeter * Math.PI * diameter ** 2 / 4
-  };
-}
-var ReinforcedConcreteIsolatedFootingModel = class {
-  constructor({
-    id,
-    geometry = {},
-    column = {},
-    actions = {},
-    soil = {},
-    materials = {},
-    reinforcement = {},
-    punching = {},
-    localBearing = {},
-    anchorage = {},
-    mesh = {},
-    solver = {},
-    units = null,
-    metadata = {}
-  } = {}) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o;
-    if (!id) {
-      throw new Error("A reinforced-concrete isolated footing id is required.");
-    }
-    assertExplicitUnitSystem(units, "ReinforcedConcreteIsolatedFootingModel");
-    const resolver = createUnitResolver(units, INTERNAL_UNITS29);
-    const widthX = positive12(
-      resolver.length(Number(geometry.widthX)),
-      "geometry.widthX"
-    );
-    const widthY = positive12(
-      resolver.length(Number(geometry.widthY)),
-      "geometry.widthY"
-    );
-    const thickness = positive12(
-      resolver.length(Number(geometry.thickness)),
-      "geometry.thickness"
-    );
-    const columnWidthX = positive12(
-      resolver.length(Number(column.widthX)),
-      "column.widthX"
-    );
-    const columnWidthY = positive12(
-      resolver.length(Number(column.widthY)),
-      "column.widthY"
-    );
-    if (columnWidthX >= widthX || columnWidthY >= widthY) {
-      throw new Error("The centered column footprint must lie inside the footing footprint.");
-    }
-    if (column.offsetX != null || column.offsetY != null || column.rotation != null) {
-      throw new Error("The first isolated-footing MVP supports only a centered, unrotated rectangular column.");
-    }
-    if (!materials.concreteMaterial || !materials.reinforcementMaterial) {
-      throw new Error("Concrete and reinforcement materials are required.");
-    }
-    const bottomX = normalizeLayer2(
-      (_a = reinforcement.bottom) == null ? void 0 : _a.x,
-      resolver,
-      "reinforcement.bottom.x"
-    );
-    const bottomY = normalizeLayer2(
-      (_b = reinforcement.bottom) == null ? void 0 : _b.y,
-      resolver,
-      "reinforcement.bottom.y"
-    );
-    if (bottomX.axisFromBottom >= thickness || bottomY.axisFromBottom >= thickness) {
-      throw new Error("Bottom reinforcement axes must lie inside the footing thickness.");
-    }
-    const columnVerticalForce = positive12(
-      resolver.force(Number((_c = actions.columnVerticalForce) != null ? _c : actions.nEd)),
-      "actions.columnVerticalForce"
-    );
-    const uniformDownwardPressure = nonNegative2(
-      resolver.stress(Number((_d = actions.uniformDownwardPressure) != null ? _d : 0)),
-      "actions.uniformDownwardPressure"
-    );
-    const designBearingResistance = positive12(
-      resolver.stress(Number(soil.designBearingResistance)),
-      "soil.designBearingResistance"
-    );
-    const horizontalX = resolver.force(Number((_e = actions.horizontalX) != null ? _e : 0));
-    const horizontalY = resolver.force(Number((_f = actions.horizontalY) != null ? _f : 0));
-    const momentX = resolver.moment(Number((_h = (_g = actions.momentX) != null ? _g : actions.mxEd) != null ? _h : 0));
-    const momentY = resolver.moment(Number((_j = (_i = actions.momentY) != null ? _i : actions.myEd) != null ? _j : 0));
-    const designSlidingResistance = soil.designSlidingResistance == null ? null : nonNegative2(
-      resolver.force(Number(soil.designSlidingResistance)),
-      "soil.designSlidingResistance"
-    );
-    for (const [label, value] of Object.entries({
-      horizontalX,
-      horizontalY,
-      momentX,
-      momentY
-    })) {
-      if (!Number.isFinite(value)) {
-        throw new Error(`actions.${label} must be finite.`);
-      }
-    }
-    this.id = id;
-    this.geometry = { widthX, widthY, thickness };
-    this.column = { widthX: columnWidthX, widthY: columnWidthY };
-    this.actions = {
-      columnVerticalForce,
-      uniformDownwardPressure,
-      horizontalX,
-      horizontalY,
-      momentX,
-      momentY,
-      referencePoint: "footing-base-center",
-      compressionConvention: "positive-downward"
-    };
-    this.soil = {
-      designBearingResistance,
-      designSlidingResistance,
-      bearingResistanceSource: (_k = soil.bearingResistanceSource) != null ? _k : null,
-      slidingResistanceSource: (_l = soil.slidingResistanceSource) != null ? _l : null
-    };
-    this.materials = { ...materials };
-    this.reinforcement = {
-      bottom: { x: bottomX, y: bottomY },
-      punching: reinforcement.punching == null ? { present: false } : structuredClone(reinforcement.punching)
-    };
-    this.punching = structuredClone(punching != null ? punching : {});
-    this.localBearing = {
-      distributionArea: localBearing.distributionArea == null ? null : positive12(
-        resolver.area(Number(localBearing.distributionArea)),
-        "localBearing.distributionArea"
-      ),
-      resistanceReductionFactor: (_m = localBearing.resistanceReductionFactor) != null ? _m : 1
-    };
-    const normalizeAnchor2 = (input, label) => input == null ? null : {
-      ...input,
-      diameter: positive12(
-        resolver.length(Number(input.diameter)),
-        `${label}.diameter`
-      ),
-      availableLength: positive12(
-        resolver.length(Number(input.availableLength)),
-        `${label}.availableLength`
-      ),
-      designSteelStress: input.designSteelStress == null ? null : positive12(
-        resolver.stress(Number(input.designSteelStress)),
-        `${label}.designSteelStress`
-      ),
-      fctd: input.fctd == null ? null : positive12(resolver.stress(Number(input.fctd)), `${label}.fctd`)
-    };
-    this.anchorage = {
-      columnBars: normalizeAnchor2(anchorage.columnBars, "anchorage.columnBars"),
-      footingBars: {
-        x: normalizeAnchor2((_n = anchorage.footingBars) == null ? void 0 : _n.x, "anchorage.footingBars.x"),
-        y: normalizeAnchor2((_o = anchorage.footingBars) == null ? void 0 : _o.y, "anchorage.footingBars.y")
-      }
-    };
-    this.mesh = { targetFiberCount: 50, ...mesh };
-    this.solver = { tolerance: 1e-6, maxIterations: 100, ...solver };
-    this.units = INTERNAL_UNITS29;
-    this.metadata = {
-      ...metadata,
-      unitSystem: INTERNAL_UNITS29,
-      sourceUnitSystem: resolver.sourceUnitSystem
-    };
-  }
-  toJSON() {
-    var _a, _b, _c, _d, _e, _f;
-    return {
-      id: this.id,
-      geometry: { ...this.geometry },
-      column: { ...this.column },
-      actions: { ...this.actions },
-      soil: { ...this.soil },
-      materials: {
-        concreteMaterial: (_c = (_b = (_a = this.materials.concreteMaterial) == null ? void 0 : _a.toJSON) == null ? void 0 : _b.call(_a)) != null ? _c : this.materials.concreteMaterial,
-        reinforcementMaterial: (_f = (_e = (_d = this.materials.reinforcementMaterial) == null ? void 0 : _d.toJSON) == null ? void 0 : _e.call(_d)) != null ? _f : this.materials.reinforcementMaterial
-      },
-      reinforcement: structuredClone(this.reinforcement),
-      punching: structuredClone(this.punching),
-      localBearing: { ...this.localBearing },
-      anchorage: structuredClone(this.anchorage),
-      mesh: { ...this.mesh },
-      solver: { ...this.solver },
-      units: { ...this.units },
-      metadata: { ...this.metadata }
-    };
-  }
-};
-
 // src/applications/reinforced-concrete-punching/punchingDesignCodes.js
 var RC_PUNCHING_DESIGN_CODE_IDS = Object.freeze({
   EN_1992_1_1_2004: "EN1992_1_1_2004_A1_2014",
@@ -59578,7 +58609,7 @@ var PunchingVerificationRequest = class {
 };
 
 // src/norms/en1992/punching/en1992Punching2004.js
-function positive13(value, label) {
+function positive11(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be finite and positive.`);
   }
@@ -59601,13 +58632,13 @@ function calculateEn1992Punching2004WithoutShearReinforcement({
   k1 = 0.1,
   sigmaCp = 0
 }) {
-  const resolvedFck = positive13(fck, "fck");
-  const d = positive13(effectiveDepth, "effectiveDepth");
-  const rhoX = positive13(reinforcementRatioX, "reinforcementRatioX");
-  const rhoY = positive13(reinforcementRatioY, "reinforcementRatioY");
-  const resolvedGammaC = positive13(gammaC, "gammaC");
-  const resolvedAlphaCc = positive13(alphaCc, "alphaCc");
-  const resolvedCRdc = positive13(cRdc, "cRdc");
+  const resolvedFck = positive11(fck, "fck");
+  const d = positive11(effectiveDepth, "effectiveDepth");
+  const rhoX = positive11(reinforcementRatioX, "reinforcementRatioX");
+  const rhoY = positive11(reinforcementRatioY, "reinforcementRatioY");
+  const resolvedGammaC = positive11(gammaC, "gammaC");
+  const resolvedAlphaCc = positive11(alphaCc, "alphaCc");
+  const resolvedCRdc = positive11(cRdc, "cRdc");
   const resolvedK1 = finite9(k1, "k1");
   const resolvedSigmaCp = finite9(sigmaCp, "sigmaCp");
   const rawRhoL = Math.sqrt(rhoX * rhoY);
@@ -59659,12 +58690,12 @@ function calculateEn1992Punching2004WithShearReinforcement({
   areaPerPerimeter,
   fywd
 }) {
-  const vRdc = positive13(concreteResistance, "concreteResistance");
-  const d = positive13(effectiveDepth, "effectiveDepth");
-  const u1 = positive13(controlPerimeter, "controlPerimeter");
-  const sr = positive13(radialSpacing, "radialSpacing");
-  const asw = positive13(areaPerPerimeter, "areaPerPerimeter");
-  const resolvedFywd = positive13(fywd, "fywd");
+  const vRdc = positive11(concreteResistance, "concreteResistance");
+  const d = positive11(effectiveDepth, "effectiveDepth");
+  const u1 = positive11(controlPerimeter, "controlPerimeter");
+  const sr = positive11(radialSpacing, "radialSpacing");
+  const asw = positive11(areaPerPerimeter, "areaPerPerimeter");
+  const resolvedFywd = positive11(fywd, "fywd");
   const fywdEffective = Math.min(250 + 0.25 * d, resolvedFywd);
   const concreteContribution = 0.75 * vRdc;
   const reinforcementContribution = 1.5 * d / sr * asw * fywdEffective / (u1 * d);
@@ -59688,7 +58719,7 @@ function calculateEn1992Punching2004WithShearReinforcement({
 }
 
 // src/norms/en1992/punching/en1992Punching2023.js
-function positive14(value, label) {
+function positive12(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be finite and positive.`);
   }
@@ -59707,14 +58738,14 @@ function calculateEn1992Punching2023WithoutShearReinforcement({
   controlPerimeter,
   gammaV
 }) {
-  const resolvedFck = positive14(fck, "fck");
-  const dv = positive14(shearEffectiveDepth, "shearEffectiveDepth");
-  const rhoX = positive14(reinforcementRatioX, "reinforcementRatioX");
-  const rhoY = positive14(reinforcementRatioY, "reinforcementRatioY");
-  const dLower = positive14(lowerAggregateSize, "lowerAggregateSize");
-  const b0 = positive14(supportPerimeter, "supportPerimeter");
-  const b05 = positive14(controlPerimeter, "controlPerimeter");
-  const resolvedGammaV = positive14(gammaV, "gammaV");
+  const resolvedFck = positive12(fck, "fck");
+  const dv = positive12(shearEffectiveDepth, "shearEffectiveDepth");
+  const rhoX = positive12(reinforcementRatioX, "reinforcementRatioX");
+  const rhoY = positive12(reinforcementRatioY, "reinforcementRatioY");
+  const dLower = positive12(lowerAggregateSize, "lowerAggregateSize");
+  const b0 = positive12(supportPerimeter, "supportPerimeter");
+  const b05 = positive12(controlPerimeter, "controlPerimeter");
+  const resolvedGammaV = positive12(gammaV, "gammaV");
   if (b05 <= b0) {
     throw new Error("controlPerimeter must be greater than supportPerimeter.");
   }
@@ -59769,17 +58800,17 @@ function calculateEn1992Punching2023WithShearReinforcement({
   system,
   supportPerimeter
 }) {
-  const tauRdc = positive14(concreteResistance, "concreteResistance");
-  const tauEd = positive14(actingStress, "actingStress");
-  const dv = positive14(shearEffectiveDepth, "shearEffectiveDepth");
-  const resolvedDdg = positive14(dDg, "dDg");
-  const resolvedKpb = positive14(kpb, "kpb");
-  const asw = positive14(legArea, "legArea");
-  const sr = positive14(radialSpacing, "radialSpacing");
-  const st = positive14(tangentialSpacing, "tangentialSpacing");
-  const diameter = positive14(legDiameter, "legDiameter");
-  const resolvedFywd = positive14(fywd, "fywd");
-  const b0 = positive14(supportPerimeter, "supportPerimeter");
+  const tauRdc = positive12(concreteResistance, "concreteResistance");
+  const tauEd = positive12(actingStress, "actingStress");
+  const dv = positive12(shearEffectiveDepth, "shearEffectiveDepth");
+  const resolvedDdg = positive12(dDg, "dDg");
+  const resolvedKpb = positive12(kpb, "kpb");
+  const asw = positive12(legArea, "legArea");
+  const sr = positive12(radialSpacing, "radialSpacing");
+  const st = positive12(tangentialSpacing, "tangentialSpacing");
+  const diameter = positive12(legDiameter, "legDiameter");
+  const resolvedFywd = positive12(fywd, "fywd");
+  const b0 = positive12(supportPerimeter, "supportPerimeter");
   if (!["studs", "links"].includes(system)) {
     throw new Error("system must be studs or links.");
   }
@@ -59821,7 +58852,7 @@ function calculateEn1992Punching2023WithShearReinforcement({
 }
 
 // src/norms/en1992/punching/en1992PunchingConcentration.js
-function positive15(value, label) {
+function positive13(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be finite and positive.`);
   }
@@ -59854,15 +58885,15 @@ function calculateEn1992PunchingBeta2004({
   controlPerimeter,
   lineOfAction
 }) {
-  const d = positive15(effectiveDepth, "effectiveDepth");
-  const u1 = positive15(controlPerimeter, "controlPerimeter");
+  const d = positive13(effectiveDepth, "effectiveDepth");
+  const u1 = positive13(controlPerimeter, "controlPerimeter");
   const point2 = finitePoint(lineOfAction, "lineOfAction");
   const center = finitePoint(footprint == null ? void 0 : footprint.center, "footprint.center");
   const ex = point2.x - center.x;
   const ey = point2.y - center.y;
   if (position === "interior" && footprint.shape === "circle") {
     const eccentricity = Math.hypot(ex, ey);
-    const beta = 1 + 0.6 * Math.PI * eccentricity / (positive15(footprint.diameter, "footprint.diameter") + 4 * d);
+    const beta = 1 + 0.6 * Math.PI * eccentricity / (positive13(footprint.diameter, "footprint.diameter") + 4 * d);
     return {
       beta,
       method: "equation-6.42-circular-interior",
@@ -59873,8 +58904,8 @@ function calculateEn1992PunchingBeta2004({
   if ((footprint == null ? void 0 : footprint.shape) !== "rectangle") {
     throw new Error("Automatic beta requires a rectangular support, except for interior circular supports.");
   }
-  const c1 = positive15(footprint.sizeX, "footprint.sizeX");
-  const c2 = positive15(footprint.sizeY, "footprint.sizeY");
+  const c1 = positive13(footprint.sizeX, "footprint.sizeX");
+  const c2 = positive13(footprint.sizeY, "footprint.sizeY");
   if (position === "interior") {
     const widthX = c1 + 4 * d;
     const widthY = c2 + 4 * d;
@@ -59929,8 +58960,8 @@ function calculateEn1992PunchingBetaE2023({
 }) {
   const centroid = finitePoint(controlPerimeterCentroid, "controlPerimeterCentroid");
   const point2 = finitePoint(lineOfAction, "lineOfAction");
-  const widthX = positive15(controlPerimeterWidths == null ? void 0 : controlPerimeterWidths.x, "controlPerimeterWidths.x");
-  const widthY = positive15(controlPerimeterWidths == null ? void 0 : controlPerimeterWidths.y, "controlPerimeterWidths.y");
+  const widthX = positive13(controlPerimeterWidths == null ? void 0 : controlPerimeterWidths.x, "controlPerimeterWidths.x");
+  const widthY = positive13(controlPerimeterWidths == null ? void 0 : controlPerimeterWidths.y, "controlPerimeterWidths.y");
   const ebx = point2.x - centroid.x;
   const eby = point2.y - centroid.y;
   let eb;
@@ -59959,7 +58990,7 @@ function calculateEn1992PunchingBetaE2023({
 }
 
 // src/norms/en1992/punching/geometry/generateEn1992PunchingPerimeters.js
-var INTERNAL_UNITS30 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS27 = Object.freeze({ force: "N", length: "mm" });
 var GEOMETRY_TOLERANCE = 1e-6;
 function line(start, end) {
   return { type: "line", start, end };
@@ -60050,7 +59081,7 @@ function createPerimeter({
     role,
     position,
     offset,
-    units: INTERNAL_UNITS30,
+    units: INTERNAL_UNITS27,
     components: [{ closed, segments }],
     source: {
       method: "generated",
@@ -61287,6 +60318,1039 @@ function verifyPunching(input) {
   return new PunchingVerification().verify(input);
 }
 
+// src/applications/reinforced-concrete-punching/ReinforcedConcretePunchingApplication.js
+var ReinforcedConcretePunchingApplication = class extends StructuralApplication {
+  constructor() {
+    super({
+      id: "reinforced-concrete-punching",
+      name: "RC Punching",
+      description: "Local punching verification of reinforced-concrete slabs at columns and concentrated supports.",
+      domain: "reinforced-concrete",
+      supportedCodes: RC_PUNCHING_DESIGN_CODE_ID_VALUES,
+      tags: ["rc", "slabs", "punching", "uls"],
+      metadata: {
+        maturity: "implemented",
+        inputContract: "rc-punching-verification-request/v0"
+      }
+    });
+  }
+  run(input = {}) {
+    var _a;
+    const request = (_a = input.request) != null ? _a : input.model;
+    if (!request) {
+      throw new Error(
+        "ReinforcedConcretePunchingApplication requires a request or model."
+      );
+    }
+    return new PunchingVerification().verify(request);
+  }
+};
+
+// src/applications/reinforced-concrete-columns/ReinforcedConcreteColumnModel.js
+var INTERNAL_UNITS28 = Object.freeze({ force: "N", length: "mm" });
+function positiveLength(value, label) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${label} must be a positive length.`);
+  }
+  return value;
+}
+function convertShearAxis(input, resolver, label) {
+  if (!input) return null;
+  return {
+    ...input,
+    vEd: input.vEd == null ? null : resolver.force(Number(input.vEd)),
+    bw: resolver.length(Number(input.bw)),
+    effectiveDepth: resolver.length(Number(input.effectiveDepth)),
+    longitudinalReinforcementArea: resolver.area(
+      Number(input.longitudinalReinforcementArea)
+    ),
+    transverseReinforcement: input.transverseReinforcement ? {
+      ...input.transverseReinforcement,
+      areaPerSpacing: resolver.length(
+        Number(input.transverseReinforcement.areaPerSpacing)
+      ),
+      spacing: input.transverseReinforcement.spacing == null ? null : resolver.length(Number(input.transverseReinforcement.spacing)),
+      area: input.transverseReinforcement.area == null ? null : resolver.area(Number(input.transverseReinforcement.area))
+    } : null,
+    label
+  };
+}
+function convertDetailing(input, resolver) {
+  var _a;
+  if (!input) return null;
+  const length = (value) => value == null ? null : resolver.length(Number(value));
+  const area = (value) => value == null ? null : resolver.area(Number(value));
+  return {
+    ...structuredClone(input),
+    longitudinal: input.longitudinal ? {
+      ...input.longitudinal,
+      area: area(input.longitudinal.area),
+      minimumBarDiameter: length(input.longitudinal.minimumBarDiameter),
+      maximumBarDiameter: length(input.longitudinal.maximumBarDiameter),
+      maximumBarSpacing: length(input.longitudinal.maximumBarSpacing)
+    } : null,
+    transverse: input.transverse ? {
+      ...input.transverse,
+      diameter: length(input.transverse.diameter),
+      spacing: length(input.transverse.spacing)
+    } : null,
+    confinement: input.confinement ? {
+      ...input.confinement,
+      coreWidth: length(input.confinement.coreWidth),
+      coreDepth: length(input.confinement.coreDepth),
+      volumePerSet: input.confinement.volumePerSet == null ? null : resolver.convert(Number(input.confinement.volumePerSet), {
+        lengthExponent: 3
+      }),
+      restrainedBarSpacings: ((_a = input.confinement.restrainedBarSpacings) != null ? _a : []).map((value) => length(value))
+    } : null,
+    anchorage: input.anchorage ? {
+      ...input.anchorage,
+      barDiameter: length(input.anchorage.barDiameter),
+      availableLength: length(input.anchorage.availableLength)
+    } : null
+  };
+}
+var ReinforcedConcreteColumnModel = class {
+  constructor({
+    id,
+    section,
+    concreteMaterial = ((_a) => (_a = section == null ? void 0 : section.concreteMaterial) != null ? _a : null)(),
+    reinforcementMaterial = ((_b) => (_b = section == null ? void 0 : section.reinforcementMaterial) != null ? _b : null)(),
+    length,
+    stability = {},
+    actions = {},
+    shear = null,
+    detailing = null,
+    mesh = { targetFiberCount: 120 },
+    solver = { tolerance: 1e-6, maxIterations: 100 },
+    units = null,
+    metadata = {}
+  } = {}) {
+    var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w;
+    if (!id) {
+      throw new Error("A reinforced concrete column model id is required.");
+    }
+    if (!section) {
+      throw new Error("ReinforcedConcreteColumnModel requires a section.");
+    }
+    assertExplicitUnitSystem(units, "ReinforcedConcreteColumnModel");
+    const resolver = createUnitResolver(units, INTERNAL_UNITS28);
+    const resolvedLength = positiveLength(
+      resolver.length(length),
+      "ReinforcedConcreteColumnModel length"
+    );
+    const effectiveLengthMx = resolver.length(
+      (_c = (_b2 = (_a2 = stability.effectiveLengthMx) != null ? _a2 : stability.effectiveLengthY) != null ? _b2 : stability.l0y) != null ? _c : length
+    );
+    const effectiveLengthMy = resolver.length(
+      (_f = (_e = (_d = stability.effectiveLengthMy) != null ? _d : stability.effectiveLengthZ) != null ? _e : stability.l0z) != null ? _f : length
+    );
+    positiveLength(effectiveLengthMx, "stability.effectiveLengthMx");
+    positiveLength(effectiveLengthMy, "stability.effectiveLengthMy");
+    this.id = id;
+    this.section = section;
+    this.concreteMaterial = concreteMaterial;
+    this.reinforcementMaterial = reinforcementMaterial;
+    this.length = resolvedLength;
+    this.stability = {
+      ...stability,
+      effectiveLengthMx,
+      effectiveLengthMy,
+      compressionSignConvention: (_g = stability.compressionSignConvention) != null ? _g : "compression-negative",
+      designMomentsIncludeSecondOrder: (_h = stability.designMomentsIncludeSecondOrder) != null ? _h : false,
+      secondOrderMethod: (_i = stability.secondOrderMethod) != null ? _i : "ntc2018-nominal-stiffness",
+      creepCoefficient: stability.creepCoefficient == null ? null : Number(stability.creepCoefficient),
+      momentDistributionFactor: stability.momentDistributionFactor == null ? 1 : Number(stability.momentDistributionFactor),
+      includeImperfectionWhenMomentIsZero: (_j = stability.includeImperfectionWhenMomentIsZero) != null ? _j : true
+    };
+    this.actions = {
+      ...actions,
+      nEd: resolver.force((_l = (_k = actions.nEd) != null ? _k : actions.n) != null ? _l : 0),
+      mxEd: resolver.moment((_n = (_m = actions.mxEd) != null ? _m : actions.mzEd) != null ? _n : 0),
+      myEd: resolver.moment((_o = actions.myEd) != null ? _o : 0),
+      mxEdTotal: resolver.moment(
+        (_q = (_p = actions.mxEdTotal) != null ? _p : actions.mzEdTotal) != null ? _q : null
+      ),
+      myEdTotal: resolver.moment((_r = actions.myEdTotal) != null ? _r : null),
+      vxEd: resolver.force((_s = actions.vxEd) != null ? _s : 0),
+      vyEd: resolver.force((_t = actions.vyEd) != null ? _t : 0)
+    };
+    this.shear = shear ? {
+      x: convertShearAxis(shear.x, resolver, "x"),
+      y: convertShearAxis(shear.y, resolver, "y"),
+      capacityDesign: shear.capacityDesign ? {
+        ...shear.capacityDesign,
+        clearLength: resolver.length(
+          Number((_u = shear.capacityDesign.clearLength) != null ? _u : length)
+        ),
+        endMomentsX: ((_v = shear.capacityDesign.endMomentsX) != null ? _v : []).map((value) => resolver.moment(Number(value))),
+        endMomentsY: ((_w = shear.capacityDesign.endMomentsY) != null ? _w : []).map((value) => resolver.moment(Number(value)))
+      } : null
+    } : null;
+    this.detailing = convertDetailing(detailing, resolver);
+    this.mesh = { ...mesh };
+    this.solver = { ...solver };
+    this.units = INTERNAL_UNITS28;
+    this.metadata = {
+      ...metadata,
+      unitSystem: INTERNAL_UNITS28,
+      sourceUnitSystem: resolver.sourceUnitSystem
+    };
+  }
+};
+
+// src/applications/reinforced-concrete-columns/ReinforcedConcreteColumnDetailingVerification.js
+function positive14(value, label) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${label} must be positive.`);
+  }
+  return value;
+}
+function minCheck(id, description, required, provided, metadata = {}) {
+  return utilizationCheck({ id, description, demand: required, capacity: provided, metadata });
+}
+function maxCheck(id, description, provided, allowed, metadata = {}) {
+  return utilizationCheck({ id, description, demand: provided, capacity: allowed, metadata });
+}
+function ductilityClass(value) {
+  const normalized = String(value != null ? value : "").toUpperCase().replaceAll('"', "").replaceAll("-", "");
+  if (["CDA", "A"].includes(normalized)) return "CDA";
+  if (["CDB", "B"].includes(normalized)) return "CDB";
+  throw new Error(`Unsupported NTC 2018 ductility class: ${value}.`);
+}
+var ReinforcedConcreteColumnDetailingVerification = class {
+  constructor({ code = "NTC2018" } = {}) {
+    this.code = code;
+  }
+  verify({ model, compression, normalizedAxialForce } = {}) {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w;
+    const detailing = model.detailing;
+    if (!detailing) {
+      return new VerificationResult({
+        applicationId: "reinforced-concrete-columns",
+        status: RESULT_STATUS.NOT_ANALYZED,
+        summary: "Column detailing was not requested.",
+        warnings: ["Pass the detailing contract to verify column reinforcement and confinement."],
+        metadata: { code: this.code }
+      });
+    }
+    const concrete = (_a = model.section.concreteSection) != null ? _a : model.section;
+    const width = positive14(Number(concrete.width), "column width");
+    const depth = positive14(Number(concrete.height), "column depth");
+    const area = positive14(Number(concrete.area), "column concrete area");
+    const longitudinal = (_b = detailing.longitudinal) != null ? _b : {};
+    const transverse = (_c = detailing.transverse) != null ? _c : {};
+    const reinforcementArea = positive14(
+      Number((_f = longitudinal.area) != null ? _f : (_e = (_d = model.section).totalReinforcementArea) == null ? void 0 : _e.call(_d)),
+      "detailing.longitudinal.area"
+    );
+    const minBarDiameter = positive14(
+      Number(longitudinal.minimumBarDiameter),
+      "detailing.longitudinal.minimumBarDiameter"
+    );
+    const maxBarDiameter = positive14(
+      Number((_g = longitudinal.maximumBarDiameter) != null ? _g : minBarDiameter),
+      "detailing.longitudinal.maximumBarDiameter"
+    );
+    const maxBarSpacing = positive14(
+      Number(longitudinal.maximumBarSpacing),
+      "detailing.longitudinal.maximumBarSpacing"
+    );
+    const hoopDiameter = positive14(Number(transverse.diameter), "detailing.transverse.diameter");
+    const hoopSpacing = positive14(Number(transverse.spacing), "detailing.transverse.spacing");
+    const fyd = positive14(Number((_h = model.reinforcementMaterial) == null ? void 0 : _h.fyd), "reinforcement fyd");
+    const fyk = positive14(Number((_i = model.reinforcementMaterial) == null ? void 0 : _i.fyk), "reinforcement fyk");
+    const fywd = positive14(
+      Number((_k = transverse.designStrength) != null ? _k : (_j = model.reinforcementMaterial) == null ? void 0 : _j.fyd),
+      "transverse design strength"
+    );
+    const minimumArea = Math.max(0.1 * compression / fyd, 3e-3 * area);
+    const maximumArea = 0.04 * area;
+    const ordinaryHoopSpacing = Math.min(12 * minBarDiameter, 250);
+    const ordinaryHoopDiameter = Math.max(6, maxBarDiameter / 4);
+    const checks = [
+      minCheck("rc-column-minimum-longitudinal-area", "Minimum column longitudinal reinforcement", minimumArea, reinforcementArea, { reference: "NTC2018-4.1.46" }),
+      maxCheck("rc-column-maximum-longitudinal-area", "Maximum column longitudinal reinforcement outside lap zones", reinforcementArea, maximumArea, { reference: "NTC2018-4.1.6.1.2" }),
+      maxCheck("rc-column-maximum-longitudinal-spacing", "Maximum column longitudinal bar spacing", maxBarSpacing, 300, { reference: "NTC2018-4.1.6.1.2" }),
+      minCheck("rc-column-minimum-longitudinal-diameter", "Minimum column longitudinal bar diameter", 12, minBarDiameter, { reference: "NTC2018-4.1.6.1.2" }),
+      maxCheck("rc-column-ordinary-hoop-spacing", "Ordinary column hoop spacing", hoopSpacing, ordinaryHoopSpacing, { reference: "NTC2018-4.1.6.1.2" }),
+      minCheck("rc-column-ordinary-hoop-diameter", "Ordinary column hoop diameter", ordinaryHoopDiameter, hoopDiameter, { reference: "NTC2018-4.1.6.1.2" })
+    ];
+    let seismicOutputs = null;
+    if (((_l = detailing.seismic) == null ? void 0 : _l.enabled) === true) {
+      const dc = ductilityClass(detailing.seismic.ductilityClass);
+      const isCda = dc === "CDA";
+      const clearHeight = positive14(
+        Number((_m = detailing.seismic.clearHeight) != null ? _m : model.length),
+        "detailing.seismic.clearHeight"
+      );
+      const sectionDepthInBending = positive14(
+        Number((_n = detailing.seismic.sectionDepthInBending) != null ? _n : Math.max(width, depth)),
+        "detailing.seismic.sectionDepthInBending"
+      );
+      const criticalZoneLength = clearHeight < 3 * sectionDepthInBending ? clearHeight : Math.max(sectionDepthInBending, clearHeight / 6, 450);
+      const longitudinalRatio = reinforcementArea / area;
+      const seismicHoopDiameter = isCda ? Math.max(6, 0.4 * maxBarDiameter * Math.sqrt(fyd / fywd)) : 6;
+      const seismicHoopSpacing = Math.min(
+        Math.min(width, depth) / (isCda ? 3 : 2),
+        isCda ? 125 : 175,
+        (isCda ? 6 : 8) * minBarDiameter
+      );
+      const restrainedSpacingLimit = isCda ? 150 : 200;
+      const confinement = (_o = detailing.confinement) != null ? _o : {};
+      const coreWidth = positive14(Number(confinement.coreWidth), "confinement.coreWidth");
+      const coreDepth = positive14(Number(confinement.coreDepth), "confinement.coreDepth");
+      const volumePerSet = positive14(Number(confinement.volumePerSet), "confinement.volumePerSet");
+      const restrainedSpacings = (_p = confinement.restrainedBarSpacings) != null ? _p : [];
+      if (restrainedSpacings.length === 0) {
+        throw new Error("confinement.restrainedBarSpacings must not be empty.");
+      }
+      const alphaN = Math.max(
+        0,
+        1 - restrainedSpacings.reduce((sum, value) => sum + value ** 2, 0) / (6 * coreWidth * coreDepth)
+      );
+      const alphaS = Math.max(0, 1 - hoopSpacing / (2 * coreWidth)) * Math.max(0, 1 - hoopSpacing / (2 * coreDepth));
+      const alpha = alphaN * alphaS;
+      const volumetricRatio = volumePerSet / (coreWidth * coreDepth * hoopSpacing);
+      const omegaWd = volumetricRatio * fywd / model.concreteMaterial.fcd;
+      const epsilonSyD = fyd / positive14(
+        Number(model.reinforcementMaterial.elasticModulus),
+        "reinforcement elastic modulus"
+      );
+      const muPhi = positive14(
+        Number(detailing.seismic.curvatureDuctilityDemand),
+        "detailing.seismic.curvatureDuctilityDemand"
+      );
+      const ductilityDemand = Math.max(
+        0,
+        30 * muPhi * epsilonSyD * normalizedAxialForce * (Math.min(width, depth) / Math.min(coreWidth, coreDepth)) - 0.035
+      );
+      const omegaMinimum = isCda ? 0.12 : 0.08;
+      checks.push(
+        minCheck("rc-column-seismic-minimum-dimension", "Minimum dissipative column dimension", 250, Math.min(width, depth), { reference: "NTC2018-7.4.6.1.2" }),
+        minCheck("rc-column-seismic-longitudinal-ratio-min", "Minimum seismic longitudinal reinforcement ratio", 0.01, longitudinalRatio, { reference: "NTC2018-7.4.28" }),
+        maxCheck("rc-column-seismic-longitudinal-ratio-max", "Maximum seismic longitudinal reinforcement ratio", longitudinalRatio, 0.04, { reference: "NTC2018-7.4.28" }),
+        maxCheck("rc-column-seismic-longitudinal-spacing", "Maximum seismic longitudinal bar spacing", maxBarSpacing, 250, { reference: "NTC2018-7.4.6.2.2" }),
+        minCheck("rc-column-seismic-hoop-diameter", "Minimum confinement hoop diameter", seismicHoopDiameter, hoopDiameter, { reference: "NTC2018-7.4.6.2.2" }),
+        maxCheck("rc-column-seismic-hoop-spacing", "Maximum confinement hoop spacing", hoopSpacing, seismicHoopSpacing, { reference: "NTC2018-7.4.6.2.2" }),
+        maxCheck("rc-column-seismic-restrained-bar-spacing", "Maximum spacing between laterally restrained bars", Math.max(...restrainedSpacings), restrainedSpacingLimit, { reference: "NTC2018-7.4.6.2.2" }),
+        minCheck("rc-column-seismic-omega-wd", "Minimum mechanical confinement ratio", omegaMinimum, omegaWd, { reference: "NTC2018-7.4.30" }),
+        minCheck("rc-column-seismic-ductility-confinement", "Confinement for curvature ductility demand", ductilityDemand, alpha * omegaWd, { reference: "NTC2018-7.4.29-7.4.31" })
+      );
+      seismicOutputs = {
+        ductilityClass: dc,
+        criticalZoneLength,
+        longitudinalRatio,
+        seismicHoopDiameter,
+        seismicHoopSpacing,
+        alphaN,
+        alphaS,
+        alpha,
+        volumetricRatio,
+        omegaWd,
+        omegaMinimum,
+        curvatureDuctilityDemand: muPhi,
+        ductilityConfinementDemand: ductilityDemand
+      };
+    }
+    let anchorageOutput = null;
+    if (detailing.anchorage) {
+      const anchor = detailing.anchorage;
+      const fctd = positive14(
+        Number((_q = anchor.fctd) != null ? _q : 0.7 * model.concreteMaterial.fctm / model.concreteMaterial.metadata.gammaC),
+        "anchorage.fctd"
+      );
+      const bond = calculateEn1992DesignBondStrength({
+        fctd,
+        barDiameter: anchor.barDiameter,
+        bondConditionFactor: (_r = anchor.bondConditionFactor) != null ? _r : 1
+      });
+      const base = calculateEn1992AnchorageLength({
+        barDiameter: anchor.barDiameter,
+        designSteelStress: (_s = anchor.designSteelStress) != null ? _s : fyd,
+        fbd: bond.fbd,
+        tension: anchor.tension !== false,
+        nationalMinimumDiameterMultiple: 20,
+        nationalMinimumLength: 150
+      });
+      const axialTension = compression <= 0 && Math.abs(model.actions.nEd) > 0;
+      const requiredLength = base.designLength * (axialTension ? 1.5 : 1);
+      checks.push(minCheck("rc-column-longitudinal-anchorage", "Column longitudinal bar anchorage", requiredLength, anchor.availableLength, { reference: axialTension ? "NTC2018-7.4.6.2.2" : "NTC2018-4.1.2.3.10", fbd: round3(bond.fbd), axialTensionFactor: axialTension ? 1.5 : 1 }));
+      anchorageOutput = { ...base, requiredLength, fbd: bond.fbd };
+    }
+    const governing = governingCheck(checks);
+    const ok = checks.every((check) => check.ok === true);
+    return new VerificationResult({
+      applicationId: "reinforced-concrete-columns",
+      status: ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+      summary: "NTC 2018 column reinforcement, confinement and ductility verification.",
+      utilizationRatio: (_t = governing == null ? void 0 : governing.utilizationRatio) != null ? _t : null,
+      demand: (_u = governing == null ? void 0 : governing.demand) != null ? _u : null,
+      capacity: (_v = governing == null ? void 0 : governing.capacity) != null ? _v : null,
+      checks,
+      outputs: {
+        reinforcementArea,
+        longitudinalRatio: reinforcementArea / area,
+        seismic: seismicOutputs,
+        anchorage: anchorageOutput
+      },
+      assumptions: [
+        "Confinement volumePerSet is the total steel volume effective in one transverse-reinforcement set inside the core.",
+        "restrainedBarSpacings contains every clear centre-line spacing between consecutive laterally restrained longitudinal bars around the core."
+      ],
+      metadata: { code: this.code, governingCheckId: (_w = governing == null ? void 0 : governing.id) != null ? _w : null }
+    });
+  }
+};
+
+// src/applications/reinforced-concrete-columns/ReinforcedConcreteColumnVerification.js
+var INTERNAL_UNITS29 = Object.freeze({ force: "N", length: "mm" });
+var EPS12 = 1e-9;
+function concreteSectionFrom2(section) {
+  var _a;
+  return (_a = section == null ? void 0 : section.concreteSection) != null ? _a : section;
+}
+function compressionFrom(nEd, convention) {
+  if (convention === "compression-positive") {
+    return Math.max(nEd, 0);
+  }
+  if (convention === "compression-negative" || convention === "tension-positive") {
+    return Math.max(-nEd, 0);
+  }
+  throw new Error(`Unsupported compression sign convention: ${convention}.`);
+}
+function resolveAxis({
+  id,
+  inertia,
+  concreteArea,
+  effectiveLength,
+  firstOrderMoment,
+  totalMoment,
+  secondOrderFlag,
+  compression,
+  lambdaLimit,
+  nominalRigidity,
+  momentDistributionFactor,
+  includeImperfectionWhenMomentIsZero,
+  memberLength
+}) {
+  const radiusOfGyration = Number.isFinite(inertia) && inertia > 0 && concreteArea > 0 ? Math.sqrt(inertia / concreteArea) : null;
+  const slenderness = radiusOfGyration ? effectiveLength / radiusOfGyration : null;
+  const secondOrderRequired = compression > 0 && Number.isFinite(slenderness) && Number.isFinite(lambdaLimit) && slenderness > lambdaLimit;
+  const explicitTotal = Number.isFinite(totalMoment);
+  const imperfectionEccentricity = includeImperfectionWhenMomentIsZero && compression > 0 && Math.abs(firstOrderMoment) <= EPS12 ? memberLength / 300 : 0;
+  const firstOrderWithImperfection = firstOrderMoment + (firstOrderMoment < 0 ? -1 : 1) * compression * imperfectionEccentricity;
+  const criticalLoad = Number.isFinite(nominalRigidity) && nominalRigidity > 0 ? Math.PI ** 2 * nominalRigidity / effectiveLength ** 2 : null;
+  const stableForMagnification = Number.isFinite(criticalLoad) && criticalLoad > compression;
+  const magnificationFactor = secondOrderRequired && stableForMagnification ? 1 + momentDistributionFactor / (criticalLoad / compression - 1) : 1;
+  const generatedTotalMoment = secondOrderRequired && stableForMagnification ? firstOrderWithImperfection * magnificationFactor : null;
+  const secondOrderIncluded = !secondOrderRequired || explicitTotal || secondOrderFlag === true || Number.isFinite(generatedTotalMoment);
+  const designMoment = explicitTotal ? totalMoment : Number.isFinite(generatedTotalMoment) ? generatedTotalMoment : firstOrderWithImperfection;
+  const ratio = Number.isFinite(slenderness) && Number.isFinite(lambdaLimit) && lambdaLimit > 0 ? slenderness / lambdaLimit : 0;
+  return {
+    id,
+    inertia,
+    effectiveLength,
+    radiusOfGyration,
+    slenderness,
+    lambdaLimit,
+    slendernessRatio: ratio,
+    secondOrderRequired,
+    secondOrderIncluded,
+    firstOrderMoment,
+    firstOrderWithImperfection,
+    imperfectionEccentricity,
+    nominalRigidity,
+    criticalLoad,
+    magnificationFactor,
+    stableForMagnification,
+    generatedTotalMoment,
+    totalMoment: explicitTotal ? totalMoment : null,
+    designMoment,
+    check: {
+      id: `rc-column-second-order-${id}`,
+      description: `Second-order treatment for column ${id} bending component`,
+      demand: round3(slenderness),
+      capacity: round3(lambdaLimit),
+      utilizationRatio: round3(ratio),
+      ok: secondOrderIncluded,
+      metadata: {
+        reference: "NTC2018-4.1.41-4.1.42",
+        screeningExceeded: secondOrderRequired,
+        secondOrderIncluded,
+        momentSource: explicitTotal ? "explicit-total" : Number.isFinite(generatedTotalMoment) ? "generated-ntc2018-nominal-stiffness" : secondOrderFlag === true ? "input-declared-inclusive" : "first-order-screened"
+      }
+    }
+  };
+}
+var ReinforcedConcreteColumnVerification = class {
+  constructor({ code = "NTC2018", metadata = {} } = {}) {
+    this.code = code;
+    this.metadata = { ...metadata };
+  }
+  verify(model) {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u;
+    if (!(model == null ? void 0 : model.section) || !(model == null ? void 0 : model.concreteMaterial)) {
+      return new VerificationResult({
+        applicationId: "reinforced-concrete-columns",
+        status: RESULT_STATUS.NOT_VERIFIED,
+        summary: "RC column verification requires a section and concrete material.",
+        warnings: ["Column verification was not run because required inputs are missing."],
+        metadata: { code: this.code, ...this.metadata }
+      });
+    }
+    const concreteSection = concreteSectionFrom2(model.section);
+    const concreteArea = concreteSection == null ? void 0 : concreteSection.area;
+    const fcd = (_a = model.concreteMaterial) == null ? void 0 : _a.fcd;
+    if (!Number.isFinite(concreteArea) || concreteArea <= 0 || !Number.isFinite(fcd) || fcd <= 0) {
+      return new VerificationResult({
+        applicationId: "reinforced-concrete-columns",
+        status: RESULT_STATUS.NOT_VERIFIED,
+        summary: "RC column stability parameters are incomplete.",
+        warnings: ["A positive concrete area and design concrete strength fcd are required."],
+        metadata: {
+          code: this.code,
+          missingParameters: ["concreteArea", "fcd"],
+          ...this.metadata
+        }
+      });
+    }
+    const compression = compressionFrom(
+      model.actions.nEd,
+      model.stability.compressionSignConvention
+    );
+    const normalizedAxialForce = compression / (concreteArea * fcd);
+    const lambdaLimit = normalizedAxialForce > 0 ? 25 / Math.sqrt(normalizedAxialForce) : Number.POSITIVE_INFINITY;
+    const creepCoefficient = model.stability.creepCoefficient;
+    const gammaCE = (_b = model.stability.gammaCE) != null ? _b : 1.2;
+    const concreteElasticModulus = (_c = model.concreteMaterial) == null ? void 0 : _c.elasticModulus;
+    const concreteDesignModulus = Number.isFinite(concreteElasticModulus) && concreteElasticModulus > 0 ? concreteElasticModulus / gammaCE : null;
+    const rigidityFactor = Number.isFinite(creepCoefficient) && creepCoefficient >= 0 ? 0.3 / (1 + 0.5 * creepCoefficient) : null;
+    const nominalRigidityFor = (inertia) => model.stability.secondOrderMethod === "ntc2018-nominal-stiffness" && Number.isFinite(rigidityFactor) && Number.isFinite(concreteDesignModulus) && Number.isFinite(inertia) && inertia > 0 ? rigidityFactor * concreteDesignModulus * inertia : null;
+    const sharedSecondOrderFlag = model.stability.designMomentsIncludeSecondOrder === true;
+    const axisMx = resolveAxis({
+      id: "mx",
+      inertia: concreteSection.inertiaY,
+      concreteArea,
+      effectiveLength: model.stability.effectiveLengthMx,
+      firstOrderMoment: model.actions.mxEd,
+      totalMoment: model.actions.mxEdTotal,
+      secondOrderFlag: (_d = model.stability.mxIncludesSecondOrder) != null ? _d : sharedSecondOrderFlag,
+      compression,
+      lambdaLimit,
+      nominalRigidity: nominalRigidityFor(concreteSection.inertiaY),
+      momentDistributionFactor: model.stability.momentDistributionFactor,
+      includeImperfectionWhenMomentIsZero: model.stability.includeImperfectionWhenMomentIsZero,
+      memberLength: model.length
+    });
+    const axisMy = resolveAxis({
+      id: "my",
+      inertia: concreteSection.inertiaZ,
+      concreteArea,
+      effectiveLength: model.stability.effectiveLengthMy,
+      firstOrderMoment: model.actions.myEd,
+      totalMoment: model.actions.myEdTotal,
+      secondOrderFlag: (_e = model.stability.myIncludesSecondOrder) != null ? _e : sharedSecondOrderFlag,
+      compression,
+      lambdaLimit,
+      nominalRigidity: nominalRigidityFor(concreteSection.inertiaZ),
+      momentDistributionFactor: model.stability.momentDistributionFactor,
+      includeImperfectionWhenMomentIsZero: model.stability.includeImperfectionWhenMomentIsZero,
+      memberLength: model.length
+    });
+    const axes = [axisMx, axisMy];
+    const unresolvedAxes = axes.filter(
+      (axis) => axis.secondOrderRequired && !axis.secondOrderIncluded
+    );
+    const baseOutputs2 = {
+      columnId: model.id,
+      nEd: round3(model.actions.nEd),
+      compression: round3(compression),
+      concreteArea: round3(concreteArea),
+      fcd: round3(fcd),
+      normalizedAxialForce: round3(normalizedAxialForce, 9),
+      lambdaLimit: round3(lambdaLimit),
+      secondOrder: {
+        method: model.stability.secondOrderMethod,
+        creepCoefficient,
+        gammaCE,
+        concreteDesignModulus: round3(concreteDesignModulus),
+        rigidityFactor: round3(rigidityFactor)
+      },
+      axes: Object.fromEntries(
+        axes.map((axis) => [
+          axis.id,
+          {
+            inertia: round3(axis.inertia),
+            effectiveLength: round3(axis.effectiveLength),
+            radiusOfGyration: round3(axis.radiusOfGyration),
+            slenderness: round3(axis.slenderness),
+            slendernessRatio: round3(axis.slendernessRatio),
+            secondOrderRequired: axis.secondOrderRequired,
+            secondOrderIncluded: axis.secondOrderIncluded,
+            firstOrderMoment: round3(axis.firstOrderMoment),
+            firstOrderWithImperfection: round3(axis.firstOrderWithImperfection),
+            imperfectionEccentricity: round3(axis.imperfectionEccentricity),
+            nominalRigidity: round3(axis.nominalRigidity),
+            criticalLoad: round3(axis.criticalLoad),
+            magnificationFactor: round3(axis.magnificationFactor),
+            stableForMagnification: axis.stableForMagnification,
+            generatedTotalMoment: round3(axis.generatedTotalMoment),
+            totalMoment: round3(axis.totalMoment),
+            designMoment: round3(axis.designMoment),
+            secondOrderMethod: axis.secondOrderRequired ? model.stability.secondOrderMethod : null
+          }
+        ])
+      )
+    };
+    if (unresolvedAxes.length > 0) {
+      return new VerificationResult({
+        applicationId: "reinforced-concrete-columns",
+        status: RESULT_STATUS.NOT_SUPPORTED,
+        summary: "RC column is slender and requires design moments including second-order effects.",
+        checks: axes.map((axis) => axis.check),
+        outputs: baseOutputs2,
+        warnings: [
+          `Second-order moments are missing for: ${unresolvedAxes.map((axis) => axis.id).join(", ")}.`,
+          "Provide a non-negative stability.creepCoefficient to generate moments with the NTC 2018 nominal stiffness, or supply explicit total moments from an adequate analysis."
+        ],
+        assumptions: [
+          "The NTC 2018 single-column slenderness screening is applied independently to the two section bending components."
+        ],
+        metadata: {
+          code: this.code,
+          method: "ntc2018-4.1.2.3.9.2-screening-and-4.1.44",
+          unresolvedAxes: unresolvedAxes.map((axis) => axis.id),
+          ...this.metadata
+        }
+      });
+    }
+    const sectionModel = new ReinforcedConcreteSectionModel({
+      id: `${model.id}-design-section`,
+      section: model.section,
+      materials: {
+        concreteMaterial: model.concreteMaterial,
+        reinforcementMaterial: model.reinforcementMaterial
+      },
+      analysisType: "uls-biaxial-domain",
+      analysisSettings: {
+        angleCount: (_f = model.stability.biaxialAngleCount) != null ? _f : 64
+      },
+      mesh: model.mesh,
+      solver: model.solver,
+      actions: {
+        nEd: model.actions.nEd,
+        mxEd: axisMx.designMoment,
+        myEd: axisMy.designMoment
+      },
+      units: INTERNAL_UNITS29,
+      metadata: {
+        sourceColumnId: model.id
+      }
+    });
+    const sectionResult = new ReinforcedConcreteSectionVerification({
+      code: this.code
+    }).verify(sectionModel);
+    const capacity = rayPolygonCapacity(
+      ((_h = (_g = sectionResult.outputs) == null ? void 0 : _g.points) != null ? _h : []).map((point2) => ({
+        x: point2.MxRd,
+        y: point2.MyRd
+      })),
+      axisMx.designMoment,
+      axisMy.designMoment
+    );
+    const resistanceCheck = {
+      id: "rc-column-biaxial-resistance",
+      description: "Column biaxial bending resistance at the assigned axial force",
+      demand: round3(capacity.demandNorm),
+      capacity: round3(capacity.capacityNorm),
+      utilizationRatio: round3(capacity.utilizationRatio),
+      ok: sectionResult.status === RESULT_STATUS.OK && Number.isFinite(capacity.utilizationRatio) && capacity.utilizationRatio <= 1,
+      metadata: {
+        method: "fiber-domain-ray-intersection",
+        mxEd: round3(axisMx.designMoment),
+        myEd: round3(axisMy.designMoment),
+        intersection: capacity.intersection ? {
+          mxRd: round3(capacity.intersection.x),
+          myRd: round3(capacity.intersection.y),
+          segmentIndex: capacity.intersection.segmentIndex
+        } : null
+      }
+    };
+    const capacityDesign = (_i = model.shear) == null ? void 0 : _i.capacityDesign;
+    const seismicGammaRd = ((_k = (_j = model.detailing) == null ? void 0 : _j.seismic) == null ? void 0 : _k.enabled) ? String(model.detailing.seismic.ductilityClass).toUpperCase().includes("A") ? 1.2 : 1 : 1;
+    const shearResults = Object.fromEntries(
+      [
+        ["x", (_l = model.shear) == null ? void 0 : _l.x, model.actions.vxEd, axisMx.designMoment],
+        ["y", (_m = model.shear) == null ? void 0 : _m.y, model.actions.vyEd, axisMy.designMoment]
+      ].filter(([, shear]) => shear).map(([axisId, shear, action, moment]) => {
+        var _a2, _b2, _c2;
+        const endMoments = (_a2 = capacityDesign == null ? void 0 : capacityDesign[axisId === "x" ? "endMomentsX" : "endMomentsY"]) != null ? _a2 : [];
+        const capacityDesignShear = endMoments.length > 0 ? seismicGammaRd * endMoments.reduce(
+          (sum, value) => sum + Math.abs(value),
+          0
+        ) / capacityDesign.clearLength : 0;
+        const vEd = Math.max(Math.abs((_c2 = (_b2 = shear.vEd) != null ? _b2 : action) != null ? _c2 : 0), capacityDesignShear);
+        const result = new ReinforcedConcreteShearVerification({
+          code: this.code
+        }).verifySectionActions({
+          nEd: model.actions.nEd,
+          vEd,
+          mEd: moment,
+          section: model.section,
+          concreteMaterial: model.concreteMaterial,
+          reinforcementMaterial: model.reinforcementMaterial,
+          shear,
+          units: INTERNAL_UNITS29
+        });
+        result.checks = result.checks.map((check) => {
+          var _a3, _b3, _c3;
+          return {
+            ...check,
+            id: `${check.id}-${axisId}`,
+            metadata: {
+              ...check.metadata,
+              axis: axisId,
+              analysisShear: round3(Math.abs((_b3 = (_a3 = shear.vEd) != null ? _a3 : action) != null ? _b3 : 0)),
+              capacityDesignShear: round3(capacityDesignShear),
+              gammaRd: seismicGammaRd,
+              reference: capacityDesignShear > 0 ? "NTC2018-7.4.5" : (_c3 = check.metadata) == null ? void 0 : _c3.reference
+            }
+          };
+        });
+        return [axisId, result];
+      })
+    );
+    const detailingResult = model.detailing ? new ReinforcedConcreteColumnDetailingVerification({
+      code: this.code
+    }).verify({ model, compression, normalizedAxialForce }) : null;
+    const checks = [
+      ...axes.map((axis) => axis.check),
+      resistanceCheck,
+      ...Object.values(shearResults).flatMap((result) => result.checks),
+      ...(_n = detailingResult == null ? void 0 : detailingResult.checks) != null ? _n : []
+    ];
+    const governing = governingCheck(checks);
+    const componentStatuses = [
+      sectionResult.status,
+      ...Object.values(shearResults).map((result) => result.status),
+      ...detailingResult ? [detailingResult.status] : []
+    ];
+    const ok = checks.every((check) => check.ok === true) && componentStatuses.every((status) => status === RESULT_STATUS.OK);
+    return new VerificationResult({
+      applicationId: "reinforced-concrete-columns",
+      status: ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+      summary: "RC column NTC 2018 slenderness screening and biaxial section resistance verification.",
+      utilizationRatio: (_o = governing == null ? void 0 : governing.utilizationRatio) != null ? _o : null,
+      demand: (_p = governing == null ? void 0 : governing.demand) != null ? _p : null,
+      capacity: (_q = governing == null ? void 0 : governing.capacity) != null ? _q : null,
+      checks,
+      outputs: {
+        ...baseOutputs2,
+        designActions: {
+          nEd: round3(model.actions.nEd),
+          mxEd: round3(axisMx.designMoment),
+          myEd: round3(axisMy.designMoment)
+        },
+        sectionResult: sectionResult.toJSON(),
+        shear: Object.fromEntries(
+          Object.entries(shearResults).map(([axis, result]) => {
+            var _a2, _b2;
+            return [
+              axis,
+              (_b2 = (_a2 = result.toJSON) == null ? void 0 : _a2.call(result)) != null ? _b2 : result
+            ];
+          })
+        ),
+        detailing: (_r = detailingResult == null ? void 0 : detailingResult.toJSON()) != null ? _r : null
+      },
+      warnings: [
+        ...sectionResult.warnings,
+        ...Object.values(shearResults).flatMap((result) => result.warnings),
+        ...(_s = detailingResult == null ? void 0 : detailingResult.warnings) != null ? _s : [],
+        ...!model.shear ? ["Column shear was not checked because no shear contract was supplied."] : [],
+        ...!model.detailing ? ["Column reinforcement, confinement and ductility were not checked because no detailing contract was supplied."] : []
+      ],
+      assumptions: [
+        ...sectionResult.assumptions,
+        ...Object.values(shearResults).flatMap((result) => result.assumptions),
+        ...(_t = detailingResult == null ? void 0 : detailingResult.assumptions) != null ? _t : [],
+        "Compression is negative by default; change stability.compressionSignConvention explicitly when required.",
+        "mxEd is paired with concreteSection.inertiaY and myEd with concreteSection.inertiaZ, following the existing RC section action convention.",
+        "Explicit total moments are assumed to include imperfections, cracking, creep and second-order effects; generated moments use the documented NTC nominal-stiffness isolated-member method."
+      ],
+      metadata: {
+        code: this.code,
+        method: "ntc2018-column-stability-resistance-shear-detailing",
+        governingCheckId: (_u = governing == null ? void 0 : governing.id) != null ? _u : null,
+        ...this.metadata
+      }
+    });
+  }
+};
+
+// src/applications/reinforced-concrete-columns/ReinforcedConcreteColumnApplication.js
+var ReinforcedConcreteColumnApplication = class extends StructuralApplication {
+  constructor() {
+    super({
+      id: "reinforced-concrete-columns",
+      name: "RC Columns",
+      description: "Local RC column verification with NTC 2018 second-order generation, biaxial resistance, shear, confinement and detailing.",
+      domain: "reinforced-concrete",
+      supportedCodes: ["NTC2018"],
+      tags: ["rc", "columns", "biaxial-bending", "stability", "uls"],
+      metadata: {
+        maturity: "implemented-local",
+        limitations: [
+          "nominal-stiffness moment generation applies to isolated members with assigned effective lengths",
+          "global frame P-Delta analysis and automatic effective lengths remain consumer responsibilities",
+          "shear and detailing require explicit serializable reinforcement contracts"
+        ]
+      }
+    });
+  }
+  run(input = {}) {
+    var _a, _b;
+    if (!input.model) {
+      throw new Error("ReinforcedConcreteColumnApplication requires a model.");
+    }
+    const model = input.model instanceof ReinforcedConcreteColumnModel ? input.model : new ReinforcedConcreteColumnModel(input.model);
+    return new ReinforcedConcreteColumnVerification({
+      code: (_a = input.code) != null ? _a : "NTC2018",
+      metadata: (_b = input.metadata) != null ? _b : {}
+    }).verify(model);
+  }
+};
+
+// src/applications/reinforced-concrete-isolated-footings/ReinforcedConcreteIsolatedFootingModel.js
+var INTERNAL_UNITS30 = Object.freeze({ force: "N", length: "mm" });
+function positive15(value, label) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${label} must be positive.`);
+  }
+  return value;
+}
+function nonNegative2(value, label) {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`${label} must be non-negative.`);
+  }
+  return value;
+}
+function normalizeLayer2(input, resolver, label) {
+  var _a;
+  if (!input) {
+    throw new Error(`${label} is required.`);
+  }
+  const diameter = positive15(
+    resolver.length(Number(input.diameter)),
+    `${label}.diameter`
+  );
+  const spacing = positive15(
+    resolver.length(Number(input.spacing)),
+    `${label}.spacing`
+  );
+  const clearCover = positive15(
+    resolver.length(Number(input.clearCover)),
+    `${label}.clearCover`
+  );
+  const layerOffset = nonNegative2(
+    resolver.length(Number((_a = input.layerOffset) != null ? _a : 0)),
+    `${label}.layerOffset`
+  );
+  const barsPerMeter = 1e3 / spacing;
+  return {
+    diameter,
+    spacing,
+    clearCover,
+    layerOffset,
+    axisFromBottom: clearCover + layerOffset + diameter / 2,
+    barsPerMeter,
+    areaPerMeter: barsPerMeter * Math.PI * diameter ** 2 / 4
+  };
+}
+var ReinforcedConcreteIsolatedFootingModel = class {
+  constructor({
+    id,
+    geometry = {},
+    column = {},
+    actions = {},
+    soil = {},
+    materials = {},
+    reinforcement = {},
+    punching = {},
+    localBearing = {},
+    anchorage = {},
+    mesh = {},
+    solver = {},
+    units = null,
+    metadata = {}
+  } = {}) {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o;
+    if (!id) {
+      throw new Error("A reinforced-concrete isolated footing id is required.");
+    }
+    assertExplicitUnitSystem(units, "ReinforcedConcreteIsolatedFootingModel");
+    const resolver = createUnitResolver(units, INTERNAL_UNITS30);
+    const widthX = positive15(
+      resolver.length(Number(geometry.widthX)),
+      "geometry.widthX"
+    );
+    const widthY = positive15(
+      resolver.length(Number(geometry.widthY)),
+      "geometry.widthY"
+    );
+    const thickness = positive15(
+      resolver.length(Number(geometry.thickness)),
+      "geometry.thickness"
+    );
+    const columnWidthX = positive15(
+      resolver.length(Number(column.widthX)),
+      "column.widthX"
+    );
+    const columnWidthY = positive15(
+      resolver.length(Number(column.widthY)),
+      "column.widthY"
+    );
+    if (columnWidthX >= widthX || columnWidthY >= widthY) {
+      throw new Error("The centered column footprint must lie inside the footing footprint.");
+    }
+    if (column.offsetX != null || column.offsetY != null || column.rotation != null) {
+      throw new Error("The local isolated-footing verifier supports only a centered, unrotated rectangular column.");
+    }
+    if (!materials.concreteMaterial || !materials.reinforcementMaterial) {
+      throw new Error("Concrete and reinforcement materials are required.");
+    }
+    const bottomX = normalizeLayer2(
+      (_a = reinforcement.bottom) == null ? void 0 : _a.x,
+      resolver,
+      "reinforcement.bottom.x"
+    );
+    const bottomY = normalizeLayer2(
+      (_b = reinforcement.bottom) == null ? void 0 : _b.y,
+      resolver,
+      "reinforcement.bottom.y"
+    );
+    if (bottomX.axisFromBottom >= thickness || bottomY.axisFromBottom >= thickness) {
+      throw new Error("Bottom reinforcement axes must lie inside the footing thickness.");
+    }
+    const columnVerticalForce = positive15(
+      resolver.force(Number((_c = actions.columnVerticalForce) != null ? _c : actions.nEd)),
+      "actions.columnVerticalForce"
+    );
+    const uniformDownwardPressure = nonNegative2(
+      resolver.stress(Number((_d = actions.uniformDownwardPressure) != null ? _d : 0)),
+      "actions.uniformDownwardPressure"
+    );
+    const designBearingResistance = positive15(
+      resolver.stress(Number(soil.designBearingResistance)),
+      "soil.designBearingResistance"
+    );
+    const horizontalX = resolver.force(Number((_e = actions.horizontalX) != null ? _e : 0));
+    const horizontalY = resolver.force(Number((_f = actions.horizontalY) != null ? _f : 0));
+    const momentX = resolver.moment(Number((_h = (_g = actions.momentX) != null ? _g : actions.mxEd) != null ? _h : 0));
+    const momentY = resolver.moment(Number((_j = (_i = actions.momentY) != null ? _i : actions.myEd) != null ? _j : 0));
+    const designSlidingResistance = soil.designSlidingResistance == null ? null : nonNegative2(
+      resolver.force(Number(soil.designSlidingResistance)),
+      "soil.designSlidingResistance"
+    );
+    for (const [label, value] of Object.entries({
+      horizontalX,
+      horizontalY,
+      momentX,
+      momentY
+    })) {
+      if (!Number.isFinite(value)) {
+        throw new Error(`actions.${label} must be finite.`);
+      }
+    }
+    this.id = id;
+    this.geometry = { widthX, widthY, thickness };
+    this.column = { widthX: columnWidthX, widthY: columnWidthY };
+    this.actions = {
+      columnVerticalForce,
+      uniformDownwardPressure,
+      horizontalX,
+      horizontalY,
+      momentX,
+      momentY,
+      referencePoint: "footing-base-center",
+      compressionConvention: "positive-downward"
+    };
+    this.soil = {
+      designBearingResistance,
+      designSlidingResistance,
+      bearingResistanceSource: (_k = soil.bearingResistanceSource) != null ? _k : null,
+      slidingResistanceSource: (_l = soil.slidingResistanceSource) != null ? _l : null
+    };
+    this.materials = { ...materials };
+    this.reinforcement = {
+      bottom: { x: bottomX, y: bottomY },
+      punching: reinforcement.punching == null ? { present: false } : structuredClone(reinforcement.punching)
+    };
+    this.punching = structuredClone(punching != null ? punching : {});
+    this.localBearing = {
+      distributionArea: localBearing.distributionArea == null ? null : positive15(
+        resolver.area(Number(localBearing.distributionArea)),
+        "localBearing.distributionArea"
+      ),
+      resistanceReductionFactor: (_m = localBearing.resistanceReductionFactor) != null ? _m : 1
+    };
+    const normalizeAnchor2 = (input, label) => input == null ? null : {
+      ...input,
+      diameter: positive15(
+        resolver.length(Number(input.diameter)),
+        `${label}.diameter`
+      ),
+      availableLength: positive15(
+        resolver.length(Number(input.availableLength)),
+        `${label}.availableLength`
+      ),
+      designSteelStress: input.designSteelStress == null ? null : positive15(
+        resolver.stress(Number(input.designSteelStress)),
+        `${label}.designSteelStress`
+      ),
+      fctd: input.fctd == null ? null : positive15(resolver.stress(Number(input.fctd)), `${label}.fctd`)
+    };
+    this.anchorage = {
+      columnBars: normalizeAnchor2(anchorage.columnBars, "anchorage.columnBars"),
+      footingBars: {
+        x: normalizeAnchor2((_n = anchorage.footingBars) == null ? void 0 : _n.x, "anchorage.footingBars.x"),
+        y: normalizeAnchor2((_o = anchorage.footingBars) == null ? void 0 : _o.y, "anchorage.footingBars.y")
+      }
+    };
+    this.mesh = { targetFiberCount: 50, ...mesh };
+    this.solver = { tolerance: 1e-6, maxIterations: 100, ...solver };
+    this.units = INTERNAL_UNITS30;
+    this.metadata = {
+      ...metadata,
+      unitSystem: INTERNAL_UNITS30,
+      sourceUnitSystem: resolver.sourceUnitSystem
+    };
+  }
+  toJSON() {
+    var _a, _b, _c, _d, _e, _f;
+    return {
+      id: this.id,
+      geometry: { ...this.geometry },
+      column: { ...this.column },
+      actions: { ...this.actions },
+      soil: { ...this.soil },
+      materials: {
+        concreteMaterial: (_c = (_b = (_a = this.materials.concreteMaterial) == null ? void 0 : _a.toJSON) == null ? void 0 : _b.call(_a)) != null ? _c : this.materials.concreteMaterial,
+        reinforcementMaterial: (_f = (_e = (_d = this.materials.reinforcementMaterial) == null ? void 0 : _d.toJSON) == null ? void 0 : _e.call(_d)) != null ? _f : this.materials.reinforcementMaterial
+      },
+      reinforcement: structuredClone(this.reinforcement),
+      punching: structuredClone(this.punching),
+      localBearing: { ...this.localBearing },
+      anchorage: structuredClone(this.anchorage),
+      mesh: { ...this.mesh },
+      solver: { ...this.solver },
+      units: { ...this.units },
+      metadata: { ...this.metadata }
+    };
+  }
+};
+
 // src/applications/reinforced-concrete-isolated-footings/ReinforcedConcreteIsolatedFootingVerification.js
 var INTERNAL_UNITS31 = Object.freeze({ force: "N", length: "mm" });
 var UNIT_WIDTH2 = 1e3;
@@ -61991,7 +62055,7 @@ var ReinforcedConcreteIsolatedFootingApplication = class extends StructuralAppli
       supportedCodes: ["NTC2018", "EN1992_1_1_2004_A1_2014"],
       tags: ["rc", "foundations", "footings", "bearing", "shear", "punching"],
       metadata: {
-        maturity: "partial",
+        maturity: "implemented-local",
         geotechnicalResistanceCalculated: false,
         limitations: [
           "centered unrotated rectangular column only",
@@ -62802,34 +62866,6 @@ function hasSignificantAction3(value, reference = 0, tolerance = 1e-9) {
 function compressedEdgeForMoment(mEd) {
   return mEd >= 0 ? "top" : "bottom";
 }
-function momentVectorCapacityFromDomain(points, mxEd, myEd) {
-  var _a, _b;
-  const demandNorm = Math.sqrt(mxEd ** 2 + myEd ** 2);
-  if (demandNorm <= 1e-9) {
-    return {
-      demandNorm: 0,
-      capacityNorm: Infinity,
-      utilizationRatio: 0,
-      governingPoint: null
-    };
-  }
-  const ux = mxEd / demandNorm;
-  const uy = myEd / demandNorm;
-  const candidates = points.map((point2) => ({
-    point: point2,
-    projection: point2.MxRd * ux + point2.MyRd * uy
-  })).filter((candidate) => Number.isFinite(candidate.projection) && candidate.projection > 0);
-  const selected = candidates.reduce(
-    (best, candidate) => !best || candidate.projection > best.projection ? candidate : best,
-    null
-  );
-  return {
-    demandNorm,
-    capacityNorm: (_a = selected == null ? void 0 : selected.projection) != null ? _a : null,
-    utilizationRatio: (selected == null ? void 0 : selected.projection) && selected.projection > 0 ? demandNorm / selected.projection : Infinity,
-    governingPoint: (_b = selected == null ? void 0 : selected.point) != null ? _b : null
-  };
-}
 function createRcActionVerifier({
   section,
   concreteMaterial,
@@ -62892,8 +62928,11 @@ function createRcActionVerifier({
       const result = sectionVerification.verify(model);
       const bendingChecks = isBiaxial ? (() => {
         var _a2, _b2;
-        const capacity = momentVectorCapacityFromDomain(
-          (_b2 = (_a2 = result.outputs) == null ? void 0 : _a2.points) != null ? _b2 : [],
+        const capacity = rayPolygonCapacity(
+          ((_b2 = (_a2 = result.outputs) == null ? void 0 : _a2.points) != null ? _b2 : []).map((point2) => ({
+            x: point2.MxRd,
+            y: point2.MyRd
+          })),
           convertedMEd,
           convertedMZEd
         );
@@ -62906,11 +62945,15 @@ function createRcActionVerifier({
             utilizationRatio: capacity.utilizationRatio,
             ok: capacity.utilizationRatio <= 1,
             metadata: {
-              method: "sampled-biaxial-domain-projection",
+              method: "sampled-biaxial-domain-ray-intersection",
               mxEd: convertedMEd,
               myEd: convertedMZEd,
               angleCount: model.analysisSettings.angleCount,
-              governingPoint: capacity.governingPoint
+              intersection: capacity.intersection ? {
+                mxRd: capacity.intersection.x,
+                myRd: capacity.intersection.y,
+                segmentIndex: capacity.intersection.segmentIndex
+              } : null
             }
           }
         ];
@@ -63119,7 +63162,7 @@ var ReinforcedConcreteBeamVerification = class {
     if (!section || !analysisResult) {
       return new VerificationResult({
         applicationId: "reinforced-concrete-beams",
-        status: RESULT_STATUS.NOT_IMPLEMENTED,
+        status: RESULT_STATUS.NOT_ANALYZED,
         summary: "RC beam verification requires a section and a FEM beam analysis result.",
         warnings: [
           "RC beam verification from FEM actions was not run because required inputs are missing."
@@ -63491,7 +63534,7 @@ var ReinforcedConcreteFoundationBeamApplication = class extends StructuralApplic
       supportedCodes: ["NTC2018"],
       tags: ["rc", "beam", "foundation", "winkler", "soil-springs"],
       metadata: {
-        maturity: "partial",
+        maturity: "implemented-local",
         limitations: [
           "horizontal prismatic beam only",
           "independent tributary-lumped Winkler springs",
@@ -63503,7 +63546,7 @@ var ReinforcedConcreteFoundationBeamApplication = class extends StructuralApplic
     this.analysis = analysis;
   }
   run(input = {}) {
-    var _a, _b;
+    var _a, _b, _c, _d, _e, _f;
     if (!input.model) {
       throw new Error("ReinforcedConcreteFoundationBeamApplication requires a model.");
     }
@@ -63547,7 +63590,7 @@ var ReinforcedConcreteFoundationBeamApplication = class extends StructuralApplic
       }
     );
     const status = contactViolation || iterationFailure ? RESULT_STATUS.NOT_SUPPORTED : verification.status;
-    return new CalculationResult({
+    return new VerificationResult({
       applicationId: this.id,
       status,
       summary: contactViolation || iterationFailure ? "Foundation-beam contact or cracked-stiffness iteration did not produce a verified converged state." : "Foundation-beam analysis and supported local RC checks completed.",
@@ -63556,14 +63599,18 @@ var ReinforcedConcreteFoundationBeamApplication = class extends StructuralApplic
         analysis,
         verification: verificationJson
       },
+      demand: (_a = verificationJson.demand) != null ? _a : null,
+      capacity: (_b = verificationJson.capacity) != null ? _b : null,
+      utilizationRatio: (_c = verificationJson.utilizationRatio) != null ? _c : null,
+      checks: (_d = verificationJson.checks) != null ? _d : [],
       warnings: [
         ...analysis.warnings,
-        ...(_a = verificationJson.warnings) != null ? _a : [],
+        ...(_e = verificationJson.warnings) != null ? _e : [],
         ...flexuralRigidityResolver ? [] : ["Cracked stiffness iteration was explicitly disabled; reported displacements use the assigned elastic section stiffness."]
       ],
       assumptions: [
         ...analysis.assumptions,
-        ...(_b = verificationJson.assumptions) != null ? _b : []
+        ...(_f = verificationJson.assumptions) != null ? _f : []
       ],
       metadata: {
         code: settings.code,
@@ -63875,7 +63922,7 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
         applicationId: "reinforced-concrete-beam-column-joints",
         status: RESULT_STATUS.NOT_SUPPORTED,
         summary: `Unsupported beam-column joint code: ${this.code}.`,
-        warnings: ["The first beam-column joint implementation supports NTC 2018 only."],
+        warnings: ["The local beam-column joint verifier supports NTC 2018 only."],
         metadata: { code: this.code, ...this.metadata }
       });
     }
@@ -64297,7 +64344,7 @@ var ReinforcedConcreteBeamColumnJointApplication = class extends StructuralAppli
       supportedCodes: ["NTC2018"],
       tags: ["rc", "beam-column-joint", "seismic", "capacity-design"],
       metadata: {
-        maturity: "partial",
+        maturity: "implemented-local",
         limitations: [
           "NTC 2018 dissipative CDA/CDB joints only",
           "member actions and capacity sums are assigned inputs",
@@ -64874,22 +64921,23 @@ var ReinforcedConcreteSectionApplication = class extends StructuralApplication {
       tags: ["rc", "interaction-domain", "section-analysis", "uls"],
       metadata: {
         maturity: "implemented",
-        plannedCapabilities: [
-          "adaptive domain refinement",
-          "moment-curvature workflow",
-          "detailing validation hooks"
+        limitations: [
+          "domain sampling and mesh refinement are explicit solver settings",
+          "member detailing is handled by the beam and column verification contracts"
         ]
       }
     });
   }
   run(input = {}) {
-    var _a;
+    var _a, _b;
     if (!input.model) {
       throw new Error("ReinforcedConcreteSectionApplication requires a model.");
     }
+    const model = input.model instanceof ReinforcedConcreteSectionModel ? input.model : new ReinforcedConcreteSectionModel(input.model);
     return new ReinforcedConcreteSectionVerification({
-      code: (_a = input.code) != null ? _a : "NTC2018"
-    }).verify(input.model);
+      code: (_a = input.code) != null ? _a : "NTC2018",
+      metadata: (_b = input.metadata) != null ? _b : {}
+    }).verify(model);
   }
 };
 
@@ -65889,7 +65937,7 @@ var SingleBeamDesignApplication = class extends StructuralApplication {
       supportedCodes: ["NTC2018"],
       tags: ["beam", "fem", "report", "verification"],
       metadata: {
-        maturity: "mvp",
+        maturity: "implemented-local",
         plannedCapabilities: [
           "JSON and Markdown reporting",
           "consumer-ready DTOs",
@@ -69611,6 +69659,7 @@ function createDefaultApplicationRegistry() {
     new MasonryWallOpeningsApplication(),
     new ReinforcedConcreteSectionApplication(),
     new ReinforcedConcretePlateApplication(),
+    new ReinforcedConcretePunchingApplication(),
     new ReinforcedConcreteColumnApplication(),
     new ReinforcedConcreteIsolatedFootingApplication(),
     new ReinforcedConcreteFoundationBeamApplication(),
@@ -69943,6 +69992,7 @@ export {
   ReinforcedConcretePlateApplication,
   ReinforcedConcretePlateModel,
   ReinforcedConcretePlateVerification,
+  ReinforcedConcretePunchingApplication,
   ReinforcedConcreteSection,
   ReinforcedConcreteSectionApplication,
   ReinforcedConcreteSectionModel,

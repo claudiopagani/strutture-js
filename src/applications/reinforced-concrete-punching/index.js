@@ -12,3 +12,4 @@ export {
   RC_PUNCHING_PARAMETER_PROFILES,
   verifyPunching,
 } from "./PunchingVerification.js";
+export { ReinforcedConcretePunchingApplication } from "./ReinforcedConcretePunchingApplication.js";

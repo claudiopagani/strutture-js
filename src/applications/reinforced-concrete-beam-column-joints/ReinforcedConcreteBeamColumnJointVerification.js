@@ -74,7 +74,7 @@ export class ReinforcedConcreteBeamColumnJointVerification {
         applicationId: "reinforced-concrete-beam-column-joints",
         status: RESULT_STATUS.NOT_SUPPORTED,
         summary: `Unsupported beam-column joint code: ${this.code}.`,
-        warnings: ["The first beam-column joint implementation supports NTC 2018 only."],
+        warnings: ["The local beam-column joint verifier supports NTC 2018 only."],
         metadata: { code: this.code, ...this.metadata },
       });
     }

@@ -262,6 +262,7 @@ export {
   RC_PUNCHING_PARAMETER_PROFILES,
   RC_PUNCHING_DESIGN_CODE_IDS,
   RC_PUNCHING_DESIGN_CODE_ID_VALUES,
+  ReinforcedConcretePunchingApplication,
   ReinforcedConcretePlateApplication,
   ReinforcedConcretePlateModel,
   ReinforcedConcretePlateVerification,

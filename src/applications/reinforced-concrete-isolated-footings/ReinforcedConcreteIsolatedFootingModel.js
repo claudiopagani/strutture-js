@@ -104,7 +104,7 @@ export class ReinforcedConcreteIsolatedFootingModel {
     }
 
     if (column.offsetX != null || column.offsetY != null || column.rotation != null) {
-      throw new Error("The first isolated-footing MVP supports only a centered, unrotated rectangular column.");
+      throw new Error("The local isolated-footing verifier supports only a centered, unrotated rectangular column.");
     }
 
     if (!materials.concreteMaterial || !materials.reinforcementMaterial) {

@@ -3,7 +3,7 @@ export const APPLICATION_CATALOG = [
     id: "single-beam-design",
     name: "Single Beam Design",
     domain: "beams",
-    maturity: "mvp",
+    maturity: "implemented-local",
     primaryFocus: "End-to-end simple beam analysis, verification and reporting.",
   },
   {
@@ -52,10 +52,18 @@ export const APPLICATION_CATALOG = [
       "Local ULS and SLE verification of flat RC plates through rotated Wood-Armer equivalent strips.",
   },
   {
+    id: "reinforced-concrete-punching",
+    name: "RC Punching",
+    domain: "reinforced-concrete",
+    maturity: "implemented",
+    primaryFocus:
+      "Local punching verification of RC slabs through a serializable connection, action-state and control-perimeter contract.",
+  },
+  {
     id: "reinforced-concrete-columns",
     name: "RC Columns",
     domain: "reinforced-concrete",
-    maturity: "partial",
+    maturity: "implemented-local",
     primaryFocus:
       "Local NTC 2018 second-order, biaxial resistance, shear, confinement and ductility verification of RC columns.",
   },
@@ -63,7 +71,7 @@ export const APPLICATION_CATALOG = [
     id: "reinforced-concrete-isolated-footings",
     name: "RC Isolated Footings",
     domain: "reinforced-concrete",
-    maturity: "partial",
+    maturity: "implemented-local",
     primaryFocus:
       "Rigid compression-only contact, assigned geotechnical resistance, crushing, anchorage and structural checks of rectangular isolated footings.",
   },
@@ -71,7 +79,7 @@ export const APPLICATION_CATALOG = [
     id: "reinforced-concrete-foundation-beams",
     name: "RC Foundation Beams",
     domain: "reinforced-concrete",
-    maturity: "partial",
+    maturity: "implemented-local",
     primaryFocus:
       "Compression-only Winkler analysis with iterative cracked stiffness and local RC verification of horizontal foundation beams.",
   },
@@ -79,7 +87,7 @@ export const APPLICATION_CATALOG = [
     id: "reinforced-concrete-beam-column-joints",
     name: "RC Beam-Column Joints",
     domain: "reinforced-concrete",
-    maturity: "partial",
+    maturity: "implemented-local",
     primaryFocus:
       "Directional and concurrent-3D NTC 2018 joint checks including anchorage, corner joints and eccentric transfer.",
   },
@@ -123,7 +131,7 @@ export const APPLICATION_CATALOG = [
     id: "rc-cracked-deflection",
     name: "RC Cracked Deflection",
     domain: "reinforced-concrete",
-    maturity: "partial",
+    maturity: "implemented",
     primaryFocus: "Deflection analysis of cracked RC beams.",
   },
   {

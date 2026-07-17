@@ -5,6 +5,7 @@ import {
   ReinforcedConcreteSection,
   ReinforcedConcreteSectionApplication,
   ReinforcedConcreteSectionModel,
+  ReinforcedConcreteSectionVerification,
   ReinforcementBar,
   RectangularSection,
   createNTC2018ConcreteMaterial,
@@ -12,6 +13,14 @@ import {
 } from "../src/index.js";
 
 const units = { force: "N", length: "mm" };
+
+test("reinforced concrete section reports missing input as not analyzed", () => {
+  const result = new ReinforcedConcreteSectionVerification().verify({
+    id: "missing-section",
+  });
+
+  assert.equal(result.status, "not-analyzed");
+});
 
 function createApplicationModel() {
   const concreteMaterial = createNTC2018ConcreteMaterial({
@@ -106,6 +115,27 @@ test("reinforced concrete section application runs the first ULS uniaxial workfl
   assert.ok(result.outputs.fiberCount > 0);
   assert.equal(result.checks.length, 1);
   assert.ok(result.capacity > 0);
+});
+
+test("reinforced concrete section application normalizes a serializable model DTO", () => {
+  const source = createApplicationModel();
+  const result = new ReinforcedConcreteSectionApplication().run({
+    model: {
+      id: "rc-section-json",
+      section: source.section,
+      materials: source.materials,
+      mesh: source.mesh,
+      solver: source.solver,
+      actions: { nEd: -800, mEd: 150 },
+      analysisSettings: source.analysisSettings,
+      units: { force: "kN", length: "m" },
+    },
+    metadata: { source: "serialized-contract" },
+  });
+
+  assert.equal(result.outputs.nEd, -800e3);
+  assert.equal(result.outputs.mEd, 150e6);
+  assert.equal(result.metadata.source, "serialized-contract");
 });
 
 test("reinforced concrete section verification keeps negative mxEd and MxRd on the same convention", () => {

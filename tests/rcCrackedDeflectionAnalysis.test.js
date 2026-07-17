@@ -5,7 +5,9 @@ import {
   createNTC2018BeamCombinations,
   createNTC2018ConcreteMaterial,
   createNTC2018ReinforcementSteelMaterial,
+  CrackedSectionBeamModel,
   CrackedSectionDeflectionAnalysis,
+  RCrackedDeflectionApplication,
   RectangularSection,
   ReinforcedConcreteSection,
   ReinforcementBar,
@@ -15,6 +17,14 @@ import {
 } from "../src/index.js";
 import { createRcElasticBeamReportModel } from "../examples/beam-report-fixtures.js";
 import { createFixedFixedRcDeflectionExample } from "../examples/rc-deflection-report-common.js";
+
+test("RC cracked deflection reports missing input as not analyzed", () => {
+  const analysisResult = new CrackedSectionDeflectionAnalysis().analyze();
+  const adapterResult = runRcServiceDeflectionAnalysis();
+
+  assert.equal(analysisResult.status, "not-analyzed");
+  assert.equal(adapterResult.status, "not-analyzed");
+});
 
 function analyzeUniformServiceLoad({
   model = createRcElasticBeamReportModel(),
@@ -42,6 +52,26 @@ function analyzeUniformServiceLoad({
     output,
   });
 }
+
+test("RC cracked deflection application consumes its public beam model", () => {
+  const source = createRcElasticBeamReportModel();
+  const analysisResult = new SingleBeamAnalysis().analyze(source.beamInput);
+  const model = new CrackedSectionBeamModel({
+    id: "rc-deflection-model",
+    analysisResult,
+    section: source.section,
+    concreteMaterial: source.section.concreteMaterial,
+    reinforcementMaterial: source.section.reinforcementMaterial,
+    serviceability: source.serviceability,
+    performanceProfile: "interactive",
+    output: { includePointDetails: false },
+  });
+  const result = new RCrackedDeflectionApplication().run({ model });
+
+  assert.equal(model.section, source.section);
+  assert.notEqual(result.status, "not-analyzed");
+  assert.equal(result.outputs.performance.profile, "interactive");
+});
 
 function createDefaultDeflectionSection() {
   const units = { force: "N", length: "mm" };

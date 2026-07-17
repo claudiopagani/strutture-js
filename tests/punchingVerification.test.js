@@ -7,6 +7,7 @@ import {
   PunchingVerificationRequest,
   RC_PUNCHING_DESIGN_CODE_IDS,
   RC_PUNCHING_PARAMETER_PROFILES,
+  ReinforcedConcretePunchingApplication,
   verifyPunching,
 } from "../src/index.js";
 import {
@@ -168,6 +169,33 @@ test("EC2 2004 kernel reproduces the published interior-column worked example", 
   assert.ok(Math.abs(result.outputs.resistance.vRdc - 0.61) < 0.005);
   assert.equal(result.checks[0].ok, true);
   assert.equal(result.checks[1].ok, false);
+  assert.doesNotThrow(() => JSON.stringify(result.toJSON()));
+});
+
+test("RC punching application routes the serializable request contract", () => {
+  const connectionModel = connection({
+    id: "punching-application",
+    columnSize: 400,
+    thickness: 300,
+    effectiveDepthX: 260,
+    effectiveDepthY: 240,
+    ratioX: 0.0085,
+    ratioY: 0.0048,
+    fck: 30,
+  });
+  const model = request({
+    id: "punching-application-request",
+    connectionModel,
+    force: 1_204_800,
+    code: {
+      id: RC_PUNCHING_DESIGN_CODE_IDS.EN_1992_1_1_2004,
+      parameterProfile: RC_PUNCHING_PARAMETER_PROFILES.EN_RECOMMENDED,
+    },
+  }).toJSON();
+  const result = new ReinforcedConcretePunchingApplication().run({ model });
+
+  assert.equal(result.applicationId, "reinforced-concrete-punching");
+  assert.ok(result.checks.length > 0);
   assert.doesNotThrow(() => JSON.stringify(result.toJSON()));
 });
 

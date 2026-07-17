@@ -19,10 +19,10 @@ function missingSectionResult(input, { code, metadata }) {
 
   return new VerificationResult({
     applicationId: "reinforced-concrete-sections",
-    status: RESULT_STATUS.NOT_IMPLEMENTED,
-    summary: "RC section biaxial/uniaxial verification scaffolded.",
+    status: RESULT_STATUS.NOT_ANALYZED,
+    summary: "RC section verification requires a section.",
     warnings: [
-      "Interaction domains, strain compatibility and detailing checks are placeholders.",
+      "RC section verification was not run because the section input is missing.",
     ],
     metadata: {
       code,

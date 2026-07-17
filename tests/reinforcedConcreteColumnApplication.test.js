@@ -99,6 +99,34 @@ test("RC column application verifies a stocky column with the biaxial fiber doma
   assert.ok(Number.isFinite(result.utilizationRatio));
 });
 
+test("RC column application normalizes a serializable model DTO", () => {
+  const source = createFixture();
+  const result = new ReinforcedConcreteColumnApplication().run({
+    model: {
+      id: "column-json",
+      section: source.section,
+      concreteMaterial: source.concreteMaterial,
+      reinforcementMaterial: source.reinforcementMaterial,
+      length: 3,
+      stability: {
+        effectiveLengthMx: 3,
+        effectiveLengthMy: 3,
+        biaxialAngleCount: 32,
+      },
+      actions: { nEd: -800, mxEd: 40, myEd: 15 },
+      mesh: source.mesh,
+      solver: source.solver,
+      units: { force: "kN", length: "m" },
+    },
+    metadata: { source: "serialized-contract" },
+  });
+
+  assert.equal(result.outputs.designActions.nEd, -800e3);
+  assert.equal(result.outputs.designActions.mxEd, 40e6);
+  assert.equal(result.outputs.designActions.myEd, 15e6);
+  assert.equal(result.metadata.source, "serialized-contract");
+});
+
 test("RC column application rejects a slender column without second-order moments", () => {
   const result = new ReinforcedConcreteColumnApplication().run({
     model: createFixture({ effectiveLength: 6000 }),
@@ -197,6 +225,17 @@ test("RC column application verifies shear and seismic confinement contracts", (
   assert.ok(result.outputs.shear.x);
   assert.ok(result.outputs.shear.y);
   assert.ok(result.outputs.detailing.outputs.seismic.criticalZoneLength > 0);
+  const xShearCheck = result.checks.find(
+    (check) => check.metadata?.axis === "x" &&
+      check.metadata?.analysisShear != null,
+  );
+  const yShearCheck = result.checks.find(
+    (check) => check.metadata?.axis === "y" &&
+      check.metadata?.analysisShear != null,
+  );
+
+  assert.equal(xShearCheck.metadata.analysisShear, 80e3);
+  assert.equal(yShearCheck.metadata.analysisShear, 60e3);
   assert.ok(
     result.checks.some((check) => check.metadata?.axis === "x"),
   );

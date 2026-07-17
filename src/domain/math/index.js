@@ -4,6 +4,7 @@ export {
   detectMatrixSemiBandwidth,
 } from "./BandedLinearSolver.js";
 export { DenseLinearSolver } from "./DenseLinearSolver.js";
+export { rayPolygonCapacity } from "./rayPolygonCapacity.js";
 export {
   clamp,
   createZeroMatrix,

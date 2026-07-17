@@ -13,7 +13,7 @@ export class ReinforcedConcreteIsolatedFootingApplication extends StructuralAppl
       supportedCodes: ["NTC2018", "EN1992_1_1_2004_A1_2014"],
       tags: ["rc", "foundations", "footings", "bearing", "shear", "punching"],
       metadata: {
-        maturity: "partial",
+        maturity: "implemented-local",
         geotechnicalResistanceCalculated: false,
         limitations: [
           "centered unrotated rectangular column only",

@@ -279,7 +279,7 @@ export function runRcServiceDeflectionAnalysis({
     return {
       kind: "serviceDeflection",
       applicationId: "rc-cracked-deflection",
-      status: RESULT_STATUS.NOT_IMPLEMENTED,
+      status: RESULT_STATUS.NOT_ANALYZED,
       summary:
         "Service deflection requires a reinforced concrete section.",
       checks: [],

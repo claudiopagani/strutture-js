@@ -1,6 +1,7 @@
 import { VerificationResult } from "../../core/results/VerificationResult.js";
 import { governingCheck, round } from "../../core/results/checkUtils.js";
 import { RESULT_STATUS } from "../../core/results/resultStatus.js";
+import { rayPolygonCapacity } from "../../domain/math/rayPolygonCapacity.js";
 import { ReinforcedConcreteSectionVerification } from "../reinforced-concrete-sections/checks/ReinforcedConcreteSectionVerification.js";
 import { ReinforcedConcreteShearVerification } from "../reinforced-concrete-sections/checks/ReinforcedConcreteShearVerification.js";
 import { ReinforcedConcreteSectionModel } from "../reinforced-concrete-sections/models/ReinforcedConcreteSectionModel.js";
@@ -23,74 +24,6 @@ function compressionFrom(nEd, convention) {
   }
 
   throw new Error(`Unsupported compression sign convention: ${convention}.`);
-}
-
-function cross(a, b) {
-  return a.x * b.y - a.y * b.x;
-}
-
-function rayCapacity(points, demandX, demandY) {
-  const demandNorm = Math.hypot(demandX, demandY);
-
-  if (demandNorm <= EPS) {
-    return {
-      demandNorm: 0,
-      capacityNorm: Number.POSITIVE_INFINITY,
-      utilizationRatio: 0,
-      intersection: null,
-    };
-  }
-
-  const direction = { x: demandX / demandNorm, y: demandY / demandNorm };
-  const intersections = [];
-
-  for (let index = 0; index < points.length; index += 1) {
-    const start = {
-      x: points[index].MxRd,
-      y: points[index].MyRd,
-    };
-    const endPoint = points[(index + 1) % points.length];
-    const segment = {
-      x: endPoint.MxRd - start.x,
-      y: endPoint.MyRd - start.y,
-    };
-    const denominator = cross(direction, segment);
-
-    if (Math.abs(denominator) <= EPS) {
-      continue;
-    }
-
-    const distance = cross(start, segment) / denominator;
-    const segmentParameter = cross(start, direction) / denominator;
-
-    if (
-      distance >= -EPS &&
-      segmentParameter >= -EPS &&
-      segmentParameter <= 1 + EPS
-    ) {
-      intersections.push({
-        distance: Math.max(0, distance),
-        x: direction.x * Math.max(0, distance),
-        y: direction.y * Math.max(0, distance),
-        segmentIndex: index,
-      });
-    }
-  }
-
-  const positive = intersections
-    .filter((item) => item.distance > EPS)
-    .sort((a, b) => a.distance - b.distance);
-  const selected = positive[0] ?? null;
-
-  return {
-    demandNorm,
-    capacityNorm: selected?.distance ?? null,
-    utilizationRatio:
-      selected?.distance && selected.distance > 0
-        ? demandNorm / selected.distance
-        : Number.POSITIVE_INFINITY,
-    intersection: selected,
-  };
 }
 
 function resolveAxis({
@@ -395,8 +328,11 @@ export class ReinforcedConcreteColumnVerification {
     const sectionResult = new ReinforcedConcreteSectionVerification({
       code: this.code,
     }).verify(sectionModel);
-    const capacity = rayCapacity(
-      sectionResult.outputs?.points ?? [],
+    const capacity = rayPolygonCapacity(
+      (sectionResult.outputs?.points ?? []).map((point) => ({
+        x: point.MxRd,
+        y: point.MyRd,
+      })),
       axisMx.designMoment,
       axisMy.designMoment,
     );

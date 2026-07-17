@@ -102,7 +102,7 @@ export class SingleBeamDesignApplication extends StructuralApplication {
       supportedCodes: ["NTC2018"],
       tags: ["beam", "fem", "report", "verification"],
       metadata: {
-        maturity: "mvp",
+        maturity: "implemented-local",
         plannedCapabilities: [
           "JSON and Markdown reporting",
           "consumer-ready DTOs",

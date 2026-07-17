@@ -17,6 +17,12 @@ import {
 const units = { force: "N", length: "mm" };
 const beamUnits = { force: "kN", length: "m" };
 
+test("reinforced concrete beam reports missing input as not analyzed", () => {
+  const result = new ReinforcedConcreteBeamVerification().verify();
+
+  assert.equal(result.status, "not-analyzed");
+});
+
 const approx = (actual, expected, tolerance = 1e-6) => {
   assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} != ${expected}`);
 };
@@ -265,8 +271,17 @@ test("reinforced concrete beam verification includes SLE biaxial stress and warn
   const crackCheck = verification.checks.find((check) =>
     check.id.startsWith("rc-sle-crack"),
   );
+  const biaxialBendingCheck = verification.checks.find(
+    (check) => check.id === "rc-uls-biaxial-bending",
+  );
 
   assert.equal(verification.status, "ok");
+  assert.equal(
+    biaxialBendingCheck.metadata.method,
+    "sampled-biaxial-domain-ray-intersection",
+  );
+  assert.ok(Number.isFinite(biaxialBendingCheck.metadata.intersection.mxRd));
+  assert.ok(Number.isFinite(biaxialBendingCheck.metadata.intersection.myRd));
   assert.equal(sleStress.metadata.biaxialStress, true);
   assert.ok(sleStress.metadata.mxEd > 0);
   assert.ok(sleStress.metadata.myEd > 0);

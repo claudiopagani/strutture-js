@@ -18,7 +18,9 @@ function convertShearAxis(input, resolver, label) {
 
   return {
     ...input,
-    vEd: resolver.force(Number(input.vEd ?? 0)),
+    vEd: input.vEd == null
+      ? null
+      : resolver.force(Number(input.vEd)),
     bw: resolver.length(Number(input.bw)),
     effectiveDepth: resolver.length(Number(input.effectiveDepth)),
     longitudinalReinforcementArea: resolver.area(

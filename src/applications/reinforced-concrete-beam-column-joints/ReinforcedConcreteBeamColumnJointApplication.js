@@ -15,7 +15,7 @@ export class ReinforcedConcreteBeamColumnJointApplication extends StructuralAppl
       supportedCodes: ["NTC2018"],
       tags: ["rc", "beam-column-joint", "seismic", "capacity-design"],
       metadata: {
-        maturity: "partial",
+        maturity: "implemented-local",
         limitations: [
           "NTC 2018 dissipative CDA/CDB joints only",
           "member actions and capacity sums are assigned inputs",

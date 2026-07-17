@@ -1,4 +1,5 @@
 import { StructuralApplication } from "../../core/applications/StructuralApplication.js";
+import { ReinforcedConcreteColumnModel } from "./ReinforcedConcreteColumnModel.js";
 import { ReinforcedConcreteColumnVerification } from "./ReinforcedConcreteColumnVerification.js";
 
 export class ReinforcedConcreteColumnApplication extends StructuralApplication {
@@ -12,7 +13,7 @@ export class ReinforcedConcreteColumnApplication extends StructuralApplication {
       supportedCodes: ["NTC2018"],
       tags: ["rc", "columns", "biaxial-bending", "stability", "uls"],
       metadata: {
-        maturity: "partial",
+        maturity: "implemented-local",
         limitations: [
           "nominal-stiffness moment generation applies to isolated members with assigned effective lengths",
           "global frame P-Delta analysis and automatic effective lengths remain consumer responsibilities",
@@ -27,8 +28,13 @@ export class ReinforcedConcreteColumnApplication extends StructuralApplication {
       throw new Error("ReinforcedConcreteColumnApplication requires a model.");
     }
 
+    const model = input.model instanceof ReinforcedConcreteColumnModel
+      ? input.model
+      : new ReinforcedConcreteColumnModel(input.model);
+
     return new ReinforcedConcreteColumnVerification({
       code: input.code ?? "NTC2018",
-    }).verify(input.model);
+      metadata: input.metadata ?? {},
+    }).verify(model);
   }
 }

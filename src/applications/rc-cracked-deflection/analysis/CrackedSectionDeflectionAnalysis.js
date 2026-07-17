@@ -281,7 +281,7 @@ export class CrackedSectionDeflectionAnalysis {
     if (!analysisResult || !section?.concreteSection) {
       return new VerificationResult({
         applicationId: "rc-cracked-deflection",
-        status: RESULT_STATUS.NOT_IMPLEMENTED,
+        status: RESULT_STATUS.NOT_ANALYZED,
         summary:
           "Cracked-section deflection analysis requires a beam analysis result and an RC section.",
         warnings: [

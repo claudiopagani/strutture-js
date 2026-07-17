@@ -1,5 +1,6 @@
 import { StructuralApplication } from "../../core/applications/StructuralApplication.js";
 import { ReinforcedConcreteSectionVerification } from "./checks/ReinforcedConcreteSectionVerification.js";
+import { ReinforcedConcreteSectionModel } from "./models/ReinforcedConcreteSectionModel.js";
 
 export class ReinforcedConcreteSectionApplication extends StructuralApplication {
   constructor() {
@@ -13,10 +14,9 @@ export class ReinforcedConcreteSectionApplication extends StructuralApplication 
       tags: ["rc", "interaction-domain", "section-analysis", "uls"],
       metadata: {
         maturity: "implemented",
-        plannedCapabilities: [
-          "adaptive domain refinement",
-          "moment-curvature workflow",
-          "detailing validation hooks",
+        limitations: [
+          "domain sampling and mesh refinement are explicit solver settings",
+          "member detailing is handled by the beam and column verification contracts",
         ],
       },
     });
@@ -27,8 +27,13 @@ export class ReinforcedConcreteSectionApplication extends StructuralApplication 
       throw new Error("ReinforcedConcreteSectionApplication requires a model.");
     }
 
+    const model = input.model instanceof ReinforcedConcreteSectionModel
+      ? input.model
+      : new ReinforcedConcreteSectionModel(input.model);
+
     return new ReinforcedConcreteSectionVerification({
       code: input.code ?? "NTC2018",
-    }).verify(input.model);
+      metadata: input.metadata ?? {},
+    }).verify(model);
   }
 }
