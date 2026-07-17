@@ -20,7 +20,11 @@ import {
   resolveRcSleModularRatio,
 } from "../../reinforced-concrete-sections/serviceabilityDefaults.js";
 import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
-import { SectionMomentCurvatureCurve } from "./SectionMomentCurvatureCurve.js";
+import { calculateEn1992ShrinkageCurvature } from "../../../norms/en1992/reinforced-concrete/index.js";
+import {
+  calculateCrackedTransformedProperties,
+  SectionMomentCurvatureCurve,
+} from "./SectionMomentCurvatureCurve.js";
 import { HyperstaticDeflectionIteration } from "./HyperstaticDeflectionIteration.js";
 import { integrateCurvature } from "./CurvatureDeflectionIntegrator.js";
 import {
@@ -215,6 +219,7 @@ function summarizeCurvaturePoint(point, { includePointDetails = false } = {}) {
     mEd: round(point.mEd),
     zeta: round(point.zeta),
     curvature: round(point.curvature, 12),
+    shrinkageCurvature: round(point.shrinkageCurvature ?? 0, 12),
     rotation: round(point.rotation, 12),
     deflection: round(point.deflection),
     cracked: point.cracked,
@@ -228,6 +233,7 @@ function summarizeCurvaturePoint(point, { includePointDetails = false } = {}) {
     summary.mcrNegative = round(point.mcrNegative);
     summary.uncrackedCurvature = round(point.uncrackedCurvature, 12);
     summary.crackedCurvature = round(point.crackedCurvature, 12);
+    summary.loadCurvature = round(point.loadCurvature, 12);
   }
 
   return summary;
@@ -304,6 +310,10 @@ export class CrackedSectionDeflectionAnalysis {
       serviceability.deflection?.includeShrinkage ??
       serviceability.includeShrinkage ??
       false;
+    const freeShrinkageStrain =
+      serviceability.deflection?.freeShrinkageStrain ??
+      serviceability.freeShrinkageStrain ??
+      null;
     const limitRatio =
       serviceability.deflection?.limitRatio ??
       serviceability.deflectionLimitRatio ??
@@ -326,7 +336,10 @@ export class CrackedSectionDeflectionAnalysis {
       `Cracked RC service sections use the modular-ratio method with base n = ${baseModularRatio}.`,
       "Cracking moments use the effective transformed uncracked section and the sign-specific extreme tension fiber.",
       "Concrete tension is excluded in cracked service-section states.",
-      `Long-term quasi-permanent curvature increases the effective modular ratio through phi = ${phi}; shrinkage curvature is excluded.`,
+      `Long-term quasi-permanent curvature increases the effective modular ratio through phi = ${phi}.`,
+      ...(includeShrinkage
+        ? ["Shrinkage curvature follows EN 1992-1-1:2004 Expression (7.21), interpolated between uncracked and cracked transformed states."]
+        : ["Shrinkage curvature is excluded because includeShrinkage is false."]),
     ];
 
     if (!isFinitePositive(es) || !isFinitePositive(ec)) {
@@ -352,10 +365,17 @@ export class CrackedSectionDeflectionAnalysis {
       );
     }
 
-    if (includeShrinkage) {
-      warnings.push(
-        "Shrinkage curvature is intentionally excluded from the first RC deflection MVP; includeShrinkage was ignored.",
-      );
+    if (includeShrinkage && !Number.isFinite(freeShrinkageStrain)) {
+      return new VerificationResult({
+        applicationId: "rc-cracked-deflection",
+        status: RESULT_STATUS.NOT_SUPPORTED,
+        summary: "RC shrinkage deflection requires a signed free shrinkage strain.",
+        warnings: [
+          "Pass serviceability.deflection.freeShrinkageStrain explicitly; the module does not infer humidity, notional size or concrete age.",
+        ],
+        assumptions,
+        metadata: { code: this.code, beamId, ...this.metadata },
+      });
     }
 
     const resultResolver = createUnitResolver(
@@ -519,6 +539,22 @@ export class CrackedSectionDeflectionAnalysis {
       const effectiveConcreteModulus = es / effectiveModularRatio;
       const serviceArtifacts = getServiceContext(effectiveModularRatio);
       const gross = serviceArtifacts.gross;
+      const grossReinforcementFirstMoment = section
+        .getReinforcementBars()
+        .reduce(
+          (sum, bar) => sum + bar.area * (bar.y - gross.centroid),
+          0,
+        );
+      const uncrackedShrinkageCurvature =
+        includeShrinkage && creepCoefficient > 0
+          ? calculateEn1992ShrinkageCurvature({
+              freeShrinkageStrain,
+              reinforcementElasticModulus: es,
+              effectiveConcreteModulus,
+              reinforcementFirstMoment: grossReinforcementFirstMoment,
+              sectionSecondMoment: gross.inertia,
+            }).curvature
+          : 0;
       const serviceContext = serviceArtifacts.context;
       const crackingThresholds = crackingMoments({
         section,
@@ -676,6 +712,7 @@ export class CrackedSectionDeflectionAnalysis {
         let crackedCurvature = uncrackedCurvature;
         let solverConverged = true;
         let zeta = 0;
+        let crackedSection = null;
 
         if (iteratedCurve) {
           const pointCurve =
@@ -685,12 +722,28 @@ export class CrackedSectionDeflectionAnalysis {
           crackedCurvature = curveState.kappaCracked ?? curveState.kappa;
           solverConverged = curveState.converged ?? true;
           zeta = curveState.zeta ?? 0;
+          crackedSection = curveState.crackedSection ?? null;
 
           if (!solverConverged) {
             warnings.push(
               `Precomputed M-kappa curve did not converge for ${result.id} near station ${sample.station}.`,
             );
           }
+
+          const crackedShrinkageCurvature =
+            includeShrinkage && creepCoefficient > 0 && crackedSection
+              ? calculateEn1992ShrinkageCurvature({
+                  freeShrinkageStrain,
+                  reinforcementElasticModulus: es,
+                  effectiveConcreteModulus,
+                  reinforcementFirstMoment:
+                    crackedSection.reinforcementFirstMoment,
+                  sectionSecondMoment: crackedSection.inertia,
+                }).curvature
+              : uncrackedShrinkageCurvature;
+          const shrinkageCurvature =
+            (1 - zeta) * uncrackedShrinkageCurvature +
+            zeta * crackedShrinkageCurvature;
 
           return {
             x,
@@ -704,7 +757,9 @@ export class CrackedSectionDeflectionAnalysis {
             uncrackedCurvature:
               curveState.kappaUncracked ?? uncrackedCurvature,
             crackedCurvature,
-            curvature: curveState.kappa,
+            loadCurvature: curveState.kappa,
+            shrinkageCurvature,
+            curvature: curveState.kappa + shrinkageCurvature,
             cracked: curveState.cracked ?? zeta > 0,
           };
         }
@@ -747,6 +802,11 @@ export class CrackedSectionDeflectionAnalysis {
           if (solved.converged) {
             crackedCurvature =
               Math.sign(mEd || 1) * Math.abs(solved.strainField.kappaZ);
+            crackedSection = calculateCrackedTransformedProperties({
+              section,
+              state: solved.state,
+              modularRatio: effectiveModularRatio,
+            });
           }
 
           const beta = creepCoefficient > 0 ? betaLongTerm : betaShortTerm;
@@ -761,6 +821,23 @@ export class CrackedSectionDeflectionAnalysis {
           );
         }
 
+        const loadCurvature =
+          zeta * crackedCurvature + (1 - zeta) * uncrackedCurvature;
+        const crackedShrinkageCurvature =
+          includeShrinkage && creepCoefficient > 0 && crackedSection
+            ? calculateEn1992ShrinkageCurvature({
+                freeShrinkageStrain,
+                reinforcementElasticModulus: es,
+                effectiveConcreteModulus,
+                reinforcementFirstMoment:
+                  crackedSection.reinforcementFirstMoment,
+                sectionSecondMoment: crackedSection.inertia,
+              }).curvature
+            : uncrackedShrinkageCurvature;
+        const shrinkageCurvature =
+          (1 - zeta) * uncrackedShrinkageCurvature +
+          zeta * crackedShrinkageCurvature;
+
         return {
           x,
           station: sample.station,
@@ -772,7 +849,9 @@ export class CrackedSectionDeflectionAnalysis {
           zeta,
           uncrackedCurvature,
           crackedCurvature,
-          curvature: zeta * crackedCurvature + (1 - zeta) * uncrackedCurvature,
+          loadCurvature,
+          shrinkageCurvature,
+          curvature: loadCurvature + shrinkageCurvature,
           cracked: zeta > 0,
         };
       });
@@ -954,7 +1033,8 @@ export class CrackedSectionDeflectionAnalysis {
       outputs: {
         beamId,
         creepCoefficient: phi,
-        includeShrinkage: false,
+        includeShrinkage,
+        freeShrinkageStrain: includeShrinkage ? freeShrinkageStrain : null,
         performance,
         simplifiedSlenderness: slenderness
           ? {
@@ -973,10 +1053,11 @@ export class CrackedSectionDeflectionAnalysis {
       metadata: {
         code: this.code,
         beamId,
-        method: "curvature-integration-tension-stiffening-mvp",
+        method: "en1992-curvature-integration-tension-stiffening-creep-shrinkage",
         governingCheckId: governing?.id ?? null,
         creepCoefficient: phi,
-        includeShrinkage: false,
+        includeShrinkage,
+        freeShrinkageStrain: includeShrinkage ? freeShrinkageStrain : null,
         ...this.metadata,
       },
     });

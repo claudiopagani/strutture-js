@@ -3,6 +3,7 @@ import { governingCheck, round } from "../../core/results/checkUtils.js";
 import { RESULT_STATUS } from "../../core/results/resultStatus.js";
 import {
   RectangularFootingContactAnalysis,
+  integrateFootingPressurePolygon,
   integrateFootingPressureStrip,
 } from "../../domain/foundations/index.js";
 import { RectangularSection } from "../../domain/geometry/RectangularSection.js";
@@ -19,6 +20,11 @@ import {
 import { ReinforcedConcreteSectionModel } from "../reinforced-concrete-sections/models/ReinforcedConcreteSectionModel.js";
 import { ReinforcedConcreteSectionVerification } from "../reinforced-concrete-sections/checks/ReinforcedConcreteSectionVerification.js";
 import { ReinforcedConcreteShearVerification } from "../reinforced-concrete-sections/checks/ReinforcedConcreteShearVerification.js";
+import {
+  calculateEn1992AnchorageLength,
+  calculateEn1992DesignBondStrength,
+  calculateEn1992LocalBearingResistance,
+} from "../../norms/en1992/reinforced-concrete/index.js";
 
 const INTERNAL_UNITS = Object.freeze({ force: "N", length: "mm" });
 const UNIT_WIDTH = 1000;
@@ -29,6 +35,13 @@ function totalVerticalForce(model) {
     model.actions.uniformDownwardPressure *
       model.geometry.widthX *
       model.geometry.widthY;
+}
+
+function polygonArea(points) {
+  return Math.abs(points.reduce((sum, point, index) => {
+    const next = points[(index + 1) % points.length];
+    return sum + point.x * next.y - next.x * point.y;
+  }, 0)) / 2;
 }
 
 function createFootingStrip({ model, direction }) {
@@ -230,6 +243,28 @@ function punchingPerimeterFits(model, effectiveDepth) {
   );
 }
 
+function roundedRectanglePolygon(width, height, offset, segmentsPerCorner = 16) {
+  const points = [];
+  const corners = [
+    { x: width / 2, y: -height / 2, start: -Math.PI / 2 },
+    { x: width / 2, y: height / 2, start: 0 },
+    { x: -width / 2, y: height / 2, start: Math.PI / 2 },
+    { x: -width / 2, y: -height / 2, start: Math.PI },
+  ];
+
+  for (const corner of corners) {
+    for (let index = 0; index <= segmentsPerCorner; index += 1) {
+      const angle = corner.start + Math.PI / 2 * index / segmentsPerCorner;
+      points.push({
+        x: corner.x + offset * Math.cos(angle),
+        y: corner.y + offset * Math.sin(angle),
+      });
+    }
+  }
+
+  return points;
+}
+
 function verifyPunchingForFooting({ model, contact, directions }) {
   const effectiveDepthX = directions.x.effectiveDepth;
   const effectiveDepthY = directions.y.effectiveDepth;
@@ -295,14 +330,25 @@ function verifyPunchingForFooting({ model, contact, directions }) {
   }
 
   const offset = 2 * effectiveDepth;
-  const enclosedArea =
-    model.column.widthX * model.column.widthY +
-    2 * offset * (model.column.widthX + model.column.widthY) +
-    Math.PI * offset ** 2;
-  const effectiveMeanPressure =
-    contact.pressurePolynomial.intercept -
-    model.actions.uniformDownwardPressure;
-  const enclosedUpwardForce = Math.max(0, effectiveMeanPressure * enclosedArea);
+  const perimeterPolygon = roundedRectanglePolygon(
+    model.column.widthX,
+    model.column.widthY,
+    offset,
+    model.punching.contactIntegrationSegmentsPerCorner ?? 24,
+  );
+  const enclosedContact = integrateFootingPressurePolygon({
+    contact,
+    polygon: perimeterPolygon,
+  });
+  const enclosedArea = polygonArea(perimeterPolygon);
+  const enclosedContactArea = enclosedContact.area;
+  const enclosedSoilForce = enclosedContact.force;
+  const enclosedDownwardForce =
+    model.actions.uniformDownwardPressure * enclosedArea;
+  const enclosedUpwardForce = Math.max(
+    0,
+    enclosedSoilForce - enclosedDownwardForce,
+  );
   const punchingForce = Math.max(
     0,
     model.actions.columnVerticalForce - enclosedUpwardForce,
@@ -397,7 +443,9 @@ function verifyPunchingForFooting({ model, contact, directions }) {
       effectiveDepth,
       basicPerimeterInsideFooting: true,
       enclosedArea: round(enclosedArea),
-      effectiveMeanPressure: round(effectiveMeanPressure),
+      enclosedContactArea: round(enclosedContactArea),
+      enclosedSoilForce: round(enclosedSoilForce),
+      enclosedDownwardForce: round(enclosedDownwardForce),
       enclosedUpwardForce: round(enclosedUpwardForce),
       punchingForce: round(punchingForce),
       verification: result.toJSON(),
@@ -405,9 +453,135 @@ function verifyPunchingForFooting({ model, contact, directions }) {
     warnings: result.warnings,
     assumptions: [
       ...result.assumptions,
-      "For full contact and a centered control perimeter, the linear pressure gradients have zero resultant over the enclosed symmetric area.",
+      "The effective soil reaction inside the 2d perimeter is integrated over the compression-only contact polygon; the rounded perimeter is discretized explicitly.",
     ],
   };
+}
+
+function verifyLocalBearing(model) {
+  const loadedArea = model.column.widthX * model.column.widthY;
+  const distributionWidthX = Math.min(
+    model.geometry.widthX,
+    3 * model.column.widthX,
+    model.column.widthX + model.geometry.thickness,
+  );
+  const distributionWidthY = Math.min(
+    model.geometry.widthY,
+    3 * model.column.widthY,
+    model.column.widthY + model.geometry.thickness,
+  );
+  const distributionArea = model.localBearing.distributionArea ??
+    distributionWidthX * distributionWidthY;
+  const bearing = calculateEn1992LocalBearingResistance({
+    loadedArea,
+    distributionArea,
+    fcd: model.materials.concreteMaterial.fcd,
+    resistanceReductionFactor: model.localBearing.resistanceReductionFactor,
+  });
+  const eccentric = Math.abs(model.actions.momentX) > 1e-9 ||
+    Math.abs(model.actions.momentY) > 1e-9 ||
+    Math.hypot(model.actions.horizontalX, model.actions.horizontalY) > 1e-9;
+  const maximumInterfacePressure =
+    model.actions.columnVerticalForce / loadedArea +
+    6 * Math.abs(model.actions.momentX) /
+      (model.column.widthX * model.column.widthY ** 2) +
+    6 * Math.abs(model.actions.momentY) /
+      (model.column.widthY * model.column.widthX ** 2);
+  const check = eccentric
+    ? {
+        id: "rc-footing-column-interface-crushing",
+        description: "Conservative local crushing at eccentric column-footing interface",
+        demand: round(maximumInterfacePressure),
+        capacity: round(
+          model.localBearing.resistanceReductionFactor *
+            model.materials.concreteMaterial.fcd,
+        ),
+        utilizationRatio: round(
+          maximumInterfacePressure /
+            (model.localBearing.resistanceReductionFactor *
+              model.materials.concreteMaterial.fcd),
+        ),
+        ok: maximumInterfacePressure <=
+          model.localBearing.resistanceReductionFactor *
+            model.materials.concreteMaterial.fcd,
+        metadata: {
+          method: "nonuniform-interface-peak-stress-no-dispersion-enhancement",
+          reference: "EN1992-1-1:2004-6.7(3)",
+        },
+      }
+    : {
+        id: "rc-footing-column-interface-crushing",
+        description: "Local concrete bearing at column-footing interface",
+        demand: round(model.actions.columnVerticalForce),
+        capacity: round(bearing.resistance),
+        utilizationRatio: round(
+          model.actions.columnVerticalForce / bearing.resistance,
+        ),
+        ok: model.actions.columnVerticalForce <= bearing.resistance,
+        metadata: {
+          ...bearing,
+          loadedArea,
+          distributionArea,
+        },
+      };
+
+  return {
+    check,
+    outputs: {
+      loadedArea,
+      distributionArea,
+      distributionWidthX,
+      distributionWidthY,
+      maximumInterfacePressure,
+      eccentric,
+      ...bearing,
+    },
+    warnings: bearing.enhancement > 1
+      ? ["Local-bearing enhancement requires transverse splitting forces to be carried by the footing reinforcement or a justified local strut-and-tie model."]
+      : [],
+  };
+}
+
+function verifyFootingAnchorages(model) {
+  const fctd = 0.7 * model.materials.concreteMaterial.fctm /
+    model.materials.concreteMaterial.metadata.gammaC;
+  const fyd = model.materials.reinforcementMaterial.fyd;
+  const anchors = [
+    ["column-bars", model.anchorage.columnBars],
+    ["footing-bars-x", model.anchorage.footingBars.x],
+    ["footing-bars-y", model.anchorage.footingBars.y],
+  ].filter(([, anchor]) => anchor);
+
+  return anchors.map(([id, anchor]) => {
+    const bond = calculateEn1992DesignBondStrength({
+      fctd: anchor.fctd ?? fctd,
+      barDiameter: anchor.diameter,
+      bondConditionFactor: anchor.bondConditionFactor ?? 1,
+    });
+    const required = calculateEn1992AnchorageLength({
+      barDiameter: anchor.diameter,
+      designSteelStress: anchor.designSteelStress ?? fyd,
+      fbd: bond.fbd,
+      tension: anchor.tension !== false,
+      alpha1: anchor.alpha1 ?? 1,
+      alpha2: anchor.alpha2 ?? 1,
+      alpha3: anchor.alpha3 ?? 1,
+      alpha4: anchor.alpha4 ?? 1,
+      alpha5: anchor.alpha5 ?? 1,
+      nationalMinimumDiameterMultiple: 20,
+      nationalMinimumLength: 150,
+    });
+
+    return {
+      id: `rc-footing-anchorage-${id}`,
+      description: `Anchorage of ${id.replaceAll("-", " ")}`,
+      demand: round(required.designLength),
+      capacity: round(anchor.availableLength),
+      utilizationRatio: round(required.designLength / anchor.availableLength),
+      ok: required.designLength <= anchor.availableLength,
+      metadata: { ...required, fbd: round(bond.fbd) },
+    };
+  });
 }
 
 export class ReinforcedConcreteIsolatedFootingVerification {
@@ -514,27 +688,6 @@ export class ReinforcedConcreteIsolatedFootingVerification {
           },
         };
 
-    if (contact.contactType !== "full") {
-      const checks = [contactCheck, bearingCheck, ...(slidingCheck ? [slidingCheck] : [])];
-      return new VerificationResult({
-        applicationId: "reinforced-concrete-isolated-footings",
-        status: RESULT_STATUS.NOT_SUPPORTED,
-        summary: "Uniaxial partial contact was solved, but structural footing checks remain limited to full contact.",
-        checks,
-        outputs: { footingId: model.id, contact },
-        warnings: [
-          "The triangular contact pressure is available, but bending, one-way shear and punching are not certified for partial contact in this MVP.",
-          ...(slidingMissing
-            ? ["A design sliding resistance is required when horizontal action is non-zero."]
-            : []),
-        ],
-        assumptions: [
-          "Soil contact has zero tensile strength and the footing base is treated as rigid.",
-        ],
-        metadata: { code: this.code, ...this.metadata },
-      });
-    }
-
     if (slidingMissing) {
       return new VerificationResult({
         applicationId: "reinforced-concrete-isolated-footings",
@@ -557,6 +710,8 @@ export class ReinforcedConcreteIsolatedFootingVerification {
       ]),
     );
     const punching = verifyPunchingForFooting({ model, contact, directions });
+    const localBearing = verifyLocalBearing(model);
+    const anchorageChecks = verifyFootingAnchorages(model);
     const checks = [
       contactCheck,
       bearingCheck,
@@ -564,6 +719,8 @@ export class ReinforcedConcreteIsolatedFootingVerification {
       ...directions.x.checks,
       ...directions.y.checks,
       ...punching.checks,
+      localBearing.check,
+      ...anchorageChecks,
     ];
     const structuralStatuses = [
       directions.x.bendingResult.status,
@@ -611,6 +768,10 @@ export class ReinforcedConcreteIsolatedFootingVerification {
           ]),
         ),
         punching: punching.outputs,
+        localBearing: localBearing.outputs,
+        anchorage: {
+          checkedCount: anchorageChecks.length,
+        },
       },
       warnings: [
         ...directions.x.bendingResult.warnings,
@@ -618,7 +779,10 @@ export class ReinforcedConcreteIsolatedFootingVerification {
         ...directions.y.bendingResult.warnings,
         ...directions.y.shearResult.warnings,
         ...punching.warnings,
-        "Column-bar anchorage, footing-bar anchorage, local bearing at the column-footing interface and construction detailing are not included in this MVP.",
+        ...localBearing.warnings,
+        ...(anchorageChecks.length === 0
+          ? ["Column and footing bar anchorage were not checked because no anchorage contracts were supplied."]
+          : []),
         ...(model.soil.bearingResistanceSource == null
           ? ["The assigned design bearing resistance has no documented source in the input metadata."]
           : []),
@@ -629,13 +793,13 @@ export class ReinforcedConcreteIsolatedFootingVerification {
         ...directions.y.bendingResult.assumptions,
         ...directions.y.shearResult.assumptions,
         ...punching.assumptions,
-        "The footing and soil-contact pressure field are treated as rigid; structural strip actions are integrated from the resulting pressure plane.",
+        "The footing is rigid for contact analysis; structural strip actions and punching reaction are integrated from the compression-only pressure plane.",
         "The column is centered and unrotated, and all actions are reduced to the center of the footing base.",
         "The assigned bearing and sliding resistances already include the geotechnical design approach and partial factors selected by the responsible geotechnical verification.",
       ],
       metadata: {
         code: this.code,
-        method: "rigid-rectangular-footing-full-contact-plus-rc-strips",
+        method: "rigid-rectangular-footing-compression-only-contact-plus-rc-checks",
         governingCheckId: governing?.id ?? null,
         geotechnicalCapacityCalculated: false,
         ...this.metadata,

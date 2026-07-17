@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   ReinforcedConcreteBeamColumnJointApplication,
+  ReinforcedConcreteBeamColumnJoint3DModel,
   ReinforcedConcreteBeamColumnJointModel,
   calculateNTC2018EffectiveJointWidth,
   calculateNTC2018JointCompressionCapacity,
@@ -263,5 +264,61 @@ test("joint confinement classifier requires all four faces and both overlaps", (
       oppositeBeamOverlapRatios: { x: 1 },
     }),
     /requires all face and overlap ratios/,
+  );
+});
+
+function directionInput(model, directionId) {
+  return {
+    directionId,
+    jointType: model.jointType,
+    ductilityClass: model.ductilityClass,
+    tensionMethod: model.tensionMethod,
+    geometry: { ...model.geometry },
+    materials: { ...model.materials },
+    actions: { ...model.actions },
+    beamReinforcement: { ...model.beamReinforcement },
+    jointHoops: { ...model.jointHoops },
+    confinement: structuredClone(model.confinement),
+    capacityHierarchy: { ...model.capacityHierarchy },
+    anchorage: structuredClone(model.anchorage),
+    eccentricity: { ...model.eccentricity },
+    units,
+  };
+}
+
+test("3D joint verifies concurrent orthogonal directions including a corner joint", () => {
+  const x = createModel({
+    anchorage: {
+      topBars: { diameter: 16, availableLength: 1000 },
+      bottomBars: { diameter: 16, availableLength: 1000 },
+    },
+  });
+  const z = createModel({
+    jointType: "corner",
+    eccentricity: {
+      beamAxisOffset: 120,
+      transferLeverArm: 300,
+      reinforcementArea: 1000,
+    },
+  });
+  const result = new ReinforcedConcreteBeamColumnJointApplication().run({
+    model: new ReinforcedConcreteBeamColumnJoint3DModel({
+      id: "joint-3d",
+      concurrentActionState: true,
+      directions: [directionInput(x, "x"), directionInput(z, "z")],
+    }),
+  });
+
+  assert.equal(result.outputs.directionCount, 2);
+  assert.equal(result.outputs.directions.z.outputs.normativeJointType, "external");
+  assert.ok(
+    result.checks.some(
+      (check) => check.id === "rc-joint-eccentric-transfer-reinforcement-z",
+    ),
+  );
+  assert.ok(
+    result.checks.some(
+      (check) => check.id === "rc-joint-beam-bar-anchorage-topBars-x",
+    ),
   );
 });

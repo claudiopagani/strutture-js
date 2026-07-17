@@ -132,7 +132,15 @@ export class FoundationBeamModel extends SingleBeamModel {
           lengthExponent: -3,
         }),
       })),
-      model: "winkler-linear-bilateral-lumped",
+      contactModel: foundation.contactModel ?? "bilateral",
+      model: (foundation.contactModel ?? "bilateral") === "compression-only"
+        ? "winkler-linear-compression-only-lumped"
+        : "winkler-linear-bilateral-lumped",
+      iteration: {
+        tolerance: foundation.iteration?.tolerance ?? 1e-7,
+        maxIterations: foundation.iteration?.maxIterations ?? 50,
+        relaxationFactor: foundation.iteration?.relaxationFactor ?? 0.5,
+      },
       metadata: { ...foundation.metadata },
     };
   }

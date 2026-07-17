@@ -38,6 +38,31 @@ function ratios(input = {}) {
   );
 }
 
+function normalizeAnchor(input, resolver, label) {
+  if (!input) return null;
+
+  return {
+    ...input,
+    diameter: positive(
+      resolver.length(Number(input.diameter)),
+      `${label}.diameter`,
+    ),
+    availableLength: positive(
+      resolver.length(Number(input.availableLength)),
+      `${label}.availableLength`,
+    ),
+    designSteelStress: input.designSteelStress == null
+      ? null
+      : positive(
+          resolver.stress(Number(input.designSteelStress)),
+          `${label}.designSteelStress`,
+        ),
+    fctd: input.fctd == null
+      ? null
+      : positive(resolver.stress(Number(input.fctd)), `${label}.fctd`),
+  };
+}
+
 export class ReinforcedConcreteBeamColumnJointModel {
   constructor({
     id,
@@ -52,6 +77,8 @@ export class ReinforcedConcreteBeamColumnJointModel {
     jointHoops = {},
     confinement = {},
     capacityHierarchy = {},
+    anchorage = {},
+    eccentricity = {},
     units = null,
     metadata = {},
   } = {}) {
@@ -219,6 +246,33 @@ export class ReinforcedConcreteBeamColumnJointModel {
           ),
           preReducedForMomentSigns: true,
         };
+    this.anchorage = {
+      topBars: normalizeAnchor(anchorage.topBars, resolver, "anchorage.topBars"),
+      bottomBars: normalizeAnchor(
+        anchorage.bottomBars,
+        resolver,
+        "anchorage.bottomBars",
+      ),
+    };
+    const beamAxisOffset = resolver.length(Number(eccentricity.beamAxisOffset ?? 0));
+    if (!Number.isFinite(beamAxisOffset)) {
+      throw new Error("eccentricity.beamAxisOffset must be finite.");
+    }
+    this.eccentricity = {
+      beamAxisOffset,
+      transferLeverArm: eccentricity.transferLeverArm == null
+        ? null
+        : positive(
+            resolver.length(Number(eccentricity.transferLeverArm)),
+            "eccentricity.transferLeverArm",
+          ),
+      reinforcementArea: eccentricity.reinforcementArea == null
+        ? 0
+        : nonNegative(
+            resolver.area(Number(eccentricity.reinforcementArea)),
+            "eccentricity.reinforcementArea",
+          ),
+    };
     this.units = INTERNAL_UNITS;
     this.metadata = {
       ...metadata,

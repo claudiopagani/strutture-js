@@ -302,7 +302,7 @@ test("RC cracked deflection analysis integrates SLE curvatures with default cree
   );
 });
 
-test("RC cracked deflection validation applies configurable creep and excludes shrinkage", () => {
+test("RC cracked deflection applies configurable creep and EN 1992 shrinkage curvature", () => {
   const model = createRcElasticBeamReportModel();
   const analysisResult = new SingleBeamAnalysis().analyze(model.beamInput);
   const immediateResult = new CrackedSectionDeflectionAnalysis().analyze({
@@ -327,6 +327,7 @@ test("RC cracked deflection validation applies configurable creep and excludes s
       deflection: {
         creepCoefficient: 3,
         includeShrinkage: true,
+        freeShrinkageStrain: -0.00035,
       },
     },
   });
@@ -347,11 +348,13 @@ test("RC cracked deflection validation applies configurable creep and excludes s
     longTermQuasiPermanent.maxAbsDeflection >
       immediateQuasiPermanent.maxAbsDeflection,
   );
-  assert.equal(longTermResult.outputs.includeShrinkage, false);
+  assert.equal(longTermResult.outputs.includeShrinkage, true);
+  assert.equal(longTermResult.outputs.freeShrinkageStrain, -0.00035);
   assert.ok(
-    longTermResult.warnings.some((warning) =>
-      warning.includes("Shrinkage curvature is intentionally excluded"),
+    longTermQuasiPermanent.points.every(
+      (point) => Math.abs(point.shrinkageCurvature ?? 0) < 1e-15,
     ),
+    "the symmetric reinforcement fixture must have zero shrinkage curvature",
   );
 });
 

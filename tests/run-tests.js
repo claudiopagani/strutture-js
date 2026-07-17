@@ -28,6 +28,7 @@ import "./reinforcedConcreteColumnApplication.test.js";
 import "./reinforcedConcreteServiceabilityVerification.test.js";
 import "./reinforcedConcretePlateApplication.test.js";
 import "./rcCrackedDeflectionAnalysis.test.js";
+import "./reinforcedConcreteCompletion.test.js";
 import "./beamValidationCampaign.test.js";
 import "./packageExports.test.js";
 import "./singleBeamDesignApplication.test.js";

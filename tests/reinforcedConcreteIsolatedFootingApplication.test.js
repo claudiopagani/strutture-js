@@ -69,14 +69,52 @@ test("isolated footing application verifies centered full-contact structural str
   assert.equal(result.outputs.punching.basicPerimeterInsideFooting, false);
 });
 
-test("isolated footing application exposes uniaxial contact loss but guards structural checks", () => {
+test("isolated footing application carries uniaxial contact loss into structural checks", () => {
   const result = new ReinforcedConcreteIsolatedFootingApplication().run({
     model: createModel({ actions: { momentY: 2_000_000_000 } }),
   });
 
-  assert.equal(result.status, "not-supported");
+  assert.notEqual(result.status, "not-supported");
   assert.equal(result.outputs.contact.contactType, "partial-uniaxial");
   assert.equal(result.outputs.contact.minimumPressure, 0);
+  assert.ok(result.checks.some((check) => check.id === "rc-footing-bending-x"));
+});
+
+test("isolated footing solves biaxial partial contact, crushing and anchorages", () => {
+  const result = new ReinforcedConcreteIsolatedFootingApplication().run({
+    model: createModel({
+      actions: {
+        columnVerticalForce: 2_000_000,
+        momentX: 650_000_000,
+        momentY: 650_000_000,
+      },
+      localBearing: { distributionArea: 1_000_000 },
+      anchorage: {
+        columnBars: { diameter: 20, availableLength: 1200 },
+        footingBars: {
+          x: { diameter: 16, availableLength: 1000 },
+          y: { diameter: 16, availableLength: 1000 },
+        },
+      },
+    }),
+  });
+
+  assert.notEqual(result.status, "not-supported");
+  assert.equal(result.outputs.contact.contactType, "partial-biaxial");
+  assert.ok(
+    result.outputs.contact.partialContact.equilibriumResidualNorm < 1e-6,
+  );
+  assert.equal(result.outputs.anchorage.checkedCount, 3);
+  assert.ok(
+    result.checks.some(
+      (check) => check.id === "rc-footing-column-interface-crushing",
+    ),
+  );
+  assert.ok(
+    result.checks.some(
+      (check) => check.id === "rc-footing-anchorage-column-bars",
+    ),
+  );
 });
 
 test("isolated footing application requires assigned sliding resistance for horizontal action", () => {

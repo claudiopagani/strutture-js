@@ -61,6 +61,9 @@ export class FoundationBeamFemBuilder {
     const settlementLoads = selectedLoads.filter(
       (load) => load.type === "soil-settlement",
     );
+    const activeNodeIds = context.activeFoundationNodeIds == null
+      ? null
+      : new Set(context.activeFoundationNodeIds);
 
     for (const element of femModel.elements) {
       const from = element.metadata.startStation;
@@ -115,18 +118,22 @@ export class FoundationBeamFemBuilder {
         ? data.settlementLoad / data.springStiffness
         : 0;
 
-      foundationSupports.push(new Support({
-        id: `${model.id}-soil-spring-${data.node.id}`,
-        node: data.node,
-        springStiffness: { uy: data.springStiffness },
-        metadata: {
-          type: "winkler-soil-spring",
-          station: data.station,
-          imposedSettlement,
-        },
-      }));
+      const active = activeNodeIds == null || activeNodeIds.has(data.node.id);
 
-      if (Math.abs(data.settlementLoad) > 0) {
+      if (active) {
+        foundationSupports.push(new Support({
+          id: `${model.id}-soil-spring-${data.node.id}`,
+          node: data.node,
+          springStiffness: { uy: data.springStiffness },
+          metadata: {
+            type: "winkler-soil-spring",
+            station: data.station,
+            imposedSettlement,
+          },
+        }));
+      }
+
+      if (active && Math.abs(data.settlementLoad) > 0) {
         foundationLoads.push(new NodalLoad({
           id: `${model.id}-soil-settlement-${data.node.id}`,
           node: data.node,
@@ -156,7 +163,7 @@ export class FoundationBeamFemBuilder {
           },
         })];
 
-    return {
+    const result = {
       ...femModel,
       supports: [...femModel.supports, ...foundationSupports, ...horizontalDatum],
       nodalLoads: [...femModel.nodalLoads, ...foundationLoads],
@@ -168,6 +175,7 @@ export class FoundationBeamFemBuilder {
           nodeId: data.node.id,
           station: data.station,
           springStiffness: data.springStiffness,
+          active: activeNodeIds == null || activeNodeIds.has(data.node.id),
           imposedSettlement: data.springStiffness > 0
             ? data.settlementLoad / data.springStiffness
             : 0,
@@ -180,5 +188,16 @@ export class FoundationBeamFemBuilder {
         generatedBy: "FoundationBeamFemBuilder",
       },
     };
+
+    if (Array.isArray(context.elementFlexuralRigidities)) {
+      result.elements.forEach((element, index) => {
+        const value = context.elementFlexuralRigidities[index];
+        if (Number.isFinite(value) && value > 0) {
+          element.flexuralRigidity = value;
+        }
+      });
+    }
+
+    return result;
   }
 }

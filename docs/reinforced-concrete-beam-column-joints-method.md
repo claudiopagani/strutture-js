@@ -3,8 +3,9 @@
 ## Perimetro
 
 Il modulo `reinforced-concrete-beam-column-joints` esegue una verifica locale
-dei nodi trave-pilastro dissipativi secondo NTC 2018. Il modello rappresenta
-una sola direzione sismica e un solo verso sfavorevole per volta. Geometria,
+dei nodi trave-pilastro dissipativi secondo NTC 2018. Il modello locale
+rappresenta una direzione sismica; il contenitore 3D aggrega almeno due
+direzioni appartenenti allo stesso stato di azione concorrente. Geometria,
 armature, azioni e resistenze delle aste concorrenti sono input espliciti: il
 modulo non ricostruisce il telaio globale e non e un solutore FEM.
 
@@ -18,7 +19,10 @@ Il primo perimetro operativo comprende:
 - classificazione del nodo interamente confinato;
 - diametro, quantita e passo delle staffe del nodo;
 - gerarchia delle resistenze pilastro-trave con resistenze gia risolte rispetto
-  ai segni dei momenti.
+  ai segni dei momenti;
+- ancoraggi delle barre superiori e inferiori;
+- nodi d'angolo, eccentricita dell'asse della trave e trasferimento locale;
+- aggregazione 3D delle verifiche direzionali concorrenti.
 
 ## Unita e convenzioni
 
@@ -113,14 +117,31 @@ segni dei momenti delle aste e l'equilibrio al nodo richiesti dall'equazione
 senza il contesto del telaio. Le sole esenzioni previste dalla norma possono
 essere dichiarate esplicitamente con una motivazione.
 
+## Ancoraggi, eccentricita e verifica 3D
+
+Le lunghezze di ancoraggio usano EN 1992-1-1 § 8.4. Per le barre che
+attraversano o terminano nel nodo dissipativo la tensione predefinita e
+`1.25 fyk`; condizioni di aderenza, fattori alpha e lunghezza disponibile
+restano dati espliciti.
+
+Il nodo `corner` usa le espressioni NTC del nodo esterno. L'eccentricita
+dell'asse trave e confrontata con `bc/4` (§ 7.4.6.1.3). Oltre tale valore il
+contratto deve fornire braccio e armatura di trasferimento; il controllo locale
+usa l'equilibrio `T = Vj e / z`. In loro assenza il risultato e
+`not-supported`, non una verifica fittizia.
+
+Il modello `ReinforcedConcreteBeamColumnJoint3DModel` richiede almeno due
+direzioni e `concurrentActionState: true`. Ogni direzione viene verificata con
+le corrispondenti azioni simultanee e tutti i check concorrono allo stato
+globale. Non viene introdotta una formula scalare di interazione ortogonale non
+prescritta dalle NTC.
+
 ## Limiti
 
-Non sono ancora verificati:
+Restano fuori dal verificatore locale:
 
-- ancoraggio, piegatura, sovrapposizione e scorrimento delle barre;
-- trasferimento eccentrico e nodi tridimensionali;
-- interazione simultanea tra le due direzioni sismiche;
-- nodi d'angolo come tipologia normativa autonoma;
+- piegatura, sovrapposizione e scorrimento ciclico delle barre oltre alla
+  verifica di lunghezza disponibile;
 - generazione delle azioni o delle resistenze delle aste concorrenti;
 - dettaglio completo di duttilita delle travi e dei pilastri adiacenti.
 
@@ -129,11 +150,13 @@ risultato locale come sostituto della verifica completa del telaio.
 
 ## Fonti e validazione
 
-- D.M. 17 gennaio 2018, NTC 2018, paragrafi 7.4.4, 7.4.4.3.1 e 7.4.6.2.3,
+- D.M. 17 gennaio 2018, NTC 2018, paragrafi 7.4.4, 7.4.4.3.1,
+  7.4.6.1.3 e 7.4.6.2.1-3,
   equazioni 7.4.4 e 7.4.6-7.4.12,
   [testo ufficiale in Gazzetta Ufficiale](https://www.gazzettaufficiale.it/eli/gu/2018/02/20/42/so/8/sg/pdf).
 - NTC 2018, paragrafo 4.1.2.1.1.2, resistenza di progetto a trazione del
   calcestruzzo.
+- EN 1992-1-1:2004, § 8.4, per aderenza e ancoraggio.
 - [Relazione di calcolo pubblica](https://affidamenti.comune.fi.it/sites/affidamenti.comune.fi.it/files/profilo/documenti-di-gara/20180703/SPST04%20Relazione%20di%20calcolo%28firmato%29.pdf),
   usata come caso aritmetico per domanda del nodo interno, compressione
   diagonale e armatura di confinamento.

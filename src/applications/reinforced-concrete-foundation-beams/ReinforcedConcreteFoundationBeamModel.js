@@ -25,6 +25,10 @@ export class ReinforcedConcreteFoundationBeamModel extends FoundationBeamModel {
 
     super({
       ...input,
+      foundation: {
+        ...input.foundation,
+        contactModel: input.foundation?.contactModel ?? "compression-only",
+      },
       sectionProvider: new ReinforcedConcreteBeamSectionProvider({
         section,
         concreteMaterial: resolvedConcrete,
@@ -49,6 +53,24 @@ export class ReinforcedConcreteFoundationBeamModel extends FoundationBeamModel {
         : {
             ...(verification.serviceability ?? {}),
             deflection: false,
+          },
+      crackedStiffness: verification.crackedStiffness === false
+        ? false
+        : {
+            enabled: true,
+            modularRatio: verification.crackedStiffness?.modularRatio ?? 15,
+            creepCoefficient:
+              verification.crackedStiffness?.creepCoefficient ??
+              verification.serviceability?.deflection?.creepCoefficient ??
+              2,
+            betaShortTerm:
+              verification.crackedStiffness?.betaShortTerm ?? 1,
+            betaLongTerm:
+              verification.crackedStiffness?.betaLongTerm ?? 0.5,
+            momentSamples:
+              verification.crackedStiffness?.momentSamples ?? 40,
+            axialForceTolerance:
+              verification.crackedStiffness?.axialForceTolerance ?? 10000,
           },
       verificationStations: verification.verificationStations ??
         input.verificationStations ??

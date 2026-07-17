@@ -45,7 +45,7 @@ test("rectangular footing contact resolves uniaxial loss of contact without tens
   assert.equal(result.minimumPressure, 0);
 });
 
-test("rectangular footing contact does not approximate biaxial partial contact", () => {
+test("rectangular footing contact solves biaxial compression-only contact by equilibrium", () => {
   const result = analysis.analyze({
     widthX: 2000,
     widthY: 2000,
@@ -54,9 +54,15 @@ test("rectangular footing contact does not approximate biaxial partial contact",
     myEd: 1_200_000_000,
   });
 
-  assert.equal(result.status, "not-supported");
+  assert.equal(result.status, "ok");
   assert.equal(result.contactType, "partial-biaxial");
   assert.ok(result.elasticMinimumPressure < 0);
+  assert.equal(result.minimumPressure, 0);
+  assert.ok(result.contactArea < result.area);
+  assert.ok(result.partialContact.equilibriumResidualNorm < 1e-10);
+  approx(result.partialContact.equilibriumResidual.n, 0, 1e-6);
+  approx(result.partialContact.equilibriumResidual.mx, 0, 1e-3);
+  approx(result.partialContact.equilibriumResidual.my, 0, 1e-3);
 });
 
 test("footing strip integration subtracts an explicit uniform downward pressure", () => {

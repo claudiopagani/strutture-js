@@ -65,6 +65,8 @@ export class ReinforcedConcreteIsolatedFootingModel {
     materials = {},
     reinforcement = {},
     punching = {},
+    localBearing = {},
+    anchorage = {},
     mesh = {},
     solver = {},
     units = null,
@@ -188,6 +190,45 @@ export class ReinforcedConcreteIsolatedFootingModel {
         : structuredClone(reinforcement.punching),
     };
     this.punching = structuredClone(punching ?? {});
+    this.localBearing = {
+      distributionArea: localBearing.distributionArea == null
+        ? null
+        : positive(
+            resolver.area(Number(localBearing.distributionArea)),
+            "localBearing.distributionArea",
+          ),
+      resistanceReductionFactor:
+        localBearing.resistanceReductionFactor ?? 1,
+    };
+    const normalizeAnchor = (input, label) => input == null
+      ? null
+      : {
+          ...input,
+          diameter: positive(
+            resolver.length(Number(input.diameter)),
+            `${label}.diameter`,
+          ),
+          availableLength: positive(
+            resolver.length(Number(input.availableLength)),
+            `${label}.availableLength`,
+          ),
+          designSteelStress: input.designSteelStress == null
+            ? null
+            : positive(
+                resolver.stress(Number(input.designSteelStress)),
+                `${label}.designSteelStress`,
+              ),
+          fctd: input.fctd == null
+            ? null
+            : positive(resolver.stress(Number(input.fctd)), `${label}.fctd`),
+        };
+    this.anchorage = {
+      columnBars: normalizeAnchor(anchorage.columnBars, "anchorage.columnBars"),
+      footingBars: {
+        x: normalizeAnchor(anchorage.footingBars?.x, "anchorage.footingBars.x"),
+        y: normalizeAnchor(anchorage.footingBars?.y, "anchorage.footingBars.y"),
+      },
+    };
     this.mesh = { targetFiberCount: 50, ...mesh };
     this.solver = { tolerance: 1e-6, maxIterations: 100, ...solver };
     this.units = INTERNAL_UNITS;
@@ -215,6 +256,8 @@ export class ReinforcedConcreteIsolatedFootingModel {
       },
       reinforcement: structuredClone(this.reinforcement),
       punching: structuredClone(this.punching),
+      localBearing: { ...this.localBearing },
+      anchorage: structuredClone(this.anchorage),
       mesh: { ...this.mesh },
       solver: { ...this.solver },
       units: { ...this.units },

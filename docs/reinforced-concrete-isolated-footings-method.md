@@ -65,18 +65,21 @@ qmax = 2 N / (c Btrasversale)
 ```
 
 Il risultato espone lunghezza e area di contatto, bordo compresso e pressione
-massima. Le verifiche strutturali restano per ora limitate al contatto completo.
+massima.
 
-La perdita di contatto biassiale restituisce `not-supported`: il modulo non
-sostituisce la soluzione non lineare con una base efficace rettangolare o con
-pressioni elastiche negative.
+Per perdita di contatto biassiale viene risolto iterativamente il piano
+`q = max(0, a + bx + cy)`. Il poligono attivo e ottenuto tagliando la base con
+la retta a pressione nulla; area e momenti del poligono sono integrati in forma
+chiusa e i tre coefficienti sono corretti finche risultante e due momenti
+coincidono con le azioni assegnate. Gli output espongono poligono, residui e
+numero di iterazioni.
 
 Se il risultante esce dalla base, il risultato e `not-verified` per assenza di
 equilibrio compresso.
 
 ## Flessione e taglio monodirezionale
 
-Nel campo di contatto completo, la pressione viene integrata sui mensoloni ai
+La pressione, anche parziale e biassiale, viene integrata sui mensoloni ai
 quattro lati del pilastro. Per ciascuna direzione si ricavano:
 
 - momento per unita di larghezza alla faccia del pilastro;
@@ -94,10 +97,10 @@ La prima integrazione automatica usa il perimetro di controllo a `2d` di
 EN 1992-1-1:2004+A1:2014 e richiede una selezione normativa esplicita nel
 contratto `punching.code`.
 
-Per contatto completo e perimetro centrato, la forza di punzonamento e ottenuta
+La forza di punzonamento e ottenuta
 per equilibrio sottraendo alla forza del pilastro la reazione efficace del
-terreno racchiusa dal perimetro. I termini lineari eccentrici hanno risultante
-nulla sull'area simmetrica racchiusa.
+terreno racchiusa dal perimetro. Nel contatto parziale l'intersezione tra il
+poligono compresso e il perimetro arrotondato a `2d` e integrata esplicitamente.
 
 Se il perimetro completo a `2d` raggiunge il bordo del plinto, il meccanismo di
 punzonamento viene registrato come non applicabile e resta attiva la verifica a
@@ -111,17 +114,24 @@ deduce quest'ultima da un coefficiente di attrito implicito. Eventuali
 contributi laterali o passivi devono essere gia giustificati nella resistenza
 assegnata e nella relativa sorgente.
 
+## Schiacciamento e ancoraggi
+
+Per carico centrato, la resistenza locale usa EN 1992-1-1 [6.63], con area
+caricata, area di ripartizione effettivamente disponibile e limite al fattore
+di incremento. In presenza di eccentricita si usa conservativamente il picco
+elastico di tensione all'interfaccia senza incremento per diffusione.
+
+Gli ancoraggi opzionali delle barre del pilastro e delle due armature inferiori
+usano `fbd` e `lbd` di EN 1992-1-1 § 8.4. Condizione di aderenza, fattori alpha,
+tensione di progetto e lunghezza disponibile sono input espliciti.
+
 ## Limiti attuali
 
 - pilastro centrato, rettangolare e non ruotato;
 - base rettangolare rigida;
-- verifiche strutturali limitate al contatto completo;
 - punzonamento automatico della generazione EN 1992-1-1:2004;
 - nessun calcolo di capacita portante, cedimenti o interazione terreno-struttura;
-- nessuna verifica di ancoraggio delle barre del pilastro o del plinto;
-- nessuno schiacciamento locale all'interfaccia pilastro-plinto;
-- nessun plinto combinato, zoppo, su pali o soggetto a contatto biassiale
-  parziale.
+- nessun plinto combinato, zoppo o su pali.
 
 ## Fonti e validazione
 
@@ -134,5 +144,6 @@ assegnata e nella relativa sorgente.
   di sezione, taglio e punzonamento.
 
 La campagna automatica controlla pressioni elastiche, perdita di contatto
-monoassiale, rifiuto del contatto parziale biassiale e integrazione indipendente
-delle azioni di una striscia.
+monoassiale e biassiale, equilibrio del poligono attivo e integrazione
+indipendente delle azioni di una striscia. Test applicativi coprono inoltre
+schiacciamento e ancoraggi.

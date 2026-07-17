@@ -28,6 +28,183 @@ function cornerPressures({ widthX, widthY, meanPressure, gradientX, gradientY })
   }));
 }
 
+function pressureAt(point, polynomial) {
+  return polynomial.intercept +
+    polynomial.gradientX * point.x +
+    polynomial.gradientY * point.y;
+}
+
+function clipCompressionPolygon(polygon, polynomial, tolerance = 1e-10) {
+  const output = [];
+
+  for (let index = 0; index < polygon.length; index += 1) {
+    const start = polygon[index];
+    const end = polygon[(index + 1) % polygon.length];
+    const startPressure = pressureAt(start, polynomial);
+    const endPressure = pressureAt(end, polynomial);
+    const startInside = startPressure >= -tolerance;
+    const endInside = endPressure >= -tolerance;
+
+    if (startInside) output.push({ ...start });
+
+    if (startInside !== endInside) {
+      const denominator = startPressure - endPressure;
+      const ratio = Math.abs(denominator) > EPS
+        ? startPressure / denominator
+        : 0;
+      output.push({
+        x: start.x + ratio * (end.x - start.x),
+        y: start.y + ratio * (end.y - start.y),
+      });
+    }
+  }
+
+  return output;
+}
+
+function polygonMoments(polygon) {
+  if (!Array.isArray(polygon) || polygon.length < 3) {
+    return { area: 0, sx: 0, sy: 0, ixx: 0, iyy: 0, ixy: 0 };
+  }
+
+  let area2 = 0;
+  let sx6 = 0;
+  let sy6 = 0;
+  let ixx12 = 0;
+  let iyy12 = 0;
+  let ixy24 = 0;
+
+  for (let index = 0; index < polygon.length; index += 1) {
+    const a = polygon[index];
+    const b = polygon[(index + 1) % polygon.length];
+    const cross = a.x * b.y - b.x * a.y;
+    area2 += cross;
+    sx6 += (a.x + b.x) * cross;
+    sy6 += (a.y + b.y) * cross;
+    ixx12 += (a.x ** 2 + a.x * b.x + b.x ** 2) * cross;
+    iyy12 += (a.y ** 2 + a.y * b.y + b.y ** 2) * cross;
+    ixy24 += (
+      2 * a.x * a.y + a.x * b.y + b.x * a.y + 2 * b.x * b.y
+    ) * cross;
+  }
+
+  const sign = area2 >= 0 ? 1 : -1;
+
+  return {
+    area: sign * area2 / 2,
+    sx: sign * sx6 / 6,
+    sy: sign * sy6 / 6,
+    ixx: sign * ixx12 / 12,
+    iyy: sign * iyy12 / 12,
+    ixy: sign * ixy24 / 24,
+  };
+}
+
+function integratePlane(polynomial, moments) {
+  return {
+    force:
+      polynomial.intercept * moments.area +
+      polynomial.gradientX * moments.sx +
+      polynomial.gradientY * moments.sy,
+    momentY:
+      polynomial.intercept * moments.sx +
+      polynomial.gradientX * moments.ixx +
+      polynomial.gradientY * moments.ixy,
+    momentX:
+      polynomial.intercept * moments.sy +
+      polynomial.gradientX * moments.ixy +
+      polynomial.gradientY * moments.iyy,
+  };
+}
+
+function solve3x3(matrix, right) {
+  const augmented = matrix.map((row, index) => [...row, right[index]]);
+
+  for (let column = 0; column < 3; column += 1) {
+    let pivot = column;
+    for (let row = column + 1; row < 3; row += 1) {
+      if (Math.abs(augmented[row][column]) > Math.abs(augmented[pivot][column])) {
+        pivot = row;
+      }
+    }
+
+    if (Math.abs(augmented[pivot][column]) <= 1e-18) return null;
+    [augmented[column], augmented[pivot]] = [augmented[pivot], augmented[column]];
+    const divisor = augmented[column][column];
+    for (let item = column; item < 4; item += 1) augmented[column][item] /= divisor;
+
+    for (let row = 0; row < 3; row += 1) {
+      if (row === column) continue;
+      const multiplier = augmented[row][column];
+      for (let item = column; item < 4; item += 1) {
+        augmented[row][item] -= multiplier * augmented[column][item];
+      }
+    }
+  }
+
+  return augmented.map((row) => row[3]);
+}
+
+function solveBiaxialCompressionContact({
+  widthX,
+  widthY,
+  nEd,
+  mxEd,
+  myEd,
+  initialPolynomial,
+  tolerance = 1e-10,
+  maxIterations = 50,
+}) {
+  const base = [
+    { x: -widthX / 2, y: -widthY / 2 },
+    { x: widthX / 2, y: -widthY / 2 },
+    { x: widthX / 2, y: widthY / 2 },
+    { x: -widthX / 2, y: widthY / 2 },
+  ];
+  const scale = Math.max(Math.abs(nEd), Math.abs(mxEd) / widthY, Math.abs(myEd) / widthX, 1);
+  let polynomial = { ...initialPolynomial };
+  let last = null;
+
+  for (let iteration = 0; iteration <= maxIterations; iteration += 1) {
+    const polygon = clipCompressionPolygon(base, polynomial);
+    const moments = polygonMoments(polygon);
+
+    if (moments.area <= EPS) return null;
+
+    const response = integratePlane(polynomial, moments);
+    const residual = {
+      n: nEd - response.force,
+      my: myEd - response.momentY,
+      mx: mxEd - response.momentX,
+    };
+    const residualNorm = Math.max(
+      Math.abs(residual.n),
+      Math.abs(residual.my) / widthX,
+      Math.abs(residual.mx) / widthY,
+    ) / scale;
+    last = { iteration, polygon, moments, response, residual, residualNorm };
+
+    if (residualNorm <= tolerance) break;
+
+    const increment = solve3x3([
+      [moments.area, moments.sx, moments.sy],
+      [moments.sx, moments.ixx, moments.ixy],
+      [moments.sy, moments.ixy, moments.iyy],
+    ], [residual.n, residual.my, residual.mx]);
+
+    if (!increment) return null;
+    polynomial = {
+      intercept: polynomial.intercept + increment[0],
+      gradientX: polynomial.gradientX + increment[1],
+      gradientY: polynomial.gradientY + increment[2],
+    };
+  }
+
+  return last?.residualNorm <= tolerance
+    ? { ...last, polynomial }
+    : null;
+}
+
 function partialContact({ axis, dimension, transverseDimension, eccentricity, nEd }) {
   const side = Math.sign(eccentricity) || 1;
   const contactLength = 3 * (dimension / 2 - Math.abs(eccentricity));
@@ -214,8 +391,56 @@ export class RectangularFootingContactAnalysis {
       };
     }
 
+    const solved = solveBiaxialCompressionContact({
+      widthX: bx,
+      widthY: by,
+      nEd: compression,
+      mxEd: mx,
+      myEd: my,
+      initialPolynomial: {
+        intercept: meanPressure,
+        gradientX,
+        gradientY,
+      },
+    });
+
+    if (!solved) {
+      return {
+        status: "not-supported",
+        contactType: "partial-biaxial",
+        widthX: bx,
+        widthY: by,
+        area,
+        nEd: compression,
+        mxEd: mx,
+        myEd: my,
+        eccentricityX,
+        eccentricityY,
+        equilibriumUtilization: Math.max(
+          2 * Math.abs(eccentricityX) / bx,
+          2 * Math.abs(eccentricityY) / by,
+        ),
+        minimumPressure: null,
+        maximumPressure: null,
+        elasticMinimumPressure: elasticMinimum,
+        elasticMaximumPressure: elasticMaximum,
+        corners,
+        pressurePolynomial: null,
+        partialContact: null,
+      };
+    }
+
+    const activeCorners = solved.polygon.map((point) => ({
+      ...point,
+      pressure: Math.max(0, pressureAt(point, solved.polynomial)),
+    }));
+    const maximumPressure = Math.max(
+      ...corners.map((corner) => Math.max(0, pressureAt(corner, solved.polynomial))),
+      ...activeCorners.map((corner) => corner.pressure),
+    );
+
     return {
-      status: "not-supported",
+      status: "ok",
       contactType: "partial-biaxial",
       widthX: bx,
       widthY: by,
@@ -231,13 +456,21 @@ export class RectangularFootingContactAnalysis {
         2 * Math.abs(eccentricityX) / bx,
         2 * Math.abs(eccentricityY) / by,
       ),
-      minimumPressure: null,
-      maximumPressure: null,
+      contactArea: solved.moments.area,
+      minimumPressure: 0,
+      maximumPressure,
       elasticMinimumPressure: elasticMinimum,
       elasticMaximumPressure: elasticMaximum,
       corners,
-      pressurePolynomial: null,
-      partialContact: null,
+      pressurePolynomial: solved.polynomial,
+      partialContact: {
+        axis: "biaxial",
+        contactArea: solved.moments.area,
+        polygon: solved.polygon,
+        iterations: solved.iteration,
+        equilibriumResidual: solved.residual,
+        equilibriumResidualNorm: solved.residualNorm,
+      },
     };
   }
 }
@@ -251,7 +484,7 @@ export function integrateFootingPressureStrip({
   momentOrigin = null,
   uniformDownwardPressure = 0,
 } = {}) {
-  if (!contact || !["full", "partial-uniaxial"].includes(contact.contactType)) {
+  if (!contact || !["full", "partial-uniaxial", "partial-biaxial"].includes(contact.contactType)) {
     throw new Error("A supported rectangular footing contact state is required.");
   }
 
@@ -276,17 +509,16 @@ export function integrateFootingPressureStrip({
     intercept += contact.pressurePolynomial.gradientX * fixed;
   }
 
-  if (contact.contactType === "partial-uniaxial") {
-    const partial = contact.partialContact;
+  if (contact.contactType !== "full") {
+    const pressureStart = intercept + slope * activeStart;
+    const pressureEnd = intercept + slope * activeEnd;
 
-    if (partial.axis === axis) {
-      activeStart = Math.max(activeStart, partial.activeInterval.min);
-      activeEnd = Math.min(activeEnd, partial.activeInterval.max);
-    } else if (
-      fixed < partial.activeInterval.min - EPS ||
-      fixed > partial.activeInterval.max + EPS
-    ) {
+    if (pressureStart <= 0 && pressureEnd <= 0) {
       activeEnd = activeStart;
+    } else if (pressureStart * pressureEnd < 0) {
+      const zero = -intercept / slope;
+      if (pressureStart > 0) activeEnd = Math.min(activeEnd, zero);
+      else activeStart = Math.max(activeStart, zero);
     }
   }
 
@@ -320,5 +552,25 @@ export function integrateFootingPressureStrip({
     soilMoment,
     downwardMoment,
     netMoment: soilMoment - downwardMoment,
+  };
+}
+
+export function integrateFootingPressurePolygon({ contact, polygon } = {}) {
+  if (!contact?.pressurePolynomial) {
+    throw new Error("A solved footing contact pressure polynomial is required.");
+  }
+
+  const activePolygon = contact.contactType === "full"
+    ? polygon.map((point) => ({ ...point }))
+    : clipCompressionPolygon(polygon, contact.pressurePolynomial);
+  const moments = polygonMoments(activePolygon);
+  const resultants = integratePlane(contact.pressurePolynomial, moments);
+
+  return {
+    activePolygon,
+    area: moments.area,
+    force: resultants.force,
+    momentX: resultants.momentX,
+    momentY: resultants.momentY,
   };
 }

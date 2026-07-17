@@ -68,24 +68,35 @@ Le azioni FEM alimentano le verifiche sezionali SLU e SLE gia disponibili per
 le travi in calcestruzzo armato. Taglio e torsione sono eseguiti soltanto se i
 relativi contratti di armatura sono forniti.
 
-Il ricalcolo iterativo delle deformazioni fessurate e a lungo termine non viene
-eseguito: quel workflow ricostruisce attualmente travi con appoggi discreti e
-non rappresenta ancora il letto di molle. Gli spostamenti pubblicati usano la
-rigidezza elastica di sezione assegnata.
+## Contatto monolatero e rigidezza fessurata
+
+Il modello in c.a. usa per impostazione predefinita molle reagenti soltanto a
+compressione. Un active set elimina le molle che richiederebbero trazione e
+riassembla il FEM finche l'insieme dei nodi in contatto e stabile. Se restano
+meno di due nodi attivi o l'iterazione non converge, il risultato e
+`not-supported` e conserva l'ultimo stato per diagnosi.
+
+Nella stessa iterazione, la rigidezza di ogni elemento viene aggiornata da una
+curva momento-curvatura della sezione. La rigidezza secante interpola stato non
+fessurato e fessurato; nelle combinazioni quasi permanenti il rapporto modulare
+include il coefficiente di viscosita assegnato. Rilassamento, tolleranza,
+numero massimo di iterazioni, campionamento della curva e tolleranza sullo
+sforzo normale sono configurabili in `verification.crackedStiffness`.
+
+La convergenza richiede contemporaneamente stabilita del contatto e variazione
+relativa della rigidezza entro tolleranza. Gli output espongono iterazioni,
+cambi di active set, massima variazione di rigidezza e stato di convergenza.
 
 ## Limiti
 
-- trave orizzontale prismatica e analisi statica lineare;
+- trave orizzontale prismatica e analisi statica;
 - molle indipendenti, senza interazione tra punti del terreno;
-- comportamento bilaterale del letto elastico;
 - nessuna plasticita, isteresi o dipendenza dalla pressione;
-- nessuna soluzione iterativa del distacco terreno-trave;
 - nessuna verifica geotecnica o calcolo autonomo dei cedimenti;
 - nessun dettaglio completo di ancoraggi, sovrapposizioni e zone nodali.
 
-Se la soluzione lineare produce pressioni negative, l'applicazione restituisce
-`not-supported`: il risultato evidenzia dove l'ipotesi bilaterale e violata, ma
-non viene presentato come soluzione a contatto parziale.
+Il modello bilaterale resta disponibile soltanto dichiarandolo esplicitamente
+nel contratto generico di fondazione.
 
 ## Riferimenti
 

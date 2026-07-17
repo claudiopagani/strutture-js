@@ -154,7 +154,7 @@ Valori default:
 * `betaLongTerm = 0.5`;
 * `phi = 2.0` per combinazioni quasi permanenti;
 * `phi = 0` per rare/frequenti;
-* ritiro escluso;
+* ritiro escluso per default e attivabile con deformazione libera firmata;
 * limite freccia `L/250`, modificabile.
 
 La viscosita entra tramite modulo efficace:
@@ -163,6 +163,18 @@ La viscosita entra tramite modulo efficace:
 n_eff = n * (1 + phi)
 Ec,eff = Es / n_eff
 ```
+
+Con `includeShrinkage: true` e `freeShrinkageStrain` assegnato, la curvatura da
+ritiro segue EN 1992-1-1 [7.21]:
+
+```txt
+kappa_cs = epsilon_cs * alpha_e * S / I
+```
+
+`S` e il momento statico dell'armatura rispetto al baricentro della sezione
+omogeneizzata. Il valore viene calcolato negli stati non fessurato e fessurato
+e interpolato con lo stesso `zeta`. Una sezione con armatura simmetrica puo
+quindi avere curvatura da ritiro nulla pur avendo deformazione libera non nulla.
 
 L'integrazione delle curvature e trapezoidale. Per travi con due appoggi verticali viene applicata una correzione lineare per imporre freccia nulla agli appoggi estremi.
 

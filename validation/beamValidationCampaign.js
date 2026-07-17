@@ -34,6 +34,10 @@ import {
   calculateNTC2018JointShearDemand,
   calculateNTC2018JointTensionReinforcement,
   classifyNTC2018JointConfinement,
+  calculateEn1992AnchorageLength,
+  calculateEn1992DesignBondStrength,
+  calculateEn1992LocalBearingResistance,
+  calculateEn1992ShrinkageCurvature,
   classifySteelSection,
   createLongitudinalReinforcementLayout,
   createNTC2018ConcreteMaterial,
@@ -507,6 +511,13 @@ function rcFootingRigidContactIndependentArithmeticCase() {
         widthY: 2000,
         nEd: 4_000_000,
       });
+      const biaxial = analysis.analyze({
+        widthX: 4,
+        widthY: 3,
+        nEd: 1200,
+        mxEd: 500,
+        myEd: 500,
+      });
       const strip = integrateFootingPressureStrip({
         contact: centered,
         axis: "x",
@@ -526,6 +537,9 @@ function rcFootingRigidContactIndependentArithmeticCase() {
         partialContactType: partial.contactType,
         contactLength: partial.partialContact.contactLength,
         partialQMax: partial.maximumPressure,
+        biaxialContactType: biaxial.contactType,
+        biaxialResidualNorm:
+          biaxial.partialContact.equilibriumResidualNorm,
         stripNetForce: strip.netForce,
         stripNetMoment: strip.netMoment,
       };
@@ -549,6 +563,18 @@ function rcFootingRigidContactIndependentArithmeticCase() {
       },
       { id: "contact-length", path: "contactLength", expected: 1800, tolerance: 1e-12 },
       { id: "partial-q-max", path: "partialQMax", expected: 20 / 9, tolerance: 1e-12 },
+      {
+        id: "biaxial-partial-type",
+        path: "biaxialContactType",
+        expected: "partial-biaxial",
+        type: "equal",
+      },
+      {
+        id: "biaxial-equilibrium",
+        path: "biaxialResidualNorm",
+        expected: 0,
+        tolerance: 1e-10,
+      },
       { id: "strip-net-force", path: "stripNetForce", expected: 675, tolerance: 1e-12 },
       {
         id: "strip-net-moment",
@@ -556,6 +582,57 @@ function rcFootingRigidContactIndependentArithmeticCase() {
         expected: 253_125,
         tolerance: 1e-9,
       },
+    ],
+  };
+}
+
+function rcEn1992DetailingIndependentArithmeticCase() {
+  return {
+    id: "rc-en1992-detailing-independent-arithmetic",
+    title: "EN 1992 bond, anchorage, local bearing and shrinkage arithmetic",
+    category: "reinforced-concrete-detailing",
+    source:
+      "EN 1992-1-1:2004 expressions 6.63, 7.21, 8.2, 8.3, 8.4 and 8.6",
+    sourceKind: "primary-method-reference",
+    notes:
+      "Independent unit-consistent arithmetic for shared RC helpers used by beams, columns, footings and joints.",
+    evaluate() {
+      const bond = calculateEn1992DesignBondStrength({
+        fctd: 1.2,
+        barDiameter: 16,
+      });
+      const anchorage = calculateEn1992AnchorageLength({
+        barDiameter: 16,
+        designSteelStress: 400,
+        fbd: bond.fbd,
+      });
+      const bearing = calculateEn1992LocalBearingResistance({
+        loadedArea: 40000,
+        distributionArea: 160000,
+        fcd: 15,
+      });
+      const shrinkage = calculateEn1992ShrinkageCurvature({
+        freeShrinkageStrain: -0.0003,
+        reinforcementElasticModulus: 200000,
+        effectiveConcreteModulus: 10000,
+        reinforcementFirstMoment: 100000,
+        sectionSecondMoment: 1e9,
+      });
+
+      return {
+        fbd: bond.fbd,
+        basicAnchorage: anchorage.basicRequiredLength,
+        bearingEnhancement: bearing.enhancement,
+        bearingResistance: bearing.resistance,
+        shrinkageCurvature: shrinkage.curvature,
+      };
+    },
+    expectations: [
+      { id: "fbd", path: "fbd", expected: 2.7, tolerance: 1e-12 },
+      { id: "lb-rqd", path: "basicAnchorage", expected: 16000 / 27, tolerance: 1e-9 },
+      { id: "bearing-enhancement", path: "bearingEnhancement", expected: 2, tolerance: 1e-12 },
+      { id: "bearing-resistance", path: "bearingResistance", expected: 1_200_000, tolerance: 1e-9 },
+      { id: "shrinkage-curvature", path: "shrinkageCurvature", expected: -6e-7, tolerance: 1e-18 },
     ],
   };
 }
@@ -590,6 +667,7 @@ function winklerFoundationBeamUniformSolutionCase() {
         foundation: {
           contactWidth: 1,
           subgradeModulus: 10000,
+          contactModel: "compression-only",
         },
         loads: [{
           id: "uniform-load",
@@ -607,6 +685,7 @@ function winklerFoundationBeamUniformSolutionCase() {
         minimumPressure: result.foundation.minPressure.pressure,
         maximumPressure: result.foundation.maxPressure.pressure,
         maximumMoment: Math.abs(result.internalForces.maxAbsBendingMoment.m),
+        contactConverged: result.foundationIteration.converged,
       };
     },
     expectations: [
@@ -615,6 +694,7 @@ function winklerFoundationBeamUniformSolutionCase() {
       { id: "minimum-pressure", path: "minimumPressure", expected: 10, tolerance: 0.006 },
       { id: "maximum-pressure", path: "maximumPressure", expected: 10, tolerance: 0.002 },
       { id: "vanishing-bending", path: "maximumMoment", expected: 0, tolerance: 0.013 },
+      { id: "unilateral-contact-convergence", path: "contactConverged", expected: true, type: "equal" },
     ],
   };
 }
@@ -3025,6 +3105,7 @@ export function createBeamValidationCases() {
     triesteSlabLoadCombinationCase(),
     rglRampFoundationPressureCase(),
     rcFootingRigidContactIndependentArithmeticCase(),
+    rcEn1992DetailingIndependentArithmeticCase(),
     winklerFoundationBeamUniformSolutionCase(),
     rcBeamColumnJointNtcIndependentArithmeticCase(),
     rcStrutAndTieEcpCorbelCase(),

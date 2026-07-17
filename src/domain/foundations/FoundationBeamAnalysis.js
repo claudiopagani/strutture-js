@@ -10,17 +10,40 @@ import {
   sectionRotationWarnings,
 } from "../beams/SingleBeamResults.js";
 import { LinearStaticSolver2D } from "../fem/LinearStaticSolver2D.js";
+import { createElementLoadIndex } from "../fem/ElementLoadIndex.js";
 import { createUnitResolver } from "../units/UnitSystem.js";
 import { FoundationBeamFemBuilder } from "./FoundationBeamFemBuilder.js";
 import { FoundationBeamModel } from "./FoundationBeamModel.js";
 
 const FEM_UNITS = Object.freeze({ force: "kN", length: "m" });
 
+function sameIds(left, right) {
+  if (left == null && right == null) return true;
+  if (left == null || right == null || left.size !== right.size) return false;
+  return [...left].every((id) => right.has(id));
+}
+
+function midpointActions(femModel, solution) {
+  const loadIndex = createElementLoadIndex(femModel.loads ?? []);
+
+  return femModel.elements.map((element) => {
+    const sample = element.sampleInternalForces({
+      displacements: solution.displacements,
+      dofRegistry: solution.dofRegistry,
+      loads: loadIndex.get(element),
+      stations: [element.length() / 2],
+    })[0] ?? {};
+
+    return { n: sample.n ?? 0, m: sample.m ?? 0 };
+  });
+}
+
 function foundationResponse(model, femModel, solution) {
   const output = createUnitResolver(FEM_UNITS, model.units);
   const nodeSamples = femModel.foundation.nodes.map((item) => {
     const displacement = solution.displacementByNode[item.nodeId]?.uy ?? 0;
-    const reaction = item.springStiffness * (item.imposedSettlement - displacement);
+    const rawReaction = item.springStiffness * (item.imposedSettlement - displacement);
+    const reaction = item.active ? rawReaction : 0;
 
     return {
       nodeId: item.nodeId,
@@ -29,6 +52,8 @@ function foundationResponse(model, femModel, solution) {
       imposedSettlement: output.length(item.imposedSettlement),
       springStiffness: output.translationalStiffness(item.springStiffness),
       reaction: output.force(reaction),
+      active: item.active,
+      gap: output.length(displacement - item.imposedSettlement),
     };
   });
   const nodeResponseById = new Map(
@@ -41,8 +66,11 @@ function foundationResponse(model, femModel, solution) {
       (solution.displacementByNode[item.startNodeId]?.uy ?? 0) +
       (solution.displacementByNode[item.endNodeId]?.uy ?? 0)
     ) / 2;
-    const pressureFem = item.subgradeModulus *
+    const rawPressureFem = item.subgradeModulus *
       (item.imposedSettlement - beamDisplacementFem);
+    const pressureFem = model.foundation.contactModel === "compression-only"
+      ? Math.max(0, rawPressureFem)
+      : rawPressureFem;
 
     return {
       elementId: item.elementId,
@@ -86,11 +114,15 @@ function foundationResponse(model, femModel, solution) {
     totalReaction,
     minPressure,
     maxPressure,
-    contactAssumptionViolated: (minPressure?.pressure ?? 0) < -tensionTolerance,
+    contactAssumptionViolated:
+      model.foundation.contactModel !== "compression-only" &&
+      (minPressure?.pressure ?? 0) < -tensionTolerance,
     metadata: {
       pressureSampling: "element-midpoint-from-average-nodal-displacement",
       springDiscretization: "tributary-lumped",
       nodeCount: femModel.foundation.nodes.length,
+      activeNodeCount: nodeSamples.filter((sample) => sample.active).length,
+      inactiveNodeCount: nodeSamples.filter((sample) => !sample.active).length,
     },
   };
 }
@@ -101,7 +133,7 @@ export class FoundationBeamAnalysis {
     this.linearSolver = linearSolver;
   }
 
-  analyze(input = {}) {
+  analyze(input = {}, { flexuralRigidityResolver = null } = {}) {
     const model = input instanceof FoundationBeamModel
       ? input
       : new FoundationBeamModel(input);
@@ -112,7 +144,7 @@ export class FoundationBeamAnalysis {
       loadCases[loadCaseId] = this.solve(model, loads, {
         loadCaseId,
         resultType: "load-case",
-      });
+      }, { flexuralRigidityResolver });
     }
 
     const combinations = {};
@@ -128,7 +160,7 @@ export class FoundationBeamAnalysis {
           resultType: "combination",
           factors: combination.factors,
           ...combination.metadata,
-        }),
+        }, { flexuralRigidityResolver }),
         factors: { ...combination.factors },
         name: combination.name,
       };
@@ -140,6 +172,9 @@ export class FoundationBeamAnalysis {
     )
       ? ["The bilateral Winkler model developed tensile soil reactions; compression-only contact requires a nonlinear analysis and the affected result is outside this model's validity."]
       : [];
+    const iterationWarnings = allResults
+      .filter((result) => result.foundationIteration?.converged === false)
+      .map((result) => `Foundation contact/stiffness iteration did not converge for ${result.id}.`);
 
     return {
       id: model.id,
@@ -149,10 +184,19 @@ export class FoundationBeamAnalysis {
       loadCases,
       combinations,
       envelopes: createEnvelopes(loadCases, combinations),
-      warnings: [...sectionRotationWarnings(model.sectionRotation), ...contactWarnings],
+      warnings: [
+        ...sectionRotationWarnings(model.sectionRotation),
+        ...contactWarnings,
+        ...iterationWarnings,
+      ],
       assumptions: [
-        "The soil is represented by independent linear bilateral Winkler springs.",
+        model.foundation.contactModel === "compression-only"
+          ? "The soil is represented by independent compression-only Winkler springs solved by an active-set iteration."
+          : "The soil is represented by independent linear bilateral Winkler springs.",
         "Foundation stiffness is lumped to beam nodes by tributary element length.",
+        ...(flexuralRigidityResolver
+          ? ["Element flexural rigidities are updated iteratively from the supplied section secant-stiffness resolver."]
+          : []),
         "Soil modulus and imposed settlements are assigned inputs; soil capacity and settlements are not calculated geotechnically.",
       ],
       metadata: {
@@ -162,12 +206,112 @@ export class FoundationBeamAnalysis {
     };
   }
 
-  solve(model, loads, context) {
+  solve(model, loads, context, { flexuralRigidityResolver = null } = {}) {
     const analysisContext = createBeamAnalysisContext(model, loads, context);
-    const femModel = this.femBuilder.build(model, { loads, context: analysisContext });
-    const solution = new LinearStaticSolver2D({
+    const compressionOnly = model.foundation.contactModel === "compression-only";
+    const settings = model.foundation.iteration;
+    const linearSolver = new LinearStaticSolver2D({
       linearSolver: this.linearSolver ?? undefined,
-    }).solve(femModel, { includeDiagnostics: false });
+    });
+    let activeNodeIds = null;
+    let elementFlexuralRigidities = null;
+    let femModel = null;
+    let solution = null;
+    let converged = false;
+    let iterations = 0;
+    let maximumStiffnessChange = 0;
+    let activeSetChanges = 0;
+
+    for (let iteration = 1; iteration <= settings.maxIterations; iteration += 1) {
+      iterations = iteration;
+      femModel = this.femBuilder.build(model, {
+        loads,
+        context: {
+          ...analysisContext,
+          activeFoundationNodeIds:
+            compressionOnly && activeNodeIds ? [...activeNodeIds] : null,
+          elementFlexuralRigidities,
+        },
+      });
+      solution = linearSolver.solve(femModel, { includeDiagnostics: false });
+      let nextActiveNodeIds = activeNodeIds;
+
+      if (compressionOnly) {
+        nextActiveNodeIds = new Set();
+        for (const item of femModel.foundation.nodes) {
+          const displacement = solution.displacementByNode[item.nodeId]?.uy ?? 0;
+          const contactClosure = item.imposedSettlement - displacement;
+          if (contactClosure >= -settings.tolerance) {
+            nextActiveNodeIds.add(item.nodeId);
+          }
+        }
+
+        if (nextActiveNodeIds.size < 2) {
+          break;
+        }
+
+        if (!sameIds(activeNodeIds, nextActiveNodeIds)) activeSetChanges += 1;
+      }
+
+      let nextRigidities = elementFlexuralRigidities;
+      maximumStiffnessChange = 0;
+      if (flexuralRigidityResolver) {
+        const actions = midpointActions(femModel, solution);
+        const current = elementFlexuralRigidities ??
+          femModel.elements.map((element) => element.flexuralRigidity);
+        nextRigidities = femModel.elements.map((element, index) => {
+          const target = flexuralRigidityResolver({
+            element,
+            index,
+            moment: actions[index].m,
+            axialForce: actions[index].n,
+            context: analysisContext,
+            units: FEM_UNITS,
+            grossFlexuralRigidity: femModel.sectionProperties.flexuralRigidity,
+          });
+          const resolvedTarget = Number.isFinite(target?.flexuralRigidity)
+            ? target.flexuralRigidity
+            : Number.isFinite(target)
+              ? target
+              : current[index];
+          const next = settings.relaxationFactor * resolvedTarget +
+            (1 - settings.relaxationFactor) * current[index];
+          maximumStiffnessChange = Math.max(
+            maximumStiffnessChange,
+            Math.abs(next - current[index]) / Math.max(Math.abs(current[index]), 1e-12),
+          );
+          return next;
+        });
+      }
+
+      const activeStable = !compressionOnly || sameIds(activeNodeIds, nextActiveNodeIds);
+      const stiffnessStable = !flexuralRigidityResolver ||
+        maximumStiffnessChange <= settings.tolerance;
+      activeNodeIds = nextActiveNodeIds;
+      elementFlexuralRigidities = nextRigidities;
+
+      if (activeStable && stiffnessStable) {
+        converged = true;
+        break;
+      }
+    }
+
+    if (!femModel || !solution) {
+      throw new Error("Foundation beam iteration did not produce a solvable state.");
+    }
+
+    if (compressionOnly && activeNodeIds &&
+        !sameIds(new Set(femModel.foundation.nodes.filter((item) => item.active).map((item) => item.nodeId)), activeNodeIds)) {
+      femModel = this.femBuilder.build(model, {
+        loads,
+        context: {
+          ...analysisContext,
+          activeFoundationNodeIds: [...activeNodeIds],
+          elementFlexuralRigidities,
+        },
+      });
+      solution = linearSolver.solve(femModel, { includeDiagnostics: false });
+    }
 
     return {
       id: context.loadCaseId ?? context.combinationId ?? model.id,
@@ -196,6 +340,19 @@ export class FoundationBeamAnalysis {
         femUnits: FEM_UNITS,
       }),
       foundation: foundationResponse(model, femModel, solution),
+      foundationIteration: {
+        active: compressionOnly || Boolean(flexuralRigidityResolver),
+        converged: compressionOnly || flexuralRigidityResolver
+          ? converged
+          : true,
+        iterations,
+        contactModel: model.foundation.contactModel,
+        activeSetChanges,
+        stiffnessIteration: Boolean(flexuralRigidityResolver),
+        maximumStiffnessChange,
+        relaxationFactor: settings.relaxationFactor,
+        tolerance: settings.tolerance,
+      },
     };
   }
 }

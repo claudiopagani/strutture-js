@@ -95,6 +95,10 @@ test("RC foundation-beam application analyzes soil response and reuses section c
   assert.equal(combination.foundation.contactAssumptionViolated, false);
   assert.ok(Math.abs(combination.foundation.totalReaction - 78000) < 1e-4);
   assert.ok(result.outputs.verification.outputs.stationResultCount > 0);
+  assert.equal(combination.foundationIteration.contactModel, "compression-only");
+  assert.equal(combination.foundationIteration.stiffnessIteration, true);
+  assert.equal(combination.foundationIteration.converged, true);
+  assert.ok(combination.foundationIteration.iterations >= 1);
 });
 
 test("RC foundation-beam application guards tensile Winkler reactions", () => {
@@ -119,6 +123,11 @@ test("RC foundation-beam application guards tensile Winkler reactions", () => {
   assert.equal(
     result.outputs.analysis.combinations["uls-uplift"].foundation
       .contactAssumptionViolated,
-    true,
+    false,
+  );
+  assert.equal(
+    result.outputs.analysis.combinations["uls-uplift"].foundationIteration
+      .converged,
+    false,
   );
 });

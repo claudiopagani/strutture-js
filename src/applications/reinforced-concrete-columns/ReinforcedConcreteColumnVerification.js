@@ -2,7 +2,9 @@ import { VerificationResult } from "../../core/results/VerificationResult.js";
 import { governingCheck, round } from "../../core/results/checkUtils.js";
 import { RESULT_STATUS } from "../../core/results/resultStatus.js";
 import { ReinforcedConcreteSectionVerification } from "../reinforced-concrete-sections/checks/ReinforcedConcreteSectionVerification.js";
+import { ReinforcedConcreteShearVerification } from "../reinforced-concrete-sections/checks/ReinforcedConcreteShearVerification.js";
 import { ReinforcedConcreteSectionModel } from "../reinforced-concrete-sections/models/ReinforcedConcreteSectionModel.js";
+import { ReinforcedConcreteColumnDetailingVerification } from "./ReinforcedConcreteColumnDetailingVerification.js";
 
 const INTERNAL_UNITS = Object.freeze({ force: "N", length: "mm" });
 const EPS = 1e-9;
@@ -101,6 +103,10 @@ function resolveAxis({
   secondOrderFlag,
   compression,
   lambdaLimit,
+  nominalRigidity,
+  momentDistributionFactor,
+  includeImperfectionWhenMomentIsZero,
+  memberLength,
 }) {
   const radiusOfGyration =
     Number.isFinite(inertia) && inertia > 0 && concreteArea > 0
@@ -115,9 +121,37 @@ function resolveAxis({
     Number.isFinite(lambdaLimit) &&
     slenderness > lambdaLimit;
   const explicitTotal = Number.isFinite(totalMoment);
+  const imperfectionEccentricity =
+    includeImperfectionWhenMomentIsZero &&
+    compression > 0 &&
+    Math.abs(firstOrderMoment) <= EPS
+      ? memberLength / 300
+      : 0;
+  const firstOrderWithImperfection = firstOrderMoment +
+    (firstOrderMoment < 0 ? -1 : 1) *
+      compression * imperfectionEccentricity;
+  const criticalLoad =
+    Number.isFinite(nominalRigidity) && nominalRigidity > 0
+      ? Math.PI ** 2 * nominalRigidity / effectiveLength ** 2
+      : null;
+  const stableForMagnification =
+    Number.isFinite(criticalLoad) && criticalLoad > compression;
+  const magnificationFactor =
+    secondOrderRequired && stableForMagnification
+      ? 1 + momentDistributionFactor / (criticalLoad / compression - 1)
+      : 1;
+  const generatedTotalMoment =
+    secondOrderRequired && stableForMagnification
+      ? firstOrderWithImperfection * magnificationFactor
+      : null;
   const secondOrderIncluded =
-    !secondOrderRequired || explicitTotal || secondOrderFlag === true;
-  const designMoment = explicitTotal ? totalMoment : firstOrderMoment;
+    !secondOrderRequired || explicitTotal || secondOrderFlag === true ||
+    Number.isFinite(generatedTotalMoment);
+  const designMoment = explicitTotal
+    ? totalMoment
+    : Number.isFinite(generatedTotalMoment)
+      ? generatedTotalMoment
+      : firstOrderWithImperfection;
   const ratio =
     Number.isFinite(slenderness) && Number.isFinite(lambdaLimit) && lambdaLimit > 0
       ? slenderness / lambdaLimit
@@ -134,6 +168,13 @@ function resolveAxis({
     secondOrderRequired,
     secondOrderIncluded,
     firstOrderMoment,
+    firstOrderWithImperfection,
+    imperfectionEccentricity,
+    nominalRigidity,
+    criticalLoad,
+    magnificationFactor,
+    stableForMagnification,
+    generatedTotalMoment,
     totalMoment: explicitTotal ? totalMoment : null,
     designMoment,
     check: {
@@ -149,6 +190,8 @@ function resolveAxis({
         secondOrderIncluded,
         momentSource: explicitTotal
           ? "explicit-total"
+          : Number.isFinite(generatedTotalMoment)
+            ? "generated-ntc2018-nominal-stiffness"
           : secondOrderFlag === true
             ? "input-declared-inclusive"
             : "first-order-screened",
@@ -200,6 +243,24 @@ export class ReinforcedConcreteColumnVerification {
     const lambdaLimit = normalizedAxialForce > 0
       ? 25 / Math.sqrt(normalizedAxialForce)
       : Number.POSITIVE_INFINITY;
+    const creepCoefficient = model.stability.creepCoefficient;
+    const gammaCE = model.stability.gammaCE ?? 1.2;
+    const concreteElasticModulus = model.concreteMaterial?.elasticModulus;
+    const concreteDesignModulus =
+      Number.isFinite(concreteElasticModulus) && concreteElasticModulus > 0
+        ? concreteElasticModulus / gammaCE
+        : null;
+    const rigidityFactor =
+      Number.isFinite(creepCoefficient) && creepCoefficient >= 0
+        ? 0.3 / (1 + 0.5 * creepCoefficient)
+        : null;
+    const nominalRigidityFor = (inertia) =>
+      model.stability.secondOrderMethod === "ntc2018-nominal-stiffness" &&
+      Number.isFinite(rigidityFactor) &&
+      Number.isFinite(concreteDesignModulus) &&
+      Number.isFinite(inertia) && inertia > 0
+        ? rigidityFactor * concreteDesignModulus * inertia
+        : null;
     const sharedSecondOrderFlag =
       model.stability.designMomentsIncludeSecondOrder === true;
     const axisMx = resolveAxis({
@@ -213,6 +274,11 @@ export class ReinforcedConcreteColumnVerification {
         model.stability.mxIncludesSecondOrder ?? sharedSecondOrderFlag,
       compression,
       lambdaLimit,
+      nominalRigidity: nominalRigidityFor(concreteSection.inertiaY),
+      momentDistributionFactor: model.stability.momentDistributionFactor,
+      includeImperfectionWhenMomentIsZero:
+        model.stability.includeImperfectionWhenMomentIsZero,
+      memberLength: model.length,
     });
     const axisMy = resolveAxis({
       id: "my",
@@ -225,6 +291,11 @@ export class ReinforcedConcreteColumnVerification {
         model.stability.myIncludesSecondOrder ?? sharedSecondOrderFlag,
       compression,
       lambdaLimit,
+      nominalRigidity: nominalRigidityFor(concreteSection.inertiaZ),
+      momentDistributionFactor: model.stability.momentDistributionFactor,
+      includeImperfectionWhenMomentIsZero:
+        model.stability.includeImperfectionWhenMomentIsZero,
+      memberLength: model.length,
     });
     const axes = [axisMx, axisMy];
     const unresolvedAxes = axes.filter(
@@ -238,6 +309,13 @@ export class ReinforcedConcreteColumnVerification {
       fcd: round(fcd),
       normalizedAxialForce: round(normalizedAxialForce, 9),
       lambdaLimit: round(lambdaLimit),
+      secondOrder: {
+        method: model.stability.secondOrderMethod,
+        creepCoefficient,
+        gammaCE,
+        concreteDesignModulus: round(concreteDesignModulus),
+        rigidityFactor: round(rigidityFactor),
+      },
       axes: Object.fromEntries(
         axes.map((axis) => [
           axis.id,
@@ -250,8 +328,18 @@ export class ReinforcedConcreteColumnVerification {
             secondOrderRequired: axis.secondOrderRequired,
             secondOrderIncluded: axis.secondOrderIncluded,
             firstOrderMoment: round(axis.firstOrderMoment),
+            firstOrderWithImperfection: round(axis.firstOrderWithImperfection),
+            imperfectionEccentricity: round(axis.imperfectionEccentricity),
+            nominalRigidity: round(axis.nominalRigidity),
+            criticalLoad: round(axis.criticalLoad),
+            magnificationFactor: round(axis.magnificationFactor),
+            stableForMagnification: axis.stableForMagnification,
+            generatedTotalMoment: round(axis.generatedTotalMoment),
             totalMoment: round(axis.totalMoment),
             designMoment: round(axis.designMoment),
+            secondOrderMethod: axis.secondOrderRequired
+              ? model.stability.secondOrderMethod
+              : null,
           },
         ]),
       ),
@@ -267,14 +355,14 @@ export class ReinforcedConcreteColumnVerification {
         outputs: baseOutputs,
         warnings: [
           `Second-order moments are missing for: ${unresolvedAxes.map((axis) => axis.id).join(", ")}.`,
-          "This MVP does not generate second-order moments with an approximate column model; supply explicit total design moments or results from an adequate second-order analysis.",
+          "Provide a non-negative stability.creepCoefficient to generate moments with the NTC 2018 nominal stiffness, or supply explicit total moments from an adequate analysis.",
         ],
         assumptions: [
           "The NTC 2018 single-column slenderness screening is applied independently to the two section bending components.",
         ],
         metadata: {
           code: this.code,
-          method: "ntc2018-4.1.2.3.9.2-screening",
+          method: "ntc2018-4.1.2.3.9.2-screening-and-4.1.44",
           unresolvedAxes: unresolvedAxes.map((axis) => axis.id),
           ...this.metadata,
         },
@@ -335,9 +423,76 @@ export class ReinforcedConcreteColumnVerification {
           : null,
       },
     };
-    const checks = [...axes.map((axis) => axis.check), resistanceCheck];
-    const governing = governingCheck([resistanceCheck]);
-    const ok = checks.every((check) => check.ok === true);
+    const capacityDesign = model.shear?.capacityDesign;
+    const seismicGammaRd = model.detailing?.seismic?.enabled
+      ? String(model.detailing.seismic.ductilityClass).toUpperCase().includes("A")
+        ? 1.2
+        : 1
+      : 1;
+    const shearResults = Object.fromEntries(
+      [
+        ["x", model.shear?.x, model.actions.vxEd, axisMx.designMoment],
+        ["y", model.shear?.y, model.actions.vyEd, axisMy.designMoment],
+      ].filter(([, shear]) => shear).map(([axisId, shear, action, moment]) => {
+        const endMoments = capacityDesign?.[
+          axisId === "x" ? "endMomentsX" : "endMomentsY"
+        ] ?? [];
+        const capacityDesignShear = endMoments.length > 0
+          ? seismicGammaRd * endMoments.reduce(
+              (sum, value) => sum + Math.abs(value),
+              0,
+            ) / capacityDesign.clearLength
+          : 0;
+        const vEd = Math.max(Math.abs(shear.vEd ?? action ?? 0), capacityDesignShear);
+        const result = new ReinforcedConcreteShearVerification({
+          code: this.code,
+        }).verifySectionActions({
+          nEd: model.actions.nEd,
+          vEd,
+          mEd: moment,
+          section: model.section,
+          concreteMaterial: model.concreteMaterial,
+          reinforcementMaterial: model.reinforcementMaterial,
+          shear,
+          units: INTERNAL_UNITS,
+        });
+        result.checks = result.checks.map((check) => ({
+          ...check,
+          id: `${check.id}-${axisId}`,
+          metadata: {
+            ...check.metadata,
+            axis: axisId,
+            analysisShear: round(Math.abs(shear.vEd ?? action ?? 0)),
+            capacityDesignShear: round(capacityDesignShear),
+            gammaRd: seismicGammaRd,
+            reference: capacityDesignShear > 0
+              ? "NTC2018-7.4.5"
+              : check.metadata?.reference,
+          },
+        }));
+
+        return [axisId, result];
+      }),
+    );
+    const detailingResult = model.detailing
+      ? new ReinforcedConcreteColumnDetailingVerification({
+          code: this.code,
+        }).verify({ model, compression, normalizedAxialForce })
+      : null;
+    const checks = [
+      ...axes.map((axis) => axis.check),
+      resistanceCheck,
+      ...Object.values(shearResults).flatMap((result) => result.checks),
+      ...(detailingResult?.checks ?? []),
+    ];
+    const governing = governingCheck(checks);
+    const componentStatuses = [
+      sectionResult.status,
+      ...Object.values(shearResults).map((result) => result.status),
+      ...(detailingResult ? [detailingResult.status] : []),
+    ];
+    const ok = checks.every((check) => check.ok === true) &&
+      componentStatuses.every((status) => status === RESULT_STATUS.OK);
 
     return new VerificationResult({
       applicationId: "reinforced-concrete-columns",
@@ -356,20 +511,32 @@ export class ReinforcedConcreteColumnVerification {
           myEd: round(axisMy.designMoment),
         },
         sectionResult: sectionResult.toJSON(),
+        shear: Object.fromEntries(
+          Object.entries(shearResults).map(([axis, result]) => [
+            axis,
+            result.toJSON?.() ?? result,
+          ]),
+        ),
+        detailing: detailingResult?.toJSON() ?? null,
       },
       warnings: [
         ...sectionResult.warnings,
-        "Minimum eccentricity, member detailing, confinement and seismic ductility checks are not included in this first column MVP.",
+        ...Object.values(shearResults).flatMap((result) => result.warnings),
+        ...(detailingResult?.warnings ?? []),
+        ...(!model.shear ? ["Column shear was not checked because no shear contract was supplied."] : []),
+        ...(!model.detailing ? ["Column reinforcement, confinement and ductility were not checked because no detailing contract was supplied."] : []),
       ],
       assumptions: [
         ...sectionResult.assumptions,
+        ...Object.values(shearResults).flatMap((result) => result.assumptions),
+        ...(detailingResult?.assumptions ?? []),
         "Compression is negative by default; change stability.compressionSignConvention explicitly when required.",
         "mxEd is paired with concreteSection.inertiaY and myEd with concreteSection.inertiaZ, following the existing RC section action convention.",
-        "For slender axes the supplied total moment is assumed to include imperfections, cracking, creep and second-order effects from an adequate analysis.",
+        "Explicit total moments are assumed to include imperfections, cracking, creep and second-order effects; generated moments use the documented NTC nominal-stiffness isolated-member method.",
       ],
       metadata: {
         code: this.code,
-        method: "ntc2018-4.1.2.3.9.2-plus-fiber-domain",
+        method: "ntc2018-column-stability-resistance-shear-detailing",
         governingCheckId: governing?.id ?? null,
         ...this.metadata,
       },

@@ -266,6 +266,7 @@ export {
   ReinforcedConcretePlateModel,
   ReinforcedConcretePlateVerification,
   ReinforcedConcreteColumnApplication,
+  ReinforcedConcreteColumnDetailingVerification,
   ReinforcedConcreteColumnModel,
   ReinforcedConcreteColumnVerification,
   ReinforcedConcreteIsolatedFootingApplication,
@@ -274,6 +275,8 @@ export {
   ReinforcedConcreteFoundationBeamApplication,
   ReinforcedConcreteFoundationBeamModel,
   ReinforcedConcreteBeamColumnJointApplication,
+  ReinforcedConcreteBeamColumnJoint3DModel,
+  ReinforcedConcreteBeamColumnJoint3DVerification,
   ReinforcedConcreteBeamColumnJointModel,
   ReinforcedConcreteBeamColumnJointVerification,
   RC_STRUT_AND_TIE_SUPPORTED_CODE,
@@ -291,6 +294,7 @@ export {
   getRcPunchingDesignCodeManifest,
   verifyPunching,
   ReinforcedConcreteBeamVerification,
+  ReinforcedConcreteBeamDetailingVerification,
   ReinforcedConcreteShearVerification,
   ReinforcedConcreteTorsionVerification,
   ReinforcedConcreteServiceabilityVerification,
@@ -375,6 +379,13 @@ export {
   EN1992_STRUT_AND_TIE_NODE_TYPES,
   EN1992_STRUT_STRENGTH_MODELS,
 } from "./norms/en1992/strut-and-tie/index.js";
+
+export {
+  calculateEn1992AnchorageLength,
+  calculateEn1992DesignBondStrength,
+  calculateEn1992LocalBearingResistance,
+  calculateEn1992ShrinkageCurvature,
+} from "./norms/en1992/reinforced-concrete/index.js";
 
 export {
   NTC2018_ACTION_COMBINATION_FACTORS,

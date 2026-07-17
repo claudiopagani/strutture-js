@@ -7,15 +7,16 @@ export class ReinforcedConcreteColumnApplication extends StructuralApplication {
       id: "reinforced-concrete-columns",
       name: "RC Columns",
       description:
-        "Local reinforced-concrete column verification with NTC 2018 slenderness screening and biaxial section resistance.",
+        "Local RC column verification with NTC 2018 second-order generation, biaxial resistance, shear, confinement and detailing.",
       domain: "reinforced-concrete",
       supportedCodes: ["NTC2018"],
       tags: ["rc", "columns", "biaxial-bending", "stability", "uls"],
       metadata: {
         maturity: "partial",
         limitations: [
-          "slender columns require supplied second-order design moments",
-          "member detailing and seismic ductility are not implemented",
+          "nominal-stiffness moment generation applies to isolated members with assigned effective lengths",
+          "global frame P-Delta analysis and automatic effective lengths remain consumer responsibilities",
+          "shear and detailing require explicit serializable reinforcement contracts",
         ],
       },
     });

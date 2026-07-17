@@ -57,7 +57,7 @@ export const APPLICATION_CATALOG = [
     domain: "reinforced-concrete",
     maturity: "partial",
     primaryFocus:
-      "Local NTC 2018 slenderness screening and biaxial resistance verification of reinforced-concrete columns.",
+      "Local NTC 2018 second-order, biaxial resistance, shear, confinement and ductility verification of RC columns.",
   },
   {
     id: "reinforced-concrete-isolated-footings",
@@ -65,7 +65,7 @@ export const APPLICATION_CATALOG = [
     domain: "reinforced-concrete",
     maturity: "partial",
     primaryFocus:
-      "Local contact, assigned geotechnical resistance and structural verification of centered rectangular isolated footings.",
+      "Rigid compression-only contact, assigned geotechnical resistance, crushing, anchorage and structural checks of rectangular isolated footings.",
   },
   {
     id: "reinforced-concrete-foundation-beams",
@@ -73,7 +73,7 @@ export const APPLICATION_CATALOG = [
     domain: "reinforced-concrete",
     maturity: "partial",
     primaryFocus:
-      "Linear Winkler-foundation analysis and local section verification of horizontal reinforced-concrete foundation beams.",
+      "Compression-only Winkler analysis with iterative cracked stiffness and local RC verification of horizontal foundation beams.",
   },
   {
     id: "reinforced-concrete-beam-column-joints",
@@ -81,7 +81,7 @@ export const APPLICATION_CATALOG = [
     domain: "reinforced-concrete",
     maturity: "partial",
     primaryFocus:
-      "Local NTC 2018 joint-panel, confinement and strong-column weak-beam checks from assigned seismic actions and capacities.",
+      "Directional and concurrent-3D NTC 2018 joint checks including anchorage, corner joints and eccentric transfer.",
   },
   {
     id: "reinforced-concrete-strut-and-tie",

@@ -1,6 +1,8 @@
 import { StructuralApplication } from "../../core/applications/StructuralApplication.js";
 import { ReinforcedConcreteBeamColumnJointModel } from "./ReinforcedConcreteBeamColumnJointModel.js";
 import { ReinforcedConcreteBeamColumnJointVerification } from "./ReinforcedConcreteBeamColumnJointVerification.js";
+import { ReinforcedConcreteBeamColumnJoint3DModel } from "./ReinforcedConcreteBeamColumnJoint3DModel.js";
+import { ReinforcedConcreteBeamColumnJoint3DVerification } from "./ReinforcedConcreteBeamColumnJoint3DVerification.js";
 
 export class ReinforcedConcreteBeamColumnJointApplication extends StructuralApplication {
   constructor() {
@@ -15,10 +17,10 @@ export class ReinforcedConcreteBeamColumnJointApplication extends StructuralAppl
       metadata: {
         maturity: "partial",
         limitations: [
-          "one explicitly assigned seismic direction per model",
           "NTC 2018 dissipative CDA/CDB joints only",
           "member actions and capacity sums are assigned inputs",
-          "anchorage and eccentric joint transfer are not implemented",
+          "3D verification requires concurrent directional action states and keeps the NTC checks directional",
+          "no global generation of actions, member capacities or joint topology",
         ],
       },
     });
@@ -31,11 +33,21 @@ export class ReinforcedConcreteBeamColumnJointApplication extends StructuralAppl
       );
     }
 
-    const model = input.model instanceof ReinforcedConcreteBeamColumnJointModel
-      ? input.model
-      : new ReinforcedConcreteBeamColumnJointModel(input.model);
+    const is3D = input.model instanceof ReinforcedConcreteBeamColumnJoint3DModel ||
+      Array.isArray(input.model.directions);
+    const model = is3D
+      ? input.model instanceof ReinforcedConcreteBeamColumnJoint3DModel
+        ? input.model
+        : new ReinforcedConcreteBeamColumnJoint3DModel(input.model)
+      : input.model instanceof ReinforcedConcreteBeamColumnJointModel
+        ? input.model
+        : new ReinforcedConcreteBeamColumnJointModel(input.model);
 
-    return new ReinforcedConcreteBeamColumnJointVerification({
+    const VerificationClass = is3D
+      ? ReinforcedConcreteBeamColumnJoint3DVerification
+      : ReinforcedConcreteBeamColumnJointVerification;
+
+    return new VerificationClass({
       code: input.code ?? "NTC2018",
       metadata: input.metadata ?? {},
     }).verify(model);

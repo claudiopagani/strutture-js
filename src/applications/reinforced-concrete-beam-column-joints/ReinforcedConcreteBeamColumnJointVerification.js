@@ -13,6 +13,10 @@ import {
   classifyNTC2018JointConfinement,
   ntc2018JointOverstrengthFactor,
 } from "../../norms/ntc2018/reinforced-concrete/ntc2018BeamColumnJoint.js";
+import {
+  calculateEn1992AnchorageLength,
+  calculateEn1992DesignBondStrength,
+} from "../../norms/en1992/reinforced-concrete/index.js";
 
 function positiveStrength(value) {
   return Number.isFinite(value) && value > 0 ? value : null;
@@ -97,6 +101,9 @@ export class ReinforcedConcreteBeamColumnJointVerification {
     }
 
     const gammaRd = ntc2018JointOverstrengthFactor(model.ductilityClass);
+    const normativeJointType = model.jointType === "corner"
+      ? "external"
+      : model.jointType;
     const effectiveJointWidth = calculateNTC2018EffectiveJointWidth({
       columnWidth: model.geometry.columnWidth,
       beamWidth: model.geometry.beamWidth,
@@ -107,7 +114,7 @@ export class ReinforcedConcreteBeamColumnJointVerification {
       (grossColumnArea * fcd);
     const confinement = classifyNTC2018JointConfinement(model.confinement);
     const demand = calculateNTC2018JointShearDemand({
-      jointType: model.jointType,
+      jointType: normativeJointType,
       gammaRd,
       topReinforcementArea: model.beamReinforcement.topArea,
       bottomReinforcementArea: model.beamReinforcement.bottomArea,
@@ -115,7 +122,7 @@ export class ReinforcedConcreteBeamColumnJointVerification {
       columnShearAbove: model.actions.columnShearAbove,
     });
     const compression = calculateNTC2018JointCompressionCapacity({
-      jointType: model.jointType,
+      jointType: normativeJointType,
       fck,
       fcd,
       normalizedAxialForce,
@@ -128,7 +135,7 @@ export class ReinforcedConcreteBeamColumnJointVerification {
         method,
         calculateNTC2018JointTensionReinforcement({
           method,
-          jointType: model.jointType,
+          jointType: normativeJointType,
           jointShearDemand: demand.demand,
           effectiveJointWidth,
           columnLongitudinalLayerDistance:
@@ -218,12 +225,99 @@ export class ReinforcedConcreteBeamColumnJointVerification {
       }));
     }
 
+    let eccentricitySupported = true;
+    const eccentricityLimit = model.geometry.columnWidth / 4;
+    const eccentricity = Math.abs(model.eccentricity.beamAxisOffset);
+    if (eccentricity <= eccentricityLimit + 1e-9) {
+      checks.push(utilizationCheck({
+        id: "rc-joint-beam-axis-eccentricity",
+        description: "Beam-to-column joint axis eccentricity",
+        demand: eccentricity,
+        capacity: eccentricityLimit,
+        metadata: { reference: "NTC2018-7.4.6.1.3" },
+      }));
+    } else if (
+      Number.isFinite(model.eccentricity.transferLeverArm) &&
+      model.eccentricity.transferLeverArm > 0 &&
+      model.eccentricity.reinforcementArea > 0
+    ) {
+      const transferForce =
+        demand.demand * eccentricity / model.eccentricity.transferLeverArm;
+      checks.push(safeUtilizationCheck({
+        id: "rc-joint-eccentric-transfer-reinforcement",
+        description: "Reinforcement for eccentric joint shear transfer",
+        demand: transferForce,
+        capacity: model.eccentricity.reinforcementArea * fyd,
+        metadata: {
+          eccentricity,
+          eccentricityLimit,
+          transferLeverArm: model.eccentricity.transferLeverArm,
+          equilibriumModel: "torsional-couple-Vj-e/z",
+          reference: "NTC2018-7.4.6.1.3",
+        },
+      }));
+    } else {
+      eccentricitySupported = false;
+      checks.push({
+        id: "rc-joint-eccentric-transfer-reinforcement",
+        description: "Reinforcement for eccentric joint shear transfer",
+        demand: round(eccentricity),
+        capacity: round(eccentricityLimit),
+        utilizationRatio: null,
+        ok: false,
+        metadata: {
+          missing: ["eccentricity.transferLeverArm", "eccentricity.reinforcementArea"],
+          reference: "NTC2018-7.4.6.1.3",
+        },
+      });
+    }
+
+    const anchorageChecks = Object.entries(model.anchorage)
+      .filter(([, anchor]) => anchor)
+      .map(([face, anchor]) => {
+        const bond = calculateEn1992DesignBondStrength({
+          fctd: anchor.fctd ?? fctd.value,
+          barDiameter: anchor.diameter,
+          bondConditionFactor: anchor.bondConditionFactor ?? 1,
+        });
+        const required = calculateEn1992AnchorageLength({
+          barDiameter: anchor.diameter,
+          designSteelStress: anchor.designSteelStress ?? 1.25 * reinforcement.fyk,
+          fbd: bond.fbd,
+          tension: anchor.tension !== false,
+          alpha1: anchor.alpha1 ?? 1,
+          alpha2: anchor.alpha2 ?? 1,
+          alpha3: anchor.alpha3 ?? 1,
+          alpha4: anchor.alpha4 ?? 1,
+          alpha5: anchor.alpha5 ?? 1,
+          nationalMinimumDiameterMultiple: 20,
+          nationalMinimumLength: 150,
+        });
+
+        return utilizationCheck({
+          id: `rc-joint-beam-bar-anchorage-${face}`,
+          description: `Beam ${face} anchorage through or beyond the joint`,
+          demand: required.designLength,
+          capacity: anchor.availableLength,
+          metadata: {
+            ...required,
+            fbd: round(bond.fbd),
+            reference: "NTC2018-7.4.6.2.1",
+          },
+        });
+      });
+    checks.push(...anchorageChecks);
+
     const governing = governingCheck(checks);
     const ok = checks.every((check) => check.ok === true);
 
     return new VerificationResult({
       applicationId: "reinforced-concrete-beam-column-joints",
-      status: ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+      status: !eccentricitySupported
+        ? RESULT_STATUS.NOT_SUPPORTED
+        : ok
+          ? RESULT_STATUS.OK
+          : RESULT_STATUS.NOT_VERIFIED,
       summary:
         "NTC 2018 local beam-column joint shear, confinement and capacity-hierarchy verification.",
       utilizationRatio: governing?.utilizationRatio ?? null,
@@ -233,6 +327,7 @@ export class ReinforcedConcreteBeamColumnJointVerification {
       outputs: {
         directionId: model.directionId,
         jointType: model.jointType,
+        normativeJointType,
         ductilityClass: model.ductilityClass,
         gammaRd,
         geometry: {
@@ -281,10 +376,21 @@ export class ReinforcedConcreteBeamColumnJointVerification {
           allowedJointHoopSpacing: round(allowedJointHoopSpacing),
         },
         capacityHierarchy: { ...model.capacityHierarchy },
+        anchorage: {
+          checkedFaces: anchorageChecks.map((check) => check.id),
+        },
+        eccentricity: {
+          ...model.eccentricity,
+          limit: round(eccentricityLimit),
+          supported: eccentricitySupported,
+        },
       },
       warnings: [
         "The verification represents one explicitly assigned seismic direction; the adverse opposite direction requires a separate input state.",
-        "Beam-bar anchorage, lap splices, eccentric joint transfer and three-dimensional interaction between simultaneous directions are not verified.",
+        ...(anchorageChecks.length === 0
+          ? ["Beam-bar anchorage was not checked because no anchorage contract was supplied."]
+          : []),
+        "Lap splices inside the joint are outside the supported detailing contract and remain prohibited for dissipative beam bars.",
         ...(model.capacityHierarchy.exempt
           ? [`Capacity hierarchy was not checked: ${model.capacityHierarchy.exemptReason ?? "explicit exemption"}.`]
           : []),

@@ -384,7 +384,7 @@ var SteelMaterial = class extends BaseMaterial {
     fyk = null,
     fyd = null,
     ftk = null,
-    ductilityClass = null,
+    ductilityClass: ductilityClass2 = null,
     elongationCharacteristic = null,
     ultimateStrain = null,
     existing = false,
@@ -406,7 +406,7 @@ var SteelMaterial = class extends BaseMaterial {
     this.fyk = unitResolver.stress(fyk);
     this.fyd = unitResolver.stress(fyd);
     this.ftk = unitResolver.stress(ftk);
-    this.ductilityClass = ductilityClass;
+    this.ductilityClass = ductilityClass2;
     this.elongationCharacteristic = elongationCharacteristic;
     this.ultimateStrain = ultimateStrain != null ? ultimateStrain : Number.isFinite(elongationCharacteristic) ? 0.9 * elongationCharacteristic : null;
     const existingState = resolveExistingMaterialState({
@@ -2334,31 +2334,31 @@ var XlamPanelSection = class extends CrossSection {
       thickness: Number(thickness) || 0,
       active: activeLayerIndexes.includes(index)
     }));
-    const activeLayers = layers.filter((layer) => layer.active && layer.thickness > 0);
+    const activeLayers = layers.filter((layer2) => layer2.active && layer2.thickness > 0);
     if (activeLayers.length === 0) {
       throw new Error("XLAM panel requires at least one active parallel layer.");
     }
     let currentY = 0;
-    const layersWithPosition = layers.map((layer) => {
+    const layersWithPosition = layers.map((layer2) => {
       const startY = currentY;
-      currentY += layer.thickness;
+      currentY += layer2.thickness;
       return {
-        ...layer,
+        ...layer2,
         startY,
-        centroidY: startY + layer.thickness / 2
+        centroidY: startY + layer2.thickness / 2
       };
     });
     const activeArea = activeLayers.reduce(
-      (sum, layer) => sum + resolvedEffectiveWidth * layer.thickness,
+      (sum, layer2) => sum + resolvedEffectiveWidth * layer2.thickness,
       0
     );
-    const centroidY = layersWithPosition.filter((layer) => layer.active && layer.thickness > 0).reduce(
-      (sum, layer) => sum + resolvedEffectiveWidth * layer.thickness * layer.centroidY,
+    const centroidY = layersWithPosition.filter((layer2) => layer2.active && layer2.thickness > 0).reduce(
+      (sum, layer2) => sum + resolvedEffectiveWidth * layer2.thickness * layer2.centroidY,
       0
     ) / activeArea;
-    const inertiaY = layersWithPosition.filter((layer) => layer.active && layer.thickness > 0).reduce((sum, layer) => {
-      const own = resolvedEffectiveWidth * layer.thickness ** 3 / 12;
-      const shift = resolvedEffectiveWidth * layer.thickness * (layer.centroidY - centroidY) ** 2;
+    const inertiaY = layersWithPosition.filter((layer2) => layer2.active && layer2.thickness > 0).reduce((sum, layer2) => {
+      const own = resolvedEffectiveWidth * layer2.thickness ** 3 / 12;
+      const shift = resolvedEffectiveWidth * layer2.thickness * (layer2.centroidY - centroidY) ** 2;
       return sum + own + shift;
     }, 0);
     super({
@@ -2388,17 +2388,17 @@ var XlamPanelSection = class extends CrossSection {
     this.activeLayerIndexes = [...activeLayerIndexes];
     this.layers = layersWithPosition;
     this.activeLayers = layersWithPosition.filter(
-      (layer) => layer.active && layer.thickness > 0
+      (layer2) => layer2.active && layer2.thickness > 0
     );
   }
   activeThickness() {
-    return this.activeLayers.reduce((sum, layer) => sum + layer.thickness, 0);
+    return this.activeLayers.reduce((sum, layer2) => sum + layer2.thickness, 0);
   }
   longitudinalLayers() {
-    return this.layers.filter((layer) => layer.active && layer.thickness > 0);
+    return this.layers.filter((layer2) => layer2.active && layer2.thickness > 0);
   }
   crossLayers() {
-    return this.layers.filter((layer) => !layer.active && layer.thickness > 0);
+    return this.layers.filter((layer2) => !layer2.active && layer2.thickness > 0);
   }
   totalThickness() {
     return this.layerThicknesses.reduce((sum, thickness) => sum + thickness, 0);
@@ -2408,14 +2408,14 @@ var XlamPanelSection = class extends CrossSection {
     const e0 = (_a = material.e0Mean) != null ? _a : material.elasticModulus;
     const e90 = includeCrossLayerBending ? (_b = material.e90Mean) != null ? _b : e0 / 30 : 0;
     const centroidY = this.centroidY;
-    return this.layers.reduce((sum, layer) => {
-      if (layer.thickness <= 0) {
+    return this.layers.reduce((sum, layer2) => {
+      if (layer2.thickness <= 0) {
         return sum;
       }
-      const modulus = layer.active ? e0 : e90;
-      const area = this.effectiveWidth * layer.thickness;
-      const ownInertia = this.effectiveWidth * layer.thickness ** 3 / 12;
-      const shift = area * (layer.centroidY - centroidY) ** 2;
+      const modulus = layer2.active ? e0 : e90;
+      const area = this.effectiveWidth * layer2.thickness;
+      const ownInertia = this.effectiveWidth * layer2.thickness ** 3 / 12;
+      const shift = area * (layer2.centroidY - centroidY) ** 2;
       return sum + modulus * (ownInertia + shift);
     }, 0);
   }
@@ -2435,17 +2435,17 @@ var XlamPanelSection = class extends CrossSection {
     const totalHeight = this.totalThickness();
     const layerByY = (y) => {
       var _a2;
-      return (_a2 = this.layers.find((layer) => y >= layer.startY && y <= layer.startY + layer.thickness)) != null ? _a2 : this.layers[this.layers.length - 1];
+      return (_a2 = this.layers.find((layer2) => y >= layer2.startY && y <= layer2.startY + layer2.thickness)) != null ? _a2 : this.layers[this.layers.length - 1];
     };
     let denominatorIntegral = 0;
     let shearAreaWeighted = 0;
-    for (const layer of this.layers) {
-      if (layer.thickness <= 0) {
+    for (const layer2 of this.layers) {
+      if (layer2.thickness <= 0) {
         continue;
       }
-      const dz = layer.thickness / slicesPerLayer;
+      const dz = layer2.thickness / slicesPerLayer;
       for (let slice = 0; slice < slicesPerLayer; slice += 1) {
-        const y = layer.startY + (slice + 0.5) * dz;
+        const y = layer2.startY + (slice + 0.5) * dz;
         const currentLayer = layerByY(y);
         const modulus = currentLayer.active ? e0 : e90;
         const shearModulus2 = currentLayer.active ? g0 : g90;
@@ -2487,7 +2487,7 @@ var XlamPanelSection = class extends CrossSection {
       effectiveWidth: this.effectiveWidth,
       layerThicknesses: [...this.layerThicknesses],
       activeLayerIndexes: [...this.activeLayerIndexes],
-      layers: this.layers.map((layer) => ({ ...layer }))
+      layers: this.layers.map((layer2) => ({ ...layer2 }))
     };
   }
 };
@@ -21905,12 +21905,12 @@ function eliminateAndSolve({
       pivots.push(pivotValue);
     }
     for (let row = pivot + 1; row < size; row += 1) {
-      const factor = upperMatrix[row][pivot] / pivotValue;
+      const factor2 = upperMatrix[row][pivot] / pivotValue;
       upperMatrix[row][pivot] = 0;
       for (let column = pivot + 1; column < size; column += 1) {
-        upperMatrix[row][column] -= factor * upperMatrix[pivot][column];
+        upperMatrix[row][column] -= factor2 * upperMatrix[pivot][column];
       }
-      transformedRhs[row] -= factor * transformedRhs[pivot];
+      transformedRhs[row] -= factor2 * transformedRhs[pivot];
     }
   }
   return {
@@ -21980,10 +21980,10 @@ function factorizeDenseMatrix(matrix, singularityTolerance) {
     }
     const pivotValue = lu[pivot][pivot];
     for (let row = pivot + 1; row < size; row += 1) {
-      const factor = lu[row][pivot] / pivotValue;
-      lu[row][pivot] = factor;
+      const factor2 = lu[row][pivot] / pivotValue;
+      lu[row][pivot] = factor2;
       for (let column = pivot + 1; column < size; column += 1) {
-        lu[row][column] -= factor * lu[pivot][column];
+        lu[row][column] -= factor2 * lu[pivot][column];
       }
     }
   }
@@ -22311,9 +22311,9 @@ function solveLinearSystem3x3(matrix, vector) {
       if (row === pivot) {
         continue;
       }
-      const factor = augmented[row][pivot];
+      const factor2 = augmented[row][pivot];
       for (let column = pivot; column < 4; column += 1) {
-        augmented[row][column] -= factor * augmented[pivot][column];
+        augmented[row][column] -= factor2 * augmented[pivot][column];
       }
     }
   }
@@ -25614,7 +25614,7 @@ var SingleBeamFemBuilder = class {
     const nodalLoads = [];
     for (const load of selectedLoads) {
       const type = (_b = load.type) != null ? _b : "uniform";
-      const factor = (_c = load.factor) != null ? _c : 1;
+      const factor2 = (_c = load.factor) != null ? _c : 1;
       if (DISTRIBUTED_LOAD_TYPES.has(type)) {
         const from = resolveStation(
           (_d = load.from) != null ? _d : load.start,
@@ -25640,7 +25640,7 @@ var SingleBeamFemBuilder = class {
         if (Math.abs(startValue - endValue) > 1e-12) {
           throw new Error("SingleBeamAnalysis supports only uniform distributed loads.");
         }
-        const lineLoad = unitResolver.lineLoad(startValue * factor);
+        const lineLoad = unitResolver.lineLoad(startValue * factor2);
         const axisLineLoad = projectedLineLoadValue(lineLoad, load, geometry);
         const { referenceSystem, direction } = normalizeLoadDirection(load);
         if (direction === "mz") {
@@ -25671,7 +25671,7 @@ var SingleBeamFemBuilder = class {
                 to: endStation,
                 loadProjection: normalizeProjection(load.loadProjection),
                 sourceValue: startValue,
-                appliedFactor: factor
+                appliedFactor: factor2
               }
             })
           );
@@ -25690,19 +25690,19 @@ var SingleBeamFemBuilder = class {
         let components = {};
         if (load.components) {
           components = {
-            fx: unitResolver.force(((_j = load.components.fx) != null ? _j : 0) * factor),
-            fy: unitResolver.force(((_k = load.components.fy) != null ? _k : 0) * factor),
-            mz: unitResolver.moment(((_l = load.components.mz) != null ? _l : 0) * factor)
+            fx: unitResolver.force(((_j = load.components.fx) != null ? _j : 0) * factor2),
+            fy: unitResolver.force(((_k = load.components.fy) != null ? _k : 0) * factor2),
+            mz: unitResolver.moment(((_l = load.components.mz) != null ? _l : 0) * factor2)
           };
         } else {
           const value = (_m = load.value) != null ? _m : load.magnitude;
           assertFinite3(value, `load ${load.id} value`);
           if (direction === "x") {
-            components.fx = unitResolver.force(value * factor);
+            components.fx = unitResolver.force(value * factor2);
           } else if (direction === "y") {
-            components.fy = unitResolver.force(value * factor);
+            components.fy = unitResolver.force(value * factor2);
           } else {
-            components.mz = unitResolver.moment(value * factor);
+            components.mz = unitResolver.moment(value * factor2);
           }
         }
         nodalLoads.push(
@@ -25716,7 +25716,7 @@ var SingleBeamFemBuilder = class {
               actionType: load.actionType,
               loadCaseId: load.loadCaseId,
               station,
-              appliedFactor: factor
+              appliedFactor: factor2
             }
           })
         );
@@ -26218,7 +26218,7 @@ function resolveBeamShearRigidity(section, material, shear) {
   const g0 = materialValue(material, ["g0Mean", "shearModulus"]);
   const g90 = materialValue(material, ["g90Mean"], Number.isFinite(g0) ? g0 / 10 : null);
   const crossThickness = section.crossLayers().reduce(
-    (sum, layer) => sum + layer.thickness,
+    (sum, layer2) => sum + layer2.thickness,
     0
   );
   const activeThickness = section.activeThickness();
@@ -26344,6 +26344,141 @@ function cornerPressures({ widthX, widthY, meanPressure, gradientX, gradientY })
     ...corner,
     pressure: meanPressure + gradientX * corner.x + gradientY * corner.y
   }));
+}
+function pressureAt(point2, polynomial) {
+  return polynomial.intercept + polynomial.gradientX * point2.x + polynomial.gradientY * point2.y;
+}
+function clipCompressionPolygon(polygon, polynomial, tolerance = 1e-10) {
+  const output = [];
+  for (let index = 0; index < polygon.length; index += 1) {
+    const start = polygon[index];
+    const end = polygon[(index + 1) % polygon.length];
+    const startPressure = pressureAt(start, polynomial);
+    const endPressure = pressureAt(end, polynomial);
+    const startInside = startPressure >= -tolerance;
+    const endInside = endPressure >= -tolerance;
+    if (startInside) output.push({ ...start });
+    if (startInside !== endInside) {
+      const denominator = startPressure - endPressure;
+      const ratio = Math.abs(denominator) > EPS ? startPressure / denominator : 0;
+      output.push({
+        x: start.x + ratio * (end.x - start.x),
+        y: start.y + ratio * (end.y - start.y)
+      });
+    }
+  }
+  return output;
+}
+function polygonMoments(polygon) {
+  if (!Array.isArray(polygon) || polygon.length < 3) {
+    return { area: 0, sx: 0, sy: 0, ixx: 0, iyy: 0, ixy: 0 };
+  }
+  let area2 = 0;
+  let sx6 = 0;
+  let sy6 = 0;
+  let ixx12 = 0;
+  let iyy12 = 0;
+  let ixy24 = 0;
+  for (let index = 0; index < polygon.length; index += 1) {
+    const a = polygon[index];
+    const b = polygon[(index + 1) % polygon.length];
+    const cross3 = a.x * b.y - b.x * a.y;
+    area2 += cross3;
+    sx6 += (a.x + b.x) * cross3;
+    sy6 += (a.y + b.y) * cross3;
+    ixx12 += (a.x ** 2 + a.x * b.x + b.x ** 2) * cross3;
+    iyy12 += (a.y ** 2 + a.y * b.y + b.y ** 2) * cross3;
+    ixy24 += (2 * a.x * a.y + a.x * b.y + b.x * a.y + 2 * b.x * b.y) * cross3;
+  }
+  const sign = area2 >= 0 ? 1 : -1;
+  return {
+    area: sign * area2 / 2,
+    sx: sign * sx6 / 6,
+    sy: sign * sy6 / 6,
+    ixx: sign * ixx12 / 12,
+    iyy: sign * iyy12 / 12,
+    ixy: sign * ixy24 / 24
+  };
+}
+function integratePlane(polynomial, moments) {
+  return {
+    force: polynomial.intercept * moments.area + polynomial.gradientX * moments.sx + polynomial.gradientY * moments.sy,
+    momentY: polynomial.intercept * moments.sx + polynomial.gradientX * moments.ixx + polynomial.gradientY * moments.ixy,
+    momentX: polynomial.intercept * moments.sy + polynomial.gradientX * moments.ixy + polynomial.gradientY * moments.iyy
+  };
+}
+function solve3x3(matrix, right) {
+  const augmented = matrix.map((row, index) => [...row, right[index]]);
+  for (let column = 0; column < 3; column += 1) {
+    let pivot = column;
+    for (let row = column + 1; row < 3; row += 1) {
+      if (Math.abs(augmented[row][column]) > Math.abs(augmented[pivot][column])) {
+        pivot = row;
+      }
+    }
+    if (Math.abs(augmented[pivot][column]) <= 1e-18) return null;
+    [augmented[column], augmented[pivot]] = [augmented[pivot], augmented[column]];
+    const divisor = augmented[column][column];
+    for (let item = column; item < 4; item += 1) augmented[column][item] /= divisor;
+    for (let row = 0; row < 3; row += 1) {
+      if (row === column) continue;
+      const multiplier = augmented[row][column];
+      for (let item = column; item < 4; item += 1) {
+        augmented[row][item] -= multiplier * augmented[column][item];
+      }
+    }
+  }
+  return augmented.map((row) => row[3]);
+}
+function solveBiaxialCompressionContact({
+  widthX,
+  widthY,
+  nEd,
+  mxEd,
+  myEd,
+  initialPolynomial,
+  tolerance = 1e-10,
+  maxIterations = 50
+}) {
+  const base = [
+    { x: -widthX / 2, y: -widthY / 2 },
+    { x: widthX / 2, y: -widthY / 2 },
+    { x: widthX / 2, y: widthY / 2 },
+    { x: -widthX / 2, y: widthY / 2 }
+  ];
+  const scale = Math.max(Math.abs(nEd), Math.abs(mxEd) / widthY, Math.abs(myEd) / widthX, 1);
+  let polynomial = { ...initialPolynomial };
+  let last = null;
+  for (let iteration = 0; iteration <= maxIterations; iteration += 1) {
+    const polygon = clipCompressionPolygon(base, polynomial);
+    const moments = polygonMoments(polygon);
+    if (moments.area <= EPS) return null;
+    const response = integratePlane(polynomial, moments);
+    const residual = {
+      n: nEd - response.force,
+      my: myEd - response.momentY,
+      mx: mxEd - response.momentX
+    };
+    const residualNorm2 = Math.max(
+      Math.abs(residual.n),
+      Math.abs(residual.my) / widthX,
+      Math.abs(residual.mx) / widthY
+    ) / scale;
+    last = { iteration, polygon, moments, response, residual, residualNorm: residualNorm2 };
+    if (residualNorm2 <= tolerance) break;
+    const increment = solve3x3([
+      [moments.area, moments.sx, moments.sy],
+      [moments.sx, moments.ixx, moments.ixy],
+      [moments.sy, moments.ixy, moments.iyy]
+    ], [residual.n, residual.my, residual.mx]);
+    if (!increment) return null;
+    polynomial = {
+      intercept: polynomial.intercept + increment[0],
+      gradientX: polynomial.gradientX + increment[1],
+      gradientY: polynomial.gradientY + increment[2]
+    };
+  }
+  return (last == null ? void 0 : last.residualNorm) <= tolerance ? { ...last, polynomial } : null;
 }
 function partialContact({ axis, dimension, transverseDimension, eccentricity, nEd }) {
   const side = Math.sign(eccentricity) || 1;
@@ -26517,8 +26652,53 @@ var RectangularFootingContactAnalysis = class {
         partialContact: partial
       };
     }
+    const solved = solveBiaxialCompressionContact({
+      widthX: bx,
+      widthY: by,
+      nEd: compression,
+      mxEd: mx,
+      myEd: my,
+      initialPolynomial: {
+        intercept: meanPressure,
+        gradientX,
+        gradientY
+      }
+    });
+    if (!solved) {
+      return {
+        status: "not-supported",
+        contactType: "partial-biaxial",
+        widthX: bx,
+        widthY: by,
+        area,
+        nEd: compression,
+        mxEd: mx,
+        myEd: my,
+        eccentricityX,
+        eccentricityY,
+        equilibriumUtilization: Math.max(
+          2 * Math.abs(eccentricityX) / bx,
+          2 * Math.abs(eccentricityY) / by
+        ),
+        minimumPressure: null,
+        maximumPressure: null,
+        elasticMinimumPressure: elasticMinimum,
+        elasticMaximumPressure: elasticMaximum,
+        corners,
+        pressurePolynomial: null,
+        partialContact: null
+      };
+    }
+    const activeCorners = solved.polygon.map((point2) => ({
+      ...point2,
+      pressure: Math.max(0, pressureAt(point2, solved.polynomial))
+    }));
+    const maximumPressure = Math.max(
+      ...corners.map((corner) => Math.max(0, pressureAt(corner, solved.polynomial))),
+      ...activeCorners.map((corner) => corner.pressure)
+    );
     return {
-      status: "not-supported",
+      status: "ok",
       contactType: "partial-biaxial",
       widthX: bx,
       widthY: by,
@@ -26534,13 +26714,21 @@ var RectangularFootingContactAnalysis = class {
         2 * Math.abs(eccentricityX) / bx,
         2 * Math.abs(eccentricityY) / by
       ),
-      minimumPressure: null,
-      maximumPressure: null,
+      contactArea: solved.moments.area,
+      minimumPressure: 0,
+      maximumPressure,
       elasticMinimumPressure: elasticMinimum,
       elasticMaximumPressure: elasticMaximum,
       corners,
-      pressurePolynomial: null,
-      partialContact: null
+      pressurePolynomial: solved.polynomial,
+      partialContact: {
+        axis: "biaxial",
+        contactArea: solved.moments.area,
+        polygon: solved.polygon,
+        iterations: solved.iteration,
+        equilibriumResidual: solved.residual,
+        equilibriumResidualNorm: solved.residualNorm
+      }
     };
   }
 };
@@ -26553,7 +26741,7 @@ function integrateFootingPressureStrip({
   momentOrigin = null,
   uniformDownwardPressure = 0
 } = {}) {
-  if (!contact || !["full", "partial-uniaxial"].includes(contact.contactType)) {
+  if (!contact || !["full", "partial-uniaxial", "partial-biaxial"].includes(contact.contactType)) {
     throw new Error("A supported rectangular footing contact state is required.");
   }
   if (!["x", "y"].includes(axis)) {
@@ -26572,13 +26760,15 @@ function integrateFootingPressureStrip({
   } else {
     intercept += contact.pressurePolynomial.gradientX * fixed;
   }
-  if (contact.contactType === "partial-uniaxial") {
-    const partial = contact.partialContact;
-    if (partial.axis === axis) {
-      activeStart = Math.max(activeStart, partial.activeInterval.min);
-      activeEnd = Math.min(activeEnd, partial.activeInterval.max);
-    } else if (fixed < partial.activeInterval.min - EPS || fixed > partial.activeInterval.max + EPS) {
+  if (contact.contactType !== "full") {
+    const pressureStart = intercept + slope * activeStart;
+    const pressureEnd = intercept + slope * activeEnd;
+    if (pressureStart <= 0 && pressureEnd <= 0) {
       activeEnd = activeStart;
+    } else if (pressureStart * pressureEnd < 0) {
+      const zero = -intercept / slope;
+      if (pressureStart > 0) activeEnd = Math.min(activeEnd, zero);
+      else activeStart = Math.max(activeStart, zero);
     }
   }
   const primitiveForce = (coordinate) => intercept * coordinate + slope * coordinate ** 2 / 2;
@@ -26599,6 +26789,21 @@ function integrateFootingPressureStrip({
     soilMoment,
     downwardMoment,
     netMoment: soilMoment - downwardMoment
+  };
+}
+function integrateFootingPressurePolygon({ contact, polygon } = {}) {
+  if (!(contact == null ? void 0 : contact.pressurePolynomial)) {
+    throw new Error("A solved footing contact pressure polynomial is required.");
+  }
+  const activePolygon = contact.contactType === "full" ? polygon.map((point2) => ({ ...point2 })) : clipCompressionPolygon(polygon, contact.pressurePolynomial);
+  const moments = polygonMoments(activePolygon);
+  const resultants = integratePlane(contact.pressurePolynomial, moments);
+  return {
+    activePolygon,
+    area: moments.area,
+    force: resultants.force,
+    momentX: resultants.momentX,
+    momentY: resultants.momentY
   };
 }
 
@@ -26679,7 +26884,7 @@ function settlementStations(loads, span) {
 }
 var FoundationBeamModel = class extends SingleBeamModel {
   constructor({ foundation = {}, ...beamInput } = {}) {
-    var _a, _b;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
     const span = positive2(geometryLength(beamInput.geometry), "geometry length");
     const contactWidth = positive2(
       Number(foundation.contactWidth),
@@ -26713,7 +26918,13 @@ var FoundationBeamModel = class extends SingleBeamModel {
           lengthExponent: -3
         })
       })),
-      model: "winkler-linear-bilateral-lumped",
+      contactModel: (_c = foundation.contactModel) != null ? _c : "bilateral",
+      model: ((_d = foundation.contactModel) != null ? _d : "bilateral") === "compression-only" ? "winkler-linear-compression-only-lumped" : "winkler-linear-bilateral-lumped",
+      iteration: {
+        tolerance: (_f = (_e = foundation.iteration) == null ? void 0 : _e.tolerance) != null ? _f : 1e-7,
+        maxIterations: (_h = (_g = foundation.iteration) == null ? void 0 : _g.maxIterations) != null ? _h : 50,
+        relaxationFactor: (_j = (_i = foundation.iteration) == null ? void 0 : _i.relaxationFactor) != null ? _j : 0.5
+      },
       metadata: { ...foundation.metadata }
     };
   }
@@ -26766,6 +26977,7 @@ var FoundationBeamFemBuilder = class {
     const settlementLoads = selectedLoads.filter(
       (load) => load.type === "soil-settlement"
     );
+    const activeNodeIds = context.activeFoundationNodeIds == null ? null : new Set(context.activeFoundationNodeIds);
     for (const element of femModel.elements) {
       const from = element.metadata.startStation;
       const to = element.metadata.endStation;
@@ -26809,17 +27021,20 @@ var FoundationBeamFemBuilder = class {
     const foundationLoads = [];
     for (const data of nodeData.values()) {
       const imposedSettlement = data.springStiffness > 0 ? data.settlementLoad / data.springStiffness : 0;
-      foundationSupports.push(new Support({
-        id: `${model.id}-soil-spring-${data.node.id}`,
-        node: data.node,
-        springStiffness: { uy: data.springStiffness },
-        metadata: {
-          type: "winkler-soil-spring",
-          station: data.station,
-          imposedSettlement
-        }
-      }));
-      if (Math.abs(data.settlementLoad) > 0) {
+      const active = activeNodeIds == null || activeNodeIds.has(data.node.id);
+      if (active) {
+        foundationSupports.push(new Support({
+          id: `${model.id}-soil-spring-${data.node.id}`,
+          node: data.node,
+          springStiffness: { uy: data.springStiffness },
+          metadata: {
+            type: "winkler-soil-spring",
+            station: data.station,
+            imposedSettlement
+          }
+        }));
+      }
+      if (active && Math.abs(data.settlementLoad) > 0) {
         foundationLoads.push(new NodalLoad({
           id: `${model.id}-soil-settlement-${data.node.id}`,
           node: data.node,
@@ -26848,7 +27063,7 @@ var FoundationBeamFemBuilder = class {
         station: 0
       }
     })];
-    return {
+    const result = {
       ...femModel,
       supports: [...femModel.supports, ...foundationSupports, ...horizontalDatum],
       nodalLoads: [...femModel.nodalLoads, ...foundationLoads],
@@ -26860,6 +27075,7 @@ var FoundationBeamFemBuilder = class {
           nodeId: data.node.id,
           station: data.station,
           springStiffness: data.springStiffness,
+          active: activeNodeIds == null || activeNodeIds.has(data.node.id),
           imposedSettlement: data.springStiffness > 0 ? data.settlementLoad / data.springStiffness : 0
         })),
         elements: elementData
@@ -26870,25 +27086,56 @@ var FoundationBeamFemBuilder = class {
         generatedBy: "FoundationBeamFemBuilder"
       }
     };
+    if (Array.isArray(context.elementFlexuralRigidities)) {
+      result.elements.forEach((element, index) => {
+        const value = context.elementFlexuralRigidities[index];
+        if (Number.isFinite(value) && value > 0) {
+          element.flexuralRigidity = value;
+        }
+      });
+    }
+    return result;
   }
 };
 
 // src/domain/foundations/FoundationBeamAnalysis.js
 var FEM_UNITS5 = Object.freeze({ force: "kN", length: "m" });
+function sameIds(left, right) {
+  if (left == null && right == null) return true;
+  if (left == null || right == null || left.size !== right.size) return false;
+  return [...left].every((id) => right.has(id));
+}
+function midpointActions(femModel, solution) {
+  var _a;
+  const loadIndex = createElementLoadIndex((_a = femModel.loads) != null ? _a : []);
+  return femModel.elements.map((element) => {
+    var _a2, _b, _c;
+    const sample = (_a2 = element.sampleInternalForces({
+      displacements: solution.displacements,
+      dofRegistry: solution.dofRegistry,
+      loads: loadIndex.get(element),
+      stations: [element.length() / 2]
+    })[0]) != null ? _a2 : {};
+    return { n: (_b = sample.n) != null ? _b : 0, m: (_c = sample.m) != null ? _c : 0 };
+  });
+}
 function foundationResponse(model, femModel, solution) {
   var _a, _b;
   const output = createUnitResolver(FEM_UNITS5, model.units);
   const nodeSamples = femModel.foundation.nodes.map((item) => {
     var _a2, _b2;
     const displacement = (_b2 = (_a2 = solution.displacementByNode[item.nodeId]) == null ? void 0 : _a2.uy) != null ? _b2 : 0;
-    const reaction = item.springStiffness * (item.imposedSettlement - displacement);
+    const rawReaction = item.springStiffness * (item.imposedSettlement - displacement);
+    const reaction = item.active ? rawReaction : 0;
     return {
       nodeId: item.nodeId,
       station: output.length(item.station),
       displacement: output.length(displacement),
       imposedSettlement: output.length(item.imposedSettlement),
       springStiffness: output.translationalStiffness(item.springStiffness),
-      reaction: output.force(reaction)
+      reaction: output.force(reaction),
+      active: item.active,
+      gap: output.length(displacement - item.imposedSettlement)
     };
   });
   const nodeResponseById = new Map(
@@ -26899,7 +27146,8 @@ function foundationResponse(model, femModel, solution) {
     const start = nodeResponseById.get(item.startNodeId);
     const end = nodeResponseById.get(item.endNodeId);
     const beamDisplacementFem = (((_b2 = (_a2 = solution.displacementByNode[item.startNodeId]) == null ? void 0 : _a2.uy) != null ? _b2 : 0) + ((_d = (_c = solution.displacementByNode[item.endNodeId]) == null ? void 0 : _c.uy) != null ? _d : 0)) / 2;
-    const pressureFem = item.subgradeModulus * (item.imposedSettlement - beamDisplacementFem);
+    const rawPressureFem = item.subgradeModulus * (item.imposedSettlement - beamDisplacementFem);
+    const pressureFem = model.foundation.contactModel === "compression-only" ? Math.max(0, rawPressureFem) : rawPressureFem;
     return {
       elementId: item.elementId,
       foundationSegmentId: item.segmentId,
@@ -26937,11 +27185,13 @@ function foundationResponse(model, femModel, solution) {
     totalReaction,
     minPressure,
     maxPressure,
-    contactAssumptionViolated: ((_b = minPressure == null ? void 0 : minPressure.pressure) != null ? _b : 0) < -tensionTolerance,
+    contactAssumptionViolated: model.foundation.contactModel !== "compression-only" && ((_b = minPressure == null ? void 0 : minPressure.pressure) != null ? _b : 0) < -tensionTolerance,
     metadata: {
       pressureSampling: "element-midpoint-from-average-nodal-displacement",
       springDiscretization: "tributary-lumped",
-      nodeCount: femModel.foundation.nodes.length
+      nodeCount: femModel.foundation.nodes.length,
+      activeNodeCount: nodeSamples.filter((sample) => sample.active).length,
+      inactiveNodeCount: nodeSamples.filter((sample) => !sample.active).length
     }
   };
 }
@@ -26950,7 +27200,7 @@ var FoundationBeamAnalysis = class {
     this.femBuilder = femBuilder;
     this.linearSolver = linearSolver;
   }
-  analyze(input = {}) {
+  analyze(input = {}, { flexuralRigidityResolver = null } = {}) {
     const model = input instanceof FoundationBeamModel ? input : new FoundationBeamModel(input);
     const loadCaseGroups = groupLoadsByCase(model.loads);
     const loadCases = {};
@@ -26958,7 +27208,7 @@ var FoundationBeamAnalysis = class {
       loadCases[loadCaseId] = this.solve(model, loads, {
         loadCaseId,
         resultType: "load-case"
-      });
+      }, { flexuralRigidityResolver });
     }
     const combinations = {};
     const definitions = normalizeCombinations(
@@ -26972,7 +27222,7 @@ var FoundationBeamAnalysis = class {
           resultType: "combination",
           factors: combination.factors,
           ...combination.metadata
-        }),
+        }, { flexuralRigidityResolver }),
         factors: { ...combination.factors },
         name: combination.name
       };
@@ -26981,6 +27231,10 @@ var FoundationBeamAnalysis = class {
     const contactWarnings = allResults.some(
       (result) => result.foundation.contactAssumptionViolated
     ) ? ["The bilateral Winkler model developed tensile soil reactions; compression-only contact requires a nonlinear analysis and the affected result is outside this model's validity."] : [];
+    const iterationWarnings = allResults.filter((result) => {
+      var _a;
+      return ((_a = result.foundationIteration) == null ? void 0 : _a.converged) === false;
+    }).map((result) => `Foundation contact/stiffness iteration did not converge for ${result.id}.`);
     return {
       id: model.id,
       units: model.units,
@@ -26989,10 +27243,15 @@ var FoundationBeamAnalysis = class {
       loadCases,
       combinations,
       envelopes: createEnvelopes(loadCases, combinations),
-      warnings: [...sectionRotationWarnings(model.sectionRotation), ...contactWarnings],
+      warnings: [
+        ...sectionRotationWarnings(model.sectionRotation),
+        ...contactWarnings,
+        ...iterationWarnings
+      ],
       assumptions: [
-        "The soil is represented by independent linear bilateral Winkler springs.",
+        model.foundation.contactModel === "compression-only" ? "The soil is represented by independent compression-only Winkler springs solved by an active-set iteration." : "The soil is represented by independent linear bilateral Winkler springs.",
         "Foundation stiffness is lumped to beam nodes by tributary element length.",
+        ...flexuralRigidityResolver ? ["Element flexural rigidities are updated iteratively from the supplied section secant-stiffness resolver."] : [],
         "Soil modulus and imposed settlements are assigned inputs; soil capacity and settlements are not calculated geotechnically."
       ],
       metadata: {
@@ -27001,15 +27260,97 @@ var FoundationBeamAnalysis = class {
       }
     };
   }
-  solve(model, loads, context) {
-    var _a, _b, _c, _d, _e, _f;
+  solve(model, loads, context, { flexuralRigidityResolver = null } = {}) {
+    var _a, _b, _c, _d, _e, _f, _g, _h;
     const analysisContext = createBeamAnalysisContext(model, loads, context);
-    const femModel = this.femBuilder.build(model, { loads, context: analysisContext });
-    const solution = new LinearStaticSolver2D({
+    const compressionOnly = model.foundation.contactModel === "compression-only";
+    const settings = model.foundation.iteration;
+    const linearSolver = new LinearStaticSolver2D({
       linearSolver: (_a = this.linearSolver) != null ? _a : void 0
-    }).solve(femModel, { includeDiagnostics: false });
+    });
+    let activeNodeIds = null;
+    let elementFlexuralRigidities = null;
+    let femModel = null;
+    let solution = null;
+    let converged = false;
+    let iterations = 0;
+    let maximumStiffnessChange = 0;
+    let activeSetChanges = 0;
+    for (let iteration = 1; iteration <= settings.maxIterations; iteration += 1) {
+      iterations = iteration;
+      femModel = this.femBuilder.build(model, {
+        loads,
+        context: {
+          ...analysisContext,
+          activeFoundationNodeIds: compressionOnly && activeNodeIds ? [...activeNodeIds] : null,
+          elementFlexuralRigidities
+        }
+      });
+      solution = linearSolver.solve(femModel, { includeDiagnostics: false });
+      let nextActiveNodeIds = activeNodeIds;
+      if (compressionOnly) {
+        nextActiveNodeIds = /* @__PURE__ */ new Set();
+        for (const item of femModel.foundation.nodes) {
+          const displacement = (_c = (_b = solution.displacementByNode[item.nodeId]) == null ? void 0 : _b.uy) != null ? _c : 0;
+          const contactClosure = item.imposedSettlement - displacement;
+          if (contactClosure >= -settings.tolerance) {
+            nextActiveNodeIds.add(item.nodeId);
+          }
+        }
+        if (nextActiveNodeIds.size < 2) {
+          break;
+        }
+        if (!sameIds(activeNodeIds, nextActiveNodeIds)) activeSetChanges += 1;
+      }
+      let nextRigidities = elementFlexuralRigidities;
+      maximumStiffnessChange = 0;
+      if (flexuralRigidityResolver) {
+        const actions = midpointActions(femModel, solution);
+        const current = elementFlexuralRigidities != null ? elementFlexuralRigidities : femModel.elements.map((element) => element.flexuralRigidity);
+        nextRigidities = femModel.elements.map((element, index) => {
+          const target = flexuralRigidityResolver({
+            element,
+            index,
+            moment: actions[index].m,
+            axialForce: actions[index].n,
+            context: analysisContext,
+            units: FEM_UNITS5,
+            grossFlexuralRigidity: femModel.sectionProperties.flexuralRigidity
+          });
+          const resolvedTarget = Number.isFinite(target == null ? void 0 : target.flexuralRigidity) ? target.flexuralRigidity : Number.isFinite(target) ? target : current[index];
+          const next = settings.relaxationFactor * resolvedTarget + (1 - settings.relaxationFactor) * current[index];
+          maximumStiffnessChange = Math.max(
+            maximumStiffnessChange,
+            Math.abs(next - current[index]) / Math.max(Math.abs(current[index]), 1e-12)
+          );
+          return next;
+        });
+      }
+      const activeStable = !compressionOnly || sameIds(activeNodeIds, nextActiveNodeIds);
+      const stiffnessStable = !flexuralRigidityResolver || maximumStiffnessChange <= settings.tolerance;
+      activeNodeIds = nextActiveNodeIds;
+      elementFlexuralRigidities = nextRigidities;
+      if (activeStable && stiffnessStable) {
+        converged = true;
+        break;
+      }
+    }
+    if (!femModel || !solution) {
+      throw new Error("Foundation beam iteration did not produce a solvable state.");
+    }
+    if (compressionOnly && activeNodeIds && !sameIds(new Set(femModel.foundation.nodes.filter((item) => item.active).map((item) => item.nodeId)), activeNodeIds)) {
+      femModel = this.femBuilder.build(model, {
+        loads,
+        context: {
+          ...analysisContext,
+          activeFoundationNodeIds: [...activeNodeIds],
+          elementFlexuralRigidities
+        }
+      });
+      solution = linearSolver.solve(femModel, { includeDiagnostics: false });
+    }
     return {
-      id: (_c = (_b = context.loadCaseId) != null ? _b : context.combinationId) != null ? _c : model.id,
+      id: (_e = (_d = context.loadCaseId) != null ? _d : context.combinationId) != null ? _e : model.id,
       resultType: context.resultType,
       loads: loads.map((load) => {
         var _a2;
@@ -27023,9 +27364,9 @@ var FoundationBeamAnalysis = class {
       }),
       context: {
         resultType: analysisContext.resultType,
-        limitState: (_d = analysisContext.limitState) != null ? _d : null,
-        combinationType: (_e = analysisContext.combinationType) != null ? _e : null,
-        serviceCombination: (_f = analysisContext.serviceCombination) != null ? _f : null,
+        limitState: (_f = analysisContext.limitState) != null ? _f : null,
+        combinationType: (_g = analysisContext.combinationType) != null ? _g : null,
+        serviceCombination: (_h = analysisContext.serviceCombination) != null ? _h : null,
         loadCaseFactors: { ...analysisContext.loadCaseFactors },
         activeLoads: analysisContext.activeLoads.map((load) => ({ ...load })),
         governingLoadDurationClass: analysisContext.governingLoadDurationClass
@@ -27037,7 +27378,18 @@ var FoundationBeamAnalysis = class {
         sectionProperties: femModel.sectionProperties,
         femUnits: FEM_UNITS5
       }),
-      foundation: foundationResponse(model, femModel, solution)
+      foundation: foundationResponse(model, femModel, solution),
+      foundationIteration: {
+        active: compressionOnly || Boolean(flexuralRigidityResolver),
+        converged: compressionOnly || flexuralRigidityResolver ? converged : true,
+        iterations,
+        contactModel: model.foundation.contactModel,
+        activeSetChanges,
+        stiffnessIteration: Boolean(flexuralRigidityResolver),
+        maximumStiffnessChange,
+        relaxationFactor: settings.relaxationFactor,
+        tolerance: settings.tolerance
+      }
     };
   }
 };
@@ -29176,23 +29528,23 @@ function zOffsetAtFace(section, face, width) {
   }
   return 0;
 }
-function barPositionsForLayer({ section, layer, resolver }) {
-  const width = widthAtFace(section, layer.face);
+function barPositionsForLayer({ section, layer: layer2, resolver }) {
+  const width = widthAtFace(section, layer2.face);
   if (!isFinitePositive2(width)) {
-    throw new Error(`Cannot derive ${layer.face} reinforcement width for this section.`);
+    throw new Error(`Cannot derive ${layer2.face} reinforcement width for this section.`);
   }
-  const diameter = resolver.length(layer.diameter);
-  const cover = resolver.length(layer.cover);
-  const y = layer.face === "bottom" ? cover + diameter / 2 : section.height - cover - diameter / 2;
-  const zStart = layer.zStart == null ? zOffsetAtFace(section, layer.face, width) + cover + diameter / 2 : resolver.length(layer.zStart);
-  const zEnd = layer.zEnd == null ? zOffsetAtFace(section, layer.face, width) + width - cover - diameter / 2 : resolver.length(layer.zEnd);
+  const diameter = resolver.length(layer2.diameter);
+  const cover = resolver.length(layer2.cover);
+  const y = layer2.face === "bottom" ? cover + diameter / 2 : section.height - cover - diameter / 2;
+  const zStart = layer2.zStart == null ? zOffsetAtFace(section, layer2.face, width) + cover + diameter / 2 : resolver.length(layer2.zStart);
+  const zEnd = layer2.zEnd == null ? zOffsetAtFace(section, layer2.face, width) + width - cover - diameter / 2 : resolver.length(layer2.zEnd);
   if (!Number.isFinite(y) || y < 0 || y > section.height) {
-    throw new Error(`Computed ${layer.face} reinforcement y coordinate is outside the section.`);
+    throw new Error(`Computed ${layer2.face} reinforcement y coordinate is outside the section.`);
   }
   if (!Number.isFinite(zStart) || !Number.isFinite(zEnd) || zStart > zEnd) {
-    throw new Error(`Computed ${layer.face} reinforcement z coordinates are invalid.`);
+    throw new Error(`Computed ${layer2.face} reinforcement z coordinates are invalid.`);
   }
-  if (layer.count === 1) {
+  if (layer2.count === 1) {
     return [
       {
         y,
@@ -29200,38 +29552,38 @@ function barPositionsForLayer({ section, layer, resolver }) {
       }
     ];
   }
-  const spacing = (zEnd - zStart) / (layer.count - 1);
-  return Array.from({ length: layer.count }, (_, index) => ({
+  const spacing = (zEnd - zStart) / (layer2.count - 1);
+  return Array.from({ length: layer2.count }, (_, index) => ({
     y,
     z: zStart + index * spacing
   }));
 }
 function createBarsForLayer({
   section,
-  layer,
+  layer: layer2,
   material,
   units
 }) {
   const resolver = createUnitResolver(units, INTERNAL_UNITS13);
-  const positions = barPositionsForLayer({ section, layer, resolver });
-  const diameter = resolver.length(layer.diameter);
+  const positions = barPositionsForLayer({ section, layer: layer2, resolver });
+  const diameter = resolver.length(layer2.diameter);
   const bars = positions.map(
     (position, index) => {
       var _a;
       return new ReinforcementBar({
-        id: `${layer.id}-${index + 1}`,
-        name: `${layer.name} ${index + 1}`,
+        id: `${layer2.id}-${index + 1}`,
+        name: `${layer2.name} ${index + 1}`,
         diameter,
-        grade: layer.grade,
-        material: (_a = layer.material) != null ? _a : material,
+        grade: layer2.grade,
+        material: (_a = layer2.material) != null ? _a : material,
         y: position.y,
         z: position.z,
         units: INTERNAL_UNITS13,
         metadata: {
-          ...layer.metadata,
-          face: layer.face,
+          ...layer2.metadata,
+          face: layer2.face,
           generatedBy: "createLongitudinalReinforcementLayout",
-          layerId: layer.id
+          layerId: layer2.id
         }
       });
     }
@@ -29239,13 +29591,13 @@ function createBarsForLayer({
   return {
     bars,
     group: {
-      id: layer.id,
-      name: layer.name,
-      face: layer.face,
+      id: layer2.id,
+      name: layer2.name,
+      face: layer2.face,
       barIds: bars.map((bar) => bar.id),
       diameter,
-      count: layer.count,
-      cover: resolver.length(layer.cover),
+      count: layer2.count,
+      cover: resolver.length(layer2.cover),
       longitudinalReinforcementArea: bars.reduce((sum, bar) => sum + bar.area, 0)
     }
   };
@@ -29267,9 +29619,9 @@ function createLongitudinalReinforcementLayout({
     resolveLayer(top, "top")
   ].filter(Boolean);
   const generated = layers.map(
-    (layer) => createBarsForLayer({
+    (layer2) => createBarsForLayer({
       section,
-      layer,
+      layer: layer2,
       material,
       units
     })
@@ -31013,10 +31365,10 @@ var LoadCombination = class extends Combination {
     });
     this.factors = [...factors];
   }
-  addFactor(loadCase, factor) {
+  addFactor(loadCase, factor2) {
     this.factors.push({
       loadCase,
-      factor
+      factor: factor2
     });
     return this;
   }
@@ -31340,28 +31692,28 @@ var APPLICATION_CATALOG = [
     name: "RC Columns",
     domain: "reinforced-concrete",
     maturity: "partial",
-    primaryFocus: "Local NTC 2018 slenderness screening and biaxial resistance verification of reinforced-concrete columns."
+    primaryFocus: "Local NTC 2018 second-order, biaxial resistance, shear, confinement and ductility verification of RC columns."
   },
   {
     id: "reinforced-concrete-isolated-footings",
     name: "RC Isolated Footings",
     domain: "reinforced-concrete",
     maturity: "partial",
-    primaryFocus: "Local contact, assigned geotechnical resistance and structural verification of centered rectangular isolated footings."
+    primaryFocus: "Rigid compression-only contact, assigned geotechnical resistance, crushing, anchorage and structural checks of rectangular isolated footings."
   },
   {
     id: "reinforced-concrete-foundation-beams",
     name: "RC Foundation Beams",
     domain: "reinforced-concrete",
     maturity: "partial",
-    primaryFocus: "Linear Winkler-foundation analysis and local section verification of horizontal reinforced-concrete foundation beams."
+    primaryFocus: "Compression-only Winkler analysis with iterative cracked stiffness and local RC verification of horizontal foundation beams."
   },
   {
     id: "reinforced-concrete-beam-column-joints",
     name: "RC Beam-Column Joints",
     domain: "reinforced-concrete",
     maturity: "partial",
-    primaryFocus: "Local NTC 2018 joint-panel, confinement and strong-column weak-beam checks from assigned seismic actions and capacities."
+    primaryFocus: "Directional and concurrent-3D NTC 2018 joint checks including anchorage, corner joints and eccentric transfer."
   },
   {
     id: "reinforced-concrete-strut-and-tie",
@@ -33860,8 +34212,8 @@ function signLabel(value) {
   return value >= 0 ? "positive" : "negative";
 }
 function plasticGeneralizedForce(position, sign, plasticMoment) {
-  const factor = sign === "negative" ? 1 : -1;
-  return factor * plasticMoment;
+  const factor2 = sign === "negative" ? 1 : -1;
+  return factor2 * plasticMoment;
 }
 function normalizeSectionOrientation(sectionOrientation = {}) {
   var _a, _b, _c, _d, _e, _f, _g;
@@ -36870,11 +37222,11 @@ function createNTC2018ULSFundamentalCombination({
     }
   });
   permanentActions.map(normalizePermanentAction).forEach((action) => {
-    const factor = action.actionObject ? action.actionObject.getPartialFactor({
+    const factor2 = action.actionObject ? action.actionObject.getPartialFactor({
       combinationSet: "A1",
       effect: action.favourable ? "favourable" : "unfavourable"
     }) : action.actionType === "G2" ? action.favourable ? NTC2018_ULS_PARTIAL_FACTORS.G2_FAVOURABLE : NTC2018_ULS_PARTIAL_FACTORS.G2_UNFAVOURABLE : action.favourable ? NTC2018_ULS_PARTIAL_FACTORS.G1_FAVOURABLE : NTC2018_ULS_PARTIAL_FACTORS.G1_UNFAVOURABLE;
-    combination.addFactor(action.loadCase, factor);
+    combination.addFactor(action.loadCase, factor2);
   });
   const normalizedLeadingAction = normalizeVariableAction(leadingVariableAction);
   const leadingFactor = normalizedLeadingAction.actionObject ? normalizedLeadingAction.actionObject.getPartialFactor({
@@ -37156,9 +37508,9 @@ function normalizeInputActions({ loads = [], permanentActions = [], variableActi
 }
 function factorsToMetadata(factors) {
   return Object.fromEntries(
-    Object.entries(factors).map(([loadCaseId, factor]) => [
+    Object.entries(factors).map(([loadCaseId, factor2]) => [
       loadCaseId,
-      Number(factor.toFixed(12))
+      Number(factor2.toFixed(12))
     ])
   );
 }
@@ -37192,13 +37544,13 @@ function createUlsCombination({
   const partialFactors = {};
   for (const action of permanentActions) {
     const effect = action.favourable ? "favourable" : "unfavourable";
-    const factor = resolvePartialFactor(action.action, {
+    const factor2 = resolvePartialFactor(action.action, {
       permanentClass: action.permanentClass,
       effect,
       combinationSet
     });
-    factors[action.loadCaseId] = factor;
-    partialFactors[action.loadCaseId] = factor;
+    factors[action.loadCaseId] = factor2;
+    partialFactors[action.loadCaseId] = factor2;
   }
   if (leadingVariableAction) {
     for (const action of variableActions) {
@@ -37252,14 +37604,14 @@ function createSleCombination({
     psiFactors[action.loadCaseId] = 1;
   }
   for (const action of variableActions) {
-    let factor = action.combinationFactors.psi2;
+    let factor2 = action.combinationFactors.psi2;
     if (sleType === "RARE") {
-      factor = action.loadCaseId === (leadingVariableAction == null ? void 0 : leadingVariableAction.loadCaseId) ? 1 : action.combinationFactors.psi0;
+      factor2 = action.loadCaseId === (leadingVariableAction == null ? void 0 : leadingVariableAction.loadCaseId) ? 1 : action.combinationFactors.psi0;
     } else if (sleType === "FREQUENT") {
-      factor = action.loadCaseId === (leadingVariableAction == null ? void 0 : leadingVariableAction.loadCaseId) ? action.combinationFactors.psi1 : action.combinationFactors.psi2;
+      factor2 = action.loadCaseId === (leadingVariableAction == null ? void 0 : leadingVariableAction.loadCaseId) ? action.combinationFactors.psi1 : action.combinationFactors.psi2;
     }
-    factors[action.loadCaseId] = factor;
-    psiFactors[action.loadCaseId] = factor;
+    factors[action.loadCaseId] = factor2;
+    psiFactors[action.loadCaseId] = factor2;
   }
   const suffix = leadingVariableAction ? compactId(leadingVariableAction.loadCaseId) : "all";
   return {
@@ -37355,15 +37707,15 @@ function nonNegative(value, label) {
   }
   return value;
 }
-function ntc2018JointOverstrengthFactor(ductilityClass) {
-  const normalized = String(ductilityClass != null ? ductilityClass : "").trim().toUpperCase().replaceAll('"', "").replaceAll("-", "");
+function ntc2018JointOverstrengthFactor(ductilityClass2) {
+  const normalized = String(ductilityClass2 != null ? ductilityClass2 : "").trim().toUpperCase().replaceAll('"', "").replaceAll("-", "");
   if (["CDA", "A"].includes(normalized)) {
     return 1.2;
   }
   if (["CDB", "B"].includes(normalized)) {
     return 1;
   }
-  throw new Error(`Unsupported NTC 2018 ductility class: ${ductilityClass}.`);
+  throw new Error(`Unsupported NTC 2018 ductility class: ${ductilityClass2}.`);
 }
 function calculateNTC2018EffectiveJointWidth({
   columnWidth,
@@ -39954,8 +40306,8 @@ function verifySteelShearTorsionInteraction({ section, material, vEd = 0, tEd = 
   const tauT = Math.abs(tEd) / WT;
   const tauRd = fy / (Math.sqrt(3) * resolvedGamma);
   const family = familyOf(section);
-  const factor = ["CHS", "SHS", "RHS"].includes(family) ? Math.sqrt(Math.max(0, 1 - (tauT / tauRd) ** 2)) : Math.max(0, 1 - tauT / (1.25 * tauRd));
-  return uniformCheck({ id: "steel-shear-torsion-interaction", description: "Shear resistance reduced by uniform Saint-Venant torsion", demand: vEd, capacity: factor * shearCapacity, metadata: { norm: "NTC 2018 / Circolare 2019", method: "EN-1993-1-1-6.2.7", reference: "NTC 2018 \xA74.2.4.1.2.7", torsionalShearStress: round5(tauT), torsionalShearResistance: round5(tauRd), reductionFactor: round5(factor) }, assumptions: ["Only uniform Saint-Venant torsion is considered; warping torsion and bimoment must be absent."] });
+  const factor2 = ["CHS", "SHS", "RHS"].includes(family) ? Math.sqrt(Math.max(0, 1 - (tauT / tauRd) ** 2)) : Math.max(0, 1 - tauT / (1.25 * tauRd));
+  return uniformCheck({ id: "steel-shear-torsion-interaction", description: "Shear resistance reduced by uniform Saint-Venant torsion", demand: vEd, capacity: factor2 * shearCapacity, metadata: { norm: "NTC 2018 / Circolare 2019", method: "EN-1993-1-1-6.2.7", reference: "NTC 2018 \xA74.2.4.1.2.7", torsionalShearStress: round5(tauT), torsionalShearResistance: round5(tauRd), reductionFactor: round5(factor2) }, assumptions: ["Only uniform Saint-Venant torsion is considered; warping torsion and bimoment must be absent."] });
 }
 
 // src/applications/steel-frames/checks/SteelFem3DVerification.js
@@ -41814,14 +42166,14 @@ function resolveCombinedLineLoad({
   const directs = entries2.filter((entry) => entry.kind === "direct");
   const factors = [];
   let value = directs.reduce((sum, entry) => sum + entry.value, 0);
-  const pushFactor = (entry, factor) => {
+  const pushFactor = (entry, factor2) => {
     factors.push({
       entryId: entry.id,
       key: entry.key,
-      factor,
-      contribution: entry.value * factor
+      factor: factor2,
+      contribution: entry.value * factor2
     });
-    value += entry.value * factor;
+    value += entry.value * factor2;
   };
   if (normalizedCombination === "CHARACTERISTIC" || normalizedCombination === "DIRECT") {
     for (const entry of [...permanents, ...variables]) {
@@ -41840,8 +42192,8 @@ function resolveCombinedLineLoad({
     }
     const leading = selectLeadingVariable(variables);
     for (const entry of variables) {
-      const factor = entry.id === (leading == null ? void 0 : leading.id) ? entry.action.getPartialFactor({ effect: "unfavourable" }) : entry.action.getPartialFactor({ effect: "unfavourable" }) * entry.action.getCombinationFactor("psi0");
-      pushFactor(entry, factor);
+      const factor2 = entry.id === (leading == null ? void 0 : leading.id) ? entry.action.getPartialFactor({ effect: "unfavourable" }) : entry.action.getPartialFactor({ effect: "unfavourable" }) * entry.action.getCombinationFactor("psi0");
+      pushFactor(entry, factor2);
     }
     return {
       value,
@@ -41857,8 +42209,8 @@ function resolveCombinedLineLoad({
     }
     const leading = selectLeadingVariable(variables);
     for (const entry of variables) {
-      const factor = entry.id === (leading == null ? void 0 : leading.id) ? normalizedCombination === "SLE_RARE" ? 1 : entry.action.getCombinationFactor("psi1") : normalizedCombination === "SLE_RARE" ? entry.action.getCombinationFactor("psi0") : entry.action.getCombinationFactor("psi2");
-      pushFactor(entry, factor);
+      const factor2 = entry.id === (leading == null ? void 0 : leading.id) ? normalizedCombination === "SLE_RARE" ? 1 : entry.action.getCombinationFactor("psi1") : normalizedCombination === "SLE_RARE" ? entry.action.getCombinationFactor("psi0") : entry.action.getCombinationFactor("psi2");
+      pushFactor(entry, factor2);
     }
     return {
       value,
@@ -42404,10 +42756,10 @@ var AlignmentStaticAnalysis = class {
                 value: round3(resolution.value),
                 combinationType: resolution.combinationType,
                 leadingVariableId: (_a2 = resolution.leadingVariableId) != null ? _a2 : null,
-                factors: resolution.factors.map((factor) => ({
-                  ...factor,
-                  factor: round3(factor.factor),
-                  contribution: round3(factor.contribution)
+                factors: resolution.factors.map((factor2) => ({
+                  ...factor2,
+                  factor: round3(factor2.factor),
+                  contribution: round3(factor2.contribution)
                 }))
               }
             ];
@@ -43765,14 +44117,14 @@ function resolveRingFrameMemberOrientations2(ringFrame = {}) {
     bottomBeam: (_s = (_r = (_q = orientations.bottomBeam) != null ? _q : orientations.bottomChord) != null ? _r : ringFrame.bottomBeamOrientation) != null ? _s : ringFrame.bottomChordOrientation
   };
 }
-function scaleRingFrameElement(element, factor) {
-  if (!Number.isFinite(factor) || factor <= 1) {
+function scaleRingFrameElement(element, factor2) {
+  if (!Number.isFinite(factor2) || factor2 <= 1) {
     return;
   }
-  element.axialRigidity *= factor;
-  element.flexuralRigidity *= factor;
-  element.plasticMomentStart *= factor;
-  element.plasticMomentEnd *= factor;
+  element.axialRigidity *= factor2;
+  element.flexuralRigidity *= factor2;
+  element.plasticMomentStart *= factor2;
+  element.plasticMomentEnd *= factor2;
   if (element.elasticElement) {
     element.elasticElement.axialRigidity = element.axialRigidity;
     element.elasticElement.flexuralRigidity = element.flexuralRigidity;
@@ -49076,10 +49428,166 @@ function resolveRcSleModularRatio(...candidates) {
   return DEFAULT_RC_SLE_MODULAR_RATIO;
 }
 
+// src/norms/en1992/reinforced-concrete/en1992Detailing2004.js
+function positive9(value, label) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${label} must be positive.`);
+  }
+  return value;
+}
+function factor(value, label) {
+  if (!Number.isFinite(value) || value <= 0 || value > 1) {
+    throw new Error(`${label} must be in (0, 1].`);
+  }
+  return value;
+}
+function calculateEn1992DesignBondStrength({
+  fctd,
+  barDiameter,
+  bondConditionFactor = 1
+} = {}) {
+  positive9(fctd, "fctd");
+  positive9(barDiameter, "barDiameter");
+  factor(bondConditionFactor, "bondConditionFactor");
+  const diameterFactor = barDiameter <= 32 ? 1 : (132 - barDiameter) / 100;
+  if (diameterFactor <= 0) {
+    throw new Error("EN 1992 bond strength requires barDiameter < 132 mm.");
+  }
+  return {
+    fbd: 2.25 * bondConditionFactor * diameterFactor * fctd,
+    eta1: bondConditionFactor,
+    eta2: diameterFactor,
+    reference: "EN1992-1-1:2004-8.4.2-(8.2)"
+  };
+}
+function calculateEn1992AnchorageLength({
+  barDiameter,
+  designSteelStress,
+  fbd,
+  tension = true,
+  alpha1 = 1,
+  alpha2 = 1,
+  alpha3 = 1,
+  alpha4 = 1,
+  alpha5 = 1,
+  nationalMinimumDiameterMultiple = null,
+  nationalMinimumLength = null
+} = {}) {
+  positive9(barDiameter, "barDiameter");
+  positive9(designSteelStress, "designSteelStress");
+  positive9(fbd, "fbd");
+  const alphas = [alpha1, alpha2, alpha3, alpha4, alpha5].map((value, index) => factor(value, `alpha${index + 1}`));
+  const basicRequiredLength = barDiameter / 4 * (designSteelStress / fbd);
+  const minimumLength = tension ? Math.max(0.3 * basicRequiredLength, 10 * barDiameter, 100) : Math.max(0.6 * basicRequiredLength, 10 * barDiameter, 100);
+  const codeDesignLength = Math.max(
+    minimumLength,
+    alphas.reduce((value, alpha) => value * alpha, basicRequiredLength)
+  );
+  const nationalMinimum = Math.max(
+    nationalMinimumDiameterMultiple == null ? 0 : positive9(nationalMinimumDiameterMultiple, "nationalMinimumDiameterMultiple") * barDiameter,
+    nationalMinimumLength == null ? 0 : positive9(nationalMinimumLength, "nationalMinimumLength")
+  );
+  return {
+    basicRequiredLength,
+    minimumLength,
+    nationalMinimum,
+    designLength: Math.max(codeDesignLength, nationalMinimum),
+    tension,
+    alphaFactors: {
+      alpha1,
+      alpha2,
+      alpha3,
+      alpha4,
+      alpha5
+    },
+    reference: "EN1992-1-1:2004-8.4.3-8.4.4"
+  };
+}
+function calculateEn1992LocalBearingResistance({
+  loadedArea,
+  distributionArea,
+  fcd,
+  resistanceReductionFactor = 1
+} = {}) {
+  positive9(loadedArea, "loadedArea");
+  positive9(distributionArea, "distributionArea");
+  positive9(fcd, "fcd");
+  factor(resistanceReductionFactor, "resistanceReductionFactor");
+  if (distributionArea < loadedArea) {
+    throw new Error("distributionArea must not be smaller than loadedArea.");
+  }
+  const enhancement = Math.min(3, Math.sqrt(distributionArea / loadedArea));
+  return {
+    enhancement,
+    resistance: resistanceReductionFactor * loadedArea * fcd * enhancement,
+    resistanceReductionFactor,
+    reference: "EN1992-1-1:2004-6.7-(6.63)"
+  };
+}
+function calculateEn1992ShrinkageCurvature({
+  freeShrinkageStrain,
+  reinforcementElasticModulus,
+  effectiveConcreteModulus,
+  reinforcementFirstMoment,
+  sectionSecondMoment
+} = {}) {
+  if (!Number.isFinite(freeShrinkageStrain)) {
+    throw new Error("freeShrinkageStrain must be finite.");
+  }
+  positive9(reinforcementElasticModulus, "reinforcementElasticModulus");
+  positive9(effectiveConcreteModulus, "effectiveConcreteModulus");
+  if (!Number.isFinite(reinforcementFirstMoment)) {
+    throw new Error("reinforcementFirstMoment must be finite.");
+  }
+  positive9(sectionSecondMoment, "sectionSecondMoment");
+  const effectiveModularRatio = reinforcementElasticModulus / effectiveConcreteModulus;
+  return {
+    curvature: freeShrinkageStrain * effectiveModularRatio * reinforcementFirstMoment / sectionSecondMoment,
+    effectiveModularRatio,
+    reference: "EN1992-1-1:2004-7.4.3-(7.21)"
+  };
+}
+
 // src/applications/rc-cracked-deflection/analysis/SectionMomentCurvatureCurve.js
 function nowMilliseconds() {
   var _a, _b, _c;
   return (_c = (_b = (_a = globalThis.performance) == null ? void 0 : _a.now) == null ? void 0 : _b.call(_a)) != null ? _c : Date.now();
+}
+function calculateCrackedTransformedProperties({ section, state, modularRatio }) {
+  var _a, _b;
+  const concreteFibers = ((_b = (_a = state == null ? void 0 : state.concrete) == null ? void 0 : _a.fibers) != null ? _b : []).filter(
+    (fiber) => {
+      var _a2;
+      return Math.abs((_a2 = fiber.stress) != null ? _a2 : 0) > 1e-12;
+    }
+  );
+  const bars = section.getReinforcementBars();
+  const concreteArea = concreteFibers.reduce(
+    (sum, fiber) => sum + fiber.area,
+    0
+  );
+  const steelTransformedArea = bars.reduce(
+    (sum, bar) => sum + modularRatio * bar.area,
+    0
+  );
+  const totalArea = concreteArea + steelTransformedArea;
+  if (!isFinitePositive3(totalArea)) return null;
+  const centroid = (concreteFibers.reduce((sum, fiber) => sum + fiber.area * fiber.y, 0) + bars.reduce(
+    (sum, bar) => sum + modularRatio * bar.area * bar.y,
+    0
+  )) / totalArea;
+  const inertia = concreteFibers.reduce(
+    (sum, fiber) => sum + fiber.area * (fiber.y - centroid) ** 2,
+    0
+  ) + bars.reduce(
+    (sum, bar) => sum + modularRatio * bar.area * (bar.y - centroid) ** 2,
+    0
+  );
+  const reinforcementFirstMoment = bars.reduce(
+    (sum, bar) => sum + bar.area * (bar.y - centroid),
+    0
+  );
+  return isFinitePositive3(inertia) ? { centroid, inertia, reinforcementFirstMoment } : null;
 }
 var SectionMomentCurvatureCurve = class {
   /**
@@ -49339,6 +49847,11 @@ var SectionMomentCurvatureCurve = class {
       this._sectionSolveFailureCount += 1;
     }
     const crackedKappa = solved.converged ? Math.sign(signedM || 1) * Math.abs((_b = (_a = solved.strainField) == null ? void 0 : _a.kappaZ) != null ? _b : 0) : uncrackedKappa;
+    const crackedProperties = solved.converged ? calculateCrackedTransformedProperties({
+      section: this._section,
+      state: solved.state,
+      modularRatio: this._effectiveModularRatio
+    }) : null;
     const zeta = isFinitePositive3(selectedMcr) ? Math.max(0, 1 - this._beta * (selectedMcr / absM) ** 2) : 1;
     const meanKappa = zeta * crackedKappa + (1 - zeta) * uncrackedKappa;
     const rawEiSec = isFinitePositive3(Math.abs(meanKappa)) && (!isFinitePositive3(selectedMcr) || absM / selectedMcr > 0.01) ? absM / Math.abs(meanKappa) : this._grossEI;
@@ -49351,10 +49864,12 @@ var SectionMomentCurvatureCurve = class {
       eiSec,
       zeta,
       cracked: true,
-      converged: solved.converged
+      converged: solved.converged,
+      crackedSection: crackedProperties
     };
   }
   _lookup(moment) {
+    var _a, _b;
     const absM = Math.abs(moment);
     const table = moment >= 0 ? this._positiveTable : this._negativeTable;
     const selectedMcr = moment >= 0 ? this._mcrPositive : this._mcrNegative;
@@ -49368,7 +49883,8 @@ var SectionMomentCurvatureCurve = class {
         eiSec: this._grossEI,
         zeta: 0,
         cracked: false,
-        converged: true
+        converged: true,
+        crackedSection: null
       };
     }
     if (absM <= table[0].m) {
@@ -49405,7 +49921,12 @@ var SectionMomentCurvatureCurve = class {
       eiSec: left.eiSec + t * (right.eiSec - left.eiSec),
       zeta: left.zeta + t * (right.zeta - left.zeta),
       cracked: left.cracked || right.cracked,
-      converged: left.converged && right.converged
+      converged: left.converged && right.converged,
+      crackedSection: left.crackedSection && right.crackedSection ? {
+        centroid: left.crackedSection.centroid + t * (right.crackedSection.centroid - left.crackedSection.centroid),
+        inertia: left.crackedSection.inertia + t * (right.crackedSection.inertia - left.crackedSection.inertia),
+        reinforcementFirstMoment: left.crackedSection.reinforcementFirstMoment + t * (right.crackedSection.reinforcementFirstMoment - left.crackedSection.reinforcementFirstMoment)
+      } : (_b = (_a = left.crackedSection) != null ? _a : right.crackedSection) != null ? _b : null
     };
   }
 };
@@ -49812,9 +50333,9 @@ function createNaturalCubicSpline(xs, ys) {
     rhs[row] = 6 * ((ys[index + 1] - ys[index]) / intervals[index] - (ys[index] - ys[index - 1]) / intervals[index - 1]);
   }
   for (let index = 1; index < size - 2; index += 1) {
-    const factor = lower[index] / diagonal[index - 1];
-    diagonal[index] -= factor * upper[index - 1];
-    rhs[index] -= factor * rhs[index - 1];
+    const factor2 = lower[index] / diagonal[index - 1];
+    diagonal[index] -= factor2 * upper[index - 1];
+    rhs[index] -= factor2 * rhs[index - 1];
   }
   const secondDerivatives = new Array(size).fill(0);
   secondDerivatives[size - 2] = rhs[size - 3] / diagonal[size - 3];
@@ -50249,7 +50770,7 @@ function transformedGrossInertiaY({ section, modularRatio }) {
     inertia
   };
 }
-function crackingMoments({ section, concreteMaterial, transformedGross }) {
+function crackingMoments({ section, concreteMaterial, transformedGross: transformedGross2 }) {
   var _a, _b;
   const concrete = section.concreteSection;
   const fctm = concreteMaterial == null ? void 0 : concreteMaterial.fctm;
@@ -50257,25 +50778,27 @@ function crackingMoments({ section, concreteMaterial, transformedGross }) {
     minY: 0,
     maxY: concrete.height
   };
-  if (!isFinitePositive3(fctm) || !isFinitePositive3(transformedGross == null ? void 0 : transformedGross.inertia) || !Number.isFinite(transformedGross == null ? void 0 : transformedGross.centroid) || !isFinitePositive3(concrete.height)) {
+  if (!isFinitePositive3(fctm) || !isFinitePositive3(transformedGross2 == null ? void 0 : transformedGross2.inertia) || !Number.isFinite(transformedGross2 == null ? void 0 : transformedGross2.centroid) || !isFinitePositive3(concrete.height)) {
     return { positive: null, negative: null };
   }
-  const distanceToBottom = transformedGross.centroid - bounds.minY;
-  const distanceToTop = bounds.maxY - transformedGross.centroid;
+  const distanceToBottom = transformedGross2.centroid - bounds.minY;
+  const distanceToTop = bounds.maxY - transformedGross2.centroid;
   return {
-    positive: isFinitePositive3(distanceToBottom) ? fctm * transformedGross.inertia / distanceToBottom : null,
-    negative: isFinitePositive3(distanceToTop) ? fctm * transformedGross.inertia / distanceToTop : null
+    positive: isFinitePositive3(distanceToBottom) ? fctm * transformedGross2.inertia / distanceToBottom : null,
+    negative: isFinitePositive3(distanceToTop) ? fctm * transformedGross2.inertia / distanceToTop : null
   };
 }
 function selectCrackingMoment(moment, crackingThresholds) {
   return moment >= 0 ? crackingThresholds.positive : crackingThresholds.negative;
 }
 function summarizeCurvaturePoint(point2, { includePointDetails = false } = {}) {
+  var _a;
   const summary = {
     station: round3(point2.station),
     mEd: round3(point2.mEd),
     zeta: round3(point2.zeta),
     curvature: round3(point2.curvature, 12),
+    shrinkageCurvature: round3((_a = point2.shrinkageCurvature) != null ? _a : 0, 12),
     rotation: round3(point2.rotation, 12),
     deflection: round3(point2.deflection),
     cracked: point2.cracked
@@ -50288,6 +50811,7 @@ function summarizeCurvaturePoint(point2, { includePointDetails = false } = {}) {
     summary.mcrNegative = round3(point2.mcrNegative);
     summary.uncrackedCurvature = round3(point2.uncrackedCurvature, 12);
     summary.crackedCurvature = round3(point2.crackedCurvature, 12);
+    summary.loadCurvature = round3(point2.loadCurvature, 12);
   }
   return summary;
 }
@@ -50323,7 +50847,7 @@ var CrackedSectionDeflectionAnalysis = class {
     beamModel = null,
     hyperstatic = null
   } = {}) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q, _R, _S, _T, _U, _V, _W, _X, _Y, _Z, __, _$, _aa, _ba, _ca, _da, _ea, _fa, _ga, _ha, _ia, _ja, _ka, _la, _ma, _na, _oa, _pa, _qa, _ra, _sa;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q, _R, _S, _T, _U, _V, _W, _X, _Y, _Z, __, _$, _aa, _ba, _ca, _da, _ea, _fa, _ga, _ha, _ia, _ja, _ka, _la, _ma, _na, _oa, _pa, _qa, _ra, _sa, _ta, _ua, _va;
     if (!analysisResult || !(section == null ? void 0 : section.concreteSection)) {
       return new VerificationResult({
         applicationId: "rc-cracked-deflection",
@@ -50348,10 +50872,11 @@ var CrackedSectionDeflectionAnalysis = class {
       DEFAULT_RC_SLE_MODULAR_RATIO
     );
     const includeShrinkage = (_g = (_f = (_e = serviceability.deflection) == null ? void 0 : _e.includeShrinkage) != null ? _f : serviceability.includeShrinkage) != null ? _g : false;
-    const limitRatio = (_j = (_i = (_h = serviceability.deflection) == null ? void 0 : _h.limitRatio) != null ? _i : serviceability.deflectionLimitRatio) != null ? _j : 250;
-    const betaShortTerm = (_l = (_k = serviceability.deflection) == null ? void 0 : _k.betaShortTerm) != null ? _l : 1;
-    const betaLongTerm = (_n = (_m = serviceability.deflection) == null ? void 0 : _m.betaLongTerm) != null ? _n : 0.5;
-    const axialForceCurveTolerance = (_p = (_o = serviceability.deflection) == null ? void 0 : _o.axialForceCurveTolerance) != null ? _p : 1e3;
+    const freeShrinkageStrain = (_j = (_i = (_h = serviceability.deflection) == null ? void 0 : _h.freeShrinkageStrain) != null ? _i : serviceability.freeShrinkageStrain) != null ? _j : null;
+    const limitRatio = (_m = (_l = (_k = serviceability.deflection) == null ? void 0 : _k.limitRatio) != null ? _l : serviceability.deflectionLimitRatio) != null ? _m : 250;
+    const betaShortTerm = (_o = (_n = serviceability.deflection) == null ? void 0 : _n.betaShortTerm) != null ? _o : 1;
+    const betaLongTerm = (_q = (_p = serviceability.deflection) == null ? void 0 : _p.betaLongTerm) != null ? _q : 0.5;
+    const axialForceCurveTolerance = (_s = (_r = serviceability.deflection) == null ? void 0 : _r.axialForceCurveTolerance) != null ? _s : 1e3;
     const analysisOptions = resolveAnalysisOptions({
       performanceProfile,
       serviceability,
@@ -50366,7 +50891,8 @@ var CrackedSectionDeflectionAnalysis = class {
       `Cracked RC service sections use the modular-ratio method with base n = ${baseModularRatio}.`,
       "Cracking moments use the effective transformed uncracked section and the sign-specific extreme tension fiber.",
       "Concrete tension is excluded in cracked service-section states.",
-      `Long-term quasi-permanent curvature increases the effective modular ratio through phi = ${phi}; shrinkage curvature is excluded.`
+      `Long-term quasi-permanent curvature increases the effective modular ratio through phi = ${phi}.`,
+      ...includeShrinkage ? ["Shrinkage curvature follows EN 1992-1-1:2004 Expression (7.21), interpolated between uncracked and cracked transformed states."] : ["Shrinkage curvature is excluded because includeShrinkage is false."]
     ];
     if (!isFinitePositive3(es) || !isFinitePositive3(ec)) {
       return new VerificationResult({
@@ -50389,10 +50915,17 @@ var CrackedSectionDeflectionAnalysis = class {
         "RC cracked deflection axialForceCurveTolerance must be positive."
       );
     }
-    if (includeShrinkage) {
-      warnings.push(
-        "Shrinkage curvature is intentionally excluded from the first RC deflection MVP; includeShrinkage was ignored."
-      );
+    if (includeShrinkage && !Number.isFinite(freeShrinkageStrain)) {
+      return new VerificationResult({
+        applicationId: "rc-cracked-deflection",
+        status: RESULT_STATUS.NOT_SUPPORTED,
+        summary: "RC shrinkage deflection requires a signed free shrinkage strain.",
+        warnings: [
+          "Pass serviceability.deflection.freeShrinkageStrain explicitly; the module does not infer humidity, notional size or concrete age."
+        ],
+        assumptions,
+        metadata: { code: this.code, beamId, ...this.metadata }
+      });
     }
     const resultResolver = createUnitResolver(
       analysisResult.units,
@@ -50460,9 +50993,9 @@ var CrackedSectionDeflectionAnalysis = class {
         );
       } else {
         hyperstaticIteration = new HyperstaticDeflectionIteration({
-          relaxationFactor: (_r = (_q = serviceability.deflection) == null ? void 0 : _q.relaxationFactor) != null ? _r : 0.5,
-          tolerance: (_t = (_s = serviceability.deflection) == null ? void 0 : _s.iterationTolerance) != null ? _t : 1e-4,
-          maxIterations: (_v = (_u = serviceability.deflection) == null ? void 0 : _u.maxIterations) != null ? _v : 50
+          relaxationFactor: (_u = (_t = serviceability.deflection) == null ? void 0 : _t.relaxationFactor) != null ? _u : 0.5,
+          tolerance: (_w = (_v = serviceability.deflection) == null ? void 0 : _v.iterationTolerance) != null ? _w : 1e-4,
+          maxIterations: (_y = (_x = serviceability.deflection) == null ? void 0 : _x.maxIterations) != null ? _y : 50
         });
         assumptions.push(
           "Hyperstatic beams use iterative secant-stiffness redistribution with precomputed M-kappa envelopes shared by compatible combinations.",
@@ -50473,20 +51006,20 @@ var CrackedSectionDeflectionAnalysis = class {
     const hyperstaticCurveEnvelopeByKey = /* @__PURE__ */ new Map();
     if (hyperstaticIteration) {
       for (const candidate of Object.values(
-        (_w = analysisResult.combinations) != null ? _w : {}
+        (_z = analysisResult.combinations) != null ? _z : {}
       )) {
-        if (String((_y = (_x = candidate.context) == null ? void 0 : _x.limitState) != null ? _y : "").toUpperCase() !== "SLE" || !candidate.factors || Object.keys(candidate.factors).length === 0) {
+        if (String((_B = (_A = candidate.context) == null ? void 0 : _A.limitState) != null ? _B : "").toUpperCase() !== "SLE" || !candidate.factors || Object.keys(candidate.factors).length === 0) {
           continue;
         }
-        const candidateCombinationType = (_A = (_z = candidate.context) == null ? void 0 : _z.combinationType) != null ? _A : null;
+        const candidateCombinationType = (_D = (_C = candidate.context) == null ? void 0 : _C.combinationType) != null ? _D : null;
         const candidateCreepCoefficient = isQuasiPermanent(
           candidateCombinationType
         ) ? phi : 0;
         const candidateModularRatio = baseModularRatio * (1 + candidateCreepCoefficient);
         const candidateBeta = candidateCreepCoefficient > 0 ? betaLongTerm : betaShortTerm;
-        for (const sample of (_C = (_B = candidate.internalForces) == null ? void 0 : _B.samples) != null ? _C : []) {
+        for (const sample of (_F = (_E = candidate.internalForces) == null ? void 0 : _E.samples) != null ? _F : []) {
           const candidateAxialForce = quantizeAxialForce(
-            resultResolver.force((_D = sample.n) != null ? _D : 0),
+            resultResolver.force((_G = sample.n) != null ? _G : 0),
             axialForceCurveTolerance
           );
           const candidateKey = [
@@ -50495,28 +51028,39 @@ var CrackedSectionDeflectionAnalysis = class {
             numericCacheKey(candidateAxialForce)
           ].join("|");
           const candidateMoment = Math.abs(
-            resultResolver.moment((_E = sample.m) != null ? _E : 0)
+            resultResolver.moment((_H = sample.m) != null ? _H : 0)
           );
           hyperstaticCurveEnvelopeByKey.set(
             candidateKey,
             Math.max(
-              (_F = hyperstaticCurveEnvelopeByKey.get(candidateKey)) != null ? _F : 0,
+              (_I = hyperstaticCurveEnvelopeByKey.get(candidateKey)) != null ? _I : 0,
               candidateMoment
             )
           );
         }
       }
     }
-    for (const result of Object.values((_G = analysisResult.combinations) != null ? _G : {})) {
-      if (String((_I = (_H = result.context) == null ? void 0 : _H.limitState) != null ? _I : "").toUpperCase() !== "SLE") {
+    for (const result of Object.values((_J = analysisResult.combinations) != null ? _J : {})) {
+      if (String((_L = (_K = result.context) == null ? void 0 : _K.limitState) != null ? _L : "").toUpperCase() !== "SLE") {
         continue;
       }
-      const combinationType = (_K = (_J = result.context) == null ? void 0 : _J.combinationType) != null ? _K : null;
+      const combinationType = (_N = (_M = result.context) == null ? void 0 : _M.combinationType) != null ? _N : null;
       const creepCoefficient = isQuasiPermanent(combinationType) ? phi : 0;
       const effectiveModularRatio = baseModularRatio * (1 + creepCoefficient);
       const effectiveConcreteModulus = es / effectiveModularRatio;
       const serviceArtifacts = getServiceContext(effectiveModularRatio);
       const gross = serviceArtifacts.gross;
+      const grossReinforcementFirstMoment = section.getReinforcementBars().reduce(
+        (sum, bar) => sum + bar.area * (bar.y - gross.centroid),
+        0
+      );
+      const uncrackedShrinkageCurvature = includeShrinkage && creepCoefficient > 0 ? calculateEn1992ShrinkageCurvature({
+        freeShrinkageStrain,
+        reinforcementElasticModulus: es,
+        effectiveConcreteModulus,
+        reinforcementFirstMoment: grossReinforcementFirstMoment,
+        sectionSecondMoment: gross.inertia
+      }).curvature : 0;
       const serviceContext = serviceArtifacts.context;
       const crackingThresholds = crackingMoments({
         section,
@@ -50534,7 +51078,7 @@ var CrackedSectionDeflectionAnalysis = class {
       const iteratedCurveKeys = /* @__PURE__ */ new Set();
       if (hyperstaticIteration && normalizedBeamModel && result.factors && Object.keys(result.factors).length > 0) {
         const beta = creepCoefficient > 0 ? betaLongTerm : betaShortTerm;
-        const initialSamples = (_M = (_L = result.internalForces) == null ? void 0 : _L.samples) != null ? _M : [];
+        const initialSamples = (_P = (_O = result.internalForces) == null ? void 0 : _O.samples) != null ? _P : [];
         const initialMaxMoment = maxAbsSampleAction(
           initialSamples,
           "m",
@@ -50598,7 +51142,7 @@ var CrackedSectionDeflectionAnalysis = class {
           return curve;
         };
         const representativeAxialForce = resultResolver.force(
-          (_N = governingInitialSample == null ? void 0 : governingInitialSample.n) != null ? _N : 0
+          (_Q = governingInitialSample == null ? void 0 : governingInitialSample.n) != null ? _Q : 0
         );
         iteratedCurve = curveForAxialForce(
           representativeAxialForce,
@@ -50608,7 +51152,7 @@ var CrackedSectionDeflectionAnalysis = class {
         const combinationDef = {
           id: result.id,
           factors: { ...result.factors },
-          metadata: (_O = result.context) != null ? _O : {}
+          metadata: (_R = result.context) != null ? _R : {}
         };
         iteratedResult = hyperstaticIteration.iterate({
           model: normalizedBeamModel,
@@ -50616,9 +51160,9 @@ var CrackedSectionDeflectionAnalysis = class {
           curve: iteratedCurve,
           curveResolver: iteratedCurveResolver
         });
-        performance.femSolveCount += (_Q = (_P = iteratedResult.performance) == null ? void 0 : _P.femSolveCount) != null ? _Q : 0;
-        performance.femSolveElapsedMs += (_S = (_R = iteratedResult.performance) == null ? void 0 : _R.femSolveElapsedMs) != null ? _S : 0;
-        performance.hyperstaticIterationElapsedMs += (_U = (_T = iteratedResult.performance) == null ? void 0 : _T.elapsedMs) != null ? _U : 0;
+        performance.femSolveCount += (_T = (_S = iteratedResult.performance) == null ? void 0 : _S.femSolveCount) != null ? _T : 0;
+        performance.femSolveElapsedMs += (_V = (_U = iteratedResult.performance) == null ? void 0 : _U.femSolveElapsedMs) != null ? _V : 0;
+        performance.hyperstaticIterationElapsedMs += (_X = (_W = iteratedResult.performance) == null ? void 0 : _W.elapsedMs) != null ? _X : 0;
         if (!iteratedResult.converged) {
           warnings.push(
             `Hyperstatic secant iteration did not converge for ${result.id} after ${iteratedResult.iterations} iterations; using final moment distribution.`
@@ -50626,7 +51170,7 @@ var CrackedSectionDeflectionAnalysis = class {
         }
       }
       const rawPoints = deduplicateSamples(
-        iteratedResult ? (_V = iteratedResult.momentSamples) != null ? _V : [] : (_X = (_W = result.internalForces) == null ? void 0 : _W.samples) != null ? _X : [],
+        iteratedResult ? (_Y = iteratedResult.momentSamples) != null ? _Y : [] : (__ = (_Z = result.internalForces) == null ? void 0 : _Z.samples) != null ? __ : [],
         resultResolver
       );
       const analysisPoints = selectAnalysisSamples(
@@ -50636,7 +51180,7 @@ var CrackedSectionDeflectionAnalysis = class {
       performance.inputStationCount += rawPoints.length;
       performance.analyzedStationCount += analysisPoints.length;
       const curvaturePoints = analysisPoints.map(({ x, sample }) => {
-        var _a2, _b2, _c2, _d2, _e2, _f2, _g2, _h2;
+        var _a2, _b2, _c2, _d2, _e2, _f2, _g2, _h2, _i2;
         const mEd = resultResolver.moment((_a2 = sample.m) != null ? _a2 : 0);
         const nEd = resultResolver.force((_b2 = sample.n) != null ? _b2 : 0);
         const absM = Math.abs(mEd);
@@ -50647,17 +51191,27 @@ var CrackedSectionDeflectionAnalysis = class {
         let crackedCurvature = uncrackedCurvature;
         let solverConverged = true;
         let zeta = 0;
+        let crackedSection = null;
         if (iteratedCurve) {
           const pointCurve = (_c2 = iteratedCurveResolver == null ? void 0 : iteratedCurveResolver({ axialForce: nEd, moment: mEd })) != null ? _c2 : iteratedCurve;
           const curveState = pointCurve.lookupState(mEd);
           crackedCurvature = (_d2 = curveState.kappaCracked) != null ? _d2 : curveState.kappa;
           solverConverged = (_e2 = curveState.converged) != null ? _e2 : true;
           zeta = (_f2 = curveState.zeta) != null ? _f2 : 0;
+          crackedSection = (_g2 = curveState.crackedSection) != null ? _g2 : null;
           if (!solverConverged) {
             warnings.push(
               `Precomputed M-kappa curve did not converge for ${result.id} near station ${sample.station}.`
             );
           }
+          const crackedShrinkageCurvature2 = includeShrinkage && creepCoefficient > 0 && crackedSection ? calculateEn1992ShrinkageCurvature({
+            freeShrinkageStrain,
+            reinforcementElasticModulus: es,
+            effectiveConcreteModulus,
+            reinforcementFirstMoment: crackedSection.reinforcementFirstMoment,
+            sectionSecondMoment: crackedSection.inertia
+          }).curvature : uncrackedShrinkageCurvature;
+          const shrinkageCurvature2 = (1 - zeta) * uncrackedShrinkageCurvature + zeta * crackedShrinkageCurvature2;
           return {
             x,
             station: sample.station,
@@ -50667,10 +51221,12 @@ var CrackedSectionDeflectionAnalysis = class {
             mcrPositive: crackingThresholds.positive,
             mcrNegative: crackingThresholds.negative,
             zeta,
-            uncrackedCurvature: (_g2 = curveState.kappaUncracked) != null ? _g2 : uncrackedCurvature,
+            uncrackedCurvature: (_h2 = curveState.kappaUncracked) != null ? _h2 : uncrackedCurvature,
             crackedCurvature,
-            curvature: curveState.kappa,
-            cracked: (_h2 = curveState.cracked) != null ? _h2 : zeta > 0
+            loadCurvature: curveState.kappa,
+            shrinkageCurvature: shrinkageCurvature2,
+            curvature: curveState.kappa + shrinkageCurvature2,
+            cracked: (_i2 = curveState.cracked) != null ? _i2 : zeta > 0
           };
         }
         if (isFinitePositive3(absM) && (!isFinitePositive3(selectedMcr) || absM > selectedMcr)) {
@@ -50704,6 +51260,11 @@ var CrackedSectionDeflectionAnalysis = class {
           solverConverged = solved.converged;
           if (solved.converged) {
             crackedCurvature = Math.sign(mEd || 1) * Math.abs(solved.strainField.kappaZ);
+            crackedSection = calculateCrackedTransformedProperties({
+              section,
+              state: solved.state,
+              modularRatio: effectiveModularRatio
+            });
           }
           const beta = creepCoefficient > 0 ? betaLongTerm : betaShortTerm;
           zeta = isFinitePositive3(selectedMcr) ? Math.max(0, 1 - beta * (selectedMcr / absM) ** 2) : 1;
@@ -50713,6 +51274,15 @@ var CrackedSectionDeflectionAnalysis = class {
             `Cracked curvature solver did not converge for ${result.id} at station ${sample.station}.`
           );
         }
+        const loadCurvature = zeta * crackedCurvature + (1 - zeta) * uncrackedCurvature;
+        const crackedShrinkageCurvature = includeShrinkage && creepCoefficient > 0 && crackedSection ? calculateEn1992ShrinkageCurvature({
+          freeShrinkageStrain,
+          reinforcementElasticModulus: es,
+          effectiveConcreteModulus,
+          reinforcementFirstMoment: crackedSection.reinforcementFirstMoment,
+          sectionSecondMoment: crackedSection.inertia
+        }).curvature : uncrackedShrinkageCurvature;
+        const shrinkageCurvature = (1 - zeta) * uncrackedShrinkageCurvature + zeta * crackedShrinkageCurvature;
         return {
           x,
           station: sample.station,
@@ -50724,19 +51294,21 @@ var CrackedSectionDeflectionAnalysis = class {
           zeta,
           uncrackedCurvature,
           crackedCurvature,
-          curvature: zeta * crackedCurvature + (1 - zeta) * uncrackedCurvature,
+          loadCurvature,
+          shrinkageCurvature,
+          curvature: loadCurvature + shrinkageCurvature,
           cracked: zeta > 0
         };
       });
       const integrated = integrateCurvature(
         curvaturePoints,
         convertSupportStations(
-          (_Z = (_Y = iteratedResult == null ? void 0 : iteratedResult.supports) != null ? _Y : result.supports) != null ? _Z : [],
+          (_aa = (_$ = iteratedResult == null ? void 0 : iteratedResult.supports) != null ? _$ : result.supports) != null ? _aa : [],
           resultResolver
         ),
         {
           displacementSamples: convertCompatibleDisplacements(
-            (__ = iteratedResult == null ? void 0 : iteratedResult.compatibleDisplacementSamples) != null ? __ : [],
+            (_ba = iteratedResult == null ? void 0 : iteratedResult.compatibleDisplacementSamples) != null ? _ba : [],
             resultResolver
           )
         }
@@ -50752,7 +51324,7 @@ var CrackedSectionDeflectionAnalysis = class {
         }
         return selected;
       }, null);
-      const span = integrated.length > 1 ? integrated[integrated.length - 1].x - integrated[0].x : resultResolver.length((_aa = (_$ = result.geometry) == null ? void 0 : _$.length) != null ? _aa : 0);
+      const span = integrated.length > 1 ? integrated[integrated.length - 1].x - integrated[0].x : resultResolver.length((_da = (_ca = result.geometry) == null ? void 0 : _ca.length) != null ? _da : 0);
       globalSpan = globalSpan != null ? globalSpan : span;
       const limit = isFinitePositive3(limitRatio) ? span / limitRatio : null;
       if (governing2 && isFinitePositive3(limit)) {
@@ -50763,7 +51335,7 @@ var CrackedSectionDeflectionAnalysis = class {
             metadata: {
               resultId: result.id,
               resultType: result.resultType,
-              limitState: (_ca = (_ba = result.context) == null ? void 0 : _ba.limitState) != null ? _ca : null,
+              limitState: (_fa = (_ea = result.context) == null ? void 0 : _ea.limitState) != null ? _fa : null,
               combinationType,
               station: round3(governing2.station),
               creepCoefficient,
@@ -50795,11 +51367,11 @@ var CrackedSectionDeflectionAnalysis = class {
         active: true,
         converged: Boolean(iteratedResult.converged),
         iterations: iteratedResult.iterations,
-        relaxationFactor: (_da = iteratedResult.relaxationFactor) != null ? _da : hyperstaticIteration.relaxationFactor,
-        effectiveRelaxationFactor: (_fa = (_ea = iteratedResult.effectiveRelaxationFactor) != null ? _ea : iteratedResult.relaxationFactor) != null ? _fa : hyperstaticIteration.relaxationFactor,
-        adaptiveAdjustmentCount: (_ga = iteratedResult.adaptiveAdjustmentCount) != null ? _ga : 0,
+        relaxationFactor: (_ga = iteratedResult.relaxationFactor) != null ? _ga : hyperstaticIteration.relaxationFactor,
+        effectiveRelaxationFactor: (_ia = (_ha = iteratedResult.effectiveRelaxationFactor) != null ? _ha : iteratedResult.relaxationFactor) != null ? _ia : hyperstaticIteration.relaxationFactor,
+        adaptiveAdjustmentCount: (_ja = iteratedResult.adaptiveAdjustmentCount) != null ? _ja : 0,
         method: "secant-stiffness-moment-curvature",
-        momentCurvePointCount: (_ha = iteratedCurve == null ? void 0 : iteratedCurve.pointCount) != null ? _ha : null,
+        momentCurvePointCount: (_ka = iteratedCurve == null ? void 0 : iteratedCurve.pointCount) != null ? _ka : null,
         axialForceCurveCount: iteratedCurveKeys.size,
         axialForceCurveTolerance,
         compatibleDeflectionSource: "iterated-fem-shape-functions",
@@ -50807,9 +51379,9 @@ var CrackedSectionDeflectionAnalysis = class {
         curveBuildElapsedMs: combinationCurveBuildElapsedMs,
         curveSectionSolveCount: combinationCurveSectionSolveCount,
         curveLookupCount,
-        femSolveCount: (_ja = (_ia = iteratedResult.performance) == null ? void 0 : _ia.femSolveCount) != null ? _ja : 0,
-        femSolveElapsedMs: (_la = (_ka = iteratedResult.performance) == null ? void 0 : _ka.femSolveElapsedMs) != null ? _la : 0,
-        iterationElapsedMs: (_na = (_ma = iteratedResult.performance) == null ? void 0 : _ma.elapsedMs) != null ? _na : 0
+        femSolveCount: (_ma = (_la = iteratedResult.performance) == null ? void 0 : _la.femSolveCount) != null ? _ma : 0,
+        femSolveElapsedMs: (_oa = (_na = iteratedResult.performance) == null ? void 0 : _na.femSolveElapsedMs) != null ? _oa : 0,
+        iterationElapsedMs: (_qa = (_pa = iteratedResult.performance) == null ? void 0 : _pa.elapsedMs) != null ? _qa : 0
       } : {
         active: false,
         converged: null,
@@ -50833,7 +51405,7 @@ var CrackedSectionDeflectionAnalysis = class {
         limitRatio,
         span: round3(span),
         deflectionLimit: round3(limit),
-        maxAbsDeflection: round3(Math.abs((_oa = governing2 == null ? void 0 : governing2.deflection) != null ? _oa : 0)),
+        maxAbsDeflection: round3(Math.abs((_ra = governing2 == null ? void 0 : governing2.deflection) != null ? _ra : 0)),
         governingStation: round3(governing2 == null ? void 0 : governing2.station),
         mcr: round3(mcr),
         mcrPositive: round3(crackingThresholds.positive),
@@ -50868,14 +51440,15 @@ var CrackedSectionDeflectionAnalysis = class {
       applicationId: "rc-cracked-deflection",
       status: checks.length > 0 && checks.every((check) => check.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       summary: "RC service deflection from cracked/uncracked curvature integration.",
-      utilizationRatio: (_pa = governing == null ? void 0 : governing.utilizationRatio) != null ? _pa : null,
-      demand: (_qa = governing == null ? void 0 : governing.demand) != null ? _qa : null,
-      capacity: (_ra = governing == null ? void 0 : governing.capacity) != null ? _ra : null,
+      utilizationRatio: (_sa = governing == null ? void 0 : governing.utilizationRatio) != null ? _sa : null,
+      demand: (_ta = governing == null ? void 0 : governing.demand) != null ? _ta : null,
+      capacity: (_ua = governing == null ? void 0 : governing.capacity) != null ? _ua : null,
       checks,
       outputs: {
         beamId,
         creepCoefficient: phi,
-        includeShrinkage: false,
+        includeShrinkage,
+        freeShrinkageStrain: includeShrinkage ? freeShrinkageStrain : null,
         performance,
         simplifiedSlenderness: slenderness ? {
           demand: slenderness.demand,
@@ -50892,10 +51465,11 @@ var CrackedSectionDeflectionAnalysis = class {
       metadata: {
         code: this.code,
         beamId,
-        method: "curvature-integration-tension-stiffening-mvp",
-        governingCheckId: (_sa = governing == null ? void 0 : governing.id) != null ? _sa : null,
+        method: "en1992-curvature-integration-tension-stiffening-creep-shrinkage",
+        governingCheckId: (_va = governing == null ? void 0 : governing.id) != null ? _va : null,
         creepCoefficient: phi,
-        includeShrinkage: false,
+        includeShrinkage,
+        freeShrinkageStrain: includeShrinkage ? freeShrinkageStrain : null,
         ...this.metadata
       }
     });
@@ -51309,7 +51883,7 @@ var RC_PLATE_ANALYSIS_TYPES = Object.freeze({
   SLS_SIMPLIFIED_DEFLECTION: "SLS_SIMPLIFIED_DEFLECTION"
 });
 var ANALYSIS_TYPES = new Set(Object.values(RC_PLATE_ANALYSIS_TYPES));
-function positive9(value, label) {
+function positive10(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be positive.`);
   }
@@ -51347,15 +51921,15 @@ function normalizeLayer({ input, face, direction, thickness, resolver }) {
   if (!input) {
     throw new Error(`reinforcement.${face}.${direction} is required.`);
   }
-  const barsPerMeter = positive9(
+  const barsPerMeter = positive10(
     Number(input.barsPerMeter),
     `reinforcement.${face}.${direction}.barsPerMeter`
   );
-  const diameter = positive9(
+  const diameter = positive10(
     resolver.length(Number(input.diameter)),
     `reinforcement.${face}.${direction}.diameter`
   );
-  const clearCover = positive9(
+  const clearCover = positive10(
     resolver.length(Number(input.clearCover)),
     `reinforcement.${face}.${direction}.clearCover`
   );
@@ -51378,15 +51952,15 @@ function normalizeShearReinforcement({ input, thickness, resolver }) {
   if (input == null) {
     return null;
   }
-  const diameter = positive9(
+  const diameter = positive10(
     resolver.length(Number(input.diameter)),
     "reinforcement.shear.diameter"
   );
-  const spacingX = positive9(
+  const spacingX = positive10(
     resolver.length(Number(input.spacingX)),
     "reinforcement.shear.spacingX"
   );
-  const spacingY = positive9(
+  const spacingY = positive10(
     resolver.length(Number(input.spacingY)),
     "reinforcement.shear.spacingY"
   );
@@ -51455,7 +52029,7 @@ var ReinforcedConcretePlateModel = class {
     }
     assertExplicitUnitSystem(units, "ReinforcedConcretePlateModel");
     const resolver = createUnitResolver(units, INTERNAL_UNITS23);
-    const thickness = positive9(
+    const thickness = positive10(
       resolver.length(Number(geometry.thickness)),
       "geometry.thickness"
     );
@@ -51475,15 +52049,15 @@ var ReinforcedConcretePlateModel = class {
     for (const face of FACES) {
       normalizedReinforcement[face] = {};
       for (const direction of DIRECTIONS) {
-        const layer = normalizeLayer({
+        const layer2 = normalizeLayer({
           input: (_b = reinforcement[face]) == null ? void 0 : _b[direction],
           face,
           direction,
           thickness,
           resolver
         });
-        normalizedReinforcement[face][direction] = layer;
-        layers.push(layer);
+        normalizedReinforcement[face][direction] = layer2;
+        layers.push(layer2);
       }
     }
     validateLayerSeparation(layers, thickness);
@@ -51518,8 +52092,8 @@ var ReinforcedConcretePlateModel = class {
     }];
     const deflection = normalizeDeflection(analysis.deflection, resolver);
     if (type === RC_PLATE_ANALYSIS_TYPES.SLS_SIMPLIFIED_DEFLECTION) {
-      positive9(deflection.spanX, "analysis.deflection.spanX");
-      positive9(deflection.spanY, "analysis.deflection.spanY");
+      positive10(deflection.spanX, "analysis.deflection.spanX");
+      positive10(deflection.spanY, "analysis.deflection.spanY");
     }
     this.id = id;
     this.units = INTERNAL_UNITS23;
@@ -55103,25 +55677,25 @@ var ReinforcedConcreteSectionVerification = class {
 
 // src/applications/reinforced-concrete-plates/sections/createPlateStripSection.js
 var INTERNAL_UNITS24 = Object.freeze({ force: "N", length: "mm" });
-function equivalentBarForLayer({ layer, width, material, idPrefix }) {
+function equivalentBarForLayer({ layer: layer2, width, material, idPrefix }) {
   const grade = ["B450A", "B450C"].includes(material == null ? void 0 : material.grade) ? material.grade : "B450C";
   return new ReinforcementBar({
     id: idPrefix,
     name: `${idPrefix} equivalent reinforcement layer`,
-    diameter: layer.diameter,
-    area: layer.area,
+    diameter: layer2.diameter,
+    area: layer2.area,
     grade,
     material,
-    y: layer.axis,
+    y: layer2.axis,
     z: width / 2,
     units: INTERNAL_UNITS24,
     metadata: {
-      face: layer.face,
-      direction: layer.direction,
+      face: layer2.face,
+      direction: layer2.direction,
       equivalentDistributedArea: true,
-      barsPerMeter: layer.barsPerMeter,
-      equivalentSpacing: layer.spacing,
-      layerArea: layer.area
+      barsPerMeter: layer2.barsPerMeter,
+      equivalentSpacing: layer2.spacing,
+      layerArea: layer2.area
     }
   });
 }
@@ -55141,10 +55715,10 @@ function createPlateStripSection({ model, direction } = {}) {
   const groups = [];
   const reinforcementBars2 = [];
   for (const face of ["bottom", "top"]) {
-    const layer = model.reinforcement[face][direction];
+    const layer2 = model.reinforcement[face][direction];
     const id = `${face}-${direction}`;
     const bar = equivalentBarForLayer({
-      layer,
+      layer: layer2,
       width,
       material: model.materials.reinforcementMaterial,
       idPrefix: id
@@ -55156,13 +55730,13 @@ function createPlateStripSection({ model, direction } = {}) {
       face,
       direction,
       barIds: [bar.id],
-      diameter: layer.diameter,
-      countPerMeter: layer.barsPerMeter,
-      spacing: layer.spacing,
-      clearCover: layer.clearCover,
-      axis: layer.axis,
-      longitudinalReinforcementArea: layer.area,
-      effectiveDepth: face === "bottom" ? model.geometry.thickness - layer.axis : layer.axis
+      diameter: layer2.diameter,
+      countPerMeter: layer2.barsPerMeter,
+      spacing: layer2.spacing,
+      clearCover: layer2.clearCover,
+      axis: layer2.axis,
+      longitudinalReinforcementArea: layer2.area,
+      effectiveDepth: face === "bottom" ? model.geometry.thickness - layer2.axis : layer2.axis
     });
   }
   const section = new ReinforcedConcreteSection({
@@ -56513,8 +57087,8 @@ function transverseReinforcementForDirection(model, direction) {
   };
 }
 function verifyFace({ model, transformedState, direction, face, section }) {
-  const layer = model.reinforcement[face][direction];
-  const effectiveDepth = face === "bottom" ? model.geometry.thickness - layer.axis : layer.axis;
+  const layer2 = model.reinforcement[face][direction];
+  const effectiveDepth = face === "bottom" ? model.geometry.thickness - layer2.axis : layer2.axis;
   const mEd = transformedState.woodArmer[`${face}-${direction}`] * model.geometry.unitWidth;
   const vEd = Math.abs(transformedState.shear[`q${direction}`]) * model.geometry.unitWidth;
   const transverseReinforcement = transverseReinforcementForDirection(
@@ -56532,7 +57106,7 @@ function verifyFace({ model, transformedState, direction, face, section }) {
       mode: transverseReinforcement ? "with-transverse-reinforcement" : "without-transverse-reinforcement",
       bw: model.geometry.unitWidth,
       effectiveDepth,
-      longitudinalReinforcementArea: layer.area,
+      longitudinalReinforcementArea: layer2.area,
       tensionFace: face,
       transverseReinforcement
     },
@@ -57438,12 +58012,12 @@ function verifyPlateServiceability({ model, transformedState } = {}) {
 // src/applications/reinforced-concrete-plates/checks/verifyPlateSlenderness.js
 var METHOD3 = "circolare-ntc2018-c4.1.i-flat-slab-face-rho-l-interpolation";
 function reinforcementRatio(model, direction, face) {
-  const layer = model.reinforcement[face][direction];
-  const effectiveDepth = face === "bottom" ? model.geometry.thickness - layer.axis : layer.axis;
+  const layer2 = model.reinforcement[face][direction];
+  const effectiveDepth = face === "bottom" ? model.geometry.thickness - layer2.axis : layer2.axis;
   return {
-    area: layer.area,
+    area: layer2.area,
     effectiveDepth,
-    value: layer.area / (model.geometry.unitWidth * effectiveDepth)
+    value: layer2.area / (model.geometry.unitWidth * effectiveDepth)
   };
 }
 function faceSlendernessCheck({ model, transformedState, direction, face }) {
@@ -57803,6 +58377,210 @@ var ReinforcedConcretePlateApplication = class extends StructuralApplication {
   }
 };
 
+// src/applications/reinforced-concrete-columns/ReinforcedConcreteColumnDetailingVerification.js
+function positive11(value, label) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${label} must be positive.`);
+  }
+  return value;
+}
+function minCheck(id, description, required, provided, metadata = {}) {
+  return utilizationCheck({ id, description, demand: required, capacity: provided, metadata });
+}
+function maxCheck(id, description, provided, allowed, metadata = {}) {
+  return utilizationCheck({ id, description, demand: provided, capacity: allowed, metadata });
+}
+function ductilityClass(value) {
+  const normalized = String(value != null ? value : "").toUpperCase().replaceAll('"', "").replaceAll("-", "");
+  if (["CDA", "A"].includes(normalized)) return "CDA";
+  if (["CDB", "B"].includes(normalized)) return "CDB";
+  throw new Error(`Unsupported NTC 2018 ductility class: ${value}.`);
+}
+var ReinforcedConcreteColumnDetailingVerification = class {
+  constructor({ code = "NTC2018" } = {}) {
+    this.code = code;
+  }
+  verify({ model, compression, normalizedAxialForce } = {}) {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w;
+    const detailing = model.detailing;
+    if (!detailing) {
+      return new VerificationResult({
+        applicationId: "reinforced-concrete-columns",
+        status: RESULT_STATUS.NOT_ANALYZED,
+        summary: "Column detailing was not requested.",
+        warnings: ["Pass the detailing contract to verify column reinforcement and confinement."],
+        metadata: { code: this.code }
+      });
+    }
+    const concrete = (_a = model.section.concreteSection) != null ? _a : model.section;
+    const width = positive11(Number(concrete.width), "column width");
+    const depth = positive11(Number(concrete.height), "column depth");
+    const area = positive11(Number(concrete.area), "column concrete area");
+    const longitudinal = (_b = detailing.longitudinal) != null ? _b : {};
+    const transverse = (_c = detailing.transverse) != null ? _c : {};
+    const reinforcementArea = positive11(
+      Number((_f = longitudinal.area) != null ? _f : (_e = (_d = model.section).totalReinforcementArea) == null ? void 0 : _e.call(_d)),
+      "detailing.longitudinal.area"
+    );
+    const minBarDiameter = positive11(
+      Number(longitudinal.minimumBarDiameter),
+      "detailing.longitudinal.minimumBarDiameter"
+    );
+    const maxBarDiameter = positive11(
+      Number((_g = longitudinal.maximumBarDiameter) != null ? _g : minBarDiameter),
+      "detailing.longitudinal.maximumBarDiameter"
+    );
+    const maxBarSpacing = positive11(
+      Number(longitudinal.maximumBarSpacing),
+      "detailing.longitudinal.maximumBarSpacing"
+    );
+    const hoopDiameter = positive11(Number(transverse.diameter), "detailing.transverse.diameter");
+    const hoopSpacing = positive11(Number(transverse.spacing), "detailing.transverse.spacing");
+    const fyd = positive11(Number((_h = model.reinforcementMaterial) == null ? void 0 : _h.fyd), "reinforcement fyd");
+    const fyk = positive11(Number((_i = model.reinforcementMaterial) == null ? void 0 : _i.fyk), "reinforcement fyk");
+    const fywd = positive11(
+      Number((_k = transverse.designStrength) != null ? _k : (_j = model.reinforcementMaterial) == null ? void 0 : _j.fyd),
+      "transverse design strength"
+    );
+    const minimumArea = Math.max(0.1 * compression / fyd, 3e-3 * area);
+    const maximumArea = 0.04 * area;
+    const ordinaryHoopSpacing = Math.min(12 * minBarDiameter, 250);
+    const ordinaryHoopDiameter = Math.max(6, maxBarDiameter / 4);
+    const checks = [
+      minCheck("rc-column-minimum-longitudinal-area", "Minimum column longitudinal reinforcement", minimumArea, reinforcementArea, { reference: "NTC2018-4.1.46" }),
+      maxCheck("rc-column-maximum-longitudinal-area", "Maximum column longitudinal reinforcement outside lap zones", reinforcementArea, maximumArea, { reference: "NTC2018-4.1.6.1.2" }),
+      maxCheck("rc-column-maximum-longitudinal-spacing", "Maximum column longitudinal bar spacing", maxBarSpacing, 300, { reference: "NTC2018-4.1.6.1.2" }),
+      minCheck("rc-column-minimum-longitudinal-diameter", "Minimum column longitudinal bar diameter", 12, minBarDiameter, { reference: "NTC2018-4.1.6.1.2" }),
+      maxCheck("rc-column-ordinary-hoop-spacing", "Ordinary column hoop spacing", hoopSpacing, ordinaryHoopSpacing, { reference: "NTC2018-4.1.6.1.2" }),
+      minCheck("rc-column-ordinary-hoop-diameter", "Ordinary column hoop diameter", ordinaryHoopDiameter, hoopDiameter, { reference: "NTC2018-4.1.6.1.2" })
+    ];
+    let seismicOutputs = null;
+    if (((_l = detailing.seismic) == null ? void 0 : _l.enabled) === true) {
+      const dc = ductilityClass(detailing.seismic.ductilityClass);
+      const isCda = dc === "CDA";
+      const clearHeight = positive11(
+        Number((_m = detailing.seismic.clearHeight) != null ? _m : model.length),
+        "detailing.seismic.clearHeight"
+      );
+      const sectionDepthInBending = positive11(
+        Number((_n = detailing.seismic.sectionDepthInBending) != null ? _n : Math.max(width, depth)),
+        "detailing.seismic.sectionDepthInBending"
+      );
+      const criticalZoneLength = clearHeight < 3 * sectionDepthInBending ? clearHeight : Math.max(sectionDepthInBending, clearHeight / 6, 450);
+      const longitudinalRatio = reinforcementArea / area;
+      const seismicHoopDiameter = isCda ? Math.max(6, 0.4 * maxBarDiameter * Math.sqrt(fyd / fywd)) : 6;
+      const seismicHoopSpacing = Math.min(
+        Math.min(width, depth) / (isCda ? 3 : 2),
+        isCda ? 125 : 175,
+        (isCda ? 6 : 8) * minBarDiameter
+      );
+      const restrainedSpacingLimit = isCda ? 150 : 200;
+      const confinement = (_o = detailing.confinement) != null ? _o : {};
+      const coreWidth = positive11(Number(confinement.coreWidth), "confinement.coreWidth");
+      const coreDepth = positive11(Number(confinement.coreDepth), "confinement.coreDepth");
+      const volumePerSet = positive11(Number(confinement.volumePerSet), "confinement.volumePerSet");
+      const restrainedSpacings = (_p = confinement.restrainedBarSpacings) != null ? _p : [];
+      if (restrainedSpacings.length === 0) {
+        throw new Error("confinement.restrainedBarSpacings must not be empty.");
+      }
+      const alphaN = Math.max(
+        0,
+        1 - restrainedSpacings.reduce((sum, value) => sum + value ** 2, 0) / (6 * coreWidth * coreDepth)
+      );
+      const alphaS = Math.max(0, 1 - hoopSpacing / (2 * coreWidth)) * Math.max(0, 1 - hoopSpacing / (2 * coreDepth));
+      const alpha = alphaN * alphaS;
+      const volumetricRatio = volumePerSet / (coreWidth * coreDepth * hoopSpacing);
+      const omegaWd = volumetricRatio * fywd / model.concreteMaterial.fcd;
+      const epsilonSyD = fyd / positive11(
+        Number(model.reinforcementMaterial.elasticModulus),
+        "reinforcement elastic modulus"
+      );
+      const muPhi = positive11(
+        Number(detailing.seismic.curvatureDuctilityDemand),
+        "detailing.seismic.curvatureDuctilityDemand"
+      );
+      const ductilityDemand = Math.max(
+        0,
+        30 * muPhi * epsilonSyD * normalizedAxialForce * (Math.min(width, depth) / Math.min(coreWidth, coreDepth)) - 0.035
+      );
+      const omegaMinimum = isCda ? 0.12 : 0.08;
+      checks.push(
+        minCheck("rc-column-seismic-minimum-dimension", "Minimum dissipative column dimension", 250, Math.min(width, depth), { reference: "NTC2018-7.4.6.1.2" }),
+        minCheck("rc-column-seismic-longitudinal-ratio-min", "Minimum seismic longitudinal reinforcement ratio", 0.01, longitudinalRatio, { reference: "NTC2018-7.4.28" }),
+        maxCheck("rc-column-seismic-longitudinal-ratio-max", "Maximum seismic longitudinal reinforcement ratio", longitudinalRatio, 0.04, { reference: "NTC2018-7.4.28" }),
+        maxCheck("rc-column-seismic-longitudinal-spacing", "Maximum seismic longitudinal bar spacing", maxBarSpacing, 250, { reference: "NTC2018-7.4.6.2.2" }),
+        minCheck("rc-column-seismic-hoop-diameter", "Minimum confinement hoop diameter", seismicHoopDiameter, hoopDiameter, { reference: "NTC2018-7.4.6.2.2" }),
+        maxCheck("rc-column-seismic-hoop-spacing", "Maximum confinement hoop spacing", hoopSpacing, seismicHoopSpacing, { reference: "NTC2018-7.4.6.2.2" }),
+        maxCheck("rc-column-seismic-restrained-bar-spacing", "Maximum spacing between laterally restrained bars", Math.max(...restrainedSpacings), restrainedSpacingLimit, { reference: "NTC2018-7.4.6.2.2" }),
+        minCheck("rc-column-seismic-omega-wd", "Minimum mechanical confinement ratio", omegaMinimum, omegaWd, { reference: "NTC2018-7.4.30" }),
+        minCheck("rc-column-seismic-ductility-confinement", "Confinement for curvature ductility demand", ductilityDemand, alpha * omegaWd, { reference: "NTC2018-7.4.29-7.4.31" })
+      );
+      seismicOutputs = {
+        ductilityClass: dc,
+        criticalZoneLength,
+        longitudinalRatio,
+        seismicHoopDiameter,
+        seismicHoopSpacing,
+        alphaN,
+        alphaS,
+        alpha,
+        volumetricRatio,
+        omegaWd,
+        omegaMinimum,
+        curvatureDuctilityDemand: muPhi,
+        ductilityConfinementDemand: ductilityDemand
+      };
+    }
+    let anchorageOutput = null;
+    if (detailing.anchorage) {
+      const anchor = detailing.anchorage;
+      const fctd = positive11(
+        Number((_q = anchor.fctd) != null ? _q : 0.7 * model.concreteMaterial.fctm / model.concreteMaterial.metadata.gammaC),
+        "anchorage.fctd"
+      );
+      const bond = calculateEn1992DesignBondStrength({
+        fctd,
+        barDiameter: anchor.barDiameter,
+        bondConditionFactor: (_r = anchor.bondConditionFactor) != null ? _r : 1
+      });
+      const base = calculateEn1992AnchorageLength({
+        barDiameter: anchor.barDiameter,
+        designSteelStress: (_s = anchor.designSteelStress) != null ? _s : fyd,
+        fbd: bond.fbd,
+        tension: anchor.tension !== false,
+        nationalMinimumDiameterMultiple: 20,
+        nationalMinimumLength: 150
+      });
+      const axialTension = compression <= 0 && Math.abs(model.actions.nEd) > 0;
+      const requiredLength = base.designLength * (axialTension ? 1.5 : 1);
+      checks.push(minCheck("rc-column-longitudinal-anchorage", "Column longitudinal bar anchorage", requiredLength, anchor.availableLength, { reference: axialTension ? "NTC2018-7.4.6.2.2" : "NTC2018-4.1.2.3.10", fbd: round3(bond.fbd), axialTensionFactor: axialTension ? 1.5 : 1 }));
+      anchorageOutput = { ...base, requiredLength, fbd: bond.fbd };
+    }
+    const governing = governingCheck(checks);
+    const ok = checks.every((check) => check.ok === true);
+    return new VerificationResult({
+      applicationId: "reinforced-concrete-columns",
+      status: ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+      summary: "NTC 2018 column reinforcement, confinement and ductility verification.",
+      utilizationRatio: (_t = governing == null ? void 0 : governing.utilizationRatio) != null ? _t : null,
+      demand: (_u = governing == null ? void 0 : governing.demand) != null ? _u : null,
+      capacity: (_v = governing == null ? void 0 : governing.capacity) != null ? _v : null,
+      checks,
+      outputs: {
+        reinforcementArea,
+        longitudinalRatio: reinforcementArea / area,
+        seismic: seismicOutputs,
+        anchorage: anchorageOutput
+      },
+      assumptions: [
+        "Confinement volumePerSet is the total steel volume effective in one transverse-reinforcement set inside the core.",
+        "restrainedBarSpacings contains every clear centre-line spacing between consecutive laterally restrained longitudinal bars around the core."
+      ],
+      metadata: { code: this.code, governingCheckId: (_w = governing == null ? void 0 : governing.id) != null ? _w : null }
+    });
+  }
+};
+
 // src/applications/reinforced-concrete-columns/ReinforcedConcreteColumnVerification.js
 var INTERNAL_UNITS27 = Object.freeze({ force: "N", length: "mm" });
 var EPS12 = 1e-9;
@@ -57860,8 +58638,8 @@ function rayCapacity(points, demandX, demandY) {
       });
     }
   }
-  const positive17 = intersections.filter((item) => item.distance > EPS12).sort((a, b) => a.distance - b.distance);
-  const selected = (_a = positive17[0]) != null ? _a : null;
+  const positive20 = intersections.filter((item) => item.distance > EPS12).sort((a, b) => a.distance - b.distance);
+  const selected = (_a = positive20[0]) != null ? _a : null;
   return {
     demandNorm,
     capacityNorm: (_b = selected == null ? void 0 : selected.distance) != null ? _b : null,
@@ -57878,14 +58656,24 @@ function resolveAxis({
   totalMoment,
   secondOrderFlag,
   compression,
-  lambdaLimit
+  lambdaLimit,
+  nominalRigidity,
+  momentDistributionFactor,
+  includeImperfectionWhenMomentIsZero,
+  memberLength
 }) {
   const radiusOfGyration = Number.isFinite(inertia) && inertia > 0 && concreteArea > 0 ? Math.sqrt(inertia / concreteArea) : null;
   const slenderness = radiusOfGyration ? effectiveLength / radiusOfGyration : null;
   const secondOrderRequired = compression > 0 && Number.isFinite(slenderness) && Number.isFinite(lambdaLimit) && slenderness > lambdaLimit;
   const explicitTotal = Number.isFinite(totalMoment);
-  const secondOrderIncluded = !secondOrderRequired || explicitTotal || secondOrderFlag === true;
-  const designMoment = explicitTotal ? totalMoment : firstOrderMoment;
+  const imperfectionEccentricity = includeImperfectionWhenMomentIsZero && compression > 0 && Math.abs(firstOrderMoment) <= EPS12 ? memberLength / 300 : 0;
+  const firstOrderWithImperfection = firstOrderMoment + (firstOrderMoment < 0 ? -1 : 1) * compression * imperfectionEccentricity;
+  const criticalLoad = Number.isFinite(nominalRigidity) && nominalRigidity > 0 ? Math.PI ** 2 * nominalRigidity / effectiveLength ** 2 : null;
+  const stableForMagnification = Number.isFinite(criticalLoad) && criticalLoad > compression;
+  const magnificationFactor = secondOrderRequired && stableForMagnification ? 1 + momentDistributionFactor / (criticalLoad / compression - 1) : 1;
+  const generatedTotalMoment = secondOrderRequired && stableForMagnification ? firstOrderWithImperfection * magnificationFactor : null;
+  const secondOrderIncluded = !secondOrderRequired || explicitTotal || secondOrderFlag === true || Number.isFinite(generatedTotalMoment);
+  const designMoment = explicitTotal ? totalMoment : Number.isFinite(generatedTotalMoment) ? generatedTotalMoment : firstOrderWithImperfection;
   const ratio = Number.isFinite(slenderness) && Number.isFinite(lambdaLimit) && lambdaLimit > 0 ? slenderness / lambdaLimit : 0;
   return {
     id,
@@ -57898,6 +58686,13 @@ function resolveAxis({
     secondOrderRequired,
     secondOrderIncluded,
     firstOrderMoment,
+    firstOrderWithImperfection,
+    imperfectionEccentricity,
+    nominalRigidity,
+    criticalLoad,
+    magnificationFactor,
+    stableForMagnification,
+    generatedTotalMoment,
     totalMoment: explicitTotal ? totalMoment : null,
     designMoment,
     check: {
@@ -57911,7 +58706,7 @@ function resolveAxis({
         reference: "NTC2018-4.1.41-4.1.42",
         screeningExceeded: secondOrderRequired,
         secondOrderIncluded,
-        momentSource: explicitTotal ? "explicit-total" : secondOrderFlag === true ? "input-declared-inclusive" : "first-order-screened"
+        momentSource: explicitTotal ? "explicit-total" : Number.isFinite(generatedTotalMoment) ? "generated-ntc2018-nominal-stiffness" : secondOrderFlag === true ? "input-declared-inclusive" : "first-order-screened"
       }
     }
   };
@@ -57922,7 +58717,7 @@ var ReinforcedConcreteColumnVerification = class {
     this.metadata = { ...metadata };
   }
   verify(model) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u;
     if (!(model == null ? void 0 : model.section) || !(model == null ? void 0 : model.concreteMaterial)) {
       return new VerificationResult({
         applicationId: "reinforced-concrete-columns",
@@ -57954,6 +58749,12 @@ var ReinforcedConcreteColumnVerification = class {
     );
     const normalizedAxialForce = compression / (concreteArea * fcd);
     const lambdaLimit = normalizedAxialForce > 0 ? 25 / Math.sqrt(normalizedAxialForce) : Number.POSITIVE_INFINITY;
+    const creepCoefficient = model.stability.creepCoefficient;
+    const gammaCE = (_b = model.stability.gammaCE) != null ? _b : 1.2;
+    const concreteElasticModulus = (_c = model.concreteMaterial) == null ? void 0 : _c.elasticModulus;
+    const concreteDesignModulus = Number.isFinite(concreteElasticModulus) && concreteElasticModulus > 0 ? concreteElasticModulus / gammaCE : null;
+    const rigidityFactor = Number.isFinite(creepCoefficient) && creepCoefficient >= 0 ? 0.3 / (1 + 0.5 * creepCoefficient) : null;
+    const nominalRigidityFor = (inertia) => model.stability.secondOrderMethod === "ntc2018-nominal-stiffness" && Number.isFinite(rigidityFactor) && Number.isFinite(concreteDesignModulus) && Number.isFinite(inertia) && inertia > 0 ? rigidityFactor * concreteDesignModulus * inertia : null;
     const sharedSecondOrderFlag = model.stability.designMomentsIncludeSecondOrder === true;
     const axisMx = resolveAxis({
       id: "mx",
@@ -57962,9 +58763,13 @@ var ReinforcedConcreteColumnVerification = class {
       effectiveLength: model.stability.effectiveLengthMx,
       firstOrderMoment: model.actions.mxEd,
       totalMoment: model.actions.mxEdTotal,
-      secondOrderFlag: (_b = model.stability.mxIncludesSecondOrder) != null ? _b : sharedSecondOrderFlag,
+      secondOrderFlag: (_d = model.stability.mxIncludesSecondOrder) != null ? _d : sharedSecondOrderFlag,
       compression,
-      lambdaLimit
+      lambdaLimit,
+      nominalRigidity: nominalRigidityFor(concreteSection.inertiaY),
+      momentDistributionFactor: model.stability.momentDistributionFactor,
+      includeImperfectionWhenMomentIsZero: model.stability.includeImperfectionWhenMomentIsZero,
+      memberLength: model.length
     });
     const axisMy = resolveAxis({
       id: "my",
@@ -57973,9 +58778,13 @@ var ReinforcedConcreteColumnVerification = class {
       effectiveLength: model.stability.effectiveLengthMy,
       firstOrderMoment: model.actions.myEd,
       totalMoment: model.actions.myEdTotal,
-      secondOrderFlag: (_c = model.stability.myIncludesSecondOrder) != null ? _c : sharedSecondOrderFlag,
+      secondOrderFlag: (_e = model.stability.myIncludesSecondOrder) != null ? _e : sharedSecondOrderFlag,
       compression,
-      lambdaLimit
+      lambdaLimit,
+      nominalRigidity: nominalRigidityFor(concreteSection.inertiaZ),
+      momentDistributionFactor: model.stability.momentDistributionFactor,
+      includeImperfectionWhenMomentIsZero: model.stability.includeImperfectionWhenMomentIsZero,
+      memberLength: model.length
     });
     const axes = [axisMx, axisMy];
     const unresolvedAxes = axes.filter(
@@ -57989,6 +58798,13 @@ var ReinforcedConcreteColumnVerification = class {
       fcd: round3(fcd),
       normalizedAxialForce: round3(normalizedAxialForce, 9),
       lambdaLimit: round3(lambdaLimit),
+      secondOrder: {
+        method: model.stability.secondOrderMethod,
+        creepCoefficient,
+        gammaCE,
+        concreteDesignModulus: round3(concreteDesignModulus),
+        rigidityFactor: round3(rigidityFactor)
+      },
       axes: Object.fromEntries(
         axes.map((axis) => [
           axis.id,
@@ -58001,8 +58817,16 @@ var ReinforcedConcreteColumnVerification = class {
             secondOrderRequired: axis.secondOrderRequired,
             secondOrderIncluded: axis.secondOrderIncluded,
             firstOrderMoment: round3(axis.firstOrderMoment),
+            firstOrderWithImperfection: round3(axis.firstOrderWithImperfection),
+            imperfectionEccentricity: round3(axis.imperfectionEccentricity),
+            nominalRigidity: round3(axis.nominalRigidity),
+            criticalLoad: round3(axis.criticalLoad),
+            magnificationFactor: round3(axis.magnificationFactor),
+            stableForMagnification: axis.stableForMagnification,
+            generatedTotalMoment: round3(axis.generatedTotalMoment),
             totalMoment: round3(axis.totalMoment),
-            designMoment: round3(axis.designMoment)
+            designMoment: round3(axis.designMoment),
+            secondOrderMethod: axis.secondOrderRequired ? model.stability.secondOrderMethod : null
           }
         ])
       )
@@ -58016,14 +58840,14 @@ var ReinforcedConcreteColumnVerification = class {
         outputs: baseOutputs2,
         warnings: [
           `Second-order moments are missing for: ${unresolvedAxes.map((axis) => axis.id).join(", ")}.`,
-          "This MVP does not generate second-order moments with an approximate column model; supply explicit total design moments or results from an adequate second-order analysis."
+          "Provide a non-negative stability.creepCoefficient to generate moments with the NTC 2018 nominal stiffness, or supply explicit total moments from an adequate analysis."
         ],
         assumptions: [
           "The NTC 2018 single-column slenderness screening is applied independently to the two section bending components."
         ],
         metadata: {
           code: this.code,
-          method: "ntc2018-4.1.2.3.9.2-screening",
+          method: "ntc2018-4.1.2.3.9.2-screening-and-4.1.44",
           unresolvedAxes: unresolvedAxes.map((axis) => axis.id),
           ...this.metadata
         }
@@ -58038,7 +58862,7 @@ var ReinforcedConcreteColumnVerification = class {
       },
       analysisType: "uls-biaxial-domain",
       analysisSettings: {
-        angleCount: (_d = model.stability.biaxialAngleCount) != null ? _d : 64
+        angleCount: (_f = model.stability.biaxialAngleCount) != null ? _f : 64
       },
       mesh: model.mesh,
       solver: model.solver,
@@ -58056,7 +58880,7 @@ var ReinforcedConcreteColumnVerification = class {
       code: this.code
     }).verify(sectionModel);
     const capacity = rayCapacity(
-      (_f = (_e = sectionResult.outputs) == null ? void 0 : _e.points) != null ? _f : [],
+      (_h = (_g = sectionResult.outputs) == null ? void 0 : _g.points) != null ? _h : [],
       axisMx.designMoment,
       axisMy.designMoment
     );
@@ -58078,16 +58902,73 @@ var ReinforcedConcreteColumnVerification = class {
         } : null
       }
     };
-    const checks = [...axes.map((axis) => axis.check), resistanceCheck];
-    const governing = governingCheck([resistanceCheck]);
-    const ok = checks.every((check) => check.ok === true);
+    const capacityDesign = (_i = model.shear) == null ? void 0 : _i.capacityDesign;
+    const seismicGammaRd = ((_k = (_j = model.detailing) == null ? void 0 : _j.seismic) == null ? void 0 : _k.enabled) ? String(model.detailing.seismic.ductilityClass).toUpperCase().includes("A") ? 1.2 : 1 : 1;
+    const shearResults = Object.fromEntries(
+      [
+        ["x", (_l = model.shear) == null ? void 0 : _l.x, model.actions.vxEd, axisMx.designMoment],
+        ["y", (_m = model.shear) == null ? void 0 : _m.y, model.actions.vyEd, axisMy.designMoment]
+      ].filter(([, shear]) => shear).map(([axisId, shear, action, moment]) => {
+        var _a2, _b2, _c2;
+        const endMoments = (_a2 = capacityDesign == null ? void 0 : capacityDesign[axisId === "x" ? "endMomentsX" : "endMomentsY"]) != null ? _a2 : [];
+        const capacityDesignShear = endMoments.length > 0 ? seismicGammaRd * endMoments.reduce(
+          (sum, value) => sum + Math.abs(value),
+          0
+        ) / capacityDesign.clearLength : 0;
+        const vEd = Math.max(Math.abs((_c2 = (_b2 = shear.vEd) != null ? _b2 : action) != null ? _c2 : 0), capacityDesignShear);
+        const result = new ReinforcedConcreteShearVerification({
+          code: this.code
+        }).verifySectionActions({
+          nEd: model.actions.nEd,
+          vEd,
+          mEd: moment,
+          section: model.section,
+          concreteMaterial: model.concreteMaterial,
+          reinforcementMaterial: model.reinforcementMaterial,
+          shear,
+          units: INTERNAL_UNITS27
+        });
+        result.checks = result.checks.map((check) => {
+          var _a3, _b3, _c3;
+          return {
+            ...check,
+            id: `${check.id}-${axisId}`,
+            metadata: {
+              ...check.metadata,
+              axis: axisId,
+              analysisShear: round3(Math.abs((_b3 = (_a3 = shear.vEd) != null ? _a3 : action) != null ? _b3 : 0)),
+              capacityDesignShear: round3(capacityDesignShear),
+              gammaRd: seismicGammaRd,
+              reference: capacityDesignShear > 0 ? "NTC2018-7.4.5" : (_c3 = check.metadata) == null ? void 0 : _c3.reference
+            }
+          };
+        });
+        return [axisId, result];
+      })
+    );
+    const detailingResult = model.detailing ? new ReinforcedConcreteColumnDetailingVerification({
+      code: this.code
+    }).verify({ model, compression, normalizedAxialForce }) : null;
+    const checks = [
+      ...axes.map((axis) => axis.check),
+      resistanceCheck,
+      ...Object.values(shearResults).flatMap((result) => result.checks),
+      ...(_n = detailingResult == null ? void 0 : detailingResult.checks) != null ? _n : []
+    ];
+    const governing = governingCheck(checks);
+    const componentStatuses = [
+      sectionResult.status,
+      ...Object.values(shearResults).map((result) => result.status),
+      ...detailingResult ? [detailingResult.status] : []
+    ];
+    const ok = checks.every((check) => check.ok === true) && componentStatuses.every((status) => status === RESULT_STATUS.OK);
     return new VerificationResult({
       applicationId: "reinforced-concrete-columns",
       status: ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       summary: "RC column NTC 2018 slenderness screening and biaxial section resistance verification.",
-      utilizationRatio: (_g = governing == null ? void 0 : governing.utilizationRatio) != null ? _g : null,
-      demand: (_h = governing == null ? void 0 : governing.demand) != null ? _h : null,
-      capacity: (_i = governing == null ? void 0 : governing.capacity) != null ? _i : null,
+      utilizationRatio: (_o = governing == null ? void 0 : governing.utilizationRatio) != null ? _o : null,
+      demand: (_p = governing == null ? void 0 : governing.demand) != null ? _p : null,
+      capacity: (_q = governing == null ? void 0 : governing.capacity) != null ? _q : null,
       checks,
       outputs: {
         ...baseOutputs2,
@@ -58096,22 +58977,37 @@ var ReinforcedConcreteColumnVerification = class {
           mxEd: round3(axisMx.designMoment),
           myEd: round3(axisMy.designMoment)
         },
-        sectionResult: sectionResult.toJSON()
+        sectionResult: sectionResult.toJSON(),
+        shear: Object.fromEntries(
+          Object.entries(shearResults).map(([axis, result]) => {
+            var _a2, _b2;
+            return [
+              axis,
+              (_b2 = (_a2 = result.toJSON) == null ? void 0 : _a2.call(result)) != null ? _b2 : result
+            ];
+          })
+        ),
+        detailing: (_r = detailingResult == null ? void 0 : detailingResult.toJSON()) != null ? _r : null
       },
       warnings: [
         ...sectionResult.warnings,
-        "Minimum eccentricity, member detailing, confinement and seismic ductility checks are not included in this first column MVP."
+        ...Object.values(shearResults).flatMap((result) => result.warnings),
+        ...(_s = detailingResult == null ? void 0 : detailingResult.warnings) != null ? _s : [],
+        ...!model.shear ? ["Column shear was not checked because no shear contract was supplied."] : [],
+        ...!model.detailing ? ["Column reinforcement, confinement and ductility were not checked because no detailing contract was supplied."] : []
       ],
       assumptions: [
         ...sectionResult.assumptions,
+        ...Object.values(shearResults).flatMap((result) => result.assumptions),
+        ...(_t = detailingResult == null ? void 0 : detailingResult.assumptions) != null ? _t : [],
         "Compression is negative by default; change stability.compressionSignConvention explicitly when required.",
         "mxEd is paired with concreteSection.inertiaY and myEd with concreteSection.inertiaZ, following the existing RC section action convention.",
-        "For slender axes the supplied total moment is assumed to include imperfections, cracking, creep and second-order effects from an adequate analysis."
+        "Explicit total moments are assumed to include imperfections, cracking, creep and second-order effects; generated moments use the documented NTC nominal-stiffness isolated-member method."
       ],
       metadata: {
         code: this.code,
-        method: "ntc2018-4.1.2.3.9.2-plus-fiber-domain",
-        governingCheckId: (_j = governing == null ? void 0 : governing.id) != null ? _j : null,
+        method: "ntc2018-column-stability-resistance-shear-detailing",
+        governingCheckId: (_u = governing == null ? void 0 : governing.id) != null ? _u : null,
         ...this.metadata
       }
     });
@@ -58124,15 +59020,16 @@ var ReinforcedConcreteColumnApplication = class extends StructuralApplication {
     super({
       id: "reinforced-concrete-columns",
       name: "RC Columns",
-      description: "Local reinforced-concrete column verification with NTC 2018 slenderness screening and biaxial section resistance.",
+      description: "Local RC column verification with NTC 2018 second-order generation, biaxial resistance, shear, confinement and detailing.",
       domain: "reinforced-concrete",
       supportedCodes: ["NTC2018"],
       tags: ["rc", "columns", "biaxial-bending", "stability", "uls"],
       metadata: {
         maturity: "partial",
         limitations: [
-          "slender columns require supplied second-order design moments",
-          "member detailing and seismic ductility are not implemented"
+          "nominal-stiffness moment generation applies to isolated members with assigned effective lengths",
+          "global frame P-Delta analysis and automatic effective lengths remain consumer responsibilities",
+          "shear and detailing require explicit serializable reinforcement contracts"
         ]
       }
     });
@@ -58156,6 +59053,63 @@ function positiveLength(value, label) {
   }
   return value;
 }
+function convertShearAxis(input, resolver, label) {
+  var _a;
+  if (!input) return null;
+  return {
+    ...input,
+    vEd: resolver.force(Number((_a = input.vEd) != null ? _a : 0)),
+    bw: resolver.length(Number(input.bw)),
+    effectiveDepth: resolver.length(Number(input.effectiveDepth)),
+    longitudinalReinforcementArea: resolver.area(
+      Number(input.longitudinalReinforcementArea)
+    ),
+    transverseReinforcement: input.transverseReinforcement ? {
+      ...input.transverseReinforcement,
+      areaPerSpacing: resolver.length(
+        Number(input.transverseReinforcement.areaPerSpacing)
+      ),
+      spacing: input.transverseReinforcement.spacing == null ? null : resolver.length(Number(input.transverseReinforcement.spacing)),
+      area: input.transverseReinforcement.area == null ? null : resolver.area(Number(input.transverseReinforcement.area))
+    } : null,
+    label
+  };
+}
+function convertDetailing(input, resolver) {
+  var _a;
+  if (!input) return null;
+  const length = (value) => value == null ? null : resolver.length(Number(value));
+  const area = (value) => value == null ? null : resolver.area(Number(value));
+  return {
+    ...structuredClone(input),
+    longitudinal: input.longitudinal ? {
+      ...input.longitudinal,
+      area: area(input.longitudinal.area),
+      minimumBarDiameter: length(input.longitudinal.minimumBarDiameter),
+      maximumBarDiameter: length(input.longitudinal.maximumBarDiameter),
+      maximumBarSpacing: length(input.longitudinal.maximumBarSpacing)
+    } : null,
+    transverse: input.transverse ? {
+      ...input.transverse,
+      diameter: length(input.transverse.diameter),
+      spacing: length(input.transverse.spacing)
+    } : null,
+    confinement: input.confinement ? {
+      ...input.confinement,
+      coreWidth: length(input.confinement.coreWidth),
+      coreDepth: length(input.confinement.coreDepth),
+      volumePerSet: input.confinement.volumePerSet == null ? null : resolver.convert(Number(input.confinement.volumePerSet), {
+        lengthExponent: 3
+      }),
+      restrainedBarSpacings: ((_a = input.confinement.restrainedBarSpacings) != null ? _a : []).map((value) => length(value))
+    } : null,
+    anchorage: input.anchorage ? {
+      ...input.anchorage,
+      barDiameter: length(input.anchorage.barDiameter),
+      availableLength: length(input.anchorage.availableLength)
+    } : null
+  };
+}
 var ReinforcedConcreteColumnModel = class {
   constructor({
     id,
@@ -58165,12 +59119,14 @@ var ReinforcedConcreteColumnModel = class {
     length,
     stability = {},
     actions = {},
+    shear = null,
+    detailing = null,
     mesh = { targetFiberCount: 120 },
     solver = { tolerance: 1e-6, maxIterations: 100 },
     units = null,
     metadata = {}
   } = {}) {
-    var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p;
+    var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w;
     if (!id) {
       throw new Error("A reinforced concrete column model id is required.");
     }
@@ -58201,18 +59157,37 @@ var ReinforcedConcreteColumnModel = class {
       effectiveLengthMx,
       effectiveLengthMy,
       compressionSignConvention: (_g = stability.compressionSignConvention) != null ? _g : "compression-negative",
-      designMomentsIncludeSecondOrder: (_h = stability.designMomentsIncludeSecondOrder) != null ? _h : false
+      designMomentsIncludeSecondOrder: (_h = stability.designMomentsIncludeSecondOrder) != null ? _h : false,
+      secondOrderMethod: (_i = stability.secondOrderMethod) != null ? _i : "ntc2018-nominal-stiffness",
+      creepCoefficient: stability.creepCoefficient == null ? null : Number(stability.creepCoefficient),
+      momentDistributionFactor: stability.momentDistributionFactor == null ? 1 : Number(stability.momentDistributionFactor),
+      includeImperfectionWhenMomentIsZero: (_j = stability.includeImperfectionWhenMomentIsZero) != null ? _j : true
     };
     this.actions = {
       ...actions,
-      nEd: resolver.force((_j = (_i = actions.nEd) != null ? _i : actions.n) != null ? _j : 0),
-      mxEd: resolver.moment((_l = (_k = actions.mxEd) != null ? _k : actions.mzEd) != null ? _l : 0),
-      myEd: resolver.moment((_m = actions.myEd) != null ? _m : 0),
+      nEd: resolver.force((_l = (_k = actions.nEd) != null ? _k : actions.n) != null ? _l : 0),
+      mxEd: resolver.moment((_n = (_m = actions.mxEd) != null ? _m : actions.mzEd) != null ? _n : 0),
+      myEd: resolver.moment((_o = actions.myEd) != null ? _o : 0),
       mxEdTotal: resolver.moment(
-        (_o = (_n = actions.mxEdTotal) != null ? _n : actions.mzEdTotal) != null ? _o : null
+        (_q = (_p = actions.mxEdTotal) != null ? _p : actions.mzEdTotal) != null ? _q : null
       ),
-      myEdTotal: resolver.moment((_p = actions.myEdTotal) != null ? _p : null)
+      myEdTotal: resolver.moment((_r = actions.myEdTotal) != null ? _r : null),
+      vxEd: resolver.force((_s = actions.vxEd) != null ? _s : 0),
+      vyEd: resolver.force((_t = actions.vyEd) != null ? _t : 0)
     };
+    this.shear = shear ? {
+      x: convertShearAxis(shear.x, resolver, "x"),
+      y: convertShearAxis(shear.y, resolver, "y"),
+      capacityDesign: shear.capacityDesign ? {
+        ...shear.capacityDesign,
+        clearLength: resolver.length(
+          Number((_u = shear.capacityDesign.clearLength) != null ? _u : length)
+        ),
+        endMomentsX: ((_v = shear.capacityDesign.endMomentsX) != null ? _v : []).map((value) => resolver.moment(Number(value))),
+        endMomentsY: ((_w = shear.capacityDesign.endMomentsY) != null ? _w : []).map((value) => resolver.moment(Number(value)))
+      } : null
+    } : null;
+    this.detailing = convertDetailing(detailing, resolver);
     this.mesh = { ...mesh };
     this.solver = { ...solver };
     this.units = INTERNAL_UNITS28;
@@ -58226,7 +59201,7 @@ var ReinforcedConcreteColumnModel = class {
 
 // src/applications/reinforced-concrete-isolated-footings/ReinforcedConcreteIsolatedFootingModel.js
 var INTERNAL_UNITS29 = Object.freeze({ force: "N", length: "mm" });
-function positive10(value, label) {
+function positive12(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be positive.`);
   }
@@ -58243,15 +59218,15 @@ function normalizeLayer2(input, resolver, label) {
   if (!input) {
     throw new Error(`${label} is required.`);
   }
-  const diameter = positive10(
+  const diameter = positive12(
     resolver.length(Number(input.diameter)),
     `${label}.diameter`
   );
-  const spacing = positive10(
+  const spacing = positive12(
     resolver.length(Number(input.spacing)),
     `${label}.spacing`
   );
-  const clearCover = positive10(
+  const clearCover = positive12(
     resolver.length(Number(input.clearCover)),
     `${label}.clearCover`
   );
@@ -58280,34 +59255,36 @@ var ReinforcedConcreteIsolatedFootingModel = class {
     materials = {},
     reinforcement = {},
     punching = {},
+    localBearing = {},
+    anchorage = {},
     mesh = {},
     solver = {},
     units = null,
     metadata = {}
   } = {}) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o;
     if (!id) {
       throw new Error("A reinforced-concrete isolated footing id is required.");
     }
     assertExplicitUnitSystem(units, "ReinforcedConcreteIsolatedFootingModel");
     const resolver = createUnitResolver(units, INTERNAL_UNITS29);
-    const widthX = positive10(
+    const widthX = positive12(
       resolver.length(Number(geometry.widthX)),
       "geometry.widthX"
     );
-    const widthY = positive10(
+    const widthY = positive12(
       resolver.length(Number(geometry.widthY)),
       "geometry.widthY"
     );
-    const thickness = positive10(
+    const thickness = positive12(
       resolver.length(Number(geometry.thickness)),
       "geometry.thickness"
     );
-    const columnWidthX = positive10(
+    const columnWidthX = positive12(
       resolver.length(Number(column.widthX)),
       "column.widthX"
     );
-    const columnWidthY = positive10(
+    const columnWidthY = positive12(
       resolver.length(Number(column.widthY)),
       "column.widthY"
     );
@@ -58333,7 +59310,7 @@ var ReinforcedConcreteIsolatedFootingModel = class {
     if (bottomX.axisFromBottom >= thickness || bottomY.axisFromBottom >= thickness) {
       throw new Error("Bottom reinforcement axes must lie inside the footing thickness.");
     }
-    const columnVerticalForce = positive10(
+    const columnVerticalForce = positive12(
       resolver.force(Number((_c = actions.columnVerticalForce) != null ? _c : actions.nEd)),
       "actions.columnVerticalForce"
     );
@@ -58341,7 +59318,7 @@ var ReinforcedConcreteIsolatedFootingModel = class {
       resolver.stress(Number((_d = actions.uniformDownwardPressure) != null ? _d : 0)),
       "actions.uniformDownwardPressure"
     );
-    const designBearingResistance = positive10(
+    const designBearingResistance = positive12(
       resolver.stress(Number(soil.designBearingResistance)),
       "soil.designBearingResistance"
     );
@@ -58388,6 +59365,36 @@ var ReinforcedConcreteIsolatedFootingModel = class {
       punching: reinforcement.punching == null ? { present: false } : structuredClone(reinforcement.punching)
     };
     this.punching = structuredClone(punching != null ? punching : {});
+    this.localBearing = {
+      distributionArea: localBearing.distributionArea == null ? null : positive12(
+        resolver.area(Number(localBearing.distributionArea)),
+        "localBearing.distributionArea"
+      ),
+      resistanceReductionFactor: (_m = localBearing.resistanceReductionFactor) != null ? _m : 1
+    };
+    const normalizeAnchor2 = (input, label) => input == null ? null : {
+      ...input,
+      diameter: positive12(
+        resolver.length(Number(input.diameter)),
+        `${label}.diameter`
+      ),
+      availableLength: positive12(
+        resolver.length(Number(input.availableLength)),
+        `${label}.availableLength`
+      ),
+      designSteelStress: input.designSteelStress == null ? null : positive12(
+        resolver.stress(Number(input.designSteelStress)),
+        `${label}.designSteelStress`
+      ),
+      fctd: input.fctd == null ? null : positive12(resolver.stress(Number(input.fctd)), `${label}.fctd`)
+    };
+    this.anchorage = {
+      columnBars: normalizeAnchor2(anchorage.columnBars, "anchorage.columnBars"),
+      footingBars: {
+        x: normalizeAnchor2((_n = anchorage.footingBars) == null ? void 0 : _n.x, "anchorage.footingBars.x"),
+        y: normalizeAnchor2((_o = anchorage.footingBars) == null ? void 0 : _o.y, "anchorage.footingBars.y")
+      }
+    };
     this.mesh = { targetFiberCount: 50, ...mesh };
     this.solver = { tolerance: 1e-6, maxIterations: 100, ...solver };
     this.units = INTERNAL_UNITS29;
@@ -58411,6 +59418,8 @@ var ReinforcedConcreteIsolatedFootingModel = class {
       },
       reinforcement: structuredClone(this.reinforcement),
       punching: structuredClone(this.punching),
+      localBearing: { ...this.localBearing },
+      anchorage: structuredClone(this.anchorage),
       mesh: { ...this.mesh },
       solver: { ...this.solver },
       units: { ...this.units },
@@ -58569,7 +59578,7 @@ var PunchingVerificationRequest = class {
 };
 
 // src/norms/en1992/punching/en1992Punching2004.js
-function positive11(value, label) {
+function positive13(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be finite and positive.`);
   }
@@ -58592,13 +59601,13 @@ function calculateEn1992Punching2004WithoutShearReinforcement({
   k1 = 0.1,
   sigmaCp = 0
 }) {
-  const resolvedFck = positive11(fck, "fck");
-  const d = positive11(effectiveDepth, "effectiveDepth");
-  const rhoX = positive11(reinforcementRatioX, "reinforcementRatioX");
-  const rhoY = positive11(reinforcementRatioY, "reinforcementRatioY");
-  const resolvedGammaC = positive11(gammaC, "gammaC");
-  const resolvedAlphaCc = positive11(alphaCc, "alphaCc");
-  const resolvedCRdc = positive11(cRdc, "cRdc");
+  const resolvedFck = positive13(fck, "fck");
+  const d = positive13(effectiveDepth, "effectiveDepth");
+  const rhoX = positive13(reinforcementRatioX, "reinforcementRatioX");
+  const rhoY = positive13(reinforcementRatioY, "reinforcementRatioY");
+  const resolvedGammaC = positive13(gammaC, "gammaC");
+  const resolvedAlphaCc = positive13(alphaCc, "alphaCc");
+  const resolvedCRdc = positive13(cRdc, "cRdc");
   const resolvedK1 = finite9(k1, "k1");
   const resolvedSigmaCp = finite9(sigmaCp, "sigmaCp");
   const rawRhoL = Math.sqrt(rhoX * rhoY);
@@ -58650,12 +59659,12 @@ function calculateEn1992Punching2004WithShearReinforcement({
   areaPerPerimeter,
   fywd
 }) {
-  const vRdc = positive11(concreteResistance, "concreteResistance");
-  const d = positive11(effectiveDepth, "effectiveDepth");
-  const u1 = positive11(controlPerimeter, "controlPerimeter");
-  const sr = positive11(radialSpacing, "radialSpacing");
-  const asw = positive11(areaPerPerimeter, "areaPerPerimeter");
-  const resolvedFywd = positive11(fywd, "fywd");
+  const vRdc = positive13(concreteResistance, "concreteResistance");
+  const d = positive13(effectiveDepth, "effectiveDepth");
+  const u1 = positive13(controlPerimeter, "controlPerimeter");
+  const sr = positive13(radialSpacing, "radialSpacing");
+  const asw = positive13(areaPerPerimeter, "areaPerPerimeter");
+  const resolvedFywd = positive13(fywd, "fywd");
   const fywdEffective = Math.min(250 + 0.25 * d, resolvedFywd);
   const concreteContribution = 0.75 * vRdc;
   const reinforcementContribution = 1.5 * d / sr * asw * fywdEffective / (u1 * d);
@@ -58679,7 +59688,7 @@ function calculateEn1992Punching2004WithShearReinforcement({
 }
 
 // src/norms/en1992/punching/en1992Punching2023.js
-function positive12(value, label) {
+function positive14(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be finite and positive.`);
   }
@@ -58698,14 +59707,14 @@ function calculateEn1992Punching2023WithoutShearReinforcement({
   controlPerimeter,
   gammaV
 }) {
-  const resolvedFck = positive12(fck, "fck");
-  const dv = positive12(shearEffectiveDepth, "shearEffectiveDepth");
-  const rhoX = positive12(reinforcementRatioX, "reinforcementRatioX");
-  const rhoY = positive12(reinforcementRatioY, "reinforcementRatioY");
-  const dLower = positive12(lowerAggregateSize, "lowerAggregateSize");
-  const b0 = positive12(supportPerimeter, "supportPerimeter");
-  const b05 = positive12(controlPerimeter, "controlPerimeter");
-  const resolvedGammaV = positive12(gammaV, "gammaV");
+  const resolvedFck = positive14(fck, "fck");
+  const dv = positive14(shearEffectiveDepth, "shearEffectiveDepth");
+  const rhoX = positive14(reinforcementRatioX, "reinforcementRatioX");
+  const rhoY = positive14(reinforcementRatioY, "reinforcementRatioY");
+  const dLower = positive14(lowerAggregateSize, "lowerAggregateSize");
+  const b0 = positive14(supportPerimeter, "supportPerimeter");
+  const b05 = positive14(controlPerimeter, "controlPerimeter");
+  const resolvedGammaV = positive14(gammaV, "gammaV");
   if (b05 <= b0) {
     throw new Error("controlPerimeter must be greater than supportPerimeter.");
   }
@@ -58760,17 +59769,17 @@ function calculateEn1992Punching2023WithShearReinforcement({
   system,
   supportPerimeter
 }) {
-  const tauRdc = positive12(concreteResistance, "concreteResistance");
-  const tauEd = positive12(actingStress, "actingStress");
-  const dv = positive12(shearEffectiveDepth, "shearEffectiveDepth");
-  const resolvedDdg = positive12(dDg, "dDg");
-  const resolvedKpb = positive12(kpb, "kpb");
-  const asw = positive12(legArea, "legArea");
-  const sr = positive12(radialSpacing, "radialSpacing");
-  const st = positive12(tangentialSpacing, "tangentialSpacing");
-  const diameter = positive12(legDiameter, "legDiameter");
-  const resolvedFywd = positive12(fywd, "fywd");
-  const b0 = positive12(supportPerimeter, "supportPerimeter");
+  const tauRdc = positive14(concreteResistance, "concreteResistance");
+  const tauEd = positive14(actingStress, "actingStress");
+  const dv = positive14(shearEffectiveDepth, "shearEffectiveDepth");
+  const resolvedDdg = positive14(dDg, "dDg");
+  const resolvedKpb = positive14(kpb, "kpb");
+  const asw = positive14(legArea, "legArea");
+  const sr = positive14(radialSpacing, "radialSpacing");
+  const st = positive14(tangentialSpacing, "tangentialSpacing");
+  const diameter = positive14(legDiameter, "legDiameter");
+  const resolvedFywd = positive14(fywd, "fywd");
+  const b0 = positive14(supportPerimeter, "supportPerimeter");
   if (!["studs", "links"].includes(system)) {
     throw new Error("system must be studs or links.");
   }
@@ -58812,7 +59821,7 @@ function calculateEn1992Punching2023WithShearReinforcement({
 }
 
 // src/norms/en1992/punching/en1992PunchingConcentration.js
-function positive13(value, label) {
+function positive15(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be finite and positive.`);
   }
@@ -58845,15 +59854,15 @@ function calculateEn1992PunchingBeta2004({
   controlPerimeter,
   lineOfAction
 }) {
-  const d = positive13(effectiveDepth, "effectiveDepth");
-  const u1 = positive13(controlPerimeter, "controlPerimeter");
+  const d = positive15(effectiveDepth, "effectiveDepth");
+  const u1 = positive15(controlPerimeter, "controlPerimeter");
   const point2 = finitePoint(lineOfAction, "lineOfAction");
   const center = finitePoint(footprint == null ? void 0 : footprint.center, "footprint.center");
   const ex = point2.x - center.x;
   const ey = point2.y - center.y;
   if (position === "interior" && footprint.shape === "circle") {
     const eccentricity = Math.hypot(ex, ey);
-    const beta = 1 + 0.6 * Math.PI * eccentricity / (positive13(footprint.diameter, "footprint.diameter") + 4 * d);
+    const beta = 1 + 0.6 * Math.PI * eccentricity / (positive15(footprint.diameter, "footprint.diameter") + 4 * d);
     return {
       beta,
       method: "equation-6.42-circular-interior",
@@ -58864,8 +59873,8 @@ function calculateEn1992PunchingBeta2004({
   if ((footprint == null ? void 0 : footprint.shape) !== "rectangle") {
     throw new Error("Automatic beta requires a rectangular support, except for interior circular supports.");
   }
-  const c1 = positive13(footprint.sizeX, "footprint.sizeX");
-  const c2 = positive13(footprint.sizeY, "footprint.sizeY");
+  const c1 = positive15(footprint.sizeX, "footprint.sizeX");
+  const c2 = positive15(footprint.sizeY, "footprint.sizeY");
   if (position === "interior") {
     const widthX = c1 + 4 * d;
     const widthY = c2 + 4 * d;
@@ -58920,8 +59929,8 @@ function calculateEn1992PunchingBetaE2023({
 }) {
   const centroid = finitePoint(controlPerimeterCentroid, "controlPerimeterCentroid");
   const point2 = finitePoint(lineOfAction, "lineOfAction");
-  const widthX = positive13(controlPerimeterWidths == null ? void 0 : controlPerimeterWidths.x, "controlPerimeterWidths.x");
-  const widthY = positive13(controlPerimeterWidths == null ? void 0 : controlPerimeterWidths.y, "controlPerimeterWidths.y");
+  const widthX = positive15(controlPerimeterWidths == null ? void 0 : controlPerimeterWidths.x, "controlPerimeterWidths.x");
+  const widthY = positive15(controlPerimeterWidths == null ? void 0 : controlPerimeterWidths.y, "controlPerimeterWidths.y");
   const ebx = point2.x - centroid.x;
   const eby = point2.y - centroid.y;
   let eb;
@@ -60285,8 +61294,14 @@ var PUNCHING_2004 = "EN1992_1_1_2004_A1_2014";
 function totalVerticalForce(model) {
   return model.actions.columnVerticalForce + model.actions.uniformDownwardPressure * model.geometry.widthX * model.geometry.widthY;
 }
+function polygonArea(points) {
+  return Math.abs(points.reduce((sum, point2, index) => {
+    const next = points[(index + 1) % points.length];
+    return sum + point2.x * next.y - next.x * point2.y;
+  }, 0)) / 2;
+}
 function createFootingStrip({ model, direction }) {
-  const layer = model.reinforcement.bottom[direction];
+  const layer2 = model.reinforcement.bottom[direction];
   const concreteSection = new RectangularSection({
     id: `${model.id}-${direction}-footing-strip-concrete`,
     width: UNIT_WIDTH2,
@@ -60295,17 +61310,17 @@ function createFootingStrip({ model, direction }) {
   });
   const reinforcementBar = new ReinforcementBar({
     id: `bottom-${direction}-equivalent-layer`,
-    diameter: layer.diameter,
-    area: layer.areaPerMeter,
+    diameter: layer2.diameter,
+    area: layer2.areaPerMeter,
     material: model.materials.reinforcementMaterial,
-    y: layer.axisFromBottom,
+    y: layer2.axisFromBottom,
     z: UNIT_WIDTH2 / 2,
     units: INTERNAL_UNITS31,
     metadata: {
       equivalentDistributedArea: true,
       direction,
-      spacing: layer.spacing,
-      barsPerMeter: layer.barsPerMeter
+      spacing: layer2.spacing,
+      barsPerMeter: layer2.barsPerMeter
     }
   });
   const section = new ReinforcedConcreteSection({
@@ -60323,8 +61338,8 @@ function createFootingStrip({ model, direction }) {
   });
   return {
     section,
-    layer,
-    effectiveDepth: model.geometry.thickness - layer.axisFromBottom
+    layer: layer2,
+    effectiveDepth: model.geometry.thickness - layer2.axisFromBottom
   };
 }
 function criticalStripDemand({ model, contact, direction, effectiveDepth }) {
@@ -60459,8 +61474,27 @@ function verifyDirection({ model, contact, direction }) {
 function punchingPerimeterFits(model, effectiveDepth) {
   return model.column.widthX + 4 * effectiveDepth <= model.geometry.widthX + 1e-9 && model.column.widthY + 4 * effectiveDepth <= model.geometry.widthY + 1e-9;
 }
+function roundedRectanglePolygon(width, height, offset, segmentsPerCorner = 16) {
+  const points = [];
+  const corners = [
+    { x: width / 2, y: -height / 2, start: -Math.PI / 2 },
+    { x: width / 2, y: height / 2, start: 0 },
+    { x: -width / 2, y: height / 2, start: Math.PI / 2 },
+    { x: -width / 2, y: -height / 2, start: Math.PI }
+  ];
+  for (const corner of corners) {
+    for (let index = 0; index <= segmentsPerCorner; index += 1) {
+      const angle = corner.start + Math.PI / 2 * index / segmentsPerCorner;
+      points.push({
+        x: corner.x + offset * Math.cos(angle),
+        y: corner.y + offset * Math.sin(angle)
+      });
+    }
+  }
+  return points;
+}
 function verifyPunchingForFooting({ model, contact, directions }) {
-  var _a, _b;
+  var _a, _b, _c;
   const effectiveDepthX = directions.x.effectiveDepth;
   const effectiveDepthY = directions.y.effectiveDepth;
   const effectiveDepth = (effectiveDepthX + effectiveDepthY) / 2;
@@ -60520,9 +61554,24 @@ function verifyPunchingForFooting({ model, contact, directions }) {
     };
   }
   const offset = 2 * effectiveDepth;
-  const enclosedArea = model.column.widthX * model.column.widthY + 2 * offset * (model.column.widthX + model.column.widthY) + Math.PI * offset ** 2;
-  const effectiveMeanPressure = contact.pressurePolynomial.intercept - model.actions.uniformDownwardPressure;
-  const enclosedUpwardForce = Math.max(0, effectiveMeanPressure * enclosedArea);
+  const perimeterPolygon = roundedRectanglePolygon(
+    model.column.widthX,
+    model.column.widthY,
+    offset,
+    (_b = model.punching.contactIntegrationSegmentsPerCorner) != null ? _b : 24
+  );
+  const enclosedContact = integrateFootingPressurePolygon({
+    contact,
+    polygon: perimeterPolygon
+  });
+  const enclosedArea = polygonArea(perimeterPolygon);
+  const enclosedContactArea = enclosedContact.area;
+  const enclosedSoilForce = enclosedContact.force;
+  const enclosedDownwardForce = model.actions.uniformDownwardPressure * enclosedArea;
+  const enclosedUpwardForce = Math.max(
+    0,
+    enclosedSoilForce - enclosedDownwardForce
+  );
   const punchingForce = Math.max(
     0,
     model.actions.columnVerticalForce - enclosedUpwardForce
@@ -60555,7 +61604,7 @@ function verifyPunchingForFooting({ model, contact, directions }) {
     },
     materials: {
       concrete: { fck: model.materials.concreteMaterial.fck },
-      concreteAggregate: (_b = model.punching.concreteAggregate) != null ? _b : null
+      concreteAggregate: (_c = model.punching.concreteAggregate) != null ? _c : null
     },
     reinforcement: {
       flexuralTension: {
@@ -60612,7 +61661,9 @@ function verifyPunchingForFooting({ model, contact, directions }) {
       effectiveDepth,
       basicPerimeterInsideFooting: true,
       enclosedArea: round3(enclosedArea),
-      effectiveMeanPressure: round3(effectiveMeanPressure),
+      enclosedContactArea: round3(enclosedContactArea),
+      enclosedSoilForce: round3(enclosedSoilForce),
+      enclosedDownwardForce: round3(enclosedDownwardForce),
       enclosedUpwardForce: round3(enclosedUpwardForce),
       punchingForce: round3(punchingForce),
       verification: result.toJSON()
@@ -60620,9 +61671,114 @@ function verifyPunchingForFooting({ model, contact, directions }) {
     warnings: result.warnings,
     assumptions: [
       ...result.assumptions,
-      "For full contact and a centered control perimeter, the linear pressure gradients have zero resultant over the enclosed symmetric area."
+      "The effective soil reaction inside the 2d perimeter is integrated over the compression-only contact polygon; the rounded perimeter is discretized explicitly."
     ]
   };
+}
+function verifyLocalBearing(model) {
+  var _a;
+  const loadedArea = model.column.widthX * model.column.widthY;
+  const distributionWidthX = Math.min(
+    model.geometry.widthX,
+    3 * model.column.widthX,
+    model.column.widthX + model.geometry.thickness
+  );
+  const distributionWidthY = Math.min(
+    model.geometry.widthY,
+    3 * model.column.widthY,
+    model.column.widthY + model.geometry.thickness
+  );
+  const distributionArea = (_a = model.localBearing.distributionArea) != null ? _a : distributionWidthX * distributionWidthY;
+  const bearing = calculateEn1992LocalBearingResistance({
+    loadedArea,
+    distributionArea,
+    fcd: model.materials.concreteMaterial.fcd,
+    resistanceReductionFactor: model.localBearing.resistanceReductionFactor
+  });
+  const eccentric = Math.abs(model.actions.momentX) > 1e-9 || Math.abs(model.actions.momentY) > 1e-9 || Math.hypot(model.actions.horizontalX, model.actions.horizontalY) > 1e-9;
+  const maximumInterfacePressure = model.actions.columnVerticalForce / loadedArea + 6 * Math.abs(model.actions.momentX) / (model.column.widthX * model.column.widthY ** 2) + 6 * Math.abs(model.actions.momentY) / (model.column.widthY * model.column.widthX ** 2);
+  const check = eccentric ? {
+    id: "rc-footing-column-interface-crushing",
+    description: "Conservative local crushing at eccentric column-footing interface",
+    demand: round3(maximumInterfacePressure),
+    capacity: round3(
+      model.localBearing.resistanceReductionFactor * model.materials.concreteMaterial.fcd
+    ),
+    utilizationRatio: round3(
+      maximumInterfacePressure / (model.localBearing.resistanceReductionFactor * model.materials.concreteMaterial.fcd)
+    ),
+    ok: maximumInterfacePressure <= model.localBearing.resistanceReductionFactor * model.materials.concreteMaterial.fcd,
+    metadata: {
+      method: "nonuniform-interface-peak-stress-no-dispersion-enhancement",
+      reference: "EN1992-1-1:2004-6.7(3)"
+    }
+  } : {
+    id: "rc-footing-column-interface-crushing",
+    description: "Local concrete bearing at column-footing interface",
+    demand: round3(model.actions.columnVerticalForce),
+    capacity: round3(bearing.resistance),
+    utilizationRatio: round3(
+      model.actions.columnVerticalForce / bearing.resistance
+    ),
+    ok: model.actions.columnVerticalForce <= bearing.resistance,
+    metadata: {
+      ...bearing,
+      loadedArea,
+      distributionArea
+    }
+  };
+  return {
+    check,
+    outputs: {
+      loadedArea,
+      distributionArea,
+      distributionWidthX,
+      distributionWidthY,
+      maximumInterfacePressure,
+      eccentric,
+      ...bearing
+    },
+    warnings: bearing.enhancement > 1 ? ["Local-bearing enhancement requires transverse splitting forces to be carried by the footing reinforcement or a justified local strut-and-tie model."] : []
+  };
+}
+function verifyFootingAnchorages(model) {
+  const fctd = 0.7 * model.materials.concreteMaterial.fctm / model.materials.concreteMaterial.metadata.gammaC;
+  const fyd = model.materials.reinforcementMaterial.fyd;
+  const anchors = [
+    ["column-bars", model.anchorage.columnBars],
+    ["footing-bars-x", model.anchorage.footingBars.x],
+    ["footing-bars-y", model.anchorage.footingBars.y]
+  ].filter(([, anchor]) => anchor);
+  return anchors.map(([id, anchor]) => {
+    var _a, _b, _c, _d, _e, _f, _g, _h;
+    const bond = calculateEn1992DesignBondStrength({
+      fctd: (_a = anchor.fctd) != null ? _a : fctd,
+      barDiameter: anchor.diameter,
+      bondConditionFactor: (_b = anchor.bondConditionFactor) != null ? _b : 1
+    });
+    const required = calculateEn1992AnchorageLength({
+      barDiameter: anchor.diameter,
+      designSteelStress: (_c = anchor.designSteelStress) != null ? _c : fyd,
+      fbd: bond.fbd,
+      tension: anchor.tension !== false,
+      alpha1: (_d = anchor.alpha1) != null ? _d : 1,
+      alpha2: (_e = anchor.alpha2) != null ? _e : 1,
+      alpha3: (_f = anchor.alpha3) != null ? _f : 1,
+      alpha4: (_g = anchor.alpha4) != null ? _g : 1,
+      alpha5: (_h = anchor.alpha5) != null ? _h : 1,
+      nationalMinimumDiameterMultiple: 20,
+      nationalMinimumLength: 150
+    });
+    return {
+      id: `rc-footing-anchorage-${id}`,
+      description: `Anchorage of ${id.replaceAll("-", " ")}`,
+      demand: round3(required.designLength),
+      capacity: round3(anchor.availableLength),
+      utilizationRatio: round3(required.designLength / anchor.availableLength),
+      ok: required.designLength <= anchor.availableLength,
+      metadata: { ...required, fbd: round3(bond.fbd) }
+    };
+  });
 }
 var ReinforcedConcreteIsolatedFootingVerification = class {
   constructor({ code = "NTC2018", metadata = {} } = {}) {
@@ -60716,24 +61872,6 @@ var ReinforcedConcreteIsolatedFootingVerification = class {
         geotechnicalResistanceCalculatedByModule: false
       }
     };
-    if (contact.contactType !== "full") {
-      const checks2 = [contactCheck, bearingCheck, ...slidingCheck ? [slidingCheck] : []];
-      return new VerificationResult({
-        applicationId: "reinforced-concrete-isolated-footings",
-        status: RESULT_STATUS.NOT_SUPPORTED,
-        summary: "Uniaxial partial contact was solved, but structural footing checks remain limited to full contact.",
-        checks: checks2,
-        outputs: { footingId: model.id, contact },
-        warnings: [
-          "The triangular contact pressure is available, but bending, one-way shear and punching are not certified for partial contact in this MVP.",
-          ...slidingMissing ? ["A design sliding resistance is required when horizontal action is non-zero."] : []
-        ],
-        assumptions: [
-          "Soil contact has zero tensile strength and the footing base is treated as rigid."
-        ],
-        metadata: { code: this.code, ...this.metadata }
-      });
-    }
     if (slidingMissing) {
       return new VerificationResult({
         applicationId: "reinforced-concrete-isolated-footings",
@@ -60755,13 +61893,17 @@ var ReinforcedConcreteIsolatedFootingVerification = class {
       ])
     );
     const punching = verifyPunchingForFooting({ model, contact, directions });
+    const localBearing = verifyLocalBearing(model);
+    const anchorageChecks2 = verifyFootingAnchorages(model);
     const checks = [
       contactCheck,
       bearingCheck,
       ...slidingCheck ? [slidingCheck] : [],
       ...directions.x.checks,
       ...directions.y.checks,
-      ...punching.checks
+      ...punching.checks,
+      localBearing.check,
+      ...anchorageChecks2
     ];
     const structuralStatuses = [
       directions.x.bendingResult.status,
@@ -60801,7 +61943,11 @@ var ReinforcedConcreteIsolatedFootingVerification = class {
             }
           ])
         ),
-        punching: punching.outputs
+        punching: punching.outputs,
+        localBearing: localBearing.outputs,
+        anchorage: {
+          checkedCount: anchorageChecks2.length
+        }
       },
       warnings: [
         ...directions.x.bendingResult.warnings,
@@ -60809,7 +61955,8 @@ var ReinforcedConcreteIsolatedFootingVerification = class {
         ...directions.y.bendingResult.warnings,
         ...directions.y.shearResult.warnings,
         ...punching.warnings,
-        "Column-bar anchorage, footing-bar anchorage, local bearing at the column-footing interface and construction detailing are not included in this MVP.",
+        ...localBearing.warnings,
+        ...anchorageChecks2.length === 0 ? ["Column and footing bar anchorage were not checked because no anchorage contracts were supplied."] : [],
         ...model.soil.bearingResistanceSource == null ? ["The assigned design bearing resistance has no documented source in the input metadata."] : []
       ],
       assumptions: [
@@ -60818,13 +61965,13 @@ var ReinforcedConcreteIsolatedFootingVerification = class {
         ...directions.y.bendingResult.assumptions,
         ...directions.y.shearResult.assumptions,
         ...punching.assumptions,
-        "The footing and soil-contact pressure field are treated as rigid; structural strip actions are integrated from the resulting pressure plane.",
+        "The footing is rigid for contact analysis; structural strip actions and punching reaction are integrated from the compression-only pressure plane.",
         "The column is centered and unrotated, and all actions are reduced to the center of the footing base.",
         "The assigned bearing and sliding resistances already include the geotechnical design approach and partial factors selected by the responsible geotechnical verification."
       ],
       metadata: {
         code: this.code,
-        method: "rigid-rectangular-footing-full-contact-plus-rc-strips",
+        method: "rigid-rectangular-footing-compression-only-contact-plus-rc-checks",
         governingCheckId: (_d = governing == null ? void 0 : governing.id) != null ? _d : null,
         geotechnicalCapacityCalculated: false,
         ...this.metadata
@@ -60848,9 +61995,9 @@ var ReinforcedConcreteIsolatedFootingApplication = class extends StructuralAppli
         geotechnicalResistanceCalculated: false,
         limitations: [
           "centered unrotated rectangular column only",
-          "structural checks require full soil contact",
-          "biaxial partial contact is not implemented",
-          "bearing and sliding resistances are assigned inputs"
+          "rigid compression-only base with linear pressure plane on the active polygon",
+          "bearing and sliding resistances are assigned inputs",
+          "bearing capacity, settlements and soil-structure interaction are not calculated"
         ]
       }
     });
@@ -61355,6 +62502,287 @@ var ReinforcedConcreteTorsionVerification = class {
   }
 };
 
+// src/applications/reinforced-concrete-sections/checks/ReinforcedConcreteBeamDetailingVerification.js
+function positive16(value, label) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${label} must be positive.`);
+  }
+  return value;
+}
+function layer(input, label) {
+  var _a;
+  if (!input) {
+    throw new Error(`${label} is required.`);
+  }
+  const diameter = positive16(Number(input.diameter), `${label}.diameter`);
+  const barCount = positive16(Number(input.barCount), `${label}.barCount`);
+  const area = input.area == null ? barCount * Math.PI * diameter ** 2 / 4 : positive16(Number(input.area), `${label}.area`);
+  return {
+    ...input,
+    diameter,
+    barCount,
+    area,
+    continuousArea: positive16(
+      Number((_a = input.continuousArea) != null ? _a : area),
+      `${label}.continuousArea`
+    )
+  };
+}
+function minimumCheck(id, description, required, provided, metadata = {}) {
+  return utilizationCheck({
+    id,
+    description,
+    demand: required,
+    capacity: provided,
+    metadata
+  });
+}
+function maximumCheck(id, description, provided, allowed, metadata = {}) {
+  return utilizationCheck({
+    id,
+    description,
+    demand: provided,
+    capacity: allowed,
+    metadata
+  });
+}
+function normalizeDuctilityClass(value) {
+  const normalized = String(value != null ? value : "").toUpperCase().replaceAll('"', "").replaceAll("-", "");
+  if (["CDA", "A"].includes(normalized)) return "CDA";
+  if (["CDB", "B"].includes(normalized)) return "CDB";
+  throw new Error(`Unsupported NTC 2018 ductility class: ${value}.`);
+}
+function anchorageChecks({ anchors, fctd, fyk, seismic }) {
+  return (anchors != null ? anchors : []).map((anchor, index) => {
+    var _a, _b, _c, _d, _e, _f, _g, _h;
+    const id = (_a = anchor.id) != null ? _a : `anchor-${index + 1}`;
+    const diameter = positive16(Number(anchor.diameter), `${id}.diameter`);
+    const availableLength = positive16(
+      Number(anchor.availableLength),
+      `${id}.availableLength`
+    );
+    const designSteelStress = positive16(
+      Number((_b = anchor.designSteelStress) != null ? _b : seismic ? 1.25 * fyk : anchor.fyd),
+      `${id}.designSteelStress`
+    );
+    const bond = calculateEn1992DesignBondStrength({
+      fctd,
+      barDiameter: diameter,
+      bondConditionFactor: (_c = anchor.bondConditionFactor) != null ? _c : 1
+    });
+    const required = calculateEn1992AnchorageLength({
+      barDiameter: diameter,
+      designSteelStress,
+      fbd: bond.fbd,
+      tension: anchor.tension !== false,
+      alpha1: (_d = anchor.alpha1) != null ? _d : 1,
+      alpha2: (_e = anchor.alpha2) != null ? _e : 1,
+      alpha3: (_f = anchor.alpha3) != null ? _f : 1,
+      alpha4: (_g = anchor.alpha4) != null ? _g : 1,
+      alpha5: (_h = anchor.alpha5) != null ? _h : 1,
+      nationalMinimumDiameterMultiple: 20,
+      nationalMinimumLength: 150
+    });
+    return minimumCheck(
+      `rc-beam-anchorage-${id}`,
+      `Available anchorage length for beam bar ${id}`,
+      required.designLength,
+      availableLength,
+      {
+        ...required,
+        fbd: round3(bond.fbd),
+        designSteelStress: round3(designSteelStress),
+        seismicStressAmplification: seismic ? 1.25 : 1,
+        references: [
+          "NTC2018-4.1.2.3.10",
+          ...seismic ? ["NTC2018-7.4.6.2.1"] : [],
+          required.reference
+        ]
+      }
+    );
+  });
+}
+var ReinforcedConcreteBeamDetailingVerification = class {
+  constructor({ code = "NTC2018" } = {}) {
+    this.code = code;
+  }
+  verify({ section, concreteMaterial, reinforcementMaterial, detailing } = {}) {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u;
+    if (!detailing) {
+      return new VerificationResult({
+        applicationId: "reinforced-concrete-beams",
+        status: RESULT_STATUS.NOT_ANALYZED,
+        summary: "Beam detailing was not requested.",
+        warnings: ["Pass the detailing contract to verify beam reinforcement layout and anchorage."],
+        metadata: { code: this.code, method: "ntc2018-beam-detailing" }
+      });
+    }
+    if (this.code !== "NTC2018") {
+      return new VerificationResult({
+        applicationId: "reinforced-concrete-beams",
+        status: RESULT_STATUS.NOT_SUPPORTED,
+        summary: `Unsupported beam detailing code: ${this.code}.`,
+        metadata: { code: this.code }
+      });
+    }
+    const concrete = (_a = section == null ? void 0 : section.concreteSection) != null ? _a : section;
+    const width = positive16(
+      Number((_c = (_b = detailing.geometry) == null ? void 0 : _b.width) != null ? _c : concrete == null ? void 0 : concrete.width),
+      "detailing.geometry.width"
+    );
+    const height = positive16(
+      Number((_e = (_d = detailing.geometry) == null ? void 0 : _d.height) != null ? _e : concrete == null ? void 0 : concrete.height),
+      "detailing.geometry.height"
+    );
+    const effectiveDepth = positive16(
+      Number((_f = detailing.geometry) == null ? void 0 : _f.effectiveDepth),
+      "detailing.geometry.effectiveDepth"
+    );
+    const tensionZoneWidth = positive16(
+      Number((_h = (_g = detailing.geometry) == null ? void 0 : _g.tensionZoneWidth) != null ? _h : width),
+      "detailing.geometry.tensionZoneWidth"
+    );
+    const top = layer((_i = detailing.longitudinal) == null ? void 0 : _i.top, "detailing.longitudinal.top");
+    const bottom = layer(
+      (_j = detailing.longitudinal) == null ? void 0 : _j.bottom,
+      "detailing.longitudinal.bottom"
+    );
+    const transverse = (_k = detailing.transverse) != null ? _k : {};
+    const hoopDiameter = positive16(
+      Number(transverse.diameter),
+      "detailing.transverse.diameter"
+    );
+    const hoopSpacing = positive16(
+      Number(transverse.spacing),
+      "detailing.transverse.spacing"
+    );
+    const hoopAreaPerSet = positive16(
+      Number(transverse.areaPerSet),
+      "detailing.transverse.areaPerSet"
+    );
+    const fctm = positive16(Number(concreteMaterial == null ? void 0 : concreteMaterial.fctm), "concreteMaterial.fctm");
+    const fctd = positive16(
+      Number((_m = detailing.fctd) != null ? _m : (concreteMaterial == null ? void 0 : concreteMaterial.fctm) && ((_l = concreteMaterial == null ? void 0 : concreteMaterial.metadata) == null ? void 0 : _l.gammaC) ? 0.7 * concreteMaterial.fctm / concreteMaterial.metadata.gammaC : NaN),
+      "detailing.fctd"
+    );
+    const fyk = positive16(Number(reinforcementMaterial == null ? void 0 : reinforcementMaterial.fyk), "reinforcementMaterial.fyk");
+    const concreteArea = positive16(Number((_n = concrete == null ? void 0 : concrete.area) != null ? _n : width * height), "concrete area");
+    const minimumLongitudinalArea = Math.max(
+      0.26 * fctm / fyk * tensionZoneWidth * effectiveDepth,
+      13e-4 * tensionZoneWidth * effectiveDepth
+    );
+    const maximumLayerArea = 0.04 * concreteArea;
+    const transverseAreaPerMeter = hoopAreaPerSet * 1e3 / hoopSpacing;
+    const minimumTransverseAreaPerMeter = 1.5 * width;
+    const ordinaryMaximumSpacing = Math.min(1e3 / 3, 0.8 * effectiveDepth);
+    const checks = [
+      minimumCheck("rc-beam-minimum-top-reinforcement", "Minimum top longitudinal reinforcement", minimumLongitudinalArea, top.area, { reference: "NTC2018-4.1.45" }),
+      minimumCheck("rc-beam-minimum-bottom-reinforcement", "Minimum bottom longitudinal reinforcement", minimumLongitudinalArea, bottom.area, { reference: "NTC2018-4.1.45" }),
+      maximumCheck("rc-beam-maximum-top-reinforcement", "Maximum top longitudinal reinforcement outside lap zones", top.area, maximumLayerArea, { reference: "NTC2018-4.1.6.1.1" }),
+      maximumCheck("rc-beam-maximum-bottom-reinforcement", "Maximum bottom longitudinal reinforcement outside lap zones", bottom.area, maximumLayerArea, { reference: "NTC2018-4.1.6.1.1" }),
+      minimumCheck("rc-beam-minimum-transverse-reinforcement", "Minimum beam transverse reinforcement per metre", minimumTransverseAreaPerMeter, transverseAreaPerMeter, { reference: "NTC2018-4.1.6.1.1" }),
+      maximumCheck("rc-beam-ordinary-hoop-spacing", "Ordinary beam hoop spacing", hoopSpacing, ordinaryMaximumSpacing, { reference: "NTC2018-4.1.6.1.1" })
+    ];
+    const seismic = ((_o = detailing.seismic) == null ? void 0 : _o.enabled) === true;
+    let seismicOutputs = null;
+    if (seismic) {
+      const ductilityClass2 = normalizeDuctilityClass(
+        detailing.seismic.ductilityClass
+      );
+      const isCda = ductilityClass2 === "CDA";
+      const criticalZoneLength = (isCda ? 1.5 : 1) * height;
+      const rhoTop = top.area / (width * height);
+      const rhoBottom = bottom.area / (width * height);
+      const rhoMinimum = 1.4 / fyk;
+      const rhoMaximumFor = (compressionArea) => compressionArea / (width * height) + 3.5 / fyk;
+      const seismicMaximumSpacing = Math.min(
+        effectiveDepth / 4,
+        isCda ? 175 : 225,
+        (isCda ? 6 : 8) * Math.min(top.diameter, bottom.diameter),
+        24 * hoopDiameter
+      );
+      const firstHoopDistance = positive16(
+        Number(detailing.seismic.firstHoopDistance),
+        "detailing.seismic.firstHoopDistance"
+      );
+      const hookAngle = positive16(
+        Number(transverse.hookAngle),
+        "detailing.transverse.hookAngle"
+      );
+      const hookExtension = positive16(
+        Number(transverse.hookExtension),
+        "detailing.transverse.hookExtension"
+      );
+      checks.push(
+        minimumCheck("rc-beam-seismic-minimum-width", "Minimum dissipative beam width", 200, width, { reference: "NTC2018-7.4.6.1.1" }),
+        minimumCheck("rc-beam-seismic-width-height-ratio", "Minimum dissipative beam width-to-height ratio", 0.25, width / height, { reference: "NTC2018-7.4.6.1.1" }),
+        minimumCheck("rc-beam-seismic-top-bar-count", "Continuous top longitudinal bars", 2, top.barCount, { reference: "NTC2018-7.4.6.2.1" }),
+        minimumCheck("rc-beam-seismic-bottom-bar-count", "Continuous bottom longitudinal bars", 2, bottom.barCount, { reference: "NTC2018-7.4.6.2.1" }),
+        minimumCheck("rc-beam-seismic-top-bar-diameter", "Minimum top longitudinal bar diameter", 14, top.diameter, { reference: "NTC2018-7.4.6.2.1" }),
+        minimumCheck("rc-beam-seismic-bottom-bar-diameter", "Minimum bottom longitudinal bar diameter", 14, bottom.diameter, { reference: "NTC2018-7.4.6.2.1" }),
+        minimumCheck("rc-beam-seismic-top-rho-min", "Minimum top reinforcement ratio", rhoMinimum, rhoTop, { reference: "NTC2018-7.4.26" }),
+        maximumCheck("rc-beam-seismic-top-rho-max", "Maximum top reinforcement ratio", rhoTop, rhoMaximumFor(bottom.area), { reference: "NTC2018-7.4.26" }),
+        minimumCheck("rc-beam-seismic-bottom-rho-min", "Minimum bottom reinforcement ratio", rhoMinimum, rhoBottom, { reference: "NTC2018-7.4.26" }),
+        maximumCheck("rc-beam-seismic-bottom-rho-max", "Maximum bottom reinforcement ratio", rhoBottom, rhoMaximumFor(top.area), { reference: "NTC2018-7.4.26" }),
+        minimumCheck("rc-beam-seismic-compression-ratio-top", "Compression reinforcement relative to top tension reinforcement in critical zones", 0.5 * top.area, bottom.area, { reference: "NTC2018-7.4.6.2.1" }),
+        minimumCheck("rc-beam-seismic-compression-ratio-bottom", "Compression reinforcement relative to bottom tension reinforcement in critical zones", 0.5 * bottom.area, top.area, { reference: "NTC2018-7.4.6.2.1" }),
+        minimumCheck("rc-beam-seismic-continuous-top-area", "Top reinforcement maintained over the full beam", 0.25 * top.area, top.continuousArea, { reference: "NTC2018-7.4.6.2.1" }),
+        maximumCheck("rc-beam-seismic-first-hoop", "First hoop distance from column face", firstHoopDistance, 50, { reference: "NTC2018-7.4.6.2.1" }),
+        maximumCheck("rc-beam-seismic-hoop-spacing", "Hoop spacing in dissipative zones", hoopSpacing, seismicMaximumSpacing, { reference: "NTC2018-7.4.6.2.1" }),
+        minimumCheck("rc-beam-seismic-hoop-diameter", "Minimum hoop diameter", 6, hoopDiameter, { reference: "NTC2018-7.4.6.2.1" }),
+        minimumCheck("rc-beam-seismic-hook-angle", "Hoop hook angle", 135, hookAngle, { reference: "NTC2018-7.4.6.2.1" }),
+        minimumCheck("rc-beam-seismic-hook-extension", "Hoop hook straight extension", 10 * hoopDiameter, hookExtension, { reference: "NTC2018-7.4.6.2.1" })
+      );
+      seismicOutputs = {
+        ductilityClass: ductilityClass2,
+        criticalZoneLength,
+        rhoTop,
+        rhoBottom,
+        rhoMinimum,
+        seismicMaximumSpacing
+      };
+    }
+    checks.push(...anchorageChecks({
+      anchors: detailing.anchors,
+      fctd,
+      fyk,
+      seismic
+    }));
+    const governing = governingCheck(checks);
+    const ok = checks.every((check) => check.ok === true);
+    return new VerificationResult({
+      applicationId: "reinforced-concrete-beams",
+      status: ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+      summary: "NTC 2018 beam reinforcement detailing, dissipative-zone and anchorage verification.",
+      utilizationRatio: (_p = governing == null ? void 0 : governing.utilizationRatio) != null ? _p : null,
+      demand: (_q = governing == null ? void 0 : governing.demand) != null ? _q : null,
+      capacity: (_r = governing == null ? void 0 : governing.capacity) != null ? _r : null,
+      checks,
+      outputs: {
+        geometry: { width, height, effectiveDepth, tensionZoneWidth },
+        longitudinal: { top, bottom },
+        transverse: {
+          diameter: hoopDiameter,
+          spacing: hoopSpacing,
+          areaPerSet: hoopAreaPerSet,
+          areaPerMeter: transverseAreaPerMeter
+        },
+        anchorageCount: (_t = (_s = detailing.anchors) == null ? void 0 : _s.length) != null ? _t : 0,
+        seismic: seismicOutputs
+      },
+      assumptions: [
+        "The supplied longitudinal layers describe the reinforcement effective at every checked beam section.",
+        "Anchorage alpha factors and bond conditions are explicit design inputs and are not inferred from a drawing."
+      ],
+      metadata: {
+        code: this.code,
+        method: "ntc2018-4.1.6.1.1-and-7.4.6.1.1-7.4.6.2.1",
+        governingCheckId: (_u = governing == null ? void 0 : governing.id) != null ? _u : null
+      }
+    });
+  }
+};
+
 // src/applications/reinforced-concrete-sections/checks/ReinforcedConcreteBeamVerification.js
 var DEFAULT_SECTION_UNITS2 = Object.freeze({ force: "N", length: "mm" });
 function governingCheck4(checks) {
@@ -61658,6 +63086,7 @@ var ReinforcedConcreteBeamVerification = class {
     shear = null,
     torsion = null,
     serviceability = {},
+    detailing = null,
     verificationStations = null,
     metadata = {}
   } = {}) {
@@ -61667,6 +63096,7 @@ var ReinforcedConcreteBeamVerification = class {
     this.shear = shear;
     this.torsion = torsion;
     this.serviceability = serviceability;
+    this.detailing = detailing;
     this.verificationStations = verificationStations;
     this.metadata = { ...metadata };
   }
@@ -61682,9 +63112,10 @@ var ReinforcedConcreteBeamVerification = class {
     shear = this.shear,
     torsion = this.torsion,
     serviceability = this.serviceability,
+    detailing = this.detailing,
     verificationStations = this.verificationStations
   } = {}) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v;
     if (!section || !analysisResult) {
       return new VerificationResult({
         applicationId: "reinforced-concrete-beams",
@@ -61757,6 +63188,14 @@ var ReinforcedConcreteBeamVerification = class {
       beamModel
     });
     const includeDeflection = deflectionVerification && ((_i = deflectionVerification.outputs) == null ? void 0 : _i.combinationCount) > 0;
+    const detailingVerification = detailing ? new ReinforcedConcreteBeamDetailingVerification({
+      code: this.code
+    }).verify({
+      section,
+      concreteMaterial: resolvedConcreteMaterial,
+      reinforcementMaterial: resolvedReinforcementMaterial,
+      detailing
+    }) : null;
     const actionVerification = serviceabilityVerification && serviceabilityVerification.outputs.stationResultCount > 0 ? {
       status: ulsVerification.status === RESULT_STATUS.OK && serviceabilityVerification.status === RESULT_STATUS.OK && (!includeDeflection || deflectionVerification.status === RESULT_STATUS.OK) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       utilizationRatio: Math.max(
@@ -61781,6 +63220,7 @@ var ReinforcedConcreteBeamVerification = class {
           outputs: deflectionVerification.outputs,
           metadata: deflectionVerification.metadata
         } : null,
+        detailing: (_m = detailingVerification == null ? void 0 : detailingVerification.toJSON()) != null ? _m : null,
         governing: [
           ulsVerification,
           serviceabilityVerification,
@@ -61822,9 +63262,32 @@ var ReinforcedConcreteBeamVerification = class {
           utilizationRatio: deflectionVerification.utilizationRatio,
           outputs: deflectionVerification.outputs,
           metadata: deflectionVerification.metadata
-        } : null
+        } : null,
+        detailing: (_n = detailingVerification == null ? void 0 : detailingVerification.toJSON()) != null ? _n : null
       }
     };
+    if (detailingVerification) {
+      if (detailingVerification.status !== RESULT_STATUS.OK) {
+        actionVerification.status = detailingVerification.status;
+      }
+      actionVerification.utilizationRatio = Math.max(
+        (_o = actionVerification.utilizationRatio) != null ? _o : 0,
+        (_p = detailingVerification.utilizationRatio) != null ? _p : 0
+      );
+      actionVerification.checks = [
+        ...actionVerification.checks,
+        ...detailingVerification.checks
+      ];
+      actionVerification.warnings = [
+        ...actionVerification.warnings,
+        ...detailingVerification.warnings
+      ];
+      actionVerification.assumptions = [
+        ...actionVerification.assumptions,
+        ...detailingVerification.assumptions
+      ];
+      actionVerification.outputs.detailing = detailingVerification.toJSON();
+    }
     const groupedChecks = Object.values(
       actionVerification.checks.reduce((acc, check) => {
         const current = acc[check.id];
@@ -61839,24 +63302,26 @@ var ReinforcedConcreteBeamVerification = class {
       applicationId: "reinforced-concrete-beams",
       status: actionVerification.status,
       summary: "RC beam ULS and SLE section verification from FEM beam actions.",
-      utilizationRatio: (_m = governing == null ? void 0 : governing.utilizationRatio) != null ? _m : actionVerification.utilizationRatio,
-      demand: (_n = governing == null ? void 0 : governing.demand) != null ? _n : actionVerification.demand,
-      capacity: (_o = governing == null ? void 0 : governing.capacity) != null ? _o : actionVerification.capacity,
+      utilizationRatio: (_q = governing == null ? void 0 : governing.utilizationRatio) != null ? _q : actionVerification.utilizationRatio,
+      demand: (_r = governing == null ? void 0 : governing.demand) != null ? _r : actionVerification.demand,
+      capacity: (_s = governing == null ? void 0 : governing.capacity) != null ? _s : actionVerification.capacity,
       checks: groupedChecks,
       outputs: {
         stationResultCount: actionVerification.outputs.stationResultCount,
         uls: actionVerification.outputs.uls,
         serviceability: actionVerification.outputs.serviceability,
         deflection: actionVerification.outputs.deflection,
+        detailing: (_u = (_t = actionVerification.outputs.detailing) != null ? _t : detailingVerification == null ? void 0 : detailingVerification.toJSON()) != null ? _u : null,
         governing: actionVerification.outputs.governing
       },
       warnings: [
         ...actionVerification.warnings,
-        ...shear ? [
-          torsion ? "Full member detailing and second-order effects are not included in this RC beam verification step." : "Torsion, full member detailing and second-order effects are not included in this RC beam verification step."
+        "Global second-order effects are not generated by the local RC beam verifier; supply actions from the appropriate structural analysis.",
+        ...(shear ? [
+          torsion ? detailing ? null : "Full member detailing is not included because no detailing contract was supplied." : detailing ? "Torsion is not included in this RC beam verification step." : "Torsion and full member detailing are not included in this RC beam verification step."
         ] : [
-          torsion ? "Shear resistance, full member detailing and second-order effects are not included in this RC beam verification step." : "Shear resistance, torsion, full member detailing and second-order effects are not included in this RC beam verification step."
-        ]
+          torsion ? detailing ? "Shear resistance is not included in this RC beam verification step." : "Shear resistance and full member detailing are not included in this RC beam verification step." : detailing ? "Shear resistance and torsion are not included in this RC beam verification step." : "Shear resistance, torsion and full member detailing are not included in this RC beam verification step."
+        ]).filter(Boolean)
       ],
       assumptions: [
         ...actionVerification.assumptions,
@@ -61865,7 +63330,7 @@ var ReinforcedConcreteBeamVerification = class {
       metadata: {
         code: this.code,
         beamId,
-        governingCheckId: (_p = governing == null ? void 0 : governing.id) != null ? _p : null,
+        governingCheckId: (_v = governing == null ? void 0 : governing.id) != null ? _v : null,
         verificationStations,
         ...this.metadata
       }
@@ -61883,7 +63348,7 @@ var ReinforcedConcreteFoundationBeamModel = class extends FoundationBeamModel {
     verification = {},
     ...input
   } = {}) {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y;
     if (!section) {
       throw new Error("ReinforcedConcreteFoundationBeamModel requires a section.");
     }
@@ -61896,12 +63361,16 @@ var ReinforcedConcreteFoundationBeamModel = class extends FoundationBeamModel {
     }
     super({
       ...input,
+      foundation: {
+        ...input.foundation,
+        contactModel: (_b = (_a = input.foundation) == null ? void 0 : _a.contactModel) != null ? _b : "compression-only"
+      },
       sectionProvider: new ReinforcedConcreteBeamSectionProvider({
         section,
         concreteMaterial: resolvedConcrete,
         reinforcementMaterial: resolvedReinforcement,
         stiffnessState,
-        units: (_b = (_a = section.metadata) == null ? void 0 : _a.unitSystem) != null ? _b : input.units
+        units: (_d = (_c = section.metadata) == null ? void 0 : _c.unitSystem) != null ? _d : input.units
       })
     });
     this.section = section;
@@ -61909,16 +63378,25 @@ var ReinforcedConcreteFoundationBeamModel = class extends FoundationBeamModel {
     this.reinforcementMaterial = resolvedReinforcement;
     this.stiffnessState = stiffnessState;
     this.verification = {
-      code: (_c = verification.code) != null ? _c : "NTC2018",
+      code: (_e = verification.code) != null ? _e : "NTC2018",
       mesh: { ...verification.mesh },
       solver: { ...verification.solver },
-      shear: (_d = verification.shear) != null ? _d : null,
-      torsion: (_e = verification.torsion) != null ? _e : null,
+      shear: (_f = verification.shear) != null ? _f : null,
+      torsion: (_g = verification.torsion) != null ? _g : null,
       serviceability: verification.serviceability === false ? false : {
-        ...(_f = verification.serviceability) != null ? _f : {},
+        ...(_h = verification.serviceability) != null ? _h : {},
         deflection: false
       },
-      verificationStations: (_h = (_g = verification.verificationStations) != null ? _g : input.verificationStations) != null ? _h : null
+      crackedStiffness: verification.crackedStiffness === false ? false : {
+        enabled: true,
+        modularRatio: (_j = (_i = verification.crackedStiffness) == null ? void 0 : _i.modularRatio) != null ? _j : 15,
+        creepCoefficient: (_o = (_n = (_k = verification.crackedStiffness) == null ? void 0 : _k.creepCoefficient) != null ? _n : (_m = (_l = verification.serviceability) == null ? void 0 : _l.deflection) == null ? void 0 : _m.creepCoefficient) != null ? _o : 2,
+        betaShortTerm: (_q = (_p = verification.crackedStiffness) == null ? void 0 : _p.betaShortTerm) != null ? _q : 1,
+        betaLongTerm: (_s = (_r = verification.crackedStiffness) == null ? void 0 : _r.betaLongTerm) != null ? _s : 0.5,
+        momentSamples: (_u = (_t = verification.crackedStiffness) == null ? void 0 : _t.momentSamples) != null ? _u : 40,
+        axialForceTolerance: (_w = (_v = verification.crackedStiffness) == null ? void 0 : _v.axialForceTolerance) != null ? _w : 1e4
+      },
+      verificationStations: (_y = (_x = verification.verificationStations) != null ? _x : input.verificationStations) != null ? _y : null
     };
   }
 };
@@ -61927,12 +63405,88 @@ var ReinforcedConcreteFoundationBeamModel = class extends FoundationBeamModel {
 function json(value) {
   return typeof (value == null ? void 0 : value.toJSON) === "function" ? value.toJSON() : value;
 }
+var SECTION_UNITS2 = Object.freeze({ force: "N", length: "mm" });
+var FEM_UNITS14 = Object.freeze({ force: "kN", length: "m" });
+function transformedGross(section, modularRatio) {
+  const concrete = section.concreteSection;
+  const bars = section.getReinforcementBars();
+  const transformedArea = concrete.area + bars.reduce(
+    (sum, bar) => sum + modularRatio * bar.area,
+    0
+  );
+  const centroid = (concrete.area * concrete.centroidY + bars.reduce((sum, bar) => sum + modularRatio * bar.area * bar.y, 0)) / transformedArea;
+  const inertia = concrete.inertiaY + concrete.area * (concrete.centroidY - centroid) ** 2 + bars.reduce(
+    (sum, bar) => sum + modularRatio * bar.area * (bar.y - centroid) ** 2,
+    0
+  );
+  return { centroid, inertia };
+}
+function createCrackedStiffnessResolver(model) {
+  const settings = model.verification.crackedStiffness;
+  if (!(settings == null ? void 0 : settings.enabled)) return null;
+  const toSection = createUnitResolver(FEM_UNITS14, SECTION_UNITS2);
+  const toFem = createUnitResolver(SECTION_UNITS2, FEM_UNITS14);
+  const cache = /* @__PURE__ */ new Map();
+  return ({ moment, axialForce, context }) => {
+    var _a, _b;
+    const quasiPermanent = String(
+      (_b = (_a = context.combinationType) != null ? _a : context.serviceCombination) != null ? _b : ""
+    ).toUpperCase().includes("QUASI");
+    const creep = quasiPermanent ? settings.creepCoefficient : 0;
+    const modularRatio = settings.modularRatio * (1 + creep);
+    const effectiveConcreteModulus = model.reinforcementMaterial.elasticModulus / modularRatio;
+    const gross = transformedGross(model.section, modularRatio);
+    const bounds = model.section.getBoundingBox();
+    const distanceBottom = gross.centroid - bounds.minY;
+    const distanceTop = bounds.maxY - gross.centroid;
+    const fctm = model.concreteMaterial.fctm;
+    const mcrPositive = fctm * gross.inertia / distanceBottom;
+    const mcrNegative = fctm * gross.inertia / distanceTop;
+    const sectionMoment = toSection.moment(moment);
+    const sectionAxialForce = toSection.force(axialForce);
+    const quantizedAxial = Math.round(
+      sectionAxialForce / settings.axialForceTolerance
+    ) * settings.axialForceTolerance;
+    const key = [
+      modularRatio.toPrecision(10),
+      quantizedAxial.toPrecision(10)
+    ].join("|");
+    let curve = cache.get(key);
+    if (!curve || Math.abs(sectionMoment) > curve.maxAbsMoment) {
+      curve = new SectionMomentCurvatureCurve({
+        section: model.section,
+        reinforcementMaterial: model.reinforcementMaterial,
+        effectiveModularRatio: modularRatio,
+        mesh: model.verification.mesh,
+        solver: model.verification.solver,
+        mcr: mcrPositive,
+        mcrPositive,
+        mcrNegative,
+        grossInertia: gross.inertia,
+        concreteModulus: effectiveConcreteModulus,
+        beta: creep > 0 ? settings.betaLongTerm : settings.betaShortTerm,
+        momentSamples: settings.momentSamples,
+        initialMaxMoment: Math.max(
+          Math.abs(sectionMoment),
+          Math.min(mcrPositive, mcrNegative)
+        ),
+        axialForce: quantizedAxial,
+        units: SECTION_UNITS2
+      });
+      cache.set(key, curve);
+    }
+    return toFem.convert(curve.lookupEI(sectionMoment), {
+      forceExponent: 1,
+      lengthExponent: 2
+    });
+  };
+}
 var ReinforcedConcreteFoundationBeamApplication = class extends StructuralApplication {
   constructor({ analysis = new FoundationBeamAnalysis() } = {}) {
     super({
       id: "reinforced-concrete-foundation-beams",
       name: "RC Foundation Beams",
-      description: "Linear analysis and local RC verification of horizontal beams on an assigned Winkler foundation.",
+      description: "Iterative compression-only Winkler analysis with cracked RC stiffness and local verification of horizontal foundation beams.",
       domain: "reinforced-concrete",
       supportedCodes: ["NTC2018"],
       tags: ["rc", "beam", "foundation", "winkler", "soil-springs"],
@@ -61940,10 +63494,9 @@ var ReinforcedConcreteFoundationBeamApplication = class extends StructuralApplic
         maturity: "partial",
         limitations: [
           "horizontal prismatic beam only",
-          "linear bilateral Winkler foundation with tributary lumped springs",
-          "compression-only contact and soil nonlinearity are not solved",
+          "independent tributary-lumped Winkler springs",
           "subgrade modulus and imposed settlements are assigned inputs",
-          "cracked long-term deflection iteration is not available on the spring bed"
+          "no soil plasticity, hysteresis or pressure-dependent subgrade modulus"
         ]
       }
     });
@@ -61955,7 +63508,10 @@ var ReinforcedConcreteFoundationBeamApplication = class extends StructuralApplic
       throw new Error("ReinforcedConcreteFoundationBeamApplication requires a model.");
     }
     const model = input.model instanceof ReinforcedConcreteFoundationBeamModel ? input.model : new ReinforcedConcreteFoundationBeamModel(input.model);
-    const analysis = this.analysis.analyze(model);
+    const flexuralRigidityResolver = createCrackedStiffnessResolver(model);
+    const analysis = this.analysis.analyze(model, {
+      flexuralRigidityResolver
+    });
     const settings = model.verification;
     const verification = new ReinforcedConcreteBeamVerification({
       code: settings.code,
@@ -61977,15 +63533,24 @@ var ReinforcedConcreteFoundationBeamApplication = class extends StructuralApplic
       beamModel: model
     });
     const verificationJson = json(verification);
-    const contactViolation = [
+    const analyzedResults = [
       ...Object.values(analysis.loadCases),
       ...Object.values(analysis.combinations)
-    ].some((result) => result.foundation.contactAssumptionViolated);
-    const status = contactViolation ? RESULT_STATUS.NOT_SUPPORTED : verification.status;
+    ];
+    const contactViolation = analyzedResults.some(
+      (result) => result.foundation.contactAssumptionViolated
+    );
+    const iterationFailure = analyzedResults.some(
+      (result) => {
+        var _a2;
+        return ((_a2 = result.foundationIteration) == null ? void 0 : _a2.converged) === false;
+      }
+    );
+    const status = contactViolation || iterationFailure ? RESULT_STATUS.NOT_SUPPORTED : verification.status;
     return new CalculationResult({
       applicationId: this.id,
       status,
-      summary: contactViolation ? "Foundation-beam analysis completed, but tensile soil reactions exceed the bilateral Winkler model validity." : "Foundation-beam analysis and supported local RC checks completed.",
+      summary: contactViolation || iterationFailure ? "Foundation-beam contact or cracked-stiffness iteration did not produce a verified converged state." : "Foundation-beam analysis and supported local RC checks completed.",
       outputs: {
         modelId: model.id,
         analysis,
@@ -61994,7 +63559,7 @@ var ReinforcedConcreteFoundationBeamApplication = class extends StructuralApplic
       warnings: [
         ...analysis.warnings,
         ...(_a = verificationJson.warnings) != null ? _a : [],
-        "Cracked and long-term member deflection iteration is not run for a beam on a spring bed; reported displacements use the assigned elastic section stiffness."
+        ...flexuralRigidityResolver ? [] : ["Cracked stiffness iteration was explicitly disabled; reported displacements use the assigned elastic section stiffness."]
       ],
       assumptions: [
         ...analysis.assumptions,
@@ -62003,7 +63568,9 @@ var ReinforcedConcreteFoundationBeamApplication = class extends StructuralApplic
       metadata: {
         code: settings.code,
         foundationModel: analysis.foundationModel,
-        contactViolation
+        contactViolation,
+        iterationFailure,
+        crackedStiffnessIteration: Boolean(flexuralRigidityResolver)
       }
     });
   }
@@ -62011,7 +63578,7 @@ var ReinforcedConcreteFoundationBeamApplication = class extends StructuralApplic
 
 // src/applications/reinforced-concrete-beam-column-joints/ReinforcedConcreteBeamColumnJointModel.js
 var INTERNAL_UNITS33 = Object.freeze({ force: "N", length: "mm" });
-function positive14(value, label) {
+function positive17(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be positive.`);
   }
@@ -62037,12 +63604,31 @@ function ratios(input = {}) {
     ])
   );
 }
+function normalizeAnchor(input, resolver, label) {
+  if (!input) return null;
+  return {
+    ...input,
+    diameter: positive17(
+      resolver.length(Number(input.diameter)),
+      `${label}.diameter`
+    ),
+    availableLength: positive17(
+      resolver.length(Number(input.availableLength)),
+      `${label}.availableLength`
+    ),
+    designSteelStress: input.designSteelStress == null ? null : positive17(
+      resolver.stress(Number(input.designSteelStress)),
+      `${label}.designSteelStress`
+    ),
+    fctd: input.fctd == null ? null : positive17(resolver.stress(Number(input.fctd)), `${label}.fctd`)
+  };
+}
 var ReinforcedConcreteBeamColumnJointModel = class {
   constructor({
     id,
     directionId = "x",
     jointType,
-    ductilityClass,
+    ductilityClass: ductilityClass2,
     tensionMethod = "diagonal-tension",
     geometry = {},
     materials = {},
@@ -62051,10 +63637,12 @@ var ReinforcedConcreteBeamColumnJointModel = class {
     jointHoops = {},
     confinement = {},
     capacityHierarchy = {},
+    anchorage = {},
+    eccentricity = {},
     units = null,
     metadata = {}
   } = {}) {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i;
     if (!id) {
       throw new Error("A reinforced-concrete beam-column joint id is required.");
     }
@@ -62068,27 +63656,27 @@ var ReinforcedConcreteBeamColumnJointModel = class {
         "Concrete, longitudinal reinforcement and transverse reinforcement materials are required."
       );
     }
-    const columnWidth = positive14(
+    const columnWidth = positive17(
       resolver.length(Number(geometry.columnWidth)),
       "geometry.columnWidth"
     );
-    const columnDepth = positive14(
+    const columnDepth = positive17(
       resolver.length(Number(geometry.columnDepth)),
       "geometry.columnDepth"
     );
-    const beamWidth = positive14(
+    const beamWidth = positive17(
       resolver.length(Number(geometry.beamWidth)),
       "geometry.beamWidth"
     );
-    const beamHeight = positive14(
+    const beamHeight = positive17(
       resolver.length(Number(geometry.beamHeight)),
       "geometry.beamHeight"
     );
-    const columnLongitudinalLayerDistance = positive14(
+    const columnLongitudinalLayerDistance = positive17(
       resolver.length(Number(geometry.columnLongitudinalLayerDistance)),
       "geometry.columnLongitudinalLayerDistance"
     );
-    const beamLongitudinalLayerDistance = positive14(
+    const beamLongitudinalLayerDistance = positive17(
       resolver.length(Number(geometry.beamLongitudinalLayerDistance)),
       "geometry.beamLongitudinalLayerDistance"
     );
@@ -62111,7 +63699,7 @@ var ReinforcedConcreteBeamColumnJointModel = class {
     this.id = id;
     this.directionId = directionId;
     this.jointType = String(jointType != null ? jointType : "").toLowerCase();
-    this.ductilityClass = ductilityClass;
+    this.ductilityClass = ductilityClass2;
     this.tensionMethod = tensionMethod;
     this.geometry = {
       columnWidth,
@@ -62125,7 +63713,7 @@ var ReinforcedConcreteBeamColumnJointModel = class {
       concreteMaterial,
       reinforcementMaterial,
       transverseReinforcementMaterial,
-      fctd: materials.fctd == null ? null : positive14(resolver.stress(Number(materials.fctd)), "materials.fctd")
+      fctd: materials.fctd == null ? null : positive17(resolver.stress(Number(materials.fctd)), "materials.fctd")
     };
     this.actions = {
       columnAxialForce: nonNegative3(
@@ -62150,19 +63738,19 @@ var ReinforcedConcreteBeamColumnJointModel = class {
       )
     };
     this.jointHoops = {
-      diameter: positive14(
+      diameter: positive17(
         resolver.length(Number(jointHoops.diameter)),
         "jointHoops.diameter"
       ),
-      totalArea: positive14(
+      totalArea: positive17(
         resolver.area(Number(jointHoops.totalArea)),
         "jointHoops.totalArea"
       ),
-      areaPerSet: positive14(
+      areaPerSet: positive17(
         resolver.area(Number(jointHoops.areaPerSet)),
         "jointHoops.areaPerSet"
       ),
-      spacing: positive14(
+      spacing: positive17(
         resolver.length(Number(jointHoops.spacing)),
         "jointHoops.spacing"
       )
@@ -62173,13 +63761,13 @@ var ReinforcedConcreteBeamColumnJointModel = class {
         confinement.oppositeBeamOverlapRatios
       ),
       adjacentColumnHoops: {
-        controllingAreaPerSet: positive14(
+        controllingAreaPerSet: positive17(
           resolver.area(Number(
             (_f = confinement.adjacentColumnHoops) == null ? void 0 : _f.controllingAreaPerSet
           )),
           "confinement.adjacentColumnHoops.controllingAreaPerSet"
         ),
-        controllingSpacing: positive14(
+        controllingSpacing: positive17(
           resolver.length(Number(
             (_g = confinement.adjacentColumnHoops) == null ? void 0 : _g.controllingSpacing
           )),
@@ -62192,17 +63780,40 @@ var ReinforcedConcreteBeamColumnJointModel = class {
       exemptReason: (_h = capacityHierarchy.exemptReason) != null ? _h : null
     } : {
       exempt: false,
-      beamMomentResistanceSum: positive14(
+      beamMomentResistanceSum: positive17(
         resolver.moment(Number(capacityHierarchy.beamMomentResistanceSum)),
         "capacityHierarchy.beamMomentResistanceSum"
       ),
-      effectiveColumnMomentResistance: positive14(
+      effectiveColumnMomentResistance: positive17(
         resolver.moment(Number(
           capacityHierarchy.effectiveColumnMomentResistance
         )),
         "capacityHierarchy.effectiveColumnMomentResistance"
       ),
       preReducedForMomentSigns: true
+    };
+    this.anchorage = {
+      topBars: normalizeAnchor(anchorage.topBars, resolver, "anchorage.topBars"),
+      bottomBars: normalizeAnchor(
+        anchorage.bottomBars,
+        resolver,
+        "anchorage.bottomBars"
+      )
+    };
+    const beamAxisOffset = resolver.length(Number((_i = eccentricity.beamAxisOffset) != null ? _i : 0));
+    if (!Number.isFinite(beamAxisOffset)) {
+      throw new Error("eccentricity.beamAxisOffset must be finite.");
+    }
+    this.eccentricity = {
+      beamAxisOffset,
+      transferLeverArm: eccentricity.transferLeverArm == null ? null : positive17(
+        resolver.length(Number(eccentricity.transferLeverArm)),
+        "eccentricity.transferLeverArm"
+      ),
+      reinforcementArea: eccentricity.reinforcementArea == null ? 0 : nonNegative3(
+        resolver.area(Number(eccentricity.reinforcementArea)),
+        "eccentricity.reinforcementArea"
+      )
     };
     this.units = INTERNAL_UNITS33;
     this.metadata = {
@@ -62288,6 +63899,7 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
       });
     }
     const gammaRd = ntc2018JointOverstrengthFactor(model.ductilityClass);
+    const normativeJointType = model.jointType === "corner" ? "external" : model.jointType;
     const effectiveJointWidth = calculateNTC2018EffectiveJointWidth({
       columnWidth: model.geometry.columnWidth,
       beamWidth: model.geometry.beamWidth,
@@ -62297,7 +63909,7 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
     const normalizedAxialForce = model.actions.columnAxialForce / (grossColumnArea * fcd);
     const confinement = classifyNTC2018JointConfinement(model.confinement);
     const demand = calculateNTC2018JointShearDemand({
-      jointType: model.jointType,
+      jointType: normativeJointType,
       gammaRd,
       topReinforcementArea: model.beamReinforcement.topArea,
       bottomReinforcementArea: model.beamReinforcement.bottomArea,
@@ -62305,7 +63917,7 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
       columnShearAbove: model.actions.columnShearAbove
     });
     const compression = calculateNTC2018JointCompressionCapacity({
-      jointType: model.jointType,
+      jointType: normativeJointType,
       fck,
       fcd,
       normalizedAxialForce,
@@ -62317,7 +63929,7 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
         method,
         calculateNTC2018JointTensionReinforcement({
           method,
-          jointType: model.jointType,
+          jointType: normativeJointType,
           jointShearDemand: demand.demand,
           effectiveJointWidth,
           columnLongitudinalLayerDistance: model.geometry.columnLongitudinalLayerDistance,
@@ -62401,11 +64013,85 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
         }
       }));
     }
+    let eccentricitySupported = true;
+    const eccentricityLimit = model.geometry.columnWidth / 4;
+    const eccentricity = Math.abs(model.eccentricity.beamAxisOffset);
+    if (eccentricity <= eccentricityLimit + 1e-9) {
+      checks.push(utilizationCheck({
+        id: "rc-joint-beam-axis-eccentricity",
+        description: "Beam-to-column joint axis eccentricity",
+        demand: eccentricity,
+        capacity: eccentricityLimit,
+        metadata: { reference: "NTC2018-7.4.6.1.3" }
+      }));
+    } else if (Number.isFinite(model.eccentricity.transferLeverArm) && model.eccentricity.transferLeverArm > 0 && model.eccentricity.reinforcementArea > 0) {
+      const transferForce = demand.demand * eccentricity / model.eccentricity.transferLeverArm;
+      checks.push(safeUtilizationCheck({
+        id: "rc-joint-eccentric-transfer-reinforcement",
+        description: "Reinforcement for eccentric joint shear transfer",
+        demand: transferForce,
+        capacity: model.eccentricity.reinforcementArea * fyd,
+        metadata: {
+          eccentricity,
+          eccentricityLimit,
+          transferLeverArm: model.eccentricity.transferLeverArm,
+          equilibriumModel: "torsional-couple-Vj-e/z",
+          reference: "NTC2018-7.4.6.1.3"
+        }
+      }));
+    } else {
+      eccentricitySupported = false;
+      checks.push({
+        id: "rc-joint-eccentric-transfer-reinforcement",
+        description: "Reinforcement for eccentric joint shear transfer",
+        demand: round3(eccentricity),
+        capacity: round3(eccentricityLimit),
+        utilizationRatio: null,
+        ok: false,
+        metadata: {
+          missing: ["eccentricity.transferLeverArm", "eccentricity.reinforcementArea"],
+          reference: "NTC2018-7.4.6.1.3"
+        }
+      });
+    }
+    const anchorageChecks2 = Object.entries(model.anchorage).filter(([, anchor]) => anchor).map(([face, anchor]) => {
+      var _a2, _b2, _c2, _d2, _e2, _f, _g, _h;
+      const bond = calculateEn1992DesignBondStrength({
+        fctd: (_a2 = anchor.fctd) != null ? _a2 : fctd.value,
+        barDiameter: anchor.diameter,
+        bondConditionFactor: (_b2 = anchor.bondConditionFactor) != null ? _b2 : 1
+      });
+      const required = calculateEn1992AnchorageLength({
+        barDiameter: anchor.diameter,
+        designSteelStress: (_c2 = anchor.designSteelStress) != null ? _c2 : 1.25 * reinforcement.fyk,
+        fbd: bond.fbd,
+        tension: anchor.tension !== false,
+        alpha1: (_d2 = anchor.alpha1) != null ? _d2 : 1,
+        alpha2: (_e2 = anchor.alpha2) != null ? _e2 : 1,
+        alpha3: (_f = anchor.alpha3) != null ? _f : 1,
+        alpha4: (_g = anchor.alpha4) != null ? _g : 1,
+        alpha5: (_h = anchor.alpha5) != null ? _h : 1,
+        nationalMinimumDiameterMultiple: 20,
+        nationalMinimumLength: 150
+      });
+      return utilizationCheck({
+        id: `rc-joint-beam-bar-anchorage-${face}`,
+        description: `Beam ${face} anchorage through or beyond the joint`,
+        demand: required.designLength,
+        capacity: anchor.availableLength,
+        metadata: {
+          ...required,
+          fbd: round3(bond.fbd),
+          reference: "NTC2018-7.4.6.2.1"
+        }
+      });
+    });
+    checks.push(...anchorageChecks2);
     const governing = governingCheck(checks);
     const ok = checks.every((check) => check.ok === true);
     return new VerificationResult({
       applicationId: "reinforced-concrete-beam-column-joints",
-      status: ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+      status: !eccentricitySupported ? RESULT_STATUS.NOT_SUPPORTED : ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       summary: "NTC 2018 local beam-column joint shear, confinement and capacity-hierarchy verification.",
       utilizationRatio: (_a = governing == null ? void 0 : governing.utilizationRatio) != null ? _a : null,
       demand: (_b = governing == null ? void 0 : governing.demand) != null ? _b : null,
@@ -62414,6 +64100,7 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
       outputs: {
         directionId: model.directionId,
         jointType: model.jointType,
+        normativeJointType,
         ductilityClass: model.ductilityClass,
         gammaRd,
         geometry: {
@@ -62461,11 +64148,20 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
           ...confinement,
           allowedJointHoopSpacing: round3(allowedJointHoopSpacing)
         },
-        capacityHierarchy: { ...model.capacityHierarchy }
+        capacityHierarchy: { ...model.capacityHierarchy },
+        anchorage: {
+          checkedFaces: anchorageChecks2.map((check) => check.id)
+        },
+        eccentricity: {
+          ...model.eccentricity,
+          limit: round3(eccentricityLimit),
+          supported: eccentricitySupported
+        }
       },
       warnings: [
         "The verification represents one explicitly assigned seismic direction; the adverse opposite direction requires a separate input state.",
-        "Beam-bar anchorage, lap splices, eccentric joint transfer and three-dimensional interaction between simultaneous directions are not verified.",
+        ...anchorageChecks2.length === 0 ? ["Beam-bar anchorage was not checked because no anchorage contract was supplied."] : [],
+        "Lap splices inside the joint are outside the supported detailing contract and remain prohibited for dissipative beam bars.",
         ...model.capacityHierarchy.exempt ? [`Capacity hierarchy was not checked: ${(_d = model.capacityHierarchy.exemptReason) != null ? _d : "explicit exemption"}.`] : []
       ],
       assumptions: [
@@ -62485,6 +64181,111 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
   }
 };
 
+// src/applications/reinforced-concrete-beam-column-joints/ReinforcedConcreteBeamColumnJoint3DModel.js
+var ReinforcedConcreteBeamColumnJoint3DModel = class {
+  constructor({
+    id,
+    directions = [],
+    concurrentActionState = false,
+    metadata = {},
+    ...common
+  } = {}) {
+    if (!id) {
+      throw new Error("A reinforced-concrete 3D joint id is required.");
+    }
+    if (!Array.isArray(directions) || directions.length < 2) {
+      throw new Error("A 3D joint requires at least two directional joint models.");
+    }
+    if (concurrentActionState !== true) {
+      throw new Error(
+        "concurrentActionState must be true: all directional actions must belong to the same concurrent design state."
+      );
+    }
+    const ids = /* @__PURE__ */ new Set();
+    this.directions = directions.map((direction, index) => {
+      var _a, _b, _c;
+      const directionId = (_a = direction.directionId) != null ? _a : `direction-${index + 1}`;
+      if (ids.has(directionId)) {
+        throw new Error(`Duplicate 3D joint directionId: ${directionId}.`);
+      }
+      ids.add(directionId);
+      return new ReinforcedConcreteBeamColumnJointModel({
+        ...common,
+        ...direction,
+        id: `${id}-${directionId}`,
+        directionId,
+        materials: (_b = direction.materials) != null ? _b : common.materials,
+        units: (_c = direction.units) != null ? _c : common.units,
+        metadata: {
+          ...common.metadata,
+          ...direction.metadata,
+          parentJointId: id
+        }
+      });
+    });
+    this.id = id;
+    this.concurrentActionState = true;
+    this.metadata = { ...metadata };
+  }
+};
+
+// src/applications/reinforced-concrete-beam-column-joints/ReinforcedConcreteBeamColumnJoint3DVerification.js
+var ReinforcedConcreteBeamColumnJoint3DVerification = class {
+  constructor({ code = "NTC2018", metadata = {} } = {}) {
+    this.code = code;
+    this.metadata = { ...metadata };
+  }
+  verify(model) {
+    var _a, _b, _c, _d;
+    const directionalResults = model.directions.map((direction) => ({
+      directionId: direction.directionId,
+      result: new ReinforcedConcreteBeamColumnJointVerification({
+        code: this.code
+      }).verify(direction)
+    }));
+    const checks = directionalResults.flatMap(({ directionId, result }) => result.checks.map((check) => ({
+      ...check,
+      id: `${check.id}-${directionId}`,
+      metadata: { ...check.metadata, directionId }
+    })));
+    const governing = governingCheck(checks);
+    const unsupported = directionalResults.some(({ result }) => result.status === RESULT_STATUS.NOT_SUPPORTED);
+    const ok = directionalResults.every(({ result }) => result.status === RESULT_STATUS.OK);
+    return new VerificationResult({
+      applicationId: "reinforced-concrete-beam-column-joints",
+      status: unsupported ? RESULT_STATUS.NOT_SUPPORTED : ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+      summary: "Concurrent multidirectional NTC 2018 beam-column joint verification.",
+      utilizationRatio: (_a = governing == null ? void 0 : governing.utilizationRatio) != null ? _a : null,
+      demand: (_b = governing == null ? void 0 : governing.demand) != null ? _b : null,
+      capacity: (_c = governing == null ? void 0 : governing.capacity) != null ? _c : null,
+      checks,
+      outputs: {
+        jointId: model.id,
+        concurrentActionState: true,
+        directionCount: directionalResults.length,
+        directions: Object.fromEntries(
+          directionalResults.map(({ directionId, result }) => [
+            directionId,
+            result.toJSON()
+          ])
+        )
+      },
+      warnings: directionalResults.flatMap(({ directionId, result }) => result.warnings.map((warning) => `[${directionId}] ${warning}`)),
+      assumptions: [
+        "NTC 2018 joint resistance is checked separately in every horizontal direction using actions from one declared concurrent design state.",
+        "No undocumented scalar interaction equation is introduced between orthogonal NTC directional checks.",
+        ...directionalResults.flatMap(({ directionId, result }) => result.assumptions.map((assumption) => `[${directionId}] ${assumption}`))
+      ],
+      metadata: {
+        code: this.code,
+        method: "ntc2018-concurrent-directional-joint-checks",
+        governingCheckId: (_d = governing == null ? void 0 : governing.id) != null ? _d : null,
+        ...this.metadata
+      }
+    });
+  }
+};
+
 // src/applications/reinforced-concrete-beam-column-joints/ReinforcedConcreteBeamColumnJointApplication.js
 var ReinforcedConcreteBeamColumnJointApplication = class extends StructuralApplication {
   constructor() {
@@ -62498,10 +64299,10 @@ var ReinforcedConcreteBeamColumnJointApplication = class extends StructuralAppli
       metadata: {
         maturity: "partial",
         limitations: [
-          "one explicitly assigned seismic direction per model",
           "NTC 2018 dissipative CDA/CDB joints only",
           "member actions and capacity sums are assigned inputs",
-          "anchorage and eccentric joint transfer are not implemented"
+          "3D verification requires concurrent directional action states and keeps the NTC checks directional",
+          "no global generation of actions, member capacities or joint topology"
         ]
       }
     });
@@ -62513,8 +64314,10 @@ var ReinforcedConcreteBeamColumnJointApplication = class extends StructuralAppli
         "ReinforcedConcreteBeamColumnJointApplication requires a model."
       );
     }
-    const model = input.model instanceof ReinforcedConcreteBeamColumnJointModel ? input.model : new ReinforcedConcreteBeamColumnJointModel(input.model);
-    return new ReinforcedConcreteBeamColumnJointVerification({
+    const is3D = input.model instanceof ReinforcedConcreteBeamColumnJoint3DModel || Array.isArray(input.model.directions);
+    const model = is3D ? input.model instanceof ReinforcedConcreteBeamColumnJoint3DModel ? input.model : new ReinforcedConcreteBeamColumnJoint3DModel(input.model) : input.model instanceof ReinforcedConcreteBeamColumnJointModel ? input.model : new ReinforcedConcreteBeamColumnJointModel(input.model);
+    const VerificationClass = is3D ? ReinforcedConcreteBeamColumnJoint3DVerification : ReinforcedConcreteBeamColumnJointVerification;
+    return new VerificationClass({
       code: (_a = input.code) != null ? _a : "NTC2018",
       metadata: (_b = input.metadata) != null ? _b : {}
     }).verify(model);
@@ -62534,7 +64337,7 @@ var FORCE_REFERENCE_KINDS = /* @__PURE__ */ new Set([
   "reaction",
   "explicit"
 ]);
-function positive15(value, label) {
+function positive18(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be positive.`);
   }
@@ -62553,7 +64356,7 @@ function normalizeFactors(factors = {}) {
   return Object.fromEntries(
     Object.entries(factors).map(([key, value]) => [
       key,
-      positive15(Number(value), `nodalFactors.${key}`)
+      positive18(Number(value), `nodalFactors.${key}`)
     ])
   );
 }
@@ -62585,7 +64388,7 @@ var ReinforcedConcreteStrutAndTieModel = class {
     const normalizedMembers = members.map((member) => {
       var _a, _b, _c, _d;
       const type = String((_a = member.type) != null ? _a : "").toLowerCase();
-      const area = positive15(
+      const area = positive18(
         resolver.area(Number(member.area)),
         `member ${member.id} area`
       );
@@ -62602,7 +64405,7 @@ var ReinforcedConcreteStrutAndTieModel = class {
         startNodeId: (_b = member.startNodeId) != null ? _b : member.start,
         endNodeId: (_c = member.endNodeId) != null ? _c : member.end,
         area,
-        axialRigidity: area * positive15(
+        axialRigidity: area * positive18(
           elasticModulus,
           `member ${member.id} analysis elastic modulus`
         ),
@@ -62696,7 +64499,7 @@ var ReinforcedConcreteStrutAndTieModel = class {
         );
       }
       const normal = ["load", "reaction"].includes(kind) ? normalizedDirection(reference.normal, `nodal zone ${zone.id} normal`) : null;
-      const designForce = kind === "explicit" ? positive15(
+      const designForce = kind === "explicit" ? positive18(
         resolver.force(Number(reference.designForce)),
         `nodal zone ${zone.id} designForce`
       ) : null;
@@ -62704,7 +64507,7 @@ var ReinforcedConcreteStrutAndTieModel = class {
         id: zone.id,
         nodeId: zone.nodeId,
         type: zone.type,
-        area: positive15(
+        area: positive18(
           resolver.area(Number(zone.area)),
           `nodal zone ${zone.id} area`
         ),
@@ -62737,14 +64540,14 @@ var STRUT_STRENGTH_MODELS = /* @__PURE__ */ new Set([
   "transverse-tension"
 ]);
 var NODE_TYPES2 = /* @__PURE__ */ new Set(["ccc", "cct", "ctt"]);
-function positive16(value, label) {
+function positive19(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be positive.`);
   }
   return value;
 }
 function calculateEn1992StrutAndTieNuPrime(fck) {
-  positive16(fck, "fck");
+  positive19(fck, "fck");
   return Math.max(0, 1 - fck / 250);
 }
 function calculateEn1992StrutDesignStrength({
@@ -62755,7 +64558,7 @@ function calculateEn1992StrutDesignStrength({
   if (!STRUT_STRENGTH_MODELS.has(strengthModel)) {
     throw new Error(`Unsupported EN 1992 strut strength model: ${strengthModel}.`);
   }
-  positive16(fcd, "fcd");
+  positive19(fcd, "fcd");
   const nuPrime = calculateEn1992StrutAndTieNuPrime(fck);
   const coefficient = strengthModel === "uncracked-uniaxial" ? 1 : 0.6 * nuPrime;
   return {
@@ -62766,8 +64569,8 @@ function calculateEn1992StrutDesignStrength({
   };
 }
 function calculateEn1992TieResistance({ reinforcementArea, fyd }) {
-  positive16(reinforcementArea, "reinforcementArea");
-  positive16(fyd, "fyd");
+  positive19(reinforcementArea, "reinforcementArea");
+  positive19(fyd, "fyd");
   return {
     capacity: reinforcementArea * fyd,
     reinforcementArea,
@@ -62784,14 +64587,14 @@ function calculateEn1992NodalDesignStrength({
   if (!NODE_TYPES2.has(nodeType)) {
     throw new Error(`Unsupported EN 1992 nodal-zone type: ${nodeType}.`);
   }
-  positive16(fcd, "fcd");
+  positive19(fcd, "fcd");
   const recommended = { ccc: 1, cct: 0.85, ctt: 0.75 };
   const parameterName = { ccc: "k1", cct: "k2", ctt: "k3" }[nodeType];
-  const factor = factors[parameterName] == null ? recommended[nodeType] : positive16(factors[parameterName], parameterName);
+  const factor2 = factors[parameterName] == null ? recommended[nodeType] : positive19(factors[parameterName], parameterName);
   const nuPrime = calculateEn1992StrutAndTieNuPrime(fck);
   return {
-    designStrength: factor * nuPrime * fcd,
-    factor,
+    designStrength: factor2 * nuPrime * fcd,
+    factor: factor2,
     factorName: parameterName,
     factorSource: factors[parameterName] == null ? "EN1992-recommended" : "explicit-national-parameter",
     nuPrime,
@@ -63375,7 +65178,7 @@ function combinationRows(analysisResult) {
       result.id,
       (_b = (_a = result.context) == null ? void 0 : _a.limitState) != null ? _b : "-",
       (_d = (_c = result.context) == null ? void 0 : _c.combinationType) != null ? _d : "-",
-      Object.entries((_g = (_f = result.factors) != null ? _f : (_e = result.context) == null ? void 0 : _e.loadCaseFactors) != null ? _g : {}).map(([id, factor]) => `${id}: ${formatNumber3(factor, 3)}`).join(", ")
+      Object.entries((_g = (_f = result.factors) != null ? _f : (_e = result.context) == null ? void 0 : _e.loadCaseFactors) != null ? _g : {}).map(([id, factor2]) => `${id}: ${formatNumber3(factor2, 3)}`).join(", ")
     ];
   });
 }
@@ -67265,13 +69068,13 @@ var XlamOutOfPlanePanelVerification = class {
     const fmCltD = kSystem * kmod * material.fmK / gammaM;
     let tau0Max = 0;
     let tau90Max = 0;
-    for (const layer of section.layers) {
-      if (layer.thickness <= 0) {
+    for (const layer2 of section.layers) {
+      if (layer2.thickness <= 0) {
         continue;
       }
-      const modulus = layer.active ? material.e0Mean : material.e90Mean;
-      const shearModulus2 = layer.active ? material.g0Mean : material.g90Mean;
-      const yMid = layer.centroidY;
+      const modulus = layer2.active ? material.e0Mean : material.e90Mean;
+      const shearModulus2 = layer2.active ? material.g0Mean : material.g90Mean;
+      const yMid = layer2.centroidY;
       let staticMoment = 0;
       for (const upperLayer of section.layers) {
         if (upperLayer.thickness <= 0) {
@@ -67287,7 +69090,7 @@ var XlamOutOfPlanePanelVerification = class {
       const tau = vEd * staticMoment / (bendingStiffness * section.effectiveWidth);
       const adjustedTau = Math.abs(tau);
       void shearModulus2;
-      if (layer.active) {
+      if (layer2.active) {
         tau0Max = Math.max(tau0Max, adjustedTau);
       } else {
         tau90Max = Math.max(tau90Max, adjustedTau);
@@ -67508,11 +69311,11 @@ function xlamRollingShearDemand({
 }) {
   let tau0Max = 0;
   let tau90Max = 0;
-  for (const layer of section.layers) {
-    if (layer.thickness <= 0) {
+  for (const layer2 of section.layers) {
+    if (layer2.thickness <= 0) {
       continue;
     }
-    const yMid = layer.centroidY;
+    const yMid = layer2.centroidY;
     let staticMoment = 0;
     for (const upperLayer of section.layers) {
       if (upperLayer.thickness <= 0 || upperLayer.centroidY < yMid) {
@@ -67523,7 +69326,7 @@ function xlamRollingShearDemand({
       staticMoment += localModulus * area * (upperLayer.centroidY - section.centroidY);
     }
     const tau = Math.abs(vEd * staticMoment / (bendingStiffness * section.effectiveWidth));
-    if (layer.active) {
+    if (layer2.active) {
       tau0Max = Math.max(tau0Max, tau);
     } else {
       tau90Max = Math.max(tau90Max, tau);
@@ -68120,12 +69923,16 @@ export {
   RESULT_STATUS_VALUES,
   RectangularFootingContactAnalysis,
   RectangularSection,
+  ReinforcedConcreteBeamColumnJoint3DModel,
+  ReinforcedConcreteBeamColumnJoint3DVerification,
   ReinforcedConcreteBeamColumnJointApplication,
   ReinforcedConcreteBeamColumnJointModel,
   ReinforcedConcreteBeamColumnJointVerification,
+  ReinforcedConcreteBeamDetailingVerification,
   ReinforcedConcreteBeamSectionProvider,
   ReinforcedConcreteBeamVerification,
   ReinforcedConcreteColumnApplication,
+  ReinforcedConcreteColumnDetailingVerification,
   ReinforcedConcreteColumnModel,
   ReinforcedConcreteColumnVerification,
   ReinforcedConcreteFoundationBeamApplication,
@@ -68227,7 +70034,11 @@ export {
   assertPositive13 as assertPositiveCheckValue,
   bilinearizeCapacityCurve,
   calculateElasticCriticalMomentLT,
+  calculateEn1992AnchorageLength,
+  calculateEn1992DesignBondStrength,
+  calculateEn1992LocalBearingResistance,
   calculateEn1992NodalDesignStrength,
+  calculateEn1992ShrinkageCurvature,
   calculateEn1992StrutAndTieNuPrime,
   calculateEn1992StrutDesignStrength,
   calculateEn1992TieResistance,

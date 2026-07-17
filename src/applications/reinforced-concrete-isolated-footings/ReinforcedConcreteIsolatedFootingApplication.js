@@ -17,9 +17,9 @@ export class ReinforcedConcreteIsolatedFootingApplication extends StructuralAppl
         geotechnicalResistanceCalculated: false,
         limitations: [
           "centered unrotated rectangular column only",
-          "structural checks require full soil contact",
-          "biaxial partial contact is not implemented",
+          "rigid compression-only base with linear pressure plane on the active polygon",
           "bearing and sliding resistances are assigned inputs",
+          "bearing capacity, settlements and soil-structure interaction are not calculated",
         ],
       },
     });

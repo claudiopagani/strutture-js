@@ -81,6 +81,7 @@ export {
 } from "./reinforced-concrete-plates/index.js";
 export {
   ReinforcedConcreteColumnApplication,
+  ReinforcedConcreteColumnDetailingVerification,
   ReinforcedConcreteColumnModel,
   ReinforcedConcreteColumnVerification,
 } from "./reinforced-concrete-columns/index.js";
@@ -98,6 +99,8 @@ export {
 } from "./reinforced-concrete-foundation-beams/index.js";
 export {
   ReinforcedConcreteBeamColumnJointApplication,
+  ReinforcedConcreteBeamColumnJoint3DModel,
+  ReinforcedConcreteBeamColumnJoint3DVerification,
   ReinforcedConcreteBeamColumnJointModel,
   ReinforcedConcreteBeamColumnJointVerification,
 } from "./reinforced-concrete-beam-column-joints/index.js";
@@ -119,6 +122,7 @@ export {
 } from "./reinforced-concrete-punching/index.js";
 export { ReinforcedConcreteSectionApplication } from "./reinforced-concrete-sections/index.js";
 export { ReinforcedConcreteBeamVerification } from "./reinforced-concrete-sections/index.js";
+export { ReinforcedConcreteBeamDetailingVerification } from "./reinforced-concrete-sections/index.js";
 export { ReinforcedConcreteShearVerification } from "./reinforced-concrete-sections/index.js";
 export { ReinforcedConcreteTorsionVerification } from "./reinforced-concrete-sections/index.js";
 export { ReinforcedConcreteServiceabilityVerification } from "./reinforced-concrete-sections/index.js";

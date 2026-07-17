@@ -11,6 +11,50 @@ function nowMilliseconds() {
   return globalThis.performance?.now?.() ?? Date.now();
 }
 
+export function calculateCrackedTransformedProperties({ section, state, modularRatio }) {
+  const concreteFibers = (state?.concrete?.fibers ?? []).filter(
+    (fiber) => Math.abs(fiber.stress ?? 0) > 1e-12,
+  );
+  const bars = section.getReinforcementBars();
+  const concreteArea = concreteFibers.reduce(
+    (sum, fiber) => sum + fiber.area,
+    0,
+  );
+  const steelTransformedArea = bars.reduce(
+    (sum, bar) => sum + modularRatio * bar.area,
+    0,
+  );
+  const totalArea = concreteArea + steelTransformedArea;
+
+  if (!isFinitePositive(totalArea)) return null;
+
+  const centroid = (
+    concreteFibers.reduce((sum, fiber) => sum + fiber.area * fiber.y, 0) +
+    bars.reduce(
+      (sum, bar) => sum + modularRatio * bar.area * bar.y,
+      0,
+    )
+  ) / totalArea;
+  const inertia =
+    concreteFibers.reduce(
+      (sum, fiber) => sum + fiber.area * (fiber.y - centroid) ** 2,
+      0,
+    ) +
+    bars.reduce(
+      (sum, bar) =>
+        sum + modularRatio * bar.area * (bar.y - centroid) ** 2,
+      0,
+    );
+  const reinforcementFirstMoment = bars.reduce(
+    (sum, bar) => sum + bar.area * (bar.y - centroid),
+    0,
+  );
+
+  return isFinitePositive(inertia)
+    ? { centroid, inertia, reinforcementFirstMoment }
+    : null;
+}
+
 /**
  * Precomputed M-κ curve for an RC section under given axial force and
  * effective modular ratio.  Provides fast lookup of secant flexural
@@ -337,6 +381,13 @@ export class SectionMomentCurvatureCurve {
     const crackedKappa = solved.converged
       ? Math.sign(signedM || 1) * Math.abs(solved.strainField?.kappaZ ?? 0)
       : uncrackedKappa;
+    const crackedProperties = solved.converged
+      ? calculateCrackedTransformedProperties({
+          section: this._section,
+          state: solved.state,
+          modularRatio: this._effectiveModularRatio,
+        })
+      : null;
 
     // Tension stiffening.
     const zeta = isFinitePositive(selectedMcr)
@@ -362,6 +413,7 @@ export class SectionMomentCurvatureCurve {
       zeta,
       cracked: true,
       converged: solved.converged,
+      crackedSection: crackedProperties,
     };
   }
 
@@ -382,6 +434,7 @@ export class SectionMomentCurvatureCurve {
         zeta: 0,
         cracked: false,
         converged: true,
+        crackedSection: null,
       };
     }
 
@@ -430,6 +483,23 @@ export class SectionMomentCurvatureCurve {
       zeta: left.zeta + t * (right.zeta - left.zeta),
       cracked: left.cracked || right.cracked,
       converged: left.converged && right.converged,
+      crackedSection:
+        left.crackedSection && right.crackedSection
+          ? {
+              centroid:
+                left.crackedSection.centroid +
+                t * (right.crackedSection.centroid - left.crackedSection.centroid),
+              inertia:
+                left.crackedSection.inertia +
+                t * (right.crackedSection.inertia - left.crackedSection.inertia),
+              reinforcementFirstMoment:
+                left.crackedSection.reinforcementFirstMoment +
+                t * (
+                  right.crackedSection.reinforcementFirstMoment -
+                  left.crackedSection.reinforcementFirstMoment
+                ),
+            }
+          : left.crackedSection ?? right.crackedSection ?? null,
     };
   }
 }

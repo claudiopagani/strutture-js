@@ -6,12 +6,14 @@
 con:
 
 - screening della snellezza secondo NTC 2018 § 4.1.2.3.9.2;
+- generazione locale dei momenti del secondo ordine con rigidezza nominale;
 - dominio resistente biassiale della sezione a fibre;
-- momenti di progetto assegnati separatamente nelle due componenti della
-  sezione.
+- taglio nelle due direzioni e taglio da gerarchia delle resistenze;
+- armatura longitudinale e trasversale, zone critiche, confinamento,
+  ancoraggio e domanda di duttilita.
 
-Il modulo non esegue l'analisi globale del telaio e non genera con una formula
-locale gli effetti del secondo ordine di un pilastro snello.
+Il modulo non esegue l'analisi globale del telaio. Le lunghezze efficaci e gli
+stati di azione restano input espliciti.
 
 ## Unita e segni
 
@@ -52,10 +54,34 @@ Quando `lambda > lambdaLim`, il modulo richiede una delle seguenti condizioni:
 - dichiarazione `designMomentsIncludeSecondOrder: true`, se i momenti di input
   provengono gia da un'analisi adeguata del secondo ordine.
 
-In assenza di tali informazioni il risultato e `not-supported`. Il modulo non
-amplifica autonomamente i momenti, perche le NTC richiedono di considerare
-imperfezioni geometriche, viscosita, fessurazione e non linearita dei
-materiali.
+In alternativa, impostando un `stability.creepCoefficient` non negativo, il
+modulo genera il momento totale per il pilastro isolato. Usa la rigidezza
+nominale NTC 2018 [4.1.44]:
+
+```text
+EI = 0.3 Ecd Ic / (1 + 0.5 phi)
+Ncr = pi^2 EI / l0^2
+MEd = M01 / (1 - beta NEd/Ncr)
+```
+
+`beta` e `momentDistributionFactor` e vale `1` in assenza di un valore
+esplicito. Se il momento di primo ordine e nullo, l'opzione predefinita include
+l'eccentricita d'imperfezione locale `L/300`. Se `NEd >= Ncr`, oppure non e
+fornito ne il coefficiente di viscosita ne un momento totale, il risultato e
+`not-supported`. Il metodo non sostituisce una vera analisi P-Delta del telaio.
+
+## Taglio, dettagli e duttilita
+
+Il contratto opzionale `shear` riusa il kernel NTC 2018 per ciascuna direzione.
+Il taglio di progetto puo essere assegnato o ottenuto dall'equilibrio dei
+momenti resistenti alle estremita e della lunghezza libera, secondo § 7.4.5.
+
+Il contratto `detailing` controlla i limiti ordinari dei §§ 4.1.6.1.2 e, per
+elementi dissipativi, dimensioni, percentuale longitudinale, lunghezza della
+zona critica, diametro e passo delle staffe. Il confinamento calcola `alpha_n`,
+`alpha_s`, `omega_wd` e verifica le espressioni [7.4.29]-[7.4.31] rispetto alla
+domanda esplicita di duttilita in curvatura. Gli ancoraggi usano EN 1992-1-1
+§ 8.4, con il requisito NTC aggiuntivo quando il pilastro e teso.
 
 ## Verifica resistente
 
@@ -72,15 +98,9 @@ lunghezze efficaci e l'origine dei momenti utilizzati.
 
 ## Limiti attuali
 
-Non sono ancora inclusi:
+Restano fuori dal modulo locale:
 
-- generazione dei momenti del secondo ordine;
 - determinazione automatica delle lunghezze libere di inflessione;
-- eccentricita minima e imperfezioni generate dal modulo;
-- taglio del pilastro;
-- minimi e massimi geometrici di armatura;
-- passo delle staffe, confinamento e dettagli costruttivi;
-- zone critiche, duttilita e gerarchia delle resistenze sismica;
 - verifica globale degli effetti P-Delta dell'edificio.
 
 Questi limiti sono restituiti nei warning e non devono essere nascosti dal
@@ -90,9 +110,12 @@ consumer.
 
 Fonte normativa primaria:
 
-- D.M. 17 gennaio 2018, NTC 2018, § 4.1.2.3.9.2 e § 4.1.2.3.9.3,
+- D.M. 17 gennaio 2018, NTC 2018, §§ 4.1.2.3.9.2-3, 4.1.6.1.2,
+  7.4.5, 7.4.6.1.2 e 7.4.6.2.2,
   [Gazzetta Ufficiale](https://www.gazzettaufficiale.it/eli/id/2018/2/20/18A00716/sg).
+- EN 1992-1-1:2004, § 8.4, per aderenza e lunghezze di ancoraggio.
 
 La campagna automatica verifica indipendentemente `nu`, raggi d'inerzia,
-snellezze e snellezza limite. La resistenza biassiale riutilizza i test e i casi
-di validazione del risolutore sezionale a fibre.
+snellezze e snellezza limite. Test dedicati coprono amplificazione nominale,
+taglio e confinamento; la resistenza biassiale riutilizza i casi del risolutore
+sezionale a fibre.
