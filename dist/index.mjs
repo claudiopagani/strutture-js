@@ -694,6 +694,1795 @@ var ExistingMasonryMaterial = class extends ExistingMaterial {
   }
 };
 
+// src/domain/materials/masonry/CyclicMasonryCompressionMaterial.js
+var INTERNAL_UNITS = Object.freeze({ force: "kN", length: "m" });
+var STATE_VERSION = 1;
+var DIRECTION_TOLERANCE = 1e-14;
+function assertPositive(value, label) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(
+      `CyclicMasonryCompressionMaterial requires a positive ${label}.`
+    );
+  }
+}
+function assertNonNegative(value, label) {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(
+      `CyclicMasonryCompressionMaterial requires a non-negative ${label}.`
+    );
+  }
+}
+function assertRatio(value, label) {
+  if (!Number.isFinite(value) || value < 0 || value > 1) {
+    throw new Error(
+      `CyclicMasonryCompressionMaterial requires ${label} between 0 and 1.`
+    );
+  }
+}
+function clamp(value, minimum = 0, maximum = 1) {
+  return Math.max(minimum, Math.min(maximum, value));
+}
+function loadingDirection(increment, fallback = 0) {
+  if (Math.abs(increment) <= DIRECTION_TOLERANCE) {
+    return fallback;
+  }
+  return Math.sign(increment);
+}
+function cloneState(state) {
+  return { ...state };
+}
+var CyclicMasonryCompressionMaterial = class _CyclicMasonryCompressionMaterial {
+  constructor({
+    id = null,
+    units = null,
+    elasticModulus,
+    compressiveStrength,
+    peakStrain,
+    prePeakCurve = "cubic",
+    ultimateStrain = null,
+    residualStrengthRatio = 0,
+    damageOnsetStrain = peakStrain,
+    unloadingStiffnessDegradation = 0,
+    strengthDegradation = 0,
+    energyDamageCoefficient = 0,
+    energyCapacity = null,
+    tensileStrength = 0,
+    tensionElasticModulus = elasticModulus,
+    tensionFractureEnergy = null,
+    compressionFractureEnergy = null,
+    hingeLength,
+    numericalTangentRatio = 0,
+    metadata = {}
+  } = {}) {
+    var _a, _b, _c;
+    assertExplicitUnitSystem(units, "CyclicMasonryCompressionMaterial");
+    const resolver = createUnitResolver(units, INTERNAL_UNITS);
+    this.id = id;
+    this.type = "cyclic-masonry-compression";
+    this.units = resolver.targetUnitSystem;
+    this.elasticModulus = resolver.stress(elasticModulus);
+    this.compressiveStrength = resolver.stress(compressiveStrength);
+    this.peakStrain = peakStrain;
+    this.prePeakCurve = String(prePeakCurve).trim().toLowerCase();
+    this.residualStrengthRatio = residualStrengthRatio;
+    this.damageOnsetStrain = damageOnsetStrain;
+    this.unloadingStiffnessDegradation = unloadingStiffnessDegradation;
+    this.strengthDegradation = strengthDegradation;
+    this.energyDamageCoefficient = energyDamageCoefficient;
+    this.tensileStrength = resolver.stress(tensileStrength);
+    this.tensionElasticModulus = resolver.stress(tensionElasticModulus);
+    this.tensionFractureEnergy = resolver.convert(tensionFractureEnergy, {
+      forceExponent: 1,
+      lengthExponent: -1
+    });
+    this.compressionFractureEnergy = resolver.convert(
+      compressionFractureEnergy,
+      { forceExponent: 1, lengthExponent: -1 }
+    );
+    this.hingeLength = resolver.length(hingeLength);
+    this.numericalTangentRatio = numericalTangentRatio;
+    this.metadata = {
+      ...metadata,
+      unitSystem: resolver.targetUnitSystem,
+      sourceUnitSystem: (_a = metadata.sourceUnitSystem) != null ? _a : resolver.sourceUnitSystem,
+      parameterStatus: (_b = metadata.parameterStatus) != null ? _b : "user-calibrated"
+    };
+    assertPositive(this.elasticModulus, "elasticModulus");
+    assertPositive(this.compressiveStrength, "compressiveStrength");
+    assertPositive(this.peakStrain, "peakStrain");
+    assertPositive(this.hingeLength, "hingeLength");
+    assertRatio(this.residualStrengthRatio, "residualStrengthRatio");
+    assertRatio(
+      this.unloadingStiffnessDegradation,
+      "unloadingStiffnessDegradation"
+    );
+    assertRatio(this.strengthDegradation, "strengthDegradation");
+    assertNonNegative(this.energyDamageCoefficient, "energyDamageCoefficient");
+    assertNonNegative(this.tensileStrength, "tensileStrength");
+    assertPositive(this.tensionElasticModulus, "tensionElasticModulus");
+    assertNonNegative(this.numericalTangentRatio, "numericalTangentRatio");
+    if (!(/* @__PURE__ */ new Set(["linear", "cubic"])).has(this.prePeakCurve)) {
+      throw new Error(
+        'CyclicMasonryCompressionMaterial prePeakCurve must be "linear" or "cubic".'
+      );
+    }
+    if (!Number.isFinite(this.damageOnsetStrain) || this.damageOnsetStrain < this.peakStrain) {
+      throw new Error(
+        "CyclicMasonryCompressionMaterial requires damageOnsetStrain >= peakStrain."
+      );
+    }
+    if (Number.isFinite(this.compressionFractureEnergy) && this.compressionFractureEnergy <= 0) {
+      throw new Error(
+        "CyclicMasonryCompressionMaterial compressionFractureEnergy must be positive."
+      );
+    }
+    if (Number.isFinite(this.tensionFractureEnergy) && this.tensionFractureEnergy <= 0) {
+      throw new Error(
+        "CyclicMasonryCompressionMaterial tensionFractureEnergy must be positive."
+      );
+    }
+    const derivedUltimateStrain = this.deriveUltimateStrainFromEnergy();
+    this.ultimateStrain = ultimateStrain != null ? ultimateStrain : derivedUltimateStrain;
+    if (!Number.isFinite(this.ultimateStrain) || this.ultimateStrain <= this.damageOnsetStrain) {
+      throw new Error(
+        "CyclicMasonryCompressionMaterial requires ultimateStrain > damageOnsetStrain, or compressionFractureEnergy from which it can be derived."
+      );
+    }
+    this.energyCapacity = (_c = resolver.stress(energyCapacity)) != null ? _c : this.compressiveStrength * this.ultimateStrain;
+    assertPositive(this.energyCapacity, "energyCapacity");
+    const normalizedInitialSlope = this.elasticModulus * this.peakStrain / this.compressiveStrength;
+    if (this.prePeakCurve === "linear" && Math.abs(normalizedInitialSlope - 1) > 1e-9) {
+      throw new Error(
+        'CyclicMasonryCompressionMaterial with prePeakCurve "linear" requires elasticModulus * peakStrain = compressiveStrength.'
+      );
+    }
+    if (this.prePeakCurve === "cubic" && normalizedInitialSlope > 3 + 1e-12) {
+      throw new Error(
+        "CyclicMasonryCompressionMaterial requires elasticModulus * peakStrain / compressiveStrength <= 3 so that the cubic pre-peak envelope remains monotonic."
+      );
+    }
+    this._configuration = this.configuration();
+    this.revertToStart();
+  }
+  deriveUltimateStrainFromEnergy() {
+    if (!Number.isFinite(this.compressionFractureEnergy)) {
+      return null;
+    }
+    const strengthDrop = this.compressiveStrength * (1 - this.residualStrengthRatio);
+    if (strengthDrop <= 0) {
+      throw new Error(
+        "CyclicMasonryCompressionMaterial cannot derive ultimateStrain from compressionFractureEnergy when residualStrengthRatio is 1."
+      );
+    }
+    return this.peakStrain + 2 * this.compressionFractureEnergy / (this.hingeLength * strengthDrop);
+  }
+  configuration() {
+    return {
+      id: this.id,
+      units: { ...this.units },
+      elasticModulus: this.elasticModulus,
+      compressiveStrength: this.compressiveStrength,
+      peakStrain: this.peakStrain,
+      prePeakCurve: this.prePeakCurve,
+      ultimateStrain: this.ultimateStrain,
+      residualStrengthRatio: this.residualStrengthRatio,
+      damageOnsetStrain: this.damageOnsetStrain,
+      unloadingStiffnessDegradation: this.unloadingStiffnessDegradation,
+      strengthDegradation: this.strengthDegradation,
+      energyDamageCoefficient: this.energyDamageCoefficient,
+      energyCapacity: this.energyCapacity,
+      tensileStrength: this.tensileStrength,
+      tensionElasticModulus: this.tensionElasticModulus,
+      tensionFractureEnergy: this.tensionFractureEnergy,
+      compressionFractureEnergy: this.compressionFractureEnergy,
+      hingeLength: this.hingeLength,
+      numericalTangentRatio: this.numericalTangentRatio,
+      metadata: { ...this.metadata }
+    };
+  }
+  initialState() {
+    return {
+      version: STATE_VERSION,
+      strain: 0,
+      stress: 0,
+      tangent: this.elasticModulus,
+      elasticStrain: 0,
+      plasticStrain: 0,
+      contactOpeningStrain: 0,
+      damage: 0,
+      stiffnessDamage: 0,
+      strengthDamage: 0,
+      maxCompressionStrain: 0,
+      maxCompressionStress: 0,
+      unloadingStiffness: this.elasticModulus,
+      zeroStressStrain: 0,
+      loadingDirection: 0,
+      reversalCount: 0,
+      cumulativeWork: 0,
+      dissipatedEnergy: 0,
+      crushingActivated: false,
+      failed: false,
+      branch: "initial"
+    };
+  }
+  compressionEnvelope(compressionStrain, strengthDamage = 0) {
+    const x = Math.max(0, compressionStrain);
+    const residualStrength = this.residualStrengthRatio * this.compressiveStrength;
+    let baseStress;
+    let baseTangent;
+    if (x <= this.peakStrain) {
+      if (this.prePeakCurve === "linear") {
+        baseStress = this.elasticModulus * x;
+        baseTangent = this.elasticModulus;
+      } else {
+        const ratio = x / this.peakStrain;
+        const slopeRatio = this.elasticModulus * this.peakStrain / this.compressiveStrength;
+        const a = slopeRatio - 2;
+        const b = 3 - 2 * slopeRatio;
+        baseStress = this.compressiveStrength * (a * ratio ** 3 + b * ratio ** 2 + slopeRatio * ratio);
+        baseTangent = this.compressiveStrength / this.peakStrain * (3 * a * ratio ** 2 + 2 * b * ratio + slopeRatio);
+      }
+    } else if (x < this.ultimateStrain) {
+      const postPeakRatio = (x - this.peakStrain) / (this.ultimateStrain - this.peakStrain);
+      baseStress = this.compressiveStrength - postPeakRatio * (this.compressiveStrength - residualStrength);
+      baseTangent = -(this.compressiveStrength - residualStrength) / (this.ultimateStrain - this.peakStrain);
+    } else {
+      baseStress = residualStrength;
+      baseTangent = 0;
+    }
+    const degradedStress = x <= this.peakStrain ? (1 - strengthDamage) * baseStress : Math.max(
+      residualStrength,
+      (1 - strengthDamage) * baseStress
+    );
+    const tangentScale = degradedStress === residualStrength && baseStress > 0 ? 0 : 1 - strengthDamage;
+    return {
+      stress: degradedStress,
+      tangent: tangentScale * baseTangent
+    };
+  }
+  damageFor(compressionStrain, dissipatedEnergy) {
+    const crushingRange = this.ultimateStrain - this.damageOnsetStrain;
+    const crushingProgress = clamp(
+      (compressionStrain - this.damageOnsetStrain) / crushingRange
+    );
+    const energyProgress = Math.max(0, dissipatedEnergy / this.energyCapacity);
+    const strengthDamage = clamp(
+      this.strengthDegradation * crushingProgress + this.energyDamageCoefficient * energyProgress,
+      0,
+      1 - this.residualStrengthRatio
+    );
+    const stiffnessDamage = clamp(
+      this.unloadingStiffnessDegradation * crushingProgress + this.energyDamageCoefficient * energyProgress
+    );
+    return {
+      crushingProgress,
+      strengthDamage,
+      stiffnessDamage,
+      damage: Math.max(strengthDamage, stiffnessDamage)
+    };
+  }
+  tensionResponse(openingStrain) {
+    if (this.tensileStrength === 0 || openingStrain <= 0) {
+      return {
+        stress: 0,
+        tangent: this.numericalTangentRatio * this.elasticModulus,
+        branch: "open"
+      };
+    }
+    const crackingStrain = this.tensileStrength / this.tensionElasticModulus;
+    if (openingStrain <= crackingStrain) {
+      return {
+        stress: this.tensionElasticModulus * openingStrain,
+        tangent: this.tensionElasticModulus,
+        branch: "tension-elastic"
+      };
+    }
+    if (!Number.isFinite(this.tensionFractureEnergy)) {
+      return {
+        stress: 0,
+        tangent: this.numericalTangentRatio * this.elasticModulus,
+        branch: "tension-cracked"
+      };
+    }
+    const softeningRange = 2 * this.tensionFractureEnergy / (this.tensileStrength * this.hingeLength);
+    const softeningProgress = (openingStrain - crackingStrain) / softeningRange;
+    if (softeningProgress >= 1) {
+      return {
+        stress: 0,
+        tangent: this.numericalTangentRatio * this.elasticModulus,
+        branch: "tension-cracked"
+      };
+    }
+    return {
+      stress: this.tensileStrength * (1 - softeningProgress),
+      tangent: -this.tensileStrength / softeningRange,
+      branch: "tension-softening"
+    };
+  }
+  setTrialStrain(strain) {
+    if (!Number.isFinite(strain)) {
+      throw new Error(
+        "CyclicMasonryCompressionMaterial setTrialStrain requires a finite strain."
+      );
+    }
+    const committed = this._committedState;
+    const increment = strain - committed.strain;
+    const direction = loadingDirection(increment, committed.loadingDirection);
+    const reversed = committed.loadingDirection !== 0 && direction !== 0 && direction !== committed.loadingDirection;
+    const reversalCount = committed.reversalCount + Number(reversed);
+    const compressionStrain = Math.max(0, -strain);
+    const newMaximum = compressionStrain > committed.maxCompressionStrain + DIRECTION_TOLERANCE;
+    let response;
+    let maxCompressionStrain = committed.maxCompressionStrain;
+    let maxCompressionStress = committed.maxCompressionStress;
+    let zeroStressStrain = committed.zeroStressStrain;
+    let unloadingStiffness = committed.unloadingStiffness;
+    let strengthDamage = committed.strengthDamage;
+    let stiffnessDamage = committed.stiffnessDamage;
+    let damage = committed.damage;
+    let crushingActivated = committed.crushingActivated;
+    if (newMaximum) {
+      maxCompressionStrain = compressionStrain;
+      crushingActivated = crushingActivated || compressionStrain > this.damageOnsetStrain;
+      const nextDamage = this.damageFor(
+        compressionStrain,
+        committed.dissipatedEnergy
+      );
+      strengthDamage = Math.max(strengthDamage, nextDamage.strengthDamage);
+      stiffnessDamage = Math.max(stiffnessDamage, nextDamage.stiffnessDamage);
+      damage = Math.max(damage, nextDamage.damage);
+      response = this.compressionEnvelope(
+        compressionStrain,
+        strengthDamage
+      );
+      maxCompressionStress = response.stress;
+      if (!crushingActivated) {
+        unloadingStiffness = compressionStrain > 0 ? response.stress / compressionStrain : this.elasticModulus;
+        zeroStressStrain = 0;
+      } else {
+        unloadingStiffness = Math.max(
+          this.elasticModulus * this.numericalTangentRatio,
+          this.elasticModulus * (1 - stiffnessDamage)
+        );
+        zeroStressStrain = strain + response.stress / unloadingStiffness;
+      }
+      response = {
+        stress: -response.stress,
+        tangent: response.tangent,
+        branch: compressionStrain <= this.peakStrain ? "compression-envelope-pre-peak" : compressionStrain < this.ultimateStrain ? "compression-envelope-post-peak" : "compression-residual"
+      };
+    } else {
+      const openingStrain = strain - zeroStressStrain;
+      if (openingStrain >= 0) {
+        response = this.tensionResponse(openingStrain);
+      } else if (maxCompressionStrain > 0) {
+        const lineStress = unloadingStiffness * openingStrain;
+        const envelope = this.compressionEnvelope(
+          compressionStrain,
+          strengthDamage
+        );
+        const boundedStress = Math.max(-envelope.stress, lineStress);
+        response = {
+          stress: boundedStress,
+          tangent: boundedStress === lineStress ? unloadingStiffness : envelope.tangent,
+          branch: direction < 0 ? "compression-reloading" : "compression-unloading"
+        };
+      } else if (compressionStrain > 0) {
+        const envelope = this.compressionEnvelope(compressionStrain, 0);
+        response = {
+          stress: -envelope.stress,
+          tangent: envelope.tangent,
+          branch: "compression-envelope-pre-peak"
+        };
+      } else {
+        response = this.tensionResponse(strain);
+      }
+    }
+    const workIncrement = 0.5 * (committed.stress + response.stress) * increment;
+    const cumulativeWork = committed.cumulativeWork + workIncrement;
+    const recoverableEnergy = response.stress < 0 && unloadingStiffness > 0 ? response.stress ** 2 / (2 * unloadingStiffness) : response.stress > 0 && this.tensionElasticModulus > 0 ? response.stress ** 2 / (2 * this.tensionElasticModulus) : 0;
+    const dissipatedEnergy = Math.max(
+      committed.dissipatedEnergy,
+      cumulativeWork - recoverableEnergy,
+      0
+    );
+    const contactOpeningStrain = Math.max(0, strain - zeroStressStrain);
+    const plasticStrain = crushingActivated ? zeroStressStrain : 0;
+    const elasticStrain = response.stress === 0 ? 0 : response.stress / (response.stress < 0 ? unloadingStiffness : this.tensionElasticModulus);
+    this._trialState = {
+      version: STATE_VERSION,
+      strain,
+      stress: response.stress,
+      tangent: response.tangent,
+      elasticStrain,
+      plasticStrain,
+      contactOpeningStrain,
+      damage,
+      stiffnessDamage,
+      strengthDamage,
+      maxCompressionStrain,
+      maxCompressionStress,
+      unloadingStiffness,
+      zeroStressStrain,
+      loadingDirection: direction,
+      reversalCount,
+      cumulativeWork,
+      dissipatedEnergy,
+      crushingActivated,
+      failed: committed.failed || compressionStrain >= this.ultimateStrain,
+      branch: response.branch
+    };
+    return this._trialState.stress;
+  }
+  getStrain() {
+    return this._trialState.strain;
+  }
+  getStress() {
+    return this._trialState.stress;
+  }
+  getTangent() {
+    return this._trialState.tangent;
+  }
+  getState() {
+    return cloneState(this._trialState);
+  }
+  getCommittedState() {
+    return cloneState(this._committedState);
+  }
+  commitState() {
+    this._committedState = cloneState(this._trialState);
+    return 0;
+  }
+  revertToLastCommit() {
+    this._trialState = cloneState(this._committedState);
+    return 0;
+  }
+  revertToStart() {
+    this._committedState = this.initialState();
+    this._trialState = cloneState(this._committedState);
+    return 0;
+  }
+  importState(state, { committed = true } = {}) {
+    if (!state || state.version !== STATE_VERSION) {
+      throw new Error(
+        `CyclicMasonryCompressionMaterial requires state version ${STATE_VERSION}.`
+      );
+    }
+    this._trialState = cloneState(state);
+    if (committed) {
+      this._committedState = cloneState(state);
+    }
+    return this;
+  }
+  clone() {
+    const cloned = new _CyclicMasonryCompressionMaterial(this._configuration);
+    cloned._committedState = cloneState(this._committedState);
+    cloned._trialState = cloneState(this._trialState);
+    return cloned;
+  }
+  toJSON() {
+    return {
+      type: this.type,
+      configuration: this.configuration(),
+      committedState: this.getCommittedState(),
+      trialState: this.getState()
+    };
+  }
+};
+
+// src/domain/materials/masonry/shearStrength/MohrCoulombModel.js
+var INTERNAL_UNITS2 = Object.freeze({ force: "kN", length: "m" });
+function assertPositive2(value, label) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`MohrCoulombModel requires a positive ${label}.`);
+  }
+}
+function assertNonNegative2(value, label) {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`MohrCoulombModel requires a non-negative ${label}.`);
+  }
+}
+function clamp2(value, minimum = 0, maximum = 1) {
+  return Math.max(minimum, Math.min(maximum, value));
+}
+var MohrCoulombModel = class _MohrCoulombModel {
+  constructor({
+    id = null,
+    units = null,
+    cohesion,
+    frictionCoefficient,
+    cohesionDamageCoefficient = 1,
+    frictionDamageCoefficient = 0,
+    metadata = {}
+  } = {}) {
+    var _a;
+    assertExplicitUnitSystem(units, "MohrCoulombModel");
+    const resolver = createUnitResolver(units, INTERNAL_UNITS2);
+    this.id = id;
+    this.type = "mohr-coulomb";
+    this.units = resolver.targetUnitSystem;
+    this.cohesion = resolver.stress(cohesion);
+    this.frictionCoefficient = frictionCoefficient;
+    this.cohesionDamageCoefficient = cohesionDamageCoefficient;
+    this.frictionDamageCoefficient = frictionDamageCoefficient;
+    this.metadata = {
+      ...metadata,
+      unitSystem: resolver.targetUnitSystem,
+      sourceUnitSystem: (_a = metadata.sourceUnitSystem) != null ? _a : resolver.sourceUnitSystem,
+      calibrationRequired: true
+    };
+    assertPositive2(this.cohesion, "cohesion");
+    assertNonNegative2(this.frictionCoefficient, "frictionCoefficient");
+    assertNonNegative2(
+      this.cohesionDamageCoefficient,
+      "cohesionDamageCoefficient"
+    );
+    assertNonNegative2(
+      this.frictionDamageCoefficient,
+      "frictionDamageCoefficient"
+    );
+  }
+  evaluate({
+    currentAxialCompression = 0,
+    compressedLength = 0,
+    thickness,
+    shearDamage = 0
+  } = {}) {
+    assertPositive2(thickness, "context thickness");
+    const effectiveLength = Math.max(0, compressedLength);
+    const effectiveArea = thickness * effectiveLength;
+    const compression2 = Math.max(0, currentAxialCompression);
+    const damage = clamp2(shearDamage);
+    const cohesionFactor = clamp2(1 - this.cohesionDamageCoefficient * damage);
+    const frictionFactor = clamp2(1 - this.frictionDamageCoefficient * damage);
+    const cohesionContribution = this.cohesion * cohesionFactor * effectiveArea;
+    const frictionContribution = this.frictionCoefficient * frictionFactor * compression2;
+    const strengthDegradationFloor = frictionContribution;
+    return {
+      type: this.type,
+      capacity: cohesionContribution + frictionContribution,
+      cohesionContribution,
+      frictionContribution,
+      strengthDegradationFloor,
+      effectiveArea,
+      effectiveLength,
+      compression: compression2,
+      cohesionFactor,
+      frictionFactor
+    };
+  }
+  clone() {
+    return new _MohrCoulombModel(this.toJSON());
+  }
+  toJSON() {
+    return {
+      id: this.id,
+      type: this.type,
+      units: { ...this.units },
+      cohesion: this.cohesion,
+      frictionCoefficient: this.frictionCoefficient,
+      cohesionDamageCoefficient: this.cohesionDamageCoefficient,
+      frictionDamageCoefficient: this.frictionDamageCoefficient,
+      metadata: { ...this.metadata }
+    };
+  }
+};
+
+// src/domain/materials/masonry/shearStrength/SlidingStrengthModel.js
+var INTERNAL_UNITS3 = Object.freeze({ force: "kN", length: "m" });
+function assertPositive3(value, label) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`SlidingStrengthModel requires a positive ${label}.`);
+  }
+}
+function assertNonNegative3(value, label) {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`SlidingStrengthModel requires a non-negative ${label}.`);
+  }
+}
+function assertRatio2(value, label) {
+  if (!Number.isFinite(value) || value < 0 || value > 1) {
+    throw new Error(`SlidingStrengthModel requires ${label} between 0 and 1.`);
+  }
+}
+function clamp3(value, minimum = 0, maximum = 1) {
+  return Math.max(minimum, Math.min(maximum, value));
+}
+var SlidingStrengthModel = class _SlidingStrengthModel {
+  constructor({
+    id = null,
+    units = null,
+    cohesion,
+    frictionCoefficient,
+    residualCohesionRatio = 0,
+    cohesionDamageCoefficient = 1,
+    frictionDamageCoefficient = 0,
+    metadata = {}
+  } = {}) {
+    var _a;
+    assertExplicitUnitSystem(units, "SlidingStrengthModel");
+    const resolver = createUnitResolver(units, INTERNAL_UNITS3);
+    this.id = id;
+    this.type = "bed-joint-sliding";
+    this.units = resolver.targetUnitSystem;
+    this.cohesion = resolver.stress(cohesion);
+    this.frictionCoefficient = frictionCoefficient;
+    this.residualCohesionRatio = residualCohesionRatio;
+    this.cohesionDamageCoefficient = cohesionDamageCoefficient;
+    this.frictionDamageCoefficient = frictionDamageCoefficient;
+    this.metadata = {
+      ...metadata,
+      unitSystem: resolver.targetUnitSystem,
+      sourceUnitSystem: (_a = metadata.sourceUnitSystem) != null ? _a : resolver.sourceUnitSystem,
+      calibrationRequired: true
+    };
+    assertPositive3(this.cohesion, "cohesion");
+    assertNonNegative3(this.frictionCoefficient, "frictionCoefficient");
+    assertRatio2(this.residualCohesionRatio, "residualCohesionRatio");
+    assertNonNegative3(
+      this.cohesionDamageCoefficient,
+      "cohesionDamageCoefficient"
+    );
+    assertNonNegative3(
+      this.frictionDamageCoefficient,
+      "frictionDamageCoefficient"
+    );
+  }
+  evaluate({
+    currentAxialCompression = 0,
+    compressedLength = 0,
+    thickness,
+    shearDamage = 0
+  } = {}) {
+    assertPositive3(thickness, "context thickness");
+    const effectiveLength = Math.max(0, compressedLength);
+    const effectiveArea = thickness * effectiveLength;
+    const compression2 = Math.max(0, currentAxialCompression);
+    const damage = clamp3(shearDamage);
+    const residualCohesion = this.residualCohesionRatio * this.cohesion;
+    const degradedCohesion = Math.max(
+      residualCohesion,
+      this.cohesion * (1 - this.cohesionDamageCoefficient * damage)
+    );
+    const degradedFriction = this.frictionCoefficient * clamp3(1 - this.frictionDamageCoefficient * damage);
+    const cohesionContribution = degradedCohesion * effectiveArea;
+    const frictionContribution = degradedFriction * compression2;
+    const residualCohesionContribution = residualCohesion * effectiveArea;
+    const strengthDegradationFloor = residualCohesionContribution + frictionContribution;
+    return {
+      type: this.type,
+      capacity: cohesionContribution + frictionContribution,
+      cohesionContribution,
+      frictionContribution,
+      residualCohesionContribution,
+      strengthDegradationFloor,
+      effectiveArea,
+      effectiveLength,
+      compression: compression2,
+      degradedCohesion,
+      degradedFriction
+    };
+  }
+  clone() {
+    return new _SlidingStrengthModel(this.toJSON());
+  }
+  toJSON() {
+    return {
+      id: this.id,
+      type: this.type,
+      units: { ...this.units },
+      cohesion: this.cohesion,
+      frictionCoefficient: this.frictionCoefficient,
+      residualCohesionRatio: this.residualCohesionRatio,
+      cohesionDamageCoefficient: this.cohesionDamageCoefficient,
+      frictionDamageCoefficient: this.frictionDamageCoefficient,
+      metadata: { ...this.metadata }
+    };
+  }
+};
+
+// src/domain/materials/masonry/shearStrength/TurnsekSheppardModel.js
+var INTERNAL_UNITS4 = Object.freeze({ force: "kN", length: "m" });
+function assertPositive4(value, label) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`TurnsekSheppardModel requires a positive ${label}.`);
+  }
+}
+function assertNonNegative4(value, label) {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`TurnsekSheppardModel requires a non-negative ${label}.`);
+  }
+}
+function clamp4(value, minimum = 0, maximum = 1) {
+  return Math.max(minimum, Math.min(maximum, value));
+}
+var TurnsekSheppardModel = class _TurnsekSheppardModel {
+  constructor({
+    id = null,
+    units = null,
+    tensileStrength,
+    shearStressDistributionFactor,
+    damageCoefficient = 1,
+    crushingReductionCoefficient = 0,
+    metadata = {}
+  } = {}) {
+    var _a;
+    assertExplicitUnitSystem(units, "TurnsekSheppardModel");
+    const resolver = createUnitResolver(units, INTERNAL_UNITS4);
+    this.id = id;
+    this.type = "turnsek-sheppard";
+    this.units = resolver.targetUnitSystem;
+    this.tensileStrength = resolver.stress(tensileStrength);
+    this.shearStressDistributionFactor = shearStressDistributionFactor;
+    this.damageCoefficient = damageCoefficient;
+    this.crushingReductionCoefficient = crushingReductionCoefficient;
+    this.metadata = {
+      ...metadata,
+      unitSystem: resolver.targetUnitSystem,
+      sourceUnitSystem: (_a = metadata.sourceUnitSystem) != null ? _a : resolver.sourceUnitSystem,
+      calibrationRequired: true
+    };
+    assertPositive4(this.tensileStrength, "tensileStrength");
+    assertPositive4(
+      this.shearStressDistributionFactor,
+      "shearStressDistributionFactor"
+    );
+    assertNonNegative4(this.damageCoefficient, "damageCoefficient");
+    assertNonNegative4(
+      this.crushingReductionCoefficient,
+      "crushingReductionCoefficient"
+    );
+  }
+  evaluate({
+    currentAxialCompression = 0,
+    compressedLength = 0,
+    thickness,
+    shearDamage = 0,
+    compressionDamage = 0
+  } = {}) {
+    assertPositive4(thickness, "context thickness");
+    const effectiveLength = Math.max(0, compressedLength);
+    const effectiveArea = thickness * effectiveLength;
+    const compression2 = Math.max(0, currentAxialCompression);
+    if (effectiveArea === 0) {
+      return {
+        type: this.type,
+        capacity: 0,
+        effectiveArea,
+        effectiveLength,
+        compression: compression2,
+        compressiveStress: 0,
+        damageFactor: 0
+      };
+    }
+    const compressiveStress = compression2 / effectiveArea;
+    const undamagedCapacity = effectiveArea * this.tensileStrength / this.shearStressDistributionFactor * Math.sqrt(1 + compressiveStress / this.tensileStrength);
+    const damageFactor = clamp4(
+      (1 - this.damageCoefficient * clamp4(shearDamage)) * (1 - this.crushingReductionCoefficient * clamp4(compressionDamage))
+    );
+    return {
+      type: this.type,
+      capacity: undamagedCapacity * damageFactor,
+      undamagedCapacity,
+      effectiveArea,
+      effectiveLength,
+      compression: compression2,
+      compressiveStress,
+      damageFactor,
+      tensileStrength: this.tensileStrength,
+      shearStressDistributionFactor: this.shearStressDistributionFactor
+    };
+  }
+  clone() {
+    return new _TurnsekSheppardModel(this.toJSON());
+  }
+  toJSON() {
+    return {
+      id: this.id,
+      type: this.type,
+      units: { ...this.units },
+      tensileStrength: this.tensileStrength,
+      shearStressDistributionFactor: this.shearStressDistributionFactor,
+      damageCoefficient: this.damageCoefficient,
+      crushingReductionCoefficient: this.crushingReductionCoefficient,
+      metadata: { ...this.metadata }
+    };
+  }
+};
+
+// src/domain/materials/masonry/shearStrength/createMasonryShearStrengthModel.js
+function createMasonryShearStrengthModel(model, { role = "diagonal" } = {}) {
+  var _a, _b;
+  if (model && typeof model.evaluate === "function") {
+    return typeof model.clone === "function" ? model.clone() : model;
+  }
+  const type = String((_a = model == null ? void 0 : model.type) != null ? _a : "").trim().toLowerCase();
+  if (["turnsek-sheppard", "turnseksheppard"].includes(type)) {
+    return new TurnsekSheppardModel(model);
+  }
+  if (["mohr-coulomb", "mohrcoulomb"].includes(type)) {
+    return new MohrCoulombModel(model);
+  }
+  if (["bed-joint-sliding", "sliding"].includes(type)) {
+    return new SlidingStrengthModel(model);
+  }
+  if (type === "user-defined") {
+    throw new Error(
+      `A ${role} user-defined masonry shear model must provide an evaluate(context) function; a serializable type tag alone is not executable.`
+    );
+  }
+  throw new Error(
+    `Unsupported ${role} masonry shear strength model type: ${(_b = model == null ? void 0 : model.type) != null ? _b : "<missing>"}.`
+  );
+}
+
+// src/domain/materials/masonry/CyclicMasonryShearMaterial.js
+var INTERNAL_UNITS5 = Object.freeze({ force: "kN", length: "m" });
+var STATE_VERSION2 = 1;
+var EPS = 1e-14;
+function assertPositive5(value, label) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`CyclicMasonryShearMaterial requires a positive ${label}.`);
+  }
+}
+function assertNonNegative5(value, label) {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(
+      `CyclicMasonryShearMaterial requires a non-negative ${label}.`
+    );
+  }
+}
+function assertRatio3(value, label) {
+  if (!Number.isFinite(value) || value < 0 || value > 1) {
+    throw new Error(
+      `CyclicMasonryShearMaterial requires ${label} between 0 and 1.`
+    );
+  }
+}
+function clamp5(value, minimum = 0, maximum = 1) {
+  return Math.max(minimum, Math.min(maximum, value));
+}
+function directionOf(increment, fallback = 0) {
+  return Math.abs(increment) <= EPS ? fallback : Math.sign(increment);
+}
+function cloneState2(state) {
+  return {
+    ...state,
+    capacities: { ...state.capacities },
+    mechanismsActivated: [...state.mechanismsActivated]
+  };
+}
+var CyclicMasonryShearMaterial = class _CyclicMasonryShearMaterial {
+  constructor({
+    id = null,
+    units = null,
+    shearModulus: shearModulus2,
+    elasticStiffness = null,
+    diagonalTensionModel,
+    slidingModel,
+    peakShearStrain,
+    ultimateShearStrain,
+    hardeningRatio = 0,
+    residualStrengthRatio,
+    residualStrengthMode = "ratio",
+    pinching = {},
+    stiffnessDegradation = {},
+    strengthDegradation = {},
+    competitionExponent = 8,
+    mechanismActivationRatio = 0.95,
+    numericalTangentRatio = 0,
+    metadata = {}
+  } = {}) {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
+    assertExplicitUnitSystem(units, "CyclicMasonryShearMaterial");
+    const resolver = createUnitResolver(units, INTERNAL_UNITS5);
+    this.id = id;
+    this.type = "cyclic-masonry-shear";
+    this.units = resolver.targetUnitSystem;
+    this.shearModulus = resolver.stress(shearModulus2);
+    this.elasticStiffness = resolver.translationalStiffness(elasticStiffness);
+    this.diagonalTensionModel = createMasonryShearStrengthModel(
+      diagonalTensionModel,
+      { role: "diagonal tension" }
+    );
+    this.slidingModel = createMasonryShearStrengthModel(slidingModel, {
+      role: "sliding"
+    });
+    this.peakShearStrain = peakShearStrain;
+    this.ultimateShearStrain = ultimateShearStrain;
+    this.hardeningRatio = hardeningRatio;
+    this.residualStrengthRatio = residualStrengthRatio;
+    this.residualStrengthMode = String(residualStrengthMode).trim().toLowerCase();
+    this.pinching = {
+      enabled: Boolean(pinching.enabled),
+      factor: (_a = pinching.factor) != null ? _a : 1,
+      recoveryRatio: (_b = pinching.recoveryRatio) != null ? _b : 1
+    };
+    this.stiffnessDegradation = {
+      enabled: Boolean(stiffnessDegradation.enabled),
+      ductilityCoefficient: (_c = stiffnessDegradation.ductilityCoefficient) != null ? _c : 0,
+      energyCoefficient: (_d = stiffnessDegradation.energyCoefficient) != null ? _d : 0,
+      limit: (_e = stiffnessDegradation.limit) != null ? _e : 0.95
+    };
+    this.strengthDegradation = {
+      enabled: Boolean(strengthDegradation.enabled),
+      ductilityCoefficient: (_f = strengthDegradation.ductilityCoefficient) != null ? _f : 0,
+      energyCoefficient: (_g = strengthDegradation.energyCoefficient) != null ? _g : 0,
+      limit: (_h = strengthDegradation.limit) != null ? _h : 1 - residualStrengthRatio
+    };
+    this.competitionExponent = competitionExponent;
+    this.mechanismActivationRatio = mechanismActivationRatio;
+    this.numericalTangentRatio = numericalTangentRatio;
+    this.metadata = {
+      ...metadata,
+      unitSystem: resolver.targetUnitSystem,
+      sourceUnitSystem: (_i = metadata.sourceUnitSystem) != null ? _i : resolver.sourceUnitSystem,
+      parameterStatus: (_j = metadata.parameterStatus) != null ? _j : "user-calibrated"
+    };
+    assertPositive5(this.shearModulus, "shearModulus");
+    assertPositive5(this.peakShearStrain, "peakShearStrain");
+    assertPositive5(this.ultimateShearStrain, "ultimateShearStrain");
+    assertNonNegative5(this.hardeningRatio, "hardeningRatio");
+    assertRatio3(this.residualStrengthRatio, "residualStrengthRatio");
+    if (!(/* @__PURE__ */ new Set(["ratio", "sliding-floor"])).has(this.residualStrengthMode)) {
+      throw new Error(
+        'CyclicMasonryShearMaterial residualStrengthMode must be "ratio" or "sliding-floor".'
+      );
+    }
+    assertPositive5(this.competitionExponent, "competitionExponent");
+    assertRatio3(this.mechanismActivationRatio, "mechanismActivationRatio");
+    assertNonNegative5(this.numericalTangentRatio, "numericalTangentRatio");
+    assertRatio3(this.pinching.factor, "pinching.factor");
+    assertPositive5(this.pinching.recoveryRatio, "pinching.recoveryRatio");
+    assertRatio3(this.stiffnessDegradation.limit, "stiffnessDegradation.limit");
+    assertRatio3(this.strengthDegradation.limit, "strengthDegradation.limit");
+    assertNonNegative5(
+      this.stiffnessDegradation.ductilityCoefficient,
+      "stiffnessDegradation.ductilityCoefficient"
+    );
+    assertNonNegative5(
+      this.stiffnessDegradation.energyCoefficient,
+      "stiffnessDegradation.energyCoefficient"
+    );
+    assertNonNegative5(
+      this.strengthDegradation.ductilityCoefficient,
+      "strengthDegradation.ductilityCoefficient"
+    );
+    assertNonNegative5(
+      this.strengthDegradation.energyCoefficient,
+      "strengthDegradation.energyCoefficient"
+    );
+    if (this.ultimateShearStrain <= this.peakShearStrain) {
+      throw new Error(
+        "CyclicMasonryShearMaterial requires ultimateShearStrain > peakShearStrain."
+      );
+    }
+    if (this.elasticStiffness != null && (!Number.isFinite(this.elasticStiffness) || this.elasticStiffness <= 0)) {
+      throw new Error(
+        "CyclicMasonryShearMaterial elasticStiffness must be positive when supplied."
+      );
+    }
+    this._configuration = this.configuration();
+    this.revertToStart();
+  }
+  configuration() {
+    return {
+      id: this.id,
+      units: { ...this.units },
+      shearModulus: this.shearModulus,
+      elasticStiffness: this.elasticStiffness,
+      diagonalTensionModel: this.diagonalTensionModel,
+      slidingModel: this.slidingModel,
+      peakShearStrain: this.peakShearStrain,
+      ultimateShearStrain: this.ultimateShearStrain,
+      hardeningRatio: this.hardeningRatio,
+      residualStrengthRatio: this.residualStrengthRatio,
+      residualStrengthMode: this.residualStrengthMode,
+      pinching: { ...this.pinching },
+      stiffnessDegradation: { ...this.stiffnessDegradation },
+      strengthDegradation: { ...this.strengthDegradation },
+      competitionExponent: this.competitionExponent,
+      mechanismActivationRatio: this.mechanismActivationRatio,
+      numericalTangentRatio: this.numericalTangentRatio,
+      metadata: { ...this.metadata }
+    };
+  }
+  initialState() {
+    return {
+      version: STATE_VERSION2,
+      deformation: 0,
+      shearStrain: 0,
+      force: 0,
+      tangent: 0,
+      elasticStiffness: 0,
+      plasticDeformation: 0,
+      damage: 0,
+      stiffnessDamage: 0,
+      strengthDamage: 0,
+      pinchingFactor: 1,
+      pinchingActive: false,
+      pinchingPending: false,
+      pinchingTarget: 0,
+      pinchingReversalDeformation: 0,
+      maxPositiveDeformation: 0,
+      minNegativeDeformation: 0,
+      loadingDirection: 0,
+      reversalCount: 0,
+      cumulativeWork: 0,
+      dissipatedEnergy: 0,
+      capacities: {
+        diagonalTension: 0,
+        sliding: 0,
+        combined: 0,
+        residual: 0
+      },
+      diagonalCrackingIndex: 0,
+      slidingIndex: 0,
+      predominantMechanism: "elastic-shear",
+      mechanismsActivated: [],
+      branch: "initial"
+    };
+  }
+  resolveElasticStiffness(context) {
+    if (Number.isFinite(this.elasticStiffness)) {
+      return this.elasticStiffness;
+    }
+    const effectiveShearArea = context.effectiveShearArea;
+    const deformableHeight = context.deformableHeight;
+    assertPositive5(effectiveShearArea, "context effectiveShearArea");
+    assertPositive5(deformableHeight, "context deformableHeight");
+    return this.shearModulus * effectiveShearArea / deformableHeight;
+  }
+  smoothMinimum(left, right) {
+    if (left <= 0 || right <= 0) {
+      return 0;
+    }
+    const exponent = this.competitionExponent;
+    return (left ** -exponent + right ** -exponent) ** (-1 / exponent);
+  }
+  capacities(context, state) {
+    var _a, _b;
+    const strategyContext = {
+      ...context,
+      shearDamage: state.damage
+    };
+    const diagonal = this.diagonalTensionModel.evaluate(strategyContext);
+    const sliding = this.slidingModel.evaluate(strategyContext);
+    const commonStrengthFactor = 1 - state.strengthDamage;
+    const diagonalFloor = Math.min(
+      diagonal.capacity,
+      Math.max(0, (_a = diagonal.strengthDegradationFloor) != null ? _a : 0)
+    );
+    const slidingFloor = Math.min(
+      sliding.capacity,
+      Math.max(0, (_b = sliding.strengthDegradationFloor) != null ? _b : 0)
+    );
+    const preserveSlidingFloor = this.residualStrengthMode === "sliding-floor";
+    const diagonalCapacity = preserveSlidingFloor ? diagonalFloor + (diagonal.capacity - diagonalFloor) * commonStrengthFactor : diagonal.capacity * commonStrengthFactor;
+    const slidingCapacity = preserveSlidingFloor ? slidingFloor + (sliding.capacity - slidingFloor) * commonStrengthFactor : sliding.capacity * commonStrengthFactor;
+    const diagonalResidual = this.residualStrengthRatio * diagonalCapacity;
+    const slidingResidual = Math.max(
+      slidingFloor,
+      this.residualStrengthRatio * slidingCapacity
+    );
+    return {
+      diagonal,
+      sliding,
+      diagonalTension: diagonalCapacity,
+      slidingCapacity,
+      combined: this.smoothMinimum(diagonalCapacity, slidingCapacity),
+      residual: this.smoothMinimum(diagonalResidual, slidingResidual),
+      strengthDegradationFloors: {
+        diagonalTension: diagonalFloor,
+        sliding: slidingFloor
+      }
+    };
+  }
+  backbone(deformationMagnitude, capacity, residualCapacity, stiffness, height) {
+    const yieldDeformation = capacity / stiffness;
+    const peakDeformation = Math.max(
+      yieldDeformation,
+      this.peakShearStrain * height
+    );
+    const ultimateDeformation = Math.max(
+      peakDeformation + EPS,
+      this.ultimateShearStrain * height
+    );
+    const peakForce = capacity * (1 + this.hardeningRatio);
+    const residualForce = this.residualStrengthMode === "sliding-floor" ? Math.min(capacity, residualCapacity) : this.residualStrengthRatio * capacity;
+    if (deformationMagnitude <= yieldDeformation) {
+      return {
+        force: stiffness * deformationMagnitude,
+        tangent: stiffness,
+        yieldDeformation,
+        peakDeformation,
+        ultimateDeformation,
+        branch: "elastic"
+      };
+    }
+    if (deformationMagnitude <= peakDeformation) {
+      const range = Math.max(peakDeformation - yieldDeformation, EPS);
+      const tangent = (peakForce - capacity) / range;
+      return {
+        force: capacity + tangent * (deformationMagnitude - yieldDeformation),
+        tangent,
+        yieldDeformation,
+        peakDeformation,
+        ultimateDeformation,
+        branch: "hardening"
+      };
+    }
+    if (deformationMagnitude < ultimateDeformation) {
+      const tangent = (residualForce - peakForce) / (ultimateDeformation - peakDeformation);
+      return {
+        force: peakForce + tangent * (deformationMagnitude - peakDeformation),
+        tangent,
+        yieldDeformation,
+        peakDeformation,
+        ultimateDeformation,
+        branch: "softening"
+      };
+    }
+    return {
+      force: residualForce,
+      tangent: this.numericalTangentRatio * stiffness,
+      yieldDeformation,
+      peakDeformation,
+      ultimateDeformation,
+      branch: "residual"
+    };
+  }
+  setTrialDeformation(deformation, context = {}) {
+    if (!Number.isFinite(deformation)) {
+      throw new Error(
+        "CyclicMasonryShearMaterial setTrialDeformation requires a finite deformation."
+      );
+    }
+    const committed = this._committedState;
+    const height = context.deformableHeight;
+    assertPositive5(height, "context deformableHeight");
+    const baseStiffness = this.resolveElasticStiffness(context);
+    const increment = deformation - committed.deformation;
+    const direction = Number.isFinite(context.loadingDirectionHint) && context.loadingDirectionHint !== 0 ? Math.sign(context.loadingDirectionHint) : directionOf(increment, committed.loadingDirection);
+    const reversed = committed.loadingDirection !== 0 && direction !== 0 && direction !== committed.loadingDirection;
+    const reversalCount = committed.reversalCount + Number(reversed);
+    const maxPositiveDeformation = Math.max(
+      committed.maxPositiveDeformation,
+      deformation
+    );
+    const minNegativeDeformation = Math.min(
+      committed.minNegativeDeformation,
+      deformation
+    );
+    const stiffness = Math.max(
+      this.numericalTangentRatio * baseStiffness,
+      (1 - committed.stiffnessDamage) * baseStiffness
+    );
+    const capacityData = this.capacities(context, committed);
+    const envelope = this.backbone(
+      Math.abs(deformation),
+      capacityData.combined,
+      capacityData.residual,
+      stiffness,
+      height
+    );
+    const trialElasticForce = stiffness * (deformation - committed.plasticDeformation);
+    let pinchingPending = false;
+    let pinchingActive = this.pinching.enabled && (committed.pinchingActive || reversed);
+    let pinchingTarget = committed.pinchingTarget;
+    let pinchingReversalDeformation = committed.pinchingReversalDeformation;
+    if (reversed) {
+      pinchingTarget = Math.max(
+        Math.abs(maxPositiveDeformation),
+        Math.abs(minNegativeDeformation),
+        envelope.peakDeformation
+      );
+      pinchingReversalDeformation = committed.deformation;
+    }
+    const reversalSign = Math.sign(pinchingReversalDeformation);
+    const passedOrigin = reversalSign !== 0 && Math.sign(deformation) !== 0 && Math.sign(deformation) !== reversalSign;
+    if (pinchingActive && passedOrigin && Math.abs(deformation) >= pinchingTarget * this.pinching.recoveryRatio) {
+      pinchingActive = false;
+      pinchingPending = false;
+    }
+    const recoveryDeformation = Math.max(
+      pinchingTarget * this.pinching.recoveryRatio,
+      EPS
+    );
+    const unloadingReference = Math.max(
+      Math.abs(pinchingReversalDeformation),
+      EPS
+    );
+    const unloadingTowardOrigin = pinchingActive && reversalSign !== 0 && (Math.sign(deformation) === reversalSign || deformation === 0);
+    const pinchingProgress = unloadingTowardOrigin ? clamp5(Math.abs(deformation) / unloadingReference) : clamp5(Math.abs(deformation) / recoveryDeformation);
+    const pinchingFactor = pinchingActive ? this.pinching.factor + (1 - this.pinching.factor) * pinchingProgress : 1;
+    const pinchingDerivative = pinchingActive && pinchingProgress < 1 ? (1 - this.pinching.factor) / (unloadingTowardOrigin ? unloadingReference : recoveryDeformation) * Math.sign(deformation || 1) : 0;
+    const forceLimit = pinchingFactor * envelope.force;
+    let force;
+    let tangent;
+    let plasticDeformation = committed.plasticDeformation;
+    let branch;
+    const pinchedTrialElasticForce = pinchingFactor * trialElasticForce;
+    if (Math.abs(pinchedTrialElasticForce) <= forceLimit + EPS) {
+      force = pinchingFactor * trialElasticForce;
+      tangent = pinchingFactor * stiffness + pinchingDerivative * trialElasticForce;
+      branch = pinchingActive ? "pinched-reloading" : "elastic-unloading";
+    } else {
+      const forceSign = Math.sign(trialElasticForce || deformation || 1);
+      force = forceSign * forceLimit;
+      tangent = pinchingFactor * envelope.tangent + pinchingDerivative * forceSign * envelope.force;
+      plasticDeformation = deformation - force / stiffness;
+      branch = pinchingActive ? `pinched-${envelope.branch}` : envelope.branch;
+    }
+    const workIncrement = 0.5 * (committed.force + force) * increment;
+    const cumulativeWork = committed.cumulativeWork + workIncrement;
+    const recoverableEnergy = stiffness > 0 ? force ** 2 / (2 * stiffness) : 0;
+    const dissipatedEnergy = Math.max(
+      committed.dissipatedEnergy,
+      cumulativeWork - recoverableEnergy,
+      0
+    );
+    const deformationProgress = clamp5(
+      (Math.abs(deformation) - envelope.yieldDeformation) / Math.max(
+        envelope.ultimateDeformation - envelope.yieldDeformation,
+        EPS
+      )
+    );
+    const energyCapacity = Math.max(
+      capacityData.combined * envelope.ultimateDeformation,
+      EPS
+    );
+    const energyProgress = dissipatedEnergy / energyCapacity;
+    const stiffnessDamage = this.stiffnessDegradation.enabled ? Math.max(
+      committed.stiffnessDamage,
+      clamp5(
+        this.stiffnessDegradation.ductilityCoefficient * deformationProgress + this.stiffnessDegradation.energyCoefficient * energyProgress,
+        0,
+        this.stiffnessDegradation.limit
+      )
+    ) : committed.stiffnessDamage;
+    const strengthDamage = this.strengthDegradation.enabled ? Math.max(
+      committed.strengthDamage,
+      clamp5(
+        this.strengthDegradation.ductilityCoefficient * deformationProgress + this.strengthDegradation.energyCoefficient * energyProgress,
+        0,
+        this.strengthDegradation.limit
+      )
+    ) : committed.strengthDamage;
+    const damage = Math.max(stiffnessDamage, strengthDamage);
+    const absoluteForce = Math.abs(force);
+    const diagonalCrackingIndex = capacityData.diagonalTension > 0 ? absoluteForce / capacityData.diagonalTension : absoluteForce === 0 ? 0 : Infinity;
+    const slidingIndex = capacityData.slidingCapacity > 0 ? absoluteForce / capacityData.slidingCapacity : absoluteForce === 0 ? 0 : Infinity;
+    const mechanismsActivated = new Set(committed.mechanismsActivated);
+    if (diagonalCrackingIndex >= this.mechanismActivationRatio) {
+      mechanismsActivated.add("diagonal-tension");
+    }
+    if (slidingIndex >= this.mechanismActivationRatio) {
+      mechanismsActivated.add("sliding");
+    }
+    const predominantMechanism = diagonalCrackingIndex >= slidingIndex ? "diagonal-tension" : "sliding";
+    this._trialState = {
+      version: STATE_VERSION2,
+      deformation,
+      shearStrain: deformation / height,
+      force,
+      tangent,
+      elasticStiffness: baseStiffness,
+      plasticDeformation,
+      damage,
+      stiffnessDamage,
+      strengthDamage,
+      pinchingFactor,
+      pinchingActive,
+      pinchingPending,
+      pinchingTarget,
+      pinchingReversalDeformation,
+      maxPositiveDeformation,
+      minNegativeDeformation,
+      loadingDirection: direction,
+      reversalCount,
+      cumulativeWork,
+      dissipatedEnergy,
+      capacities: {
+        diagonalTension: capacityData.diagonalTension,
+        sliding: capacityData.slidingCapacity,
+        combined: capacityData.combined,
+        residual: capacityData.residual
+      },
+      diagonalCrackingIndex,
+      slidingIndex,
+      predominantMechanism,
+      mechanismsActivated: [...mechanismsActivated],
+      branch
+    };
+    return force;
+  }
+  getForce() {
+    return this._trialState.force;
+  }
+  getStress() {
+    return this.getForce();
+  }
+  getTangent() {
+    return this._trialState.tangent;
+  }
+  getState() {
+    return cloneState2(this._trialState);
+  }
+  getCommittedState() {
+    return cloneState2(this._committedState);
+  }
+  commitState() {
+    this._committedState = cloneState2(this._trialState);
+    return 0;
+  }
+  revertToLastCommit() {
+    this._trialState = cloneState2(this._committedState);
+    return 0;
+  }
+  revertToStart() {
+    this._committedState = this.initialState();
+    this._trialState = cloneState2(this._committedState);
+    return 0;
+  }
+  importState(state, { committed = true } = {}) {
+    if (!state || state.version !== STATE_VERSION2) {
+      throw new Error(
+        `CyclicMasonryShearMaterial requires state version ${STATE_VERSION2}.`
+      );
+    }
+    this._trialState = cloneState2(state);
+    if (committed) {
+      this._committedState = cloneState2(state);
+    }
+    return this;
+  }
+  clone() {
+    const cloned = new _CyclicMasonryShearMaterial(this._configuration);
+    cloned._committedState = cloneState2(this._committedState);
+    cloned._trialState = cloneState2(this._trialState);
+    return cloned;
+  }
+  toJSON() {
+    var _a, _b, _c, _d, _e, _f;
+    return {
+      type: this.type,
+      configuration: {
+        ...this.configuration(),
+        diagonalTensionModel: (_c = (_b = (_a = this.diagonalTensionModel).toJSON) == null ? void 0 : _b.call(_a)) != null ? _c : {
+          type: "user-defined"
+        },
+        slidingModel: (_f = (_e = (_d = this.slidingModel).toJSON) == null ? void 0 : _e.call(_d)) != null ? _f : {
+          type: "user-defined"
+        }
+      },
+      committedState: this.getCommittedState(),
+      trialState: this.getState()
+    };
+  }
+};
+
+// src/domain/sections/masonry/MasonryFiberInterface2D.js
+var INTERNAL_UNITS6 = Object.freeze({ force: "kN", length: "m" });
+var STATE_VERSION3 = 1;
+function assertPositive6(value, label) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`MasonryFiberInterface2D requires a positive ${label}.`);
+  }
+}
+function assertFinite(value, label) {
+  if (!Number.isFinite(value)) {
+    throw new Error(`MasonryFiberInterface2D requires a finite ${label}.`);
+  }
+}
+function cloneMatrix(matrix) {
+  return matrix.map((row) => [...row]);
+}
+function cloneResponse(response) {
+  return {
+    ...response,
+    forces: [...response.forces],
+    tangent: cloneMatrix(response.tangent),
+    fibers: response.fibers.map((fiber) => ({ ...fiber })),
+    mechanismsActivated: [...response.mechanismsActivated]
+  };
+}
+function solveTwoByTwo(matrix, vector, pivotTolerance) {
+  const [[a, b], [c, d]] = matrix;
+  const determinant = a * d - b * c;
+  const scale = Math.max(Math.abs(a), Math.abs(b), Math.abs(c), Math.abs(d), 1);
+  if (Math.abs(determinant) <= pivotTolerance * scale ** 2) {
+    throw new Error(
+      "MasonryFiberInterface2D local Newton iteration encountered a singular interface tangent."
+    );
+  }
+  return [
+    (d * vector[0] - b * vector[1]) / determinant,
+    (-c * vector[0] + a * vector[1]) / determinant
+  ];
+}
+function compressedFraction(leftGap, rightGap) {
+  if (leftGap < 0 && rightGap < 0) {
+    return 1;
+  }
+  if (leftGap >= 0 && rightGap >= 0) {
+    return 0;
+  }
+  const denominator = rightGap - leftGap;
+  if (Math.abs(denominator) < 1e-18) {
+    return leftGap < 0 ? 1 : 0;
+  }
+  const zeroPosition = -leftGap / denominator;
+  return leftGap < 0 ? zeroPosition : 1 - zeroPosition;
+}
+var MasonryFiberInterface2D = class _MasonryFiberInterface2D {
+  constructor({
+    id = null,
+    units = null,
+    width,
+    thickness,
+    hingeLength,
+    fiberCount = 20,
+    compressionMaterial,
+    contactStressTolerance = 0,
+    localTolerance = 1e-8,
+    maxLocalIterations = 40,
+    pivotTolerance = 1e-12,
+    metadata = {}
+  } = {}) {
+    var _a, _b, _c;
+    assertExplicitUnitSystem(units, "MasonryFiberInterface2D");
+    const resolver = createUnitResolver(units, INTERNAL_UNITS6);
+    this.id = id;
+    this.type = "masonry-fiber-interface-2d";
+    this.units = resolver.targetUnitSystem;
+    this.width = resolver.length(width);
+    this.thickness = resolver.length(thickness);
+    this.hingeLength = resolver.length(hingeLength);
+    this.fiberCount = fiberCount;
+    this.contactStressTolerance = resolver.stress(contactStressTolerance);
+    this.localTolerance = localTolerance;
+    this.maxLocalIterations = maxLocalIterations;
+    this.pivotTolerance = pivotTolerance;
+    this.metadata = {
+      ...metadata,
+      unitSystem: resolver.targetUnitSystem,
+      sourceUnitSystem: (_a = metadata.sourceUnitSystem) != null ? _a : resolver.sourceUnitSystem
+    };
+    assertPositive6(this.width, "width");
+    assertPositive6(this.thickness, "thickness");
+    assertPositive6(this.hingeLength, "hingeLength");
+    assertPositive6(this.localTolerance, "localTolerance");
+    assertPositive6(this.maxLocalIterations, "maxLocalIterations");
+    assertPositive6(this.pivotTolerance, "pivotTolerance");
+    if (!Number.isInteger(this.fiberCount) || this.fiberCount < 2) {
+      throw new Error(
+        "MasonryFiberInterface2D requires an integer fiberCount >= 2."
+      );
+    }
+    if (!compressionMaterial || typeof compressionMaterial.clone !== "function" || typeof compressionMaterial.setTrialStrain !== "function") {
+      throw new Error(
+        "MasonryFiberInterface2D requires a cloneable trial-state compressionMaterial."
+      );
+    }
+    if (((_b = compressionMaterial.units) == null ? void 0 : _b.force) !== INTERNAL_UNITS6.force || ((_c = compressionMaterial.units) == null ? void 0 : _c.length) !== INTERNAL_UNITS6.length) {
+      throw new Error(
+        "MasonryFiberInterface2D compressionMaterial must use the masonry FEM internal units { force: 'kN', length: 'm' }."
+      );
+    }
+    this._prototypeMaterial = compressionMaterial.clone();
+    this.fibers = this.createFibers(compressionMaterial);
+    this.revertToStart();
+  }
+  createFibers(compressionMaterial) {
+    const fiberWidth = this.width / this.fiberCount;
+    const area = fiberWidth * this.thickness;
+    return Array.from({ length: this.fiberCount }, (_, index) => {
+      var _a;
+      return {
+        id: `${(_a = this.id) != null ? _a : "interface"}-fiber-${index + 1}`,
+        index,
+        x: -this.width / 2 + (index + 0.5) * fiberWidth,
+        width: fiberWidth,
+        area,
+        material: compressionMaterial.clone()
+      };
+    });
+  }
+  initialResponse() {
+    return {
+      version: STATE_VERSION3,
+      axialDisplacement: 0,
+      rotation: 0,
+      axialForce: 0,
+      moment: 0,
+      forces: [0, 0],
+      tangent: [[0, 0], [0, 0]],
+      compressedLength: 0,
+      contactRatio: 0,
+      compressionResultant: 0,
+      maxFiberStrain: 0,
+      minFiberStrain: 0,
+      maxCompressionStrain: 0,
+      maxCompressionDamage: 0,
+      averageCompressionDamage: 0,
+      rockingIndex: 1,
+      crushingIndex: 0,
+      energyDissipated: 0,
+      mechanismsActivated: [],
+      fibers: this.fibers.map((fiber) => ({
+        id: fiber.id,
+        index: fiber.index,
+        x: fiber.x,
+        width: fiber.width,
+        area: fiber.area,
+        strain: 0,
+        stress: 0,
+        tangent: fiber.material.getTangent(),
+        contactActive: false,
+        damage: 0,
+        crushingActivated: false,
+        dissipatedEnergy: 0
+      })),
+      localIterations: 0,
+      localConverged: true,
+      localResidualNorm: 0
+    };
+  }
+  setTrialDeformation(deformation, rotationArgument = void 0) {
+    var _a, _b, _c, _d, _e;
+    const axialDisplacement = typeof deformation === "object" ? (_b = (_a = deformation.axialDisplacement) != null ? _a : deformation.delta0) != null ? _b : 0 : deformation;
+    const rotation = typeof deformation === "object" ? (_d = (_c = deformation.rotation) != null ? _c : deformation.theta) != null ? _d : 0 : rotationArgument != null ? rotationArgument : 0;
+    assertFinite(axialDisplacement, "axialDisplacement");
+    assertFinite(rotation, "rotation");
+    let axialForce = 0;
+    let moment = 0;
+    let k00 = 0;
+    let k01 = 0;
+    let k11 = 0;
+    let compressedLength = 0;
+    let compressionResultant = 0;
+    let maxCompressionDamage = 0;
+    let damageWeightedLength = 0;
+    let energyDissipated = 0;
+    const fiberResponses = [];
+    for (const fiber of this.fibers) {
+      const displacement = axialDisplacement + rotation * fiber.x;
+      const strain = displacement / this.hingeLength;
+      fiber.material.setTrialStrain(strain);
+      const stress = fiber.material.getStress();
+      const tangent = fiber.material.getTangent();
+      const materialState = fiber.material.getState();
+      const force = stress * fiber.area;
+      const axialStiffness = tangent * fiber.area / this.hingeLength;
+      const closureStrain = (_e = materialState.zeroStressStrain) != null ? _e : 0;
+      const halfFiberRotationStrain = rotation * fiber.width / (2 * this.hingeLength);
+      const leftGap = strain - halfFiberRotationStrain - closureStrain;
+      const rightGap = strain + halfFiberRotationStrain - closureStrain;
+      const contactFraction = compressedFraction(leftGap, rightGap);
+      const contactActive = contactFraction > 0;
+      axialForce += force;
+      moment += force * fiber.x;
+      k00 += axialStiffness;
+      k01 += axialStiffness * fiber.x;
+      k11 += axialStiffness * fiber.x ** 2;
+      if (contactActive) {
+        compressedLength += contactFraction * fiber.width;
+        compressionResultant += -force;
+        damageWeightedLength += materialState.damage * contactFraction * fiber.width;
+      }
+      maxCompressionDamage = Math.max(
+        maxCompressionDamage,
+        materialState.damage
+      );
+      energyDissipated += materialState.dissipatedEnergy * fiber.area * this.hingeLength;
+      fiberResponses.push({
+        id: fiber.id,
+        index: fiber.index,
+        x: fiber.x,
+        width: fiber.width,
+        area: fiber.area,
+        strain,
+        stress,
+        tangent,
+        contactActive,
+        contactFraction,
+        damage: materialState.damage,
+        crushingActivated: materialState.crushingActivated,
+        dissipatedEnergy: materialState.dissipatedEnergy
+      });
+    }
+    const strains = fiberResponses.map((fiber) => fiber.strain);
+    const maxFiberStrain = Math.max(...strains);
+    const minFiberStrain = Math.min(...strains);
+    const maxCompressionStrain = Math.max(0, -minFiberStrain);
+    const peakStrain = this._prototypeMaterial.peakStrain;
+    const mechanismsActivated = [];
+    if (compressedLength < this.width - this.width / (2 * this.fiberCount)) {
+      mechanismsActivated.push("rocking");
+    }
+    if (fiberResponses.some((fiber) => fiber.crushingActivated)) {
+      mechanismsActivated.push("crushing");
+    }
+    this._trialResponse = {
+      version: STATE_VERSION3,
+      axialDisplacement,
+      rotation,
+      axialForce,
+      moment,
+      forces: [axialForce, moment],
+      tangent: [[k00, k01], [k01, k11]],
+      compressedLength,
+      contactRatio: compressedLength / this.width,
+      compressionResultant,
+      maxFiberStrain,
+      minFiberStrain,
+      maxCompressionStrain,
+      maxCompressionDamage,
+      averageCompressionDamage: compressedLength > 0 ? damageWeightedLength / compressedLength : 0,
+      rockingIndex: 1 - compressedLength / this.width,
+      crushingIndex: peakStrain > 0 ? maxCompressionStrain / peakStrain : 0,
+      energyDissipated,
+      mechanismsActivated,
+      fibers: fiberResponses,
+      localIterations: 0,
+      localConverged: true,
+      localResidualNorm: 0
+    };
+    return [...this._trialResponse.forces];
+  }
+  solveForResultants(target, {
+    initialDeformation = null,
+    tolerance = this.localTolerance,
+    maxIterations = this.maxLocalIterations
+  } = {}) {
+    var _a, _b, _c, _d, _e, _f, _g, _h;
+    const targetAxialForce = (_b = (_a = target == null ? void 0 : target.axialForce) != null ? _a : target == null ? void 0 : target.N) != null ? _b : target == null ? void 0 : target[0];
+    const targetMoment = (_d = (_c = target == null ? void 0 : target.moment) != null ? _c : target == null ? void 0 : target.M) != null ? _d : target == null ? void 0 : target[1];
+    assertFinite(targetAxialForce, "target axial force");
+    assertFinite(targetMoment, "target moment");
+    assertPositive6(tolerance, "solveForResultants tolerance");
+    let deformation = initialDeformation ? [
+      (_f = (_e = initialDeformation.axialDisplacement) != null ? _e : initialDeformation[0]) != null ? _f : 0,
+      (_h = (_g = initialDeformation.rotation) != null ? _g : initialDeformation[1]) != null ? _h : 0
+    ] : [
+      this._committedResponse.axialDisplacement,
+      this._committedResponse.rotation
+    ];
+    let residualNorm2 = Infinity;
+    for (let iteration = 1; iteration <= maxIterations; iteration += 1) {
+      const forces = this.setTrialDeformation(deformation[0], deformation[1]);
+      const residual = [
+        targetAxialForce - forces[0],
+        targetMoment - forces[1]
+      ];
+      const forceScale = Math.max(Math.abs(targetAxialForce), 1);
+      const momentScale = Math.max(
+        Math.abs(targetMoment),
+        forceScale * this.width,
+        1
+      );
+      residualNorm2 = Math.sqrt(
+        (residual[0] / forceScale) ** 2 + (residual[1] / momentScale) ** 2
+      );
+      if (residualNorm2 <= tolerance) {
+        this._trialResponse.localIterations = iteration;
+        this._trialResponse.localConverged = true;
+        this._trialResponse.localResidualNorm = residualNorm2;
+        return this.getResponse();
+      }
+      const correction = solveTwoByTwo(
+        this._trialResponse.tangent,
+        residual,
+        this.pivotTolerance
+      );
+      deformation = [
+        deformation[0] + correction[0],
+        deformation[1] + correction[1]
+      ];
+    }
+    this._trialResponse.localIterations = maxIterations;
+    this._trialResponse.localConverged = false;
+    this._trialResponse.localResidualNorm = residualNorm2;
+    throw new Error(
+      `MasonryFiberInterface2D local Newton iteration did not converge in ${maxIterations} iterations (normalized residual ${residualNorm2}).`
+    );
+  }
+  getForces() {
+    return [...this._trialResponse.forces];
+  }
+  getTangent() {
+    return cloneMatrix(this._trialResponse.tangent);
+  }
+  getResponse() {
+    return cloneResponse(this._trialResponse);
+  }
+  getCommittedResponse() {
+    return cloneResponse(this._committedResponse);
+  }
+  commitState() {
+    for (const fiber of this.fibers) {
+      fiber.material.commitState();
+    }
+    this._committedResponse = cloneResponse(this._trialResponse);
+    return 0;
+  }
+  revertToLastCommit() {
+    for (const fiber of this.fibers) {
+      fiber.material.revertToLastCommit();
+    }
+    this._trialResponse = cloneResponse(this._committedResponse);
+    return 0;
+  }
+  revertToStart() {
+    for (const fiber of this.fibers) {
+      fiber.material.revertToStart();
+    }
+    this._committedResponse = this.initialResponse();
+    this._trialResponse = cloneResponse(this._committedResponse);
+    return 0;
+  }
+  exportState({ committed = true } = {}) {
+    const response = committed ? this.getCommittedResponse() : this.getResponse();
+    return {
+      version: STATE_VERSION3,
+      response,
+      fiberStates: this.fibers.map(
+        (fiber) => committed ? fiber.material.getCommittedState() : fiber.material.getState()
+      )
+    };
+  }
+  importState(state, { committed = true } = {}) {
+    if (!state || state.version !== STATE_VERSION3 || !Array.isArray(state.fiberStates) || state.fiberStates.length !== this.fibers.length) {
+      throw new Error(
+        `MasonryFiberInterface2D requires state version ${STATE_VERSION3} with ${this.fibers.length} fiber states.`
+      );
+    }
+    this.fibers.forEach((fiber, index) => {
+      fiber.material.importState(state.fiberStates[index], { committed });
+    });
+    this._trialResponse = cloneResponse(state.response);
+    if (committed) {
+      this._committedResponse = cloneResponse(state.response);
+    }
+    return this;
+  }
+  clone() {
+    const cloned = new _MasonryFiberInterface2D({
+      id: this.id,
+      units: this.units,
+      width: this.width,
+      thickness: this.thickness,
+      hingeLength: this.hingeLength,
+      fiberCount: this.fiberCount,
+      compressionMaterial: this._prototypeMaterial,
+      contactStressTolerance: this.contactStressTolerance,
+      localTolerance: this.localTolerance,
+      maxLocalIterations: this.maxLocalIterations,
+      pivotTolerance: this.pivotTolerance,
+      metadata: { ...this.metadata }
+    });
+    cloned.importState(this.exportState(), { committed: true });
+    return cloned;
+  }
+  toJSON() {
+    return {
+      id: this.id,
+      type: this.type,
+      units: { ...this.units },
+      width: this.width,
+      thickness: this.thickness,
+      hingeLength: this.hingeLength,
+      fiberCount: this.fiberCount,
+      fiberWidth: this.width / this.fiberCount,
+      fiberArea: this.width * this.thickness / this.fiberCount,
+      compressionMaterial: this._prototypeMaterial.toJSON(),
+      state: this.exportState(),
+      metadata: { ...this.metadata }
+    };
+  }
+};
+
 // src/norms/ntc2018/materials/ntc2018ExistingMasonryCatalogs.js
 var average = (values) => values.reduce((sum, value) => sum + value, 0) / values.length;
 var createRangeValue = (values, level) => {
@@ -1438,7 +3227,7 @@ var CrossSection = class {
 };
 
 // src/domain/geometry/RectangularSection.js
-var INTERNAL_UNITS = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS7 = Object.freeze({ force: "N", length: "mm" });
 var RectangularSection = class extends CrossSection {
   constructor({
     width,
@@ -1450,7 +3239,7 @@ var RectangularSection = class extends CrossSection {
   }) {
     var _a;
     assertExplicitUnitSystem(units, "RectangularSection");
-    const unitResolver = createUnitResolver(units, INTERNAL_UNITS);
+    const unitResolver = createUnitResolver(units, INTERNAL_UNITS7);
     const resolvedWidth = unitResolver.length(width);
     const resolvedHeight = unitResolver.length(height);
     if (!Number.isFinite(resolvedWidth) || resolvedWidth <= 0) {
@@ -1474,7 +3263,7 @@ var RectangularSection = class extends CrossSection {
       elasticSectionModulusZ: inertiaZ / (resolvedWidth / 2),
       height: resolvedHeight,
       width: resolvedWidth,
-      units: INTERNAL_UNITS,
+      units: INTERNAL_UNITS7,
       outlinePoints: [
         { y: 0, z: 0 },
         { y: 0, z: resolvedWidth },
@@ -1484,7 +3273,7 @@ var RectangularSection = class extends CrossSection {
       metadata: {
         ...metadata,
         shape: "rectangular",
-        unitSystem: INTERNAL_UNITS,
+        unitSystem: INTERNAL_UNITS7,
         sourceUnitSystem: (_a = metadata.sourceUnitSystem) != null ? _a : unitResolver.sourceUnitSystem
       }
     });
@@ -1492,7 +3281,7 @@ var RectangularSection = class extends CrossSection {
 };
 
 // src/domain/geometry/CircularSection.js
-var INTERNAL_UNITS2 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS8 = Object.freeze({ force: "N", length: "mm" });
 var CircularSection = class extends CrossSection {
   constructor({
     diameter,
@@ -1503,7 +3292,7 @@ var CircularSection = class extends CrossSection {
   }) {
     var _a;
     assertExplicitUnitSystem(units, "CircularSection");
-    const unitResolver = createUnitResolver(units, INTERNAL_UNITS2);
+    const unitResolver = createUnitResolver(units, INTERNAL_UNITS8);
     const resolvedDiameter = unitResolver.length(diameter);
     if (!Number.isFinite(resolvedDiameter) || resolvedDiameter <= 0) {
       throw new Error("A positive circular section diameter is required.");
@@ -1523,11 +3312,11 @@ var CircularSection = class extends CrossSection {
       elasticSectionModulusZ: inertia / radius,
       height: resolvedDiameter,
       width: resolvedDiameter,
-      units: INTERNAL_UNITS2,
+      units: INTERNAL_UNITS8,
       metadata: {
         ...metadata,
         shape: "circular",
-        unitSystem: INTERNAL_UNITS2,
+        unitSystem: INTERNAL_UNITS8,
         sourceUnitSystem: (_a = metadata.sourceUnitSystem) != null ? _a : unitResolver.sourceUnitSystem
       }
     });
@@ -1544,7 +3333,7 @@ var CircularSection = class extends CrossSection {
 };
 
 // src/domain/geometry/TSection.js
-var INTERNAL_UNITS3 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS9 = Object.freeze({ force: "N", length: "mm" });
 var TSection = class extends CrossSection {
   constructor({
     flangeWidth,
@@ -1558,7 +3347,7 @@ var TSection = class extends CrossSection {
   }) {
     var _a;
     assertExplicitUnitSystem(units, "TSection");
-    const unitResolver = createUnitResolver(units, INTERNAL_UNITS3);
+    const unitResolver = createUnitResolver(units, INTERNAL_UNITS9);
     const resolvedFlangeWidth = unitResolver.length(flangeWidth);
     const resolvedFlangeThickness = unitResolver.length(flangeThickness);
     const resolvedWebWidth = unitResolver.length(webWidth);
@@ -1599,7 +3388,7 @@ var TSection = class extends CrossSection {
       elasticSectionModulusZ: inertiaZ / (resolvedFlangeWidth / 2),
       height: totalHeight,
       width: resolvedFlangeWidth,
-      units: INTERNAL_UNITS3,
+      units: INTERNAL_UNITS9,
       outlinePoints: [
         { y: 0, z: (resolvedFlangeWidth - resolvedWebWidth) / 2 },
         { y: 0, z: (resolvedFlangeWidth + resolvedWebWidth) / 2 },
@@ -1613,7 +3402,7 @@ var TSection = class extends CrossSection {
       metadata: {
         ...metadata,
         shape: "t-section",
-        unitSystem: INTERNAL_UNITS3,
+        unitSystem: INTERNAL_UNITS9,
         sourceUnitSystem: (_a = metadata.sourceUnitSystem) != null ? _a : unitResolver.sourceUnitSystem
       }
     });
@@ -1647,12 +3436,12 @@ function sectionProductOfInertia(section) {
     (_f = (_d = (_b = (_a = section == null ? void 0 : section.productOfInertiaYZ) != null ? _a : section == null ? void 0 : section.inertiaYZ) != null ? _b : section == null ? void 0 : section.Iyz) != null ? _d : (_c = section == null ? void 0 : section.catalogProperties) == null ? void 0 : _c.Iyz) != null ? _f : (_e = section == null ? void 0 : section.metadata) == null ? void 0 : _e.productOfInertiaYZ
   );
 }
-function assertFinite(value, label) {
+function assertFinite2(value, label) {
   if (!Number.isFinite(value)) {
     throw new Error(`Section mass properties require a finite ${label}.`);
   }
 }
-function assertPositive(value, label) {
+function assertPositive7(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`Section mass properties require a positive ${label}.`);
   }
@@ -1722,7 +3511,7 @@ function calculateCompositeMassProperties(section) {
     (sum, component) => sum + component.transformedArea(),
     0
   );
-  assertPositive(transformedArea, "composite transformed area");
+  assertPositive7(transformedArea, "composite transformed area");
   const centroidY = components.reduce(
     (sum, component) => sum + component.transformedArea() * component.centroidY,
     0
@@ -1763,10 +3552,10 @@ function rotateSecondMoments({
   productOfInertiaYZ = 0,
   alpha = 0
 } = {}) {
-  assertFinite(inertiaY, "inertiaY");
-  assertFinite(inertiaZ, "inertiaZ");
-  assertFinite(productOfInertiaYZ, "productOfInertiaYZ");
-  assertFinite(alpha, "rotation angle alpha");
+  assertFinite2(inertiaY, "inertiaY");
+  assertFinite2(inertiaZ, "inertiaZ");
+  assertFinite2(productOfInertiaYZ, "productOfInertiaYZ");
+  assertFinite2(alpha, "rotation angle alpha");
   const c = Math.cos(alpha);
   const s = Math.sin(alpha);
   const inertiaYRotated = inertiaY * c ** 2 + inertiaZ * s ** 2 + 2 * productOfInertiaYZ * s * c;
@@ -1784,9 +3573,9 @@ function principalSecondMoments({
   inertiaZ,
   productOfInertiaYZ = 0
 } = {}) {
-  assertFinite(inertiaY, "inertiaY");
-  assertFinite(inertiaZ, "inertiaZ");
-  assertFinite(productOfInertiaYZ, "productOfInertiaYZ");
+  assertFinite2(inertiaY, "inertiaY");
+  assertFinite2(inertiaZ, "inertiaZ");
+  assertFinite2(productOfInertiaYZ, "productOfInertiaYZ");
   const average3 = (inertiaY + inertiaZ) / 2;
   const halfDifference = (inertiaY - inertiaZ) / 2;
   const radius = Math.sqrt(halfDifference ** 2 + productOfInertiaYZ ** 2);
@@ -1817,9 +3606,9 @@ function calculateSectionMassProperties(sectionOrShape) {
       source: "section-properties"
     }
   };
-  assertPositive(base.area, "area");
-  assertFinite(base.inertiaY, "inertiaY");
-  assertFinite(base.inertiaZ, "inertiaZ");
+  assertPositive7(base.area, "area");
+  assertFinite2(base.inertiaY, "inertiaY");
+  assertFinite2(base.inertiaZ, "inertiaZ");
   const principal = principalSecondMoments({
     inertiaY: base.inertiaY,
     inertiaZ: base.inertiaZ,
@@ -1861,7 +3650,7 @@ function resolvePrincipalSectionFrame(section) {
 }
 
 // src/domain/geometry/PolygonSection.js
-var INTERNAL_UNITS4 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS10 = Object.freeze({ force: "N", length: "mm" });
 function assertPoint(point2, index) {
   if (!point2 || !Number.isFinite(point2.y) || !Number.isFinite(point2.z)) {
     throw new Error(`Invalid polygon point at index ${index}.`);
@@ -1880,7 +3669,7 @@ var PolygonSection = class extends CrossSection {
       throw new Error("A polygon section requires at least three points.");
     }
     assertExplicitUnitSystem(units, "PolygonSection");
-    const unitResolver = createUnitResolver(units, INTERNAL_UNITS4);
+    const unitResolver = createUnitResolver(units, INTERNAL_UNITS10);
     const resolvedPoints = points.map((point2) => convertPointCoordinates(point2, unitResolver, ["y", "z"]));
     resolvedPoints.forEach(assertPoint);
     let signedDoubleArea = 0;
@@ -1929,12 +3718,12 @@ var PolygonSection = class extends CrossSection {
       elasticSectionModulusZ: inertiaZ / Math.max(maxZ - centroidZ, centroidZ - minZ),
       height: maxY - minY,
       width: maxZ - minZ,
-      units: INTERNAL_UNITS4,
+      units: INTERNAL_UNITS10,
       outlinePoints: resolvedPoints,
       metadata: {
         ...metadata,
         shape: "polygon",
-        unitSystem: INTERNAL_UNITS4,
+        unitSystem: INTERNAL_UNITS10,
         sourceUnitSystem: (_a = metadata.sourceUnitSystem) != null ? _a : unitResolver.sourceUnitSystem
       }
     });
@@ -2307,7 +4096,7 @@ var ReinforcedConcreteSection = class extends CrossSection {
 };
 
 // src/domain/geometry/XlamPanelSection.js
-var INTERNAL_UNITS5 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS11 = Object.freeze({ force: "N", length: "mm" });
 var XlamPanelSection = class extends CrossSection {
   constructor({
     id = null,
@@ -2320,7 +4109,7 @@ var XlamPanelSection = class extends CrossSection {
   }) {
     var _a;
     assertExplicitUnitSystem(units, "XlamPanelSection");
-    const unitResolver = createUnitResolver(units, INTERNAL_UNITS5);
+    const unitResolver = createUnitResolver(units, INTERNAL_UNITS11);
     const resolvedEffectiveWidth = unitResolver.length(effectiveWidth);
     const resolvedLayerThicknesses = layerThicknesses.map((thickness) => unitResolver.length(thickness));
     if (!Number.isFinite(resolvedEffectiveWidth) || resolvedEffectiveWidth <= 0) {
@@ -2373,13 +4162,13 @@ var XlamPanelSection = class extends CrossSection {
       elasticSectionModulusZ: activeArea * resolvedEffectiveWidth ** 2 / 12 / (resolvedEffectiveWidth / 2),
       height: currentY,
       width: resolvedEffectiveWidth,
-      units: INTERNAL_UNITS5,
+      units: INTERNAL_UNITS11,
       metadata: {
         ...metadata,
         shape: "xlam-panel",
         layerThicknesses: [...resolvedLayerThicknesses],
         activeLayerIndexes: [...activeLayerIndexes],
-        unitSystem: INTERNAL_UNITS5,
+        unitSystem: INTERNAL_UNITS11,
         sourceUnitSystem: (_a = metadata.sourceUnitSystem) != null ? _a : unitResolver.sourceUnitSystem
       }
     });
@@ -19736,12 +21525,12 @@ function listSteelProfileSectionsByFamily(family) {
 }
 
 // src/domain/geometry/SteelProfileSection.js
-var INTERNAL_UNITS6 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS12 = Object.freeze({ force: "N", length: "mm" });
 function firstDefined(...values) {
   return values.find((value) => value !== void 0);
 }
 function convertCatalogData(data) {
-  const resolver = createUnitResolver(STEEL_PROFILE_CATALOG_UNITS, INTERNAL_UNITS6);
+  const resolver = createUnitResolver(STEEL_PROFILE_CATALOG_UNITS, INTERNAL_UNITS12);
   return {
     ...data,
     A: resolver.area(data.A),
@@ -19774,7 +21563,7 @@ function convertCatalogData(data) {
   };
 }
 function convertOverrides(overrides, units) {
-  const resolver = createUnitResolver(units, INTERNAL_UNITS6);
+  const resolver = createUnitResolver(units, INTERNAL_UNITS12);
   return {
     ...overrides,
     area: overrides.area == null ? overrides.area : resolver.area(overrides.area),
@@ -19826,7 +21615,7 @@ var SteelProfileSection = class extends CrossSection {
       torsionalConstant: firstDefined(resolvedOverrides.torsionalConstant, data.IT, null),
       shearAreaY: firstDefined(resolvedOverrides.shearAreaY, data.Av_y, null),
       shearAreaZ: firstDefined(resolvedOverrides.shearAreaZ, data.Av_z, null),
-      units: INTERNAL_UNITS6,
+      units: INTERNAL_UNITS12,
       metadata: {
         ...metadata,
         profileName,
@@ -19890,7 +21679,7 @@ function createSteelProfileSection(options) {
 }
 
 // src/domain/geometry/SteelCompoundProfileSection.js
-var INTERNAL_UNITS7 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS13 = Object.freeze({ force: "N", length: "mm" });
 var PRODUCT_TOLERANCE = 1e-6;
 function isFinitePositive(value) {
   return Number.isFinite(value) && value > 0;
@@ -20202,7 +21991,7 @@ var SteelCompoundProfileSection = class extends CrossSection {
     if (!Array.isArray(components) || components.length === 0) {
       throw new Error("SteelCompoundProfileSection requires at least one component.");
     }
-    const resolver = createUnitResolver(units, INTERNAL_UNITS7);
+    const resolver = createUnitResolver(units, INTERNAL_UNITS13);
     const resolvedComponents = components.map((component, index) => normalizeComponent(component, index, resolver, units));
     const properties = calculateCompoundProperties(resolvedComponents);
     super({
@@ -20222,7 +22011,7 @@ var SteelCompoundProfileSection = class extends CrossSection {
       height: properties.height,
       width: properties.width,
       outlinePoints: properties.outlinePoints,
-      units: INTERNAL_UNITS7,
+      units: INTERNAL_UNITS13,
       metadata: {
         ...metadata,
         shape: "steel-compound-profile",
@@ -20283,7 +22072,7 @@ function createDoubleUPNBackToBackSection({
   if (baseSection.family !== "UPN") {
     throw new Error("createDoubleUPNBackToBackSection requires a UPN profile.");
   }
-  const resolver = createUnitResolver(units, INTERNAL_UNITS7);
+  const resolver = createUnitResolver(units, INTERNAL_UNITS13);
   const resolvedGap = resolver.length(webGap);
   const geometry = centeredNominalGeometry(baseSection);
   const centroidFromBack = geometry.centroidZ;
@@ -20293,7 +22082,7 @@ function createDoubleUPNBackToBackSection({
   return new SteelCompoundProfileSection({
     id: id != null ? id : `2${profileName}-BACK-TO-BACK`,
     name: name != null ? name : `2${profileName} dorso-dorso`,
-    units: INTERNAL_UNITS7,
+    units: INTERNAL_UNITS13,
     components: [
       {
         id: `${profileName}-left`,
@@ -20336,7 +22125,7 @@ function createDoubleAngleOpposedSection({
   if (baseSection.family !== "L" && baseSection.family !== "LU") {
     throw new Error("createDoubleAngleOpposedSection requires an L or LU profile.");
   }
-  const resolver = createUnitResolver(units, INTERNAL_UNITS7);
+  const resolver = createUnitResolver(units, INTERNAL_UNITS13);
   const resolvedSeparationY = resolver.length(gapY);
   const resolvedSeparationZ = resolver.length(gapZ);
   const geometry = centeredNominalGeometry(baseSection);
@@ -20350,7 +22139,7 @@ function createDoubleAngleOpposedSection({
   return new SteelCompoundProfileSection({
     id: id != null ? id : `2${profileName}-OPPOSED`,
     name: name != null ? name : `2${profileName} contrapposti`,
-    units: INTERNAL_UNITS7,
+    units: INTERNAL_UNITS13,
     components: [
       {
         id: `${profileName}-first`,
@@ -21278,7 +23067,7 @@ function applySectionRotationToBeamProperties({
 
 // src/domain/beams/ElasticBeamSectionProvider.js
 var DEFAULT_PROPERTY_UNITS = Object.freeze({ force: "N", length: "mm" });
-function assertPositive2(value, label) {
+function assertPositive8(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be a positive number.`);
   }
@@ -21318,10 +23107,10 @@ function normalizeBeamProperties(properties, fallbackUnits, fallbackMetadata = {
     properties.GA,
     properties.ga
   );
-  assertPositive2(axialRigidity, "axialRigidity");
-  assertPositive2(flexuralRigidity, "flexuralRigidity");
+  assertPositive8(axialRigidity, "axialRigidity");
+  assertPositive8(flexuralRigidity, "flexuralRigidity");
   if (shearRigidity !== void 0) {
-    assertPositive2(shearRigidity, "shearRigidity");
+    assertPositive8(shearRigidity, "shearRigidity");
   }
   return {
     axialRigidity,
@@ -21436,9 +23225,9 @@ function calculateSimpleSectionProperties({
   const elasticModulus = material == null ? void 0 : material.elasticModulus;
   const area = section == null ? void 0 : section.area;
   const inertia = section == null ? void 0 : section[bendingInertiaAxis];
-  assertPositive2(elasticModulus, "material elasticModulus");
-  assertPositive2(area, "section area");
-  assertPositive2(inertia, `section ${bendingInertiaAxis}`);
+  assertPositive8(elasticModulus, "material elasticModulus");
+  assertPositive8(area, "section area");
+  assertPositive8(inertia, `section ${bendingInertiaAxis}`);
   const shearModulus2 = resolveShearModulus(material);
   const { shearArea, usesEffectiveShearArea } = resolveShearArea(section, shearAreaAxis);
   const resolvedShearCorrectionFactor = shearCorrectionFactor != null ? shearCorrectionFactor : usesEffectiveShearArea ? 1 : 5 / 6;
@@ -21488,9 +23277,9 @@ function calculateCompositeSectionProperties({
     const area = (_b = component.section) == null ? void 0 : _b.area;
     const inertia = (_c = component.section) == null ? void 0 : _c[bendingInertiaAxis];
     const centroid = resolveBendingCoordinate(component, bendingInertiaAxis);
-    assertPositive2(elasticModulus, `component ${(_d = component.name) != null ? _d : component.role} elasticModulus`);
-    assertPositive2(area, `component ${(_e = component.name) != null ? _e : component.role} area`);
-    assertPositive2(inertia, `component ${(_f = component.name) != null ? _f : component.role} ${bendingInertiaAxis}`);
+    assertPositive8(elasticModulus, `component ${(_d = component.name) != null ? _d : component.role} elasticModulus`);
+    assertPositive8(area, `component ${(_e = component.name) != null ? _e : component.role} area`);
+    assertPositive8(inertia, `component ${(_f = component.name) != null ? _f : component.role} ${bendingInertiaAxis}`);
     const shearModulus2 = resolveShearModulus(componentMaterial);
     const { shearArea } = resolveShearArea(component.section, shearAreaAxis);
     return {
@@ -21648,7 +23437,7 @@ function createElasticBeamSectionProvider(options = {}) {
 
 // src/domain/beams/ReinforcedConcreteBeamSectionProvider.js
 var DEFAULT_UNITS = Object.freeze({ force: "N", length: "mm" });
-function assertPositive3(value, label) {
+function assertPositive9(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be a positive number.`);
   }
@@ -21744,10 +23533,10 @@ var ReinforcedConcreteBeamSectionProvider = class {
       this.concreteMaterial,
       this.poissonRatio
     );
-    assertPositive3(elasticModulus, "concrete elasticModulus");
-    assertPositive3(resolved.area, "RC section area");
-    assertPositive3(resolved.inertia, `RC section ${this.bendingInertiaAxis}`);
-    assertPositive3(resolved.shearArea, `RC section ${this.shearAreaAxis} or area`);
+    assertPositive9(elasticModulus, "concrete elasticModulus");
+    assertPositive9(resolved.area, "RC section area");
+    assertPositive9(resolved.inertia, `RC section ${this.bendingInertiaAxis}`);
+    assertPositive9(resolved.shearArea, `RC section ${this.shearAreaAxis} or area`);
     const properties = {
       axialRigidity: elasticModulus * resolved.area,
       flexuralRigidity: elasticModulus * resolved.inertia,
@@ -22273,7 +24062,7 @@ function createZeroMatrix(rows, columns = rows) {
   }
   return Array.from({ length: rows }, () => new Array(columns).fill(0));
 }
-function clamp(value, minimum, maximum) {
+function clamp6(value, minimum, maximum) {
   return Math.max(minimum, Math.min(maximum, value));
 }
 function roundTo(value, decimals = 6) {
@@ -24196,7 +25985,7 @@ function assertNode(node, label) {
     throw new Error(`FrameElement2DEulerBernoulli requires a ${label} node.`);
   }
 }
-function assertPositive4(value, label) {
+function assertPositive10(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`FrameElement2DEulerBernoulli requires a positive ${label}.`);
   }
@@ -24227,13 +26016,13 @@ function addVectors(left, right) {
 }
 function resolveRigidity({ explicitValue, material, crossSection, property, label }) {
   if (Number.isFinite(explicitValue)) {
-    assertPositive4(explicitValue, label);
+    assertPositive10(explicitValue, label);
     return explicitValue;
   }
   const elasticModulus = material == null ? void 0 : material.elasticModulus;
   const sectionProperty = crossSection == null ? void 0 : crossSection[property];
-  assertPositive4(elasticModulus, "material elastic modulus");
-  assertPositive4(sectionProperty, `cross-section ${property}`);
+  assertPositive10(elasticModulus, "material elastic modulus");
+  assertPositive10(sectionProperty, `cross-section ${property}`);
   return elasticModulus * sectionProperty;
 }
 function assertUniformFullElementLoad(load, elementLength) {
@@ -24296,7 +26085,7 @@ var FrameElement2DEulerBernoulli = class {
   directionCosines() {
     const { dx, dy } = this.geometry();
     const length = Math.sqrt(dx ** 2 + dy ** 2);
-    assertPositive4(length, "element length");
+    assertPositive10(length, "element length");
     return {
       length,
       c: dx / length,
@@ -24517,7 +26306,7 @@ var FrameElement2DEulerBernoulli = class {
 };
 
 // src/domain/fem/elements/FrameElement2DTimoshenko.js
-function assertPositive5(value, label) {
+function assertPositive11(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`FrameElement2DTimoshenko requires a positive ${label}.`);
   }
@@ -24525,11 +26314,11 @@ function assertPositive5(value, label) {
 function resolveShearArea2(crossSection, shearAreaAxis) {
   const shearArea = crossSection == null ? void 0 : crossSection[shearAreaAxis];
   if (Number.isFinite(shearArea)) {
-    assertPositive5(shearArea, `cross-section ${shearAreaAxis}`);
+    assertPositive11(shearArea, `cross-section ${shearAreaAxis}`);
     return { area: shearArea, usesEffectiveShearArea: true };
   }
   const area = crossSection == null ? void 0 : crossSection.area;
-  assertPositive5(area, "cross-section area");
+  assertPositive11(area, "cross-section area");
   return { area, usesEffectiveShearArea: false };
 }
 var FrameElement2DTimoshenko = class extends FrameElement2DEulerBernoulli {
@@ -24566,13 +26355,13 @@ var FrameElement2DTimoshenko = class extends FrameElement2DEulerBernoulli {
   resolvedShearCorrectionFactor({ usesEffectiveShearArea = false } = {}) {
     var _a;
     const correctionFactor = (_a = this.shearCorrectionFactor) != null ? _a : usesEffectiveShearArea ? 1 : 5 / 6;
-    assertPositive5(correctionFactor, "shearCorrectionFactor");
+    assertPositive11(correctionFactor, "shearCorrectionFactor");
     return correctionFactor;
   }
   resolvedEffectiveShearRigidity() {
     var _a;
     if (Number.isFinite(this.shearRigidity)) {
-      assertPositive5(this.shearRigidity, "shearRigidity");
+      assertPositive11(this.shearRigidity, "shearRigidity");
       return this.shearRigidity * this.resolvedShearCorrectionFactor({ usesEffectiveShearArea: false });
     }
     const shearModulus2 = (_a = this.material) == null ? void 0 : _a.shearModulus;
@@ -24580,7 +26369,7 @@ var FrameElement2DTimoshenko = class extends FrameElement2DEulerBernoulli {
       this.crossSection,
       this.shearAreaAxis
     );
-    assertPositive5(shearModulus2, "material shear modulus");
+    assertPositive11(shearModulus2, "material shear modulus");
     return shearModulus2 * area * this.resolvedShearCorrectionFactor({ usesEffectiveShearArea });
   }
   resolvedShearRigidity() {
@@ -24646,12 +26435,12 @@ function assertNode2(node, label) {
     throw new Error(`FrameElement2DTimoshenkoRigidOffsets requires a ${label} node.`);
   }
 }
-function assertNonNegative(value, label) {
+function assertNonNegative6(value, label) {
   if (!Number.isFinite(value) || value < 0) {
     throw new Error(`FrameElement2DTimoshenkoRigidOffsets requires a non-negative ${label}.`);
   }
 }
-function assertPositive6(value, label) {
+function assertPositive12(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`FrameElement2DTimoshenkoRigidOffsets requires a positive ${label}.`);
   }
@@ -24730,8 +26519,8 @@ var FrameElement2DTimoshenkoRigidOffsets = class {
     }
     assertNode2(startNode, "start");
     assertNode2(endNode, "end");
-    assertNonNegative(rigidStartOffset, "rigidStartOffset");
-    assertNonNegative(rigidEndOffset, "rigidEndOffset");
+    assertNonNegative6(rigidStartOffset, "rigidStartOffset");
+    assertNonNegative6(rigidEndOffset, "rigidEndOffset");
     this.id = id;
     this.type = "frame-2d-timoshenko-rigid-offsets";
     this.startNode = startNode;
@@ -24768,7 +26557,7 @@ var FrameElement2DTimoshenkoRigidOffsets = class {
   directionCosines() {
     const { dx, dy } = this.geometry();
     const length = Math.sqrt(dx ** 2 + dy ** 2);
-    assertPositive6(length, "physical element length");
+    assertPositive12(length, "physical element length");
     return {
       length,
       c: dx / length,
@@ -24807,7 +26596,7 @@ var FrameElement2DTimoshenkoRigidOffsets = class {
     const dx = nodes.end.x - nodes.start.x;
     const dy = nodes.end.y - nodes.start.y;
     const length = Math.sqrt(dx ** 2 + dy ** 2);
-    assertPositive6(length, "deformable element length after rigid end offsets");
+    assertPositive12(length, "deformable element length after rigid end offsets");
     return {
       length,
       c: dx / length,
@@ -24971,13 +26760,958 @@ var FrameElement2DTimoshenkoRigidOffsets = class {
   }
 };
 
+// src/domain/fem/elements/masonry/MasonryPierKinematics.js
+function transpose3(matrix) {
+  return matrix[0].map((_, column) => matrix.map((row) => row[column]));
+}
+function multiplyMatrices3(left, right) {
+  return left.map(
+    (leftRow) => right[0].map(
+      (_, column) => leftRow.reduce(
+        (sum, value, index) => sum + value * right[index][column],
+        0
+      )
+    )
+  );
+}
+function multiplyMatrixVector4(matrix, vector) {
+  return matrix.map(
+    (row) => row.reduce((sum, value, index) => sum + value * vector[index], 0)
+  );
+}
+function subtractVectors4(left, right) {
+  return left.map((value, index) => value - right[index]);
+}
+function addVectors2(left, right) {
+  return left.map((value, index) => value + right[index]);
+}
+function subtractMatrices(left, right) {
+  return left.map(
+    (row, rowIndex) => row.map((value, columnIndex) => value - right[rowIndex][columnIndex])
+  );
+}
+function identityMatrix(size) {
+  const matrix = createZeroMatrix(size);
+  for (let index = 0; index < size; index += 1) {
+    matrix[index][index] = 1;
+  }
+  return matrix;
+}
+function masonryPierBasicKinematicMatrix(length) {
+  return [
+    [-1, 0, 0, 1, 0, 0],
+    [0, 1 / length, 1, 0, -1 / length, 0],
+    [0, 1 / length, 0, 0, -1 / length, 1]
+  ];
+}
+function masonryPierComponentCompatibilityMatrix(length) {
+  return [
+    [1, 0, 1, 0, 0],
+    [0, 1, 0, 0, -1 / length],
+    [0, 0, 0, 1, -1 / length]
+  ];
+}
+function frameTransformationMatrix(c, s) {
+  return [
+    [c, s, 0, 0, 0, 0],
+    [-s, c, 0, 0, 0, 0],
+    [0, 0, 1, 0, 0, 0],
+    [0, 0, 0, c, s, 0],
+    [0, 0, 0, -s, c, 0],
+    [0, 0, 0, 0, 0, 1]
+  ];
+}
+
+// src/domain/fem/elements/masonry/CyclicMasonryPier2D.js
+var INTERNAL_UNITS14 = Object.freeze({ force: "kN", length: "m" });
+var STATE_VERSION4 = 1;
+function assertPositive13(value, label) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`CyclicMasonryPier2D requires a positive ${label}.`);
+  }
+}
+function assertNode3(node, label) {
+  if (!(node == null ? void 0 : node.id) || !Number.isFinite(node.x) || !Number.isFinite(node.y)) {
+    throw new Error(`CyclicMasonryPier2D requires a finite ${label} node.`);
+  }
+}
+function cloneMatrix2(matrix) {
+  return matrix.map((row) => [...row]);
+}
+function cloneResponse2(response) {
+  if (!response) {
+    return null;
+  }
+  return JSON.parse(JSON.stringify(response));
+}
+function norm(vector, scales) {
+  return Math.sqrt(
+    vector.reduce(
+      (sum, value, index) => sum + (value / scales[index]) ** 2,
+      0
+    )
+  );
+}
+function matrixColumns(matrix, solver) {
+  const columns = transpose3(matrix).map((column) => solver.solve(column));
+  return transpose3(columns);
+}
+function solveScaledSystem(solver, matrix, rhs, rowScales, columnScales) {
+  const scaledMatrix = matrix.map(
+    (row, rowIndex) => row.map(
+      (value, columnIndex) => value * columnScales[columnIndex] / rowScales[rowIndex]
+    )
+  );
+  const scaledRhs = rhs.map((value, index) => value / rowScales[index]);
+  const scaledSolution = solver.solve(scaledMatrix, scaledRhs);
+  return scaledSolution.map((value, index) => value * columnScales[index]);
+}
+function scaledLeastSquaresCorrection(solver, matrix, rhs, rowScales, columnScales, damping) {
+  const scaledMatrix = matrix.map(
+    (row, rowIndex) => row.map(
+      (value, columnIndex) => value * columnScales[columnIndex] / rowScales[rowIndex]
+    )
+  );
+  const scaledRhs = rhs.map((value, index) => value / rowScales[index]);
+  const transposed = transpose3(scaledMatrix);
+  const normalMatrix = multiplyMatrices3(transposed, scaledMatrix);
+  const scale = Math.max(
+    ...normalMatrix.flat().map((value) => Math.abs(value)),
+    1
+  );
+  for (let index = 0; index < normalMatrix.length; index += 1) {
+    normalMatrix[index][index] += damping * scale;
+  }
+  const normalRhs = multiplyMatrixVector4(transposed, scaledRhs);
+  const scaledSolution = solver.solve(normalMatrix, normalRhs);
+  return scaledSolution.map((value, index) => value * columnScales[index]);
+}
+var CyclicMasonryPier2D = class _CyclicMasonryPier2D {
+  constructor({
+    id,
+    startNode = null,
+    endNode = null,
+    nodeI = startNode,
+    nodeJ = endNode,
+    units = null,
+    height = null,
+    width,
+    thickness,
+    deformableHeight = null,
+    elasticCoreHeight = null,
+    elasticModulus,
+    shearModulus: shearModulus2,
+    effectiveShearAreaFactor = 1,
+    fiberCount = 20,
+    hingeLength,
+    compressionMaterial,
+    bottomInterface = null,
+    topInterface = null,
+    shearMaterial,
+    coupling = {},
+    localTolerance = 1e-7,
+    maxLocalIterations = 40,
+    numericalJacobianRelativeStep = 1e-6,
+    numericalTranslationStep = 1e-8,
+    numericalRotationStep = 1e-8,
+    maxLineSearchIterations = 8,
+    linearSolver = new DenseLinearSolver({ singularityTolerance: 1e-14 }),
+    metadata = {}
+  } = {}) {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l;
+    if (!id) {
+      throw new Error("A CyclicMasonryPier2D id is required.");
+    }
+    assertNode3(nodeI, "start");
+    assertNode3(nodeJ, "end");
+    assertExplicitUnitSystem(units, "CyclicMasonryPier2D");
+    const resolver = createUnitResolver(units, INTERNAL_UNITS14);
+    const nodeLength = Math.hypot(nodeJ.x - nodeI.x, nodeJ.y - nodeI.y);
+    this.id = id;
+    this.type = "cyclic-masonry-pier-2d";
+    this.startNode = nodeI;
+    this.endNode = nodeJ;
+    this.nodeI = nodeI;
+    this.nodeJ = nodeJ;
+    this.nodes = [nodeI, nodeJ];
+    this.units = resolver.targetUnitSystem;
+    this.height = height == null ? nodeLength : resolver.length(height);
+    this.width = resolver.length(width);
+    this.thickness = resolver.length(thickness);
+    this.deformableHeight = deformableHeight == null ? this.height : resolver.length(deformableHeight);
+    this.elasticCoreHeight = elasticCoreHeight == null ? this.deformableHeight : resolver.length(elasticCoreHeight);
+    this.elasticModulus = resolver.stress(elasticModulus);
+    this.shearModulus = resolver.stress(shearModulus2);
+    this.effectiveShearAreaFactor = effectiveShearAreaFactor;
+    this.fiberCount = fiberCount;
+    this.hingeLength = resolver.length(hingeLength);
+    this.localTolerance = localTolerance;
+    this.maxLocalIterations = maxLocalIterations;
+    this.numericalJacobianRelativeStep = numericalJacobianRelativeStep;
+    this.numericalTranslationStep = numericalTranslationStep;
+    this.numericalRotationStep = numericalRotationStep;
+    this.maxLineSearchIterations = maxLineSearchIterations;
+    this.linearSolver = linearSolver;
+    this.metadata = {
+      ...metadata,
+      unitSystem: resolver.targetUnitSystem,
+      sourceUnitSystem: (_a = metadata.sourceUnitSystem) != null ? _a : resolver.sourceUnitSystem
+    };
+    this.coupling = {
+      useCurrentAxialForce: (_b = coupling.useCurrentAxialForce) != null ? _b : true,
+      useCompressedLength: (_c = coupling.useCompressedLength) != null ? _c : true,
+      compressedLengthStrategy: (_d = coupling.compressedLengthStrategy) != null ? _d : "minimum",
+      crushingShearReduction: (_e = coupling.crushingShearReduction) != null ? _e : true,
+      shearToInterfaceDamage: (_f = coupling.shearToInterfaceDamage) != null ? _f : false
+    };
+    for (const [value, label] of [
+      [nodeLength, "node-to-node length"],
+      [this.height, "height"],
+      [this.width, "width"],
+      [this.thickness, "thickness"],
+      [this.deformableHeight, "deformableHeight"],
+      [this.elasticCoreHeight, "elasticCoreHeight"],
+      [this.elasticModulus, "elasticModulus"],
+      [this.shearModulus, "shearModulus"],
+      [this.effectiveShearAreaFactor, "effectiveShearAreaFactor"],
+      [this.hingeLength, "hingeLength"],
+      [this.localTolerance, "localTolerance"],
+      [this.maxLocalIterations, "maxLocalIterations"],
+      [this.numericalJacobianRelativeStep, "numericalJacobianRelativeStep"],
+      [this.numericalTranslationStep, "numericalTranslationStep"],
+      [this.numericalRotationStep, "numericalRotationStep"]
+    ]) {
+      assertPositive13(value, label);
+    }
+    if (Math.abs(this.height - nodeLength) > Math.max(1e-9, 1e-6 * nodeLength)) {
+      throw new Error(
+        "CyclicMasonryPier2D height must match the distance between its nodes; use deformableHeight for an effective deformable length."
+      );
+    }
+    if (!(/* @__PURE__ */ new Set(["minimum", "average"])).has(this.coupling.compressedLengthStrategy)) {
+      throw new Error(
+        'CyclicMasonryPier2D compressedLengthStrategy must be "minimum" or "average".'
+      );
+    }
+    if (!shearMaterial || typeof shearMaterial.clone !== "function") {
+      throw new Error(
+        "CyclicMasonryPier2D requires a cloneable shearMaterial."
+      );
+    }
+    const interfaceOptions = {
+      units: this.units,
+      width: this.width,
+      thickness: this.thickness,
+      hingeLength: this.hingeLength,
+      fiberCount: this.fiberCount,
+      compressionMaterial,
+      localTolerance,
+      maxLocalIterations
+    };
+    this.bottomInterface = (_h = (_g = bottomInterface == null ? void 0 : bottomInterface.clone) == null ? void 0 : _g.call(bottomInterface)) != null ? _h : new MasonryFiberInterface2D({
+      id: `${id}-bottom-interface`,
+      ...interfaceOptions
+    });
+    this.topInterface = (_j = (_i = topInterface == null ? void 0 : topInterface.clone) == null ? void 0 : _i.call(topInterface)) != null ? _j : new MasonryFiberInterface2D({
+      id: `${id}-top-interface`,
+      ...interfaceOptions
+    });
+    this.shearMaterial = shearMaterial.clone();
+    this._compressionMaterialPrototype = (_l = (_k = compressionMaterial == null ? void 0 : compressionMaterial.clone) == null ? void 0 : _k.call(compressionMaterial)) != null ? _l : null;
+    this._shearMaterialPrototype = shearMaterial.clone();
+    this.revertToStart();
+  }
+  geometry() {
+    return {
+      dx: this.endNode.x - this.startNode.x,
+      dy: this.endNode.y - this.startNode.y
+    };
+  }
+  directionCosines() {
+    const { dx, dy } = this.geometry();
+    const length = Math.hypot(dx, dy);
+    return { length, c: dx / length, s: dy / length };
+  }
+  transformationMatrix() {
+    const { c, s } = this.directionCosines();
+    return frameTransformationMatrix(c, s);
+  }
+  getDofIds(dofRegistry) {
+    return [
+      dofRegistry.getDofId(this.startNode, "ux"),
+      dofRegistry.getDofId(this.startNode, "uy"),
+      dofRegistry.getDofId(this.startNode, "rz"),
+      dofRegistry.getDofId(this.endNode, "ux"),
+      dofRegistry.getDofId(this.endNode, "uy"),
+      dofRegistry.getDofId(this.endNode, "rz")
+    ];
+  }
+  localDisplacements(globalDisplacements, dofRegistry) {
+    if (!Array.isArray(globalDisplacements)) {
+      throw new Error(
+        "CyclicMasonryPier2D localDisplacements requires a displacement vector."
+      );
+    }
+    const elementDisplacements = this.getDofIds(dofRegistry).map((dofId) => {
+      const value = globalDisplacements[dofRegistry.getIndex(dofId)];
+      if (!Number.isFinite(value)) {
+        throw new Error(
+          `CyclicMasonryPier2D displacement for DOF ${dofId} must be finite.`
+        );
+      }
+      return value;
+    });
+    return multiplyMatrixVector4(this.transformationMatrix(), elementDisplacements);
+  }
+  bodyBasicStiffness() {
+    const area = this.width * this.thickness;
+    const inertia = this.thickness * this.width ** 3 / 12;
+    const axial = this.elasticModulus * area / this.elasticCoreHeight;
+    const bending = this.elasticModulus * inertia / this.elasticCoreHeight;
+    return [
+      [axial, 0, 0],
+      [0, 4 * bending, 2 * bending],
+      [0, 2 * bending, 4 * bending]
+    ];
+  }
+  effectiveShearArea() {
+    return this.effectiveShearAreaFactor * this.width * this.thickness;
+  }
+  compressedLength(bottom, top) {
+    if (!this.coupling.useCompressedLength) {
+      return this.width;
+    }
+    if (this.coupling.compressedLengthStrategy === "average") {
+      return 0.5 * (bottom.compressedLength + top.compressedLength);
+    }
+    return Math.min(bottom.compressedLength, top.compressedLength);
+  }
+  componentEvaluation(internalDeformations, basicDeformations) {
+    var _a;
+    const compatibility = masonryPierComponentCompatibilityMatrix(this.height);
+    const bodyStiffness = this.bodyBasicStiffness();
+    const componentContribution = multiplyMatrixVector4(
+      compatibility,
+      internalDeformations
+    );
+    const bodyDeformations = subtractVectors4(
+      basicDeformations,
+      componentContribution
+    );
+    const basicForces = multiplyMatrixVector4(bodyStiffness, bodyDeformations);
+    const bottomForces = this.bottomInterface.setTrialDeformation(
+      internalDeformations[0],
+      internalDeformations[1]
+    );
+    const topForces = this.topInterface.setTrialDeformation(
+      internalDeformations[2],
+      internalDeformations[3]
+    );
+    const bottom = this.bottomInterface.getResponse();
+    const top = this.topInterface.getResponse();
+    const currentAxialCompression = this.coupling.useCurrentAxialForce ? Math.min(bottom.compressionResultant, top.compressionResultant) : 0;
+    const compressedLength = this.compressedLength(bottom, top);
+    const compressionDamage = this.coupling.crushingShearReduction ? Math.max(
+      bottom.maxCompressionDamage,
+      top.maxCompressionDamage
+    ) : 0;
+    const committedBasicDeformations = (_a = this._committedState.basicDeformations) != null ? _a : [0, 0, 0];
+    const shearIncrementHint = -0.5 * this.height * (basicDeformations[1] - committedBasicDeformations[1] + (basicDeformations[2] - committedBasicDeformations[2]));
+    const shearForce = this.shearMaterial.setTrialDeformation(
+      internalDeformations[4],
+      {
+        currentAxialCompression,
+        compressedLength,
+        compressionDamage,
+        thickness: this.thickness,
+        effectiveShearArea: this.effectiveShearArea(),
+        deformableHeight: this.deformableHeight,
+        loadingDirectionHint: shearIncrementHint
+      }
+    );
+    const componentForces = [
+      bottomForces[0],
+      bottomForces[1],
+      topForces[0],
+      topForces[1],
+      shearForce
+    ];
+    const equilibriumForces = multiplyMatrixVector4(
+      transpose3(compatibility),
+      basicForces
+    );
+    const residual = subtractVectors4(componentForces, equilibriumForces);
+    return {
+      internalDeformations: [...internalDeformations],
+      basicDeformations: [...basicDeformations],
+      bodyDeformations,
+      basicForces,
+      componentForces,
+      equilibriumForces,
+      residual,
+      bottom,
+      top,
+      shear: this.shearMaterial.getState(),
+      shearContext: {
+        currentAxialCompression,
+        compressedLength,
+        compressionDamage
+      }
+    };
+  }
+  residualScales(evaluation) {
+    const forceScale = Math.max(
+      Math.abs(evaluation.basicForces[0]),
+      Math.abs(evaluation.componentForces[0]),
+      Math.abs(evaluation.componentForces[2]),
+      Math.abs(evaluation.componentForces[4]),
+      1
+    );
+    const momentScale = Math.max(
+      Math.abs(evaluation.basicForces[1]),
+      Math.abs(evaluation.basicForces[2]),
+      forceScale * this.width,
+      1
+    );
+    return [forceScale, momentScale, forceScale, momentScale, forceScale];
+  }
+  internalDeformationScales() {
+    var _a, _b, _c, _d;
+    const compressionPeakStrain = (_b = (_a = this._compressionMaterialPrototype) == null ? void 0 : _a.peakStrain) != null ? _b : 2e-3;
+    const interfaceTranslation = Math.max(
+      this.hingeLength * compressionPeakStrain,
+      this.numericalTranslationStep
+    );
+    const interfaceRotation = Math.max(
+      2 * interfaceTranslation / this.width,
+      this.numericalRotationStep
+    );
+    const shearTranslation = Math.max(
+      ((_d = (_c = this._shearMaterialPrototype) == null ? void 0 : _c.peakShearStrain) != null ? _d : 4e-3) * this.deformableHeight,
+      this.numericalTranslationStep
+    );
+    return [
+      interfaceTranslation,
+      interfaceRotation,
+      interfaceTranslation,
+      interfaceRotation,
+      shearTranslation
+    ];
+  }
+  numericalLocalJacobian(internalDeformations, basicDeformations) {
+    const jacobian = Array.from({ length: 5 }, () => new Array(5).fill(0));
+    for (let column = 0; column < 5; column += 1) {
+      const baseStep = column === 1 || column === 3 ? this.numericalRotationStep : this.numericalTranslationStep;
+      const step = Math.max(
+        baseStep,
+        Math.abs(internalDeformations[column]) * this.numericalJacobianRelativeStep
+      );
+      const plus = [...internalDeformations];
+      const minus = [...internalDeformations];
+      plus[column] += step;
+      minus[column] -= step;
+      const residualPlus = this.componentEvaluation(
+        plus,
+        basicDeformations
+      ).residual;
+      const residualMinus = this.componentEvaluation(
+        minus,
+        basicDeformations
+      ).residual;
+      for (let row = 0; row < 5; row += 1) {
+        jacobian[row][column] = (residualPlus[row] - residualMinus[row]) / (2 * step);
+      }
+    }
+    this.componentEvaluation(internalDeformations, basicDeformations);
+    return jacobian;
+  }
+  consistentLocalJacobian(internalDeformations, basicDeformations, evaluation = this.componentEvaluation(
+    internalDeformations,
+    basicDeformations
+  )) {
+    var _a;
+    const compatibility = masonryPierComponentCompatibilityMatrix(this.height);
+    const bodyContribution = multiplyMatrices3(
+      transpose3(compatibility),
+      multiplyMatrices3(this.bodyBasicStiffness(), compatibility)
+    );
+    const jacobian = cloneMatrix2(bodyContribution);
+    const bottomTangent = evaluation.bottom.tangent;
+    const topTangent = evaluation.top.tangent;
+    jacobian[0][0] += bottomTangent[0][0];
+    jacobian[0][1] += bottomTangent[0][1];
+    jacobian[1][0] += bottomTangent[1][0];
+    jacobian[1][1] += bottomTangent[1][1];
+    jacobian[2][2] += topTangent[0][0];
+    jacobian[2][3] += topTangent[0][1];
+    jacobian[3][2] += topTangent[1][0];
+    jacobian[3][3] += topTangent[1][1];
+    jacobian[4][4] += evaluation.shear.tangent;
+    for (let column = 0; column < 4; column += 1) {
+      const baseStep = column === 1 || column === 3 ? this.numericalRotationStep : this.numericalTranslationStep;
+      const step = Math.max(
+        baseStep,
+        Math.abs(internalDeformations[column]) * this.numericalJacobianRelativeStep
+      );
+      const committedValue = (_a = this._committedState.internalDeformations[column]) != null ? _a : 0;
+      const trialDirection = Math.sign(
+        internalDeformations[column] - committedValue
+      ) || 1;
+      const perturbed = [...internalDeformations];
+      perturbed[column] += trialDirection * step;
+      const perturbedEvaluation = this.componentEvaluation(
+        perturbed,
+        basicDeformations
+      );
+      const shearCouplingDerivative = (perturbedEvaluation.shear.force - evaluation.shear.force) / (trialDirection * step);
+      jacobian[4][column] += shearCouplingDerivative;
+    }
+    this.componentEvaluation(internalDeformations, basicDeformations);
+    return jacobian;
+  }
+  solveLocalState(basicDeformations) {
+    let internalDeformations = [
+      ...this._committedState.internalDeformations
+    ];
+    if (internalDeformations.every((value) => Math.abs(value) <= 1e-16) && basicDeformations.some((value) => Math.abs(value) > 1e-16)) {
+      const interfaceShare = 0.05;
+      internalDeformations = [
+        interfaceShare * Math.min(0, basicDeformations[0]),
+        interfaceShare * basicDeformations[1],
+        interfaceShare * Math.min(0, basicDeformations[0]),
+        interfaceShare * basicDeformations[2],
+        -0.25 * this.height * (basicDeformations[1] + basicDeformations[2])
+      ];
+    }
+    let evaluation = this.componentEvaluation(
+      internalDeformations,
+      basicDeformations
+    );
+    let residualNorm2 = norm(
+      evaluation.residual,
+      this.residualScales(evaluation)
+    );
+    let iteration = 0;
+    for (iteration = 1; iteration <= this.maxLocalIterations; iteration += 1) {
+      if (residualNorm2 <= this.localTolerance) {
+        break;
+      }
+      const jacobian2 = this.consistentLocalJacobian(
+        internalDeformations,
+        basicDeformations,
+        evaluation
+      );
+      const correctionCandidates = [];
+      try {
+        correctionCandidates.push(solveScaledSystem(
+          this.linearSolver,
+          jacobian2,
+          evaluation.residual.map((value) => -value),
+          this.residualScales(evaluation),
+          this.internalDeformationScales()
+        ));
+      } catch {
+      }
+      for (const damping of [1e-8, 1e-6, 1e-4, 0.01, 1, 100]) {
+        try {
+          correctionCandidates.push(scaledLeastSquaresCorrection(
+            this.linearSolver,
+            jacobian2,
+            evaluation.residual.map((value) => -value),
+            this.residualScales(evaluation),
+            this.internalDeformationScales(),
+            damping
+          ));
+        } catch {
+        }
+      }
+      if (correctionCandidates.length === 0) {
+        throw new Error(
+          `CyclicMasonryPier2D ${this.id} local iteration ${iteration} could not compute either a Newton or a damped least-squares correction.`
+        );
+      }
+      let accepted = false;
+      let bestEvaluation = evaluation;
+      let bestDeformations = internalDeformations;
+      let bestNorm = Infinity;
+      for (const correction of correctionCandidates) {
+        for (let lineSearch = 0; lineSearch <= this.maxLineSearchIterations; lineSearch += 1) {
+          const factor2 = 0.5 ** lineSearch;
+          const candidate = addVectors2(
+            internalDeformations,
+            correction.map((value) => factor2 * value)
+          );
+          const candidateEvaluation = this.componentEvaluation(
+            candidate,
+            basicDeformations
+          );
+          const candidateNorm = norm(
+            candidateEvaluation.residual,
+            this.residualScales(candidateEvaluation)
+          );
+          if (candidateNorm < bestNorm) {
+            bestNorm = candidateNorm;
+            bestEvaluation = candidateEvaluation;
+            bestDeformations = candidate;
+          }
+          if (candidateNorm < residualNorm2) {
+            accepted = true;
+          }
+        }
+      }
+      if (!accepted && !Number.isFinite(bestNorm)) {
+        throw new Error(
+          `CyclicMasonryPier2D ${this.id} local Newton line search stalled at iteration ${iteration} (normalized residual ${residualNorm2}).`
+        );
+      }
+      internalDeformations = bestDeformations;
+      evaluation = bestEvaluation;
+      residualNorm2 = bestNorm;
+    }
+    if (residualNorm2 > this.localTolerance) {
+      throw new Error(
+        `CyclicMasonryPier2D ${this.id} local Newton iteration did not converge in ${this.maxLocalIterations} iterations (normalized residual ${residualNorm2}; residual [${evaluation.residual.join(", ")}]; internal deformations [${internalDeformations.join(", ")}]; shear force ${evaluation.shear.force}; compatible shear force ${evaluation.equilibriumForces[4]}).`
+      );
+    }
+    evaluation = this.componentEvaluation(
+      internalDeformations,
+      basicDeformations
+    );
+    const jacobian = this.consistentLocalJacobian(
+      internalDeformations,
+      basicDeformations,
+      evaluation
+    );
+    const compatibility = masonryPierComponentCompatibilityMatrix(this.height);
+    const bodyStiffness = this.bodyBasicStiffness();
+    const rightHandSide = multiplyMatrices3(
+      transpose3(compatibility),
+      bodyStiffness
+    );
+    const rowScales = this.residualScales(evaluation);
+    const columnScales = this.internalDeformationScales();
+    const dzDv = matrixColumns(rightHandSide, {
+      solve: (column) => solveScaledSystem(
+        this.linearSolver,
+        jacobian,
+        column,
+        rowScales,
+        columnScales
+      )
+    });
+    const basicTangent = multiplyMatrices3(
+      bodyStiffness,
+      subtractMatrices(
+        identityMatrix(3),
+        multiplyMatrices3(compatibility, dzDv)
+      )
+    );
+    return {
+      ...evaluation,
+      internalDeformations,
+      jacobian,
+      basicTangent,
+      localIterations: iteration,
+      localResidualNorm: residualNorm2,
+      localConverged: true
+    };
+  }
+  setTrialLocalDisplacements(localDisplacements) {
+    if (!Array.isArray(localDisplacements) || localDisplacements.length !== 6 || localDisplacements.some((value) => !Number.isFinite(value))) {
+      throw new Error(
+        "CyclicMasonryPier2D setTrialLocalDisplacements requires six finite entries."
+      );
+    }
+    const basicKinematics = masonryPierBasicKinematicMatrix(this.height);
+    const basicDeformations = multiplyMatrixVector4(
+      basicKinematics,
+      localDisplacements
+    );
+    const localState = this.solveLocalState(basicDeformations);
+    const localForces = multiplyMatrixVector4(
+      transpose3(basicKinematics),
+      localState.basicForces
+    );
+    const localTangent = multiplyMatrices3(
+      transpose3(basicKinematics),
+      multiplyMatrices3(localState.basicTangent, basicKinematics)
+    );
+    const shear = localState.shear;
+    const bottom = localState.bottom;
+    const top = localState.top;
+    const flexuralUtilization = Math.max(
+      bottom.crushingIndex,
+      top.crushingIndex,
+      bottom.rockingIndex,
+      top.rockingIndex
+    );
+    const mechanismIndices = {
+      rocking: Math.max(bottom.rockingIndex, top.rockingIndex),
+      crushing: Math.max(bottom.crushingIndex, top.crushingIndex),
+      diagonalTension: shear.diagonalCrackingIndex,
+      sliding: shear.slidingIndex
+    };
+    const predominantEntry = Object.entries(mechanismIndices).reduce(
+      (governing, entry) => entry[1] > governing[1] ? entry : governing,
+      ["elastic", 0]
+    );
+    const predominantMechanism = predominantEntry[0] === "diagonalTension" ? "diagonal-tension" : predominantEntry[0];
+    const mechanismsActivated = /* @__PURE__ */ new Set([
+      ...bottom.mechanismsActivated,
+      ...top.mechanismsActivated,
+      ...shear.mechanismsActivated
+    ]);
+    this._trialState = {
+      version: STATE_VERSION4,
+      internalDeformations: [...localState.internalDeformations],
+      localDisplacements: [...localDisplacements],
+      basicDeformations: [...basicDeformations],
+      bodyDeformations: [...localState.bodyDeformations],
+      basicForces: [...localState.basicForces],
+      localForces,
+      localTangent,
+      basicTangent: cloneMatrix2(localState.basicTangent),
+      axialForce: localState.basicForces[0],
+      shearForce: shear.force,
+      endMoments: [localState.basicForces[1], localState.basicForces[2]],
+      shearDeformation: localState.internalDeformations[4],
+      interfaceRotations: [
+        localState.internalDeformations[1],
+        localState.internalDeformations[3]
+      ],
+      compressedLengths: [bottom.compressedLength, top.compressedLength],
+      compressionResultants: [
+        bottom.compressionResultant,
+        top.compressionResultant
+      ],
+      fiberStrainExtremes: {
+        bottom: {
+          minimum: bottom.minFiberStrain,
+          maximum: bottom.maxFiberStrain
+        },
+        top: {
+          minimum: top.minFiberStrain,
+          maximum: top.maxFiberStrain
+        }
+      },
+      compressionDamage: Math.max(
+        bottom.maxCompressionDamage,
+        top.maxCompressionDamage
+      ),
+      shearDamage: shear.damage,
+      energyDissipated: bottom.energyDissipated + top.energyDissipated + shear.dissipatedEnergy,
+      mechanismIndices,
+      predominantMechanism: flexuralUtilization === 0 && Math.abs(shear.force) === 0 ? "elastic" : predominantMechanism,
+      mechanismsActivated: [...mechanismsActivated],
+      bottomInterface: bottom,
+      topInterface: top,
+      shear,
+      shearContext: { ...localState.shearContext },
+      localIterations: localState.localIterations,
+      localResidualNorm: localState.localResidualNorm,
+      localConverged: true,
+      warnings: this.coupling.shearToInterfaceDamage ? [
+        "shearToInterfaceDamage is requested but not implemented in version 1; the software coupling slot is reserved and no interface degradation has been applied."
+      ] : []
+    };
+    return this.getResponse();
+  }
+  evaluate({
+    globalDisplacements,
+    localDisplacements = null,
+    dofRegistry = null,
+    state = null
+  } = {}) {
+    if (state) {
+      const working = this.clone({ preserveState: false });
+      working.importState(state, { committed: true });
+      const response2 = working.evaluate({
+        globalDisplacements,
+        localDisplacements,
+        dofRegistry
+      });
+      working.commitState();
+      return {
+        ...response2,
+        state: working.exportState({ committed: true })
+      };
+    }
+    const resolvedLocalDisplacements = localDisplacements != null ? localDisplacements : this.localDisplacements(globalDisplacements, dofRegistry);
+    const response = this.setTrialLocalDisplacements(
+      resolvedLocalDisplacements
+    );
+    const transformation = this.transformationMatrix();
+    const globalForces = multiplyMatrixVector4(
+      transpose3(transformation),
+      response.localForces
+    );
+    const globalTangent = multiplyMatrices3(
+      transpose3(transformation),
+      multiplyMatrices3(response.localTangent, transformation)
+    );
+    return {
+      ...response,
+      globalForces,
+      globalEndForces: globalForces,
+      tangentLocalStiffness: cloneMatrix2(response.localTangent),
+      tangentGlobalStiffness: globalTangent,
+      globalTangent,
+      state: this.exportState({ committed: false })
+    };
+  }
+  globalStiffness() {
+    const response = this.evaluate({ localDisplacements: new Array(6).fill(0) });
+    return response.globalTangent;
+  }
+  getGlobalStiffness() {
+    return this.globalStiffness();
+  }
+  getResponse() {
+    return cloneResponse2(this._trialState);
+  }
+  getCommittedResponse() {
+    return cloneResponse2(this._committedState);
+  }
+  commitState() {
+    this.bottomInterface.commitState();
+    this.topInterface.commitState();
+    this.shearMaterial.commitState();
+    this._committedState = cloneResponse2(this._trialState);
+    return 0;
+  }
+  revertToLastCommit() {
+    this.bottomInterface.revertToLastCommit();
+    this.topInterface.revertToLastCommit();
+    this.shearMaterial.revertToLastCommit();
+    this._trialState = cloneResponse2(this._committedState);
+    return 0;
+  }
+  revertToStart() {
+    this.bottomInterface.revertToStart();
+    this.topInterface.revertToStart();
+    this.shearMaterial.revertToStart();
+    this._committedState = {
+      version: STATE_VERSION4,
+      internalDeformations: [0, 0, 0, 0, 0],
+      localDisplacements: [0, 0, 0, 0, 0, 0],
+      localForces: [0, 0, 0, 0, 0, 0],
+      localTangent: Array.from({ length: 6 }, () => new Array(6).fill(0)),
+      basicTangent: Array.from({ length: 3 }, () => new Array(3).fill(0)),
+      axialForce: 0,
+      shearForce: 0,
+      endMoments: [0, 0],
+      shearDeformation: 0,
+      interfaceRotations: [0, 0],
+      compressedLengths: [0, 0],
+      compressionDamage: 0,
+      shearDamage: 0,
+      energyDissipated: 0,
+      mechanismIndices: {
+        rocking: 0,
+        crushing: 0,
+        diagonalTension: 0,
+        sliding: 0
+      },
+      predominantMechanism: "elastic",
+      mechanismsActivated: [],
+      localIterations: 0,
+      localResidualNorm: 0,
+      localConverged: true,
+      warnings: []
+    };
+    this._trialState = cloneResponse2(this._committedState);
+    return 0;
+  }
+  exportState({ committed = true } = {}) {
+    return {
+      version: STATE_VERSION4,
+      response: committed ? this.getCommittedResponse() : this.getResponse(),
+      bottomInterface: this.bottomInterface.exportState({ committed }),
+      topInterface: this.topInterface.exportState({ committed }),
+      shearMaterial: committed ? this.shearMaterial.getCommittedState() : this.shearMaterial.getState()
+    };
+  }
+  importState(state, { committed = true } = {}) {
+    if (!state || state.version !== STATE_VERSION4) {
+      throw new Error(
+        `CyclicMasonryPier2D requires state version ${STATE_VERSION4}.`
+      );
+    }
+    this.bottomInterface.importState(state.bottomInterface, { committed });
+    this.topInterface.importState(state.topInterface, { committed });
+    this.shearMaterial.importState(state.shearMaterial, { committed });
+    this._trialState = cloneResponse2(state.response);
+    if (committed) {
+      this._committedState = cloneResponse2(state.response);
+    }
+    return this;
+  }
+  clone({ preserveState = true } = {}) {
+    const cloned = new _CyclicMasonryPier2D({
+      id: this.id,
+      startNode: this.startNode,
+      endNode: this.endNode,
+      units: this.units,
+      height: this.height,
+      width: this.width,
+      thickness: this.thickness,
+      deformableHeight: this.deformableHeight,
+      elasticCoreHeight: this.elasticCoreHeight,
+      elasticModulus: this.elasticModulus,
+      shearModulus: this.shearModulus,
+      effectiveShearAreaFactor: this.effectiveShearAreaFactor,
+      fiberCount: this.fiberCount,
+      hingeLength: this.hingeLength,
+      compressionMaterial: this._compressionMaterialPrototype,
+      bottomInterface: this.bottomInterface,
+      topInterface: this.topInterface,
+      shearMaterial: this._shearMaterialPrototype,
+      coupling: { ...this.coupling },
+      localTolerance: this.localTolerance,
+      maxLocalIterations: this.maxLocalIterations,
+      numericalJacobianRelativeStep: this.numericalJacobianRelativeStep,
+      numericalTranslationStep: this.numericalTranslationStep,
+      numericalRotationStep: this.numericalRotationStep,
+      maxLineSearchIterations: this.maxLineSearchIterations,
+      linearSolver: this.linearSolver,
+      metadata: { ...this.metadata }
+    });
+    if (preserveState) {
+      cloned.importState(this.exportState(), { committed: true });
+    }
+    return cloned;
+  }
+  toJSON() {
+    return {
+      id: this.id,
+      type: this.type,
+      startNodeId: this.startNode.id,
+      endNodeId: this.endNode.id,
+      units: { ...this.units },
+      height: this.height,
+      width: this.width,
+      thickness: this.thickness,
+      deformableHeight: this.deformableHeight,
+      elasticCoreHeight: this.elasticCoreHeight,
+      elasticModulus: this.elasticModulus,
+      shearModulus: this.shearModulus,
+      effectiveShearAreaFactor: this.effectiveShearAreaFactor,
+      fiberCount: this.fiberCount,
+      hingeLength: this.hingeLength,
+      coupling: { ...this.coupling },
+      state: this.exportState(),
+      metadata: { ...this.metadata }
+    };
+  }
+};
+
 // src/domain/beams/SingleBeamStations.js
-function assertFinite2(value, label) {
+function assertFinite3(value, label) {
   if (!Number.isFinite(value)) {
     throw new Error(`SingleBeamAnalysis requires a finite ${label}.`);
   }
 }
-function assertPositive7(value, label) {
+function assertPositive14(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`SingleBeamAnalysis requires a positive ${label}.`);
   }
@@ -24986,8 +27720,8 @@ function normalizePoint(point2, unitResolver, label) {
   if (!point2 || typeof point2 !== "object") {
     throw new Error(`SingleBeamAnalysis requires geometry.${label}.`);
   }
-  assertFinite2(point2.x, `geometry.${label}.x`);
-  assertFinite2(point2.y, `geometry.${label}.y`);
+  assertFinite3(point2.x, `geometry.${label}.x`);
+  assertFinite3(point2.y, `geometry.${label}.y`);
   return {
     x: unitResolver.length(point2.x),
     y: unitResolver.length(point2.y)
@@ -25000,7 +27734,7 @@ function resolveGeometry(geometry, sourceUnits, targetUnits) {
   const dx = end.x - start.x;
   const dy = end.y - start.y;
   const length = Math.sqrt(dx ** 2 + dy ** 2);
-  assertPositive7(length, "beam length");
+  assertPositive14(length, "beam length");
   return {
     start,
     end,
@@ -25038,7 +27772,7 @@ function resolveStation(value, geometry, unitResolver, label, defaultValue = nul
     return geometry.length;
   }
   const station = unitResolver.length(value);
-  assertFinite2(station, label);
+  assertFinite3(station, label);
   if (station < -1e-12 || station > geometry.length + 1e-12) {
     throw new Error(`${label} must lie within the beam length.`);
   }
@@ -25059,7 +27793,7 @@ function addDiscretizationStations(stations, geometry, unitResolver, discretizat
     }
   }
   if (maxElementLength !== null) {
-    assertPositive7(maxElementLength, "discretization.maxElementLength");
+    assertPositive14(maxElementLength, "discretization.maxElementLength");
     const count = Math.ceil(geometry.length / maxElementLength);
     for (let index = 1; index < count; index += 1) {
       addStation(stations, geometry.length * index / count, 1e-9);
@@ -25460,12 +28194,12 @@ function sampleBeamResult({
 
 // src/domain/beams/SingleBeamFemBuilder.js
 var FEM_UNITS = Object.freeze({ force: "kN", length: "m" });
-function assertFinite3(value, label) {
+function assertFinite4(value, label) {
   if (!Number.isFinite(value)) {
     throw new Error(`SingleBeamAnalysis requires a finite ${label}.`);
   }
 }
-function assertPositive8(value, label) {
+function assertPositive15(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`SingleBeamAnalysis requires a positive ${label}.`);
   }
@@ -25489,7 +28223,7 @@ var SingleBeamFemBuilder = class {
     elementIdPrefix = "beam-element",
     tolerance = 1e-9
   } = {}) {
-    assertPositive8(tolerance, "tolerance");
+    assertPositive15(tolerance, "tolerance");
     this.nodeIdPrefix = nodeIdPrefix;
     this.elementIdPrefix = elementIdPrefix;
     this.tolerance = tolerance;
@@ -25635,8 +28369,8 @@ var SingleBeamFemBuilder = class {
         }
         const startValue = (_f = load.value) != null ? _f : load.startValue;
         const endValue = (_g = load.endValue) != null ? _g : startValue;
-        assertFinite3(startValue, `load ${load.id} value`);
-        assertFinite3(endValue, `load ${load.id} endValue`);
+        assertFinite4(startValue, `load ${load.id} value`);
+        assertFinite4(endValue, `load ${load.id} endValue`);
         if (Math.abs(startValue - endValue) > 1e-12) {
           throw new Error("SingleBeamAnalysis supports only uniform distributed loads.");
         }
@@ -25696,7 +28430,7 @@ var SingleBeamFemBuilder = class {
           };
         } else {
           const value = (_m = load.value) != null ? _m : load.magnitude;
-          assertFinite3(value, `load ${load.id} value`);
+          assertFinite4(value, `load ${load.id} value`);
           if (direction === "x") {
             components.fx = unitResolver.force(value * factor2);
           } else if (direction === "y") {
@@ -25854,7 +28588,7 @@ var SingleBeamAnalysis = class {
 
 // src/domain/beams/SteelBeamSectionProvider.js
 var DEFAULT_UNITS2 = Object.freeze({ force: "N", length: "mm" });
-function assertPositive9(value, label) {
+function assertPositive16(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be a positive number.`);
   }
@@ -25954,10 +28688,10 @@ var SteelBeamSectionProvider = class {
       this.section,
       this.plasticSectionModulusAxis
     );
-    assertPositive9(area, "steel section area");
-    assertPositive9(inertia, `steel section ${this.bendingInertiaAxis}`);
-    assertPositive9(elasticModulus, "steel material elasticModulus");
-    assertPositive9(shearArea, `steel section ${this.shearAreaAxis} or area`);
+    assertPositive16(area, "steel section area");
+    assertPositive16(inertia, `steel section ${this.bendingInertiaAxis}`);
+    assertPositive16(elasticModulus, "steel material elasticModulus");
+    assertPositive16(shearArea, `steel section ${this.shearAreaAxis} or area`);
     const properties = {
       axialRigidity: elasticModulus * area,
       flexuralRigidity: elasticModulus * inertia,
@@ -26000,7 +28734,7 @@ function createSteelBeamSectionProvider(options = {}) {
 
 // src/domain/beams/TimberBeamSectionProvider.js
 var DEFAULT_UNITS3 = Object.freeze({ force: "N", length: "mm" });
-function assertPositive10(value, label) {
+function assertPositive17(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be a positive number.`);
   }
@@ -26148,10 +28882,10 @@ var TimberBeamSectionProvider = class {
       serviceClass: this.serviceClass,
       materialType: this.materialType
     });
-    assertPositive10(area, "timber section area");
-    assertPositive10(inertia, `timber section ${this.bendingInertiaAxis}`);
-    assertPositive10(elasticModulus, "timber material elasticModulus");
-    assertPositive10(shearArea, `timber section ${this.shearAreaAxis} or area`);
+    assertPositive17(area, "timber section area");
+    assertPositive17(inertia, `timber section ${this.bendingInertiaAxis}`);
+    assertPositive17(elasticModulus, "timber material elasticModulus");
+    assertPositive17(shearArea, `timber section ${this.shearAreaAxis} or area`);
     const properties = {
       axialRigidity: effectiveElasticModulus * area,
       flexuralRigidity: effectiveElasticModulus * inertia,
@@ -26195,7 +28929,7 @@ function createTimberBeamSectionProvider(options = {}) {
 
 // src/domain/beams/XlamBeamSectionProvider.js
 var DEFAULT_UNITS4 = Object.freeze({ force: "N", length: "mm" });
-function assertPositive11(value, label) {
+function assertPositive18(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be a positive number.`);
   }
@@ -26277,10 +29011,10 @@ var XlamBeamSectionProvider = class {
     );
     const finalStiffness = context.deformationState === "final" || context.serviceCombination === "final" || context.serviceCombination === "quasi-permanent" || this.useFinalStiffness;
     const stiffnessReduction = finalStiffness && Number.isFinite(this.kdef) ? 1 + this.kdef : 1;
-    assertPositive11(e0, "XLAM longitudinal modulus");
-    assertPositive11(this.section.area, "XLAM active area");
-    assertPositive11(bendingStiffness, "XLAM bending stiffness");
-    assertPositive11(beamShearRigidity.value, "XLAM beam shear stiffness");
+    assertPositive18(e0, "XLAM longitudinal modulus");
+    assertPositive18(this.section.area, "XLAM active area");
+    assertPositive18(bendingStiffness, "XLAM bending stiffness");
+    assertPositive18(beamShearRigidity.value, "XLAM beam shear stiffness");
     const properties = {
       axialRigidity: e0 * this.section.area / stiffnessReduction,
       flexuralRigidity: bendingStiffness / stiffnessReduction,
@@ -26321,7 +29055,7 @@ function createXlamBeamSectionProvider(options = {}) {
 }
 
 // src/domain/foundations/RectangularFootingContactAnalysis.js
-var EPS = 1e-9;
+var EPS2 = 1e-9;
 function positive(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be positive.`);
@@ -26360,7 +29094,7 @@ function clipCompressionPolygon(polygon, polynomial, tolerance = 1e-10) {
     if (startInside) output.push({ ...start });
     if (startInside !== endInside) {
       const denominator = startPressure - endPressure;
-      const ratio = Math.abs(denominator) > EPS ? startPressure / denominator : 0;
+      const ratio = Math.abs(denominator) > EPS2 ? startPressure / denominator : 0;
       output.push({
         x: start.x + ratio * (end.x - start.x),
         y: start.y + ratio * (end.y - start.y)
@@ -26452,7 +29186,7 @@ function solveBiaxialCompressionContact({
   for (let iteration = 0; iteration <= maxIterations; iteration += 1) {
     const polygon = clipCompressionPolygon(base, polynomial);
     const moments = polygonMoments(polygon);
-    if (moments.area <= EPS) return null;
+    if (moments.area <= EPS2) return null;
     const response = integratePlane(polynomial, moments);
     const residual = {
       n: nEd - response.force,
@@ -26483,7 +29217,7 @@ function solveBiaxialCompressionContact({
 function partialContact({ axis, dimension, transverseDimension, eccentricity, nEd }) {
   const side = Math.sign(eccentricity) || 1;
   const contactLength = 3 * (dimension / 2 - Math.abs(eccentricity));
-  if (contactLength <= EPS) {
+  if (contactLength <= EPS2) {
     return null;
   }
   const compressedEdge = side * dimension / 2;
@@ -26515,20 +29249,20 @@ var RectangularFootingContactAnalysis = class {
     var _a, _b, _c;
     const bx = positive(widthX, "widthX");
     const by = positive(widthY, "widthY");
-    const compression = finite(nEd, "nEd");
+    const compression2 = finite(nEd, "nEd");
     const mx = finite(mxEd, "mxEd");
     const my = finite(myEd, "myEd");
     const area = bx * by;
     const inertiaX = bx * by ** 3 / 12;
     const inertiaY = by * bx ** 3 / 12;
-    if (compression <= EPS) {
+    if (compression2 <= EPS2) {
       return {
         status: "no-compressive-equilibrium",
         contactType: "none",
         widthX: bx,
         widthY: by,
         area,
-        nEd: compression,
+        nEd: compression2,
         mxEd: mx,
         myEd: my,
         eccentricityX: null,
@@ -26540,9 +29274,9 @@ var RectangularFootingContactAnalysis = class {
         partialContact: null
       };
     }
-    const eccentricityX = my / compression;
-    const eccentricityY = mx / compression;
-    const meanPressure = compression / area;
+    const eccentricityX = my / compression2;
+    const eccentricityY = mx / compression2;
+    const meanPressure = compression2 / area;
     const gradientX = my / inertiaY;
     const gradientY = mx / inertiaX;
     const corners = cornerPressures({
@@ -26563,7 +29297,7 @@ var RectangularFootingContactAnalysis = class {
         widthY: by,
         area,
         contactArea: area,
-        nEd: compression,
+        nEd: compression2,
         mxEd: mx,
         myEd: my,
         eccentricityX,
@@ -26587,7 +29321,7 @@ var RectangularFootingContactAnalysis = class {
         partialContact: null
       };
     }
-    const resultantOutside = Math.abs(eccentricityX) >= bx / 2 - EPS || Math.abs(eccentricityY) >= by / 2 - EPS;
+    const resultantOutside = Math.abs(eccentricityX) >= bx / 2 - EPS2 || Math.abs(eccentricityY) >= by / 2 - EPS2;
     if (resultantOutside) {
       return {
         status: "no-compressive-equilibrium",
@@ -26595,7 +29329,7 @@ var RectangularFootingContactAnalysis = class {
         widthX: bx,
         widthY: by,
         area,
-        nEd: compression,
+        nEd: compression2,
         mxEd: mx,
         myEd: my,
         eccentricityX,
@@ -26623,7 +29357,7 @@ var RectangularFootingContactAnalysis = class {
         dimension: axis === "x" ? bx : by,
         transverseDimension: axis === "x" ? by : bx,
         eccentricity: axis === "x" ? eccentricityX : eccentricityY,
-        nEd: compression
+        nEd: compression2
       });
       return {
         status: partial ? "ok" : "no-compressive-equilibrium",
@@ -26632,7 +29366,7 @@ var RectangularFootingContactAnalysis = class {
         widthY: by,
         area,
         contactArea: (_a = partial == null ? void 0 : partial.contactArea) != null ? _a : null,
-        nEd: compression,
+        nEd: compression2,
         mxEd: mx,
         myEd: my,
         eccentricityX,
@@ -26655,7 +29389,7 @@ var RectangularFootingContactAnalysis = class {
     const solved = solveBiaxialCompressionContact({
       widthX: bx,
       widthY: by,
-      nEd: compression,
+      nEd: compression2,
       mxEd: mx,
       myEd: my,
       initialPolynomial: {
@@ -26671,7 +29405,7 @@ var RectangularFootingContactAnalysis = class {
         widthX: bx,
         widthY: by,
         area,
-        nEd: compression,
+        nEd: compression2,
         mxEd: mx,
         myEd: my,
         eccentricityX,
@@ -26703,7 +29437,7 @@ var RectangularFootingContactAnalysis = class {
       widthX: bx,
       widthY: by,
       area,
-      nEd: compression,
+      nEd: compression2,
       mxEd: mx,
       myEd: my,
       eccentricityX,
@@ -27459,7 +30193,7 @@ var AxialMember2D = class {
 };
 
 // src/domain/strut-and-tie/StrutAndTieModel2D.js
-var INTERNAL_UNITS8 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS15 = Object.freeze({ force: "N", length: "mm" });
 var MEMBER_TYPES = /* @__PURE__ */ new Set(["strut", "tie"]);
 function positive4(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
@@ -27499,7 +30233,7 @@ var StrutAndTieModel2D = class {
       throw new Error("A strut-and-tie model id is required.");
     }
     assertExplicitUnitSystem(units, "StrutAndTieModel2D");
-    const resolver = createUnitResolver(units, INTERNAL_UNITS8);
+    const resolver = createUnitResolver(units, INTERNAL_UNITS15);
     if (nodes.length < 2 || members.length < 1) {
       throw new Error("StrutAndTieModel2D requires at least two nodes and one member.");
     }
@@ -27583,10 +30317,10 @@ var StrutAndTieModel2D = class {
         metadata: { ...(_a = support.metadata) != null ? _a : {} }
       };
     });
-    this.units = INTERNAL_UNITS8;
+    this.units = INTERNAL_UNITS15;
     this.metadata = {
       ...metadata,
-      unitSystem: INTERNAL_UNITS8,
+      unitSystem: INTERNAL_UNITS15,
       sourceUnitSystem: resolver.sourceUnitSystem
     };
   }
@@ -28422,7 +31156,7 @@ var NTC2018SlabLoadAnalysis = class {
 };
 
 // src/domain/slabs/punching/PunchingActionState.js
-var INTERNAL_UNITS9 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS16 = Object.freeze({ force: "N", length: "mm" });
 var SOURCE_METHODS = /* @__PURE__ */ new Set([
   "manual",
   "joint-equilibrium",
@@ -28538,13 +31272,13 @@ var PunchingActionState = class {
       throw new Error("PunchingActionState requires a connectionId.");
     }
     assertExplicitUnitSystem(units, "PunchingActionState");
-    const resolver = createUnitResolver(units, INTERNAL_UNITS9);
+    const resolver = createUnitResolver(units, INTERNAL_UNITS16);
     this.id = id;
     this.connectionId = connectionId;
     this.localFrameId = localFrameId;
     this.schemaVersion = PUNCHING_ACTION_SCHEMA_VERSION;
     this.combinationType = normalizeCombinationType(combinationType);
-    this.units = INTERNAL_UNITS9;
+    this.units = INTERNAL_UNITS16;
     this.referencePoint = {
       x: resolver.length(finite4(Number((_a = referencePoint.x) != null ? _a : 0), "referencePoint.x")),
       y: resolver.length(finite4(Number((_b = referencePoint.y) != null ? _b : 0), "referencePoint.y")),
@@ -28559,7 +31293,7 @@ var PunchingActionState = class {
     this.source = normalizeSource(source);
     this.metadata = {
       ...metadata,
-      unitSystem: INTERNAL_UNITS9,
+      unitSystem: INTERNAL_UNITS16,
       sourceUnitSystem: resolver.sourceUnitSystem,
       componentConvention: "right-handed-actions-exerted-on-slab-in-connection-local-frame"
     };
@@ -28582,7 +31316,7 @@ var PunchingActionState = class {
 };
 
 // src/domain/slabs/punching/PunchingConnectionModel.js
-var INTERNAL_UNITS10 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS17 = Object.freeze({ force: "N", length: "mm" });
 var FRAME_TOLERANCE = 1e-6;
 function finite5(value, label) {
   if (!Number.isFinite(value)) {
@@ -28617,14 +31351,14 @@ function normalizeDirection(input, fallback, label) {
     y: finite5(Number(source.y), `${label}.y`),
     z: finite5(Number(source.z), `${label}.z`)
   };
-  const norm2 = vectorNorm(vector);
-  if (Math.abs(norm2 - 1) > FRAME_TOLERANCE) {
+  const norm3 = vectorNorm(vector);
+  if (Math.abs(norm3 - 1) > FRAME_TOLERANCE) {
     throw new Error(`${label} must be a unit vector.`);
   }
   return {
-    x: vector.x / norm2,
-    y: vector.y / norm2,
-    z: vector.z / norm2
+    x: vector.x / norm3,
+    y: vector.y / norm3,
+    z: vector.z / norm3
   };
 }
 function normalizeLocalFrame(input, resolver, connectionId) {
@@ -28942,7 +31676,7 @@ var PunchingConnectionModel = class {
       throw new Error("A punching connection id is required.");
     }
     assertExplicitUnitSystem(units, "PunchingConnectionModel");
-    const resolver = createUnitResolver(units, INTERNAL_UNITS10);
+    const resolver = createUnitResolver(units, INTERNAL_UNITS17);
     const thickness = positive5(
       resolver.length(Number(slab.thickness)),
       "slab.thickness"
@@ -28956,7 +31690,7 @@ var PunchingConnectionModel = class {
     }
     this.id = id;
     this.schemaVersion = PUNCHING_CONNECTION_SCHEMA_VERSION;
-    this.units = INTERNAL_UNITS10;
+    this.units = INTERNAL_UNITS17;
     this.localFrame = normalizeLocalFrame(localFrame, resolver, id);
     this.slab = {
       thickness,
@@ -28983,7 +31717,7 @@ var PunchingConnectionModel = class {
     this.reinforcement = normalizedReinforcement;
     this.metadata = {
       ...metadata,
-      unitSystem: INTERNAL_UNITS10,
+      unitSystem: INTERNAL_UNITS17,
       sourceUnitSystem: resolver.sourceUnitSystem,
       geometryScope: "planar-slab-boundary-and-support-footprint"
     };
@@ -29004,7 +31738,7 @@ var PunchingConnectionModel = class {
 };
 
 // src/domain/slabs/punching/PunchingControlPerimeter.js
-var INTERNAL_UNITS11 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS18 = Object.freeze({ force: "N", length: "mm" });
 var CONTINUITY_TOLERANCE = 1e-6;
 function finite6(value, label) {
   if (!Number.isFinite(value)) {
@@ -29140,7 +31874,7 @@ var PunchingControlPerimeter = class {
       throw new Error("PunchingControlPerimeter requires id, codeId, role and position.");
     }
     assertExplicitUnitSystem(units, "PunchingControlPerimeter");
-    const resolver = createUnitResolver(units, INTERNAL_UNITS11);
+    const resolver = createUnitResolver(units, INTERNAL_UNITS18);
     if (!Array.isArray(components) || components.length === 0) {
       throw new Error("PunchingControlPerimeter components must be a non-empty array.");
     }
@@ -29150,13 +31884,13 @@ var PunchingControlPerimeter = class {
     this.role = role;
     this.position = position;
     this.offset = resolver.length(finite6(Number(offset != null ? offset : 0), "offset"));
-    this.units = INTERNAL_UNITS11;
+    this.units = INTERNAL_UNITS18;
     this.components = components.map((component, index) => normalizeComponent2(component, resolver, index));
     this.properties = calculateProperties(this.components);
     this.source = structuredClone(source);
     this.metadata = {
       ...metadata,
-      unitSystem: INTERNAL_UNITS11,
+      unitSystem: INTERNAL_UNITS18,
       sourceUnitSystem: resolver.sourceUnitSystem,
       centroidDefinition: "length-weighted-centroid-of-active-control-perimeter"
     };
@@ -29179,7 +31913,7 @@ var PunchingControlPerimeter = class {
 };
 
 // src/domain/slabs/punching/resolvePunchingTransferFromJointActions.js
-var INTERNAL_UNITS12 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS19 = Object.freeze({ force: "N", length: "mm" });
 function finite7(value, label) {
   if (!Number.isFinite(value)) {
     throw new Error(`${label} must be finite.`);
@@ -29250,7 +31984,7 @@ function resolvePunchingTransferFromJointActions({
     throw new Error("Joint equilibrium requires at least one non-slab action contributor.");
   }
   assertExplicitUnitSystem(units, "resolvePunchingTransferFromJointActions");
-  const resolver = createUnitResolver(units, INTERNAL_UNITS12);
+  const resolver = createUnitResolver(units, INTERNAL_UNITS19);
   const target = normalizeReferencePoint(referencePoint, resolver, "referencePoint");
   const normalizedContributors = contributors.map((contributor, index) => {
     var _a, _b, _c;
@@ -29288,7 +32022,7 @@ function resolvePunchingTransferFromJointActions({
     connectionId,
     localFrameId,
     combinationType,
-    units: INTERNAL_UNITS12,
+    units: INTERNAL_UNITS19,
     referencePoint: target,
     components: transfer,
     source: {
@@ -29479,7 +32213,7 @@ var ReinforcementBar = class {
 };
 
 // src/domain/reinforcement/createLongitudinalReinforcementLayout.js
-var INTERNAL_UNITS13 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS20 = Object.freeze({ force: "N", length: "mm" });
 function isFinitePositive2(value) {
   return Number.isFinite(value) && value > 0;
 }
@@ -29564,7 +32298,7 @@ function createBarsForLayer({
   material,
   units
 }) {
-  const resolver = createUnitResolver(units, INTERNAL_UNITS13);
+  const resolver = createUnitResolver(units, INTERNAL_UNITS20);
   const positions = barPositionsForLayer({ section, layer: layer2, resolver });
   const diameter = resolver.length(layer2.diameter);
   const bars = positions.map(
@@ -29578,7 +32312,7 @@ function createBarsForLayer({
         material: (_a = layer2.material) != null ? _a : material,
         y: position.y,
         z: position.z,
-        units: INTERNAL_UNITS13,
+        units: INTERNAL_UNITS20,
         metadata: {
           ...layer2.metadata,
           face: layer2.face,
@@ -29605,7 +32339,7 @@ function createBarsForLayer({
 function createLongitudinalReinforcementLayout({
   section,
   material = null,
-  units = ((_b) => (_b = ((_a) => (_a = section == null ? void 0 : section.metadata) == null ? void 0 : _a.unitSystem)()) != null ? _b : INTERNAL_UNITS13)(),
+  units = ((_b) => (_b = ((_a) => (_a = section == null ? void 0 : section.metadata) == null ? void 0 : _a.unitSystem)()) != null ? _b : INTERNAL_UNITS20)(),
   top = null,
   bottom = null,
   additionalBars = [],
@@ -30035,18 +32769,18 @@ var SteelElasticPerfectlyPlasticLaw = class {
 var FEM_INTERNAL_UNITS = Object.freeze({ force: "kN", length: "m" });
 var DISTRIBUTED_LOAD_TYPES2 = ["distributed", "uniform", "line"];
 var POINT_LOAD_TYPES2 = ["point", "nodal", "force", "moment"];
-function assertFinite4(value, label) {
+function assertFinite5(value, label) {
   if (!Number.isFinite(value)) {
     throw new Error(`BeamLinePreprocessor2D requires a finite ${label}.`);
   }
 }
-function assertPositive12(value, label) {
+function assertPositive19(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`BeamLinePreprocessor2D requires a positive ${label}.`);
   }
 }
 function normalizePosition(value, unitResolver, label) {
-  assertFinite4(value, label);
+  assertFinite5(value, label);
   return unitResolver.length(value);
 }
 function addPoint(points, x, tolerance) {
@@ -30070,7 +32804,7 @@ function resolvePointComponents(load, unitResolver) {
     };
   }
   const value = (_g = load.value) != null ? _g : load.magnitude;
-  assertFinite4(value, "point load value");
+  assertFinite5(value, "point load value");
   const direction = (_h = load.direction) != null ? _h : load.type === "moment" ? "mz" : "fy";
   if (["x", "fx", "global-x"].includes(direction)) {
     return { fx: unitResolver.force(value) };
@@ -30108,8 +32842,8 @@ function validateDistributedLoad(load, unitResolver, span) {
   }
   const startValue = (_c = load.value) != null ? _c : load.startValue;
   const endValue = (_d = load.endValue) != null ? _d : startValue;
-  assertFinite4(startValue, "distributed load value");
-  assertFinite4(endValue, "distributed load end value");
+  assertFinite5(startValue, "distributed load value");
+  assertFinite5(endValue, "distributed load end value");
   if (Math.abs(startValue - endValue) > 1e-12) {
     throw new Error(
       "BeamLinePreprocessor2D does not support tapered loads; discretize them into uniform subloads."
@@ -30145,7 +32879,7 @@ var BeamLinePreprocessor2D = class {
     tolerance = 1e-9,
     elementClass = FrameElement2DEulerBernoulli
   } = {}) {
-    assertPositive12(tolerance, "tolerance");
+    assertPositive19(tolerance, "tolerance");
     this.nodeIdPrefix = nodeIdPrefix;
     this.elementIdPrefix = elementIdPrefix;
     this.tolerance = tolerance;
@@ -30165,7 +32899,7 @@ var BeamLinePreprocessor2D = class {
     assertExplicitUnitSystem(units, "BeamLinePreprocessor2D");
     const unitResolver = createUnitResolver(units, FEM_INTERNAL_UNITS);
     const resolvedSpan = unitResolver.length(span);
-    assertPositive12(resolvedSpan, "span");
+    assertPositive19(resolvedSpan, "span");
     for (const load of loads) {
       const type = (_a = load.type) != null ? _a : "point";
       if (type === "trapezoidal" || load.distribution === "trapezoidal") {
@@ -30337,7 +33071,7 @@ var BeamLinePreprocessor2D = class {
       }
     }
     if (maxElementLength !== null) {
-      assertPositive12(maxElementLength, "discretization.maxElementLength");
+      assertPositive19(maxElementLength, "discretization.maxElementLength");
       const count = Math.ceil(span / maxElementLength);
       for (let index = 1; index < count; index += 1) {
         addPoint(points, span * index / count, this.tolerance);
@@ -30347,10 +33081,10 @@ var BeamLinePreprocessor2D = class {
 };
 
 // src/domain/fem/nonlinear/DisplacementControlNonlinearStaticSolver2D.js
-function addVectors2(left, right) {
+function addVectors3(left, right) {
   return left.map((value, index) => value + right[index]);
 }
-function subtractVectors4(left, right) {
+function subtractVectors5(left, right) {
   return left.map((value, index) => value - right[index]);
 }
 function scalarVector(scalar, vector) {
@@ -30359,7 +33093,7 @@ function scalarVector(scalar, vector) {
 function dot2(left, right) {
   return left.reduce((sum, value, index) => sum + value * right[index], 0);
 }
-function norm(vector) {
+function norm2(vector) {
   return Math.sqrt(vector.reduce((sum, value) => sum + value ** 2, 0));
 }
 function buildAugmentedMatrix(tangentMatrix, referenceLoadVector, controlVector) {
@@ -30470,7 +33204,7 @@ var DisplacementControlNonlinearStaticSolver2D = class {
     model,
     evaluator,
     initialState = null,
-    cloneState = defaultCloneState,
+    cloneState: cloneState3 = defaultCloneState,
     controlDisplacementIncrement,
     maxControlDisplacement,
     tolerance = 0.01,
@@ -30512,7 +33246,7 @@ var DisplacementControlNonlinearStaticSolver2D = class {
     let reducedDisplacements = createZeroVector(reduction.reducedSize());
     let displacements = reduction.expandReducedVector(reducedDisplacements);
     let loadFactor = 0;
-    let state = cloneState(initialState);
+    let state = cloneState3(initialState);
     let finalEvaluation = null;
     const warnings = [];
     const assumptions = [
@@ -30552,7 +33286,7 @@ var DisplacementControlNonlinearStaticSolver2D = class {
     for (let step = 1; step <= maxSteps; step += 1) {
       let deltaDisplacements = createZeroVector(reduction.reducedSize());
       let deltaLoadFactor = 0;
-      let trialState = cloneState(state);
+      let trialState = cloneState3(state);
       let committedStepState = null;
       let converged = false;
       let abortAnalysis = false;
@@ -30560,7 +33294,7 @@ var DisplacementControlNonlinearStaticSolver2D = class {
       const stepEvents = [];
       for (let iteration = 1; iteration <= maxIterations; iteration += 1) {
         stepIterationCount = iteration;
-        const trialReducedDisplacements = addVectors2(
+        const trialReducedDisplacements = addVectors3(
           reducedDisplacements,
           deltaDisplacements
         );
@@ -30580,13 +33314,13 @@ var DisplacementControlNonlinearStaticSolver2D = class {
         const internalFree = reduction.reduceVector(
           evaluation.internalForceVector
         );
-        const residual = subtractVectors4(
+        const residual = subtractVectors5(
           scalarVector(loadFactor + deltaLoadFactor, reducedLoadVector),
           internalFree
         );
-        const residualNorm2 = norm(residual);
+        const residualNorm2 = norm2(residual);
         const controlGap = controlDisplacementIncrement - dot2(reducedControlVector, deltaDisplacements);
-        trialState = cloneState(evaluation.state);
+        trialState = cloneState3(evaluation.state);
         stepEvents.push(
           ...evaluation.events.map((event) => ({
             ...event,
@@ -30636,7 +33370,7 @@ var DisplacementControlNonlinearStaticSolver2D = class {
             augmentedCorrection.slice(0, activeLocalIndices.length)
           );
           const loadFactorCorrection = augmentedCorrection.at(-1);
-          deltaDisplacements = addVectors2(deltaDisplacements, displacementCorrection);
+          deltaDisplacements = addVectors3(deltaDisplacements, displacementCorrection);
           deltaLoadFactor += loadFactorCorrection;
         } catch (error) {
           warnings.push(
@@ -30668,7 +33402,7 @@ var DisplacementControlNonlinearStaticSolver2D = class {
         break;
       }
       if (!committedStepState) {
-        const committedReducedDisplacements = addVectors2(
+        const committedReducedDisplacements = addVectors3(
           reducedDisplacements,
           deltaDisplacements
         );
@@ -30687,9 +33421,9 @@ var DisplacementControlNonlinearStaticSolver2D = class {
         };
       }
       displacements = [...committedStepState.fullDisplacements];
-      reducedDisplacements = addVectors2(reducedDisplacements, deltaDisplacements);
+      reducedDisplacements = addVectors3(reducedDisplacements, deltaDisplacements);
       loadFactor += deltaLoadFactor;
-      state = cloneState(committedStepState.evaluation.state);
+      state = cloneState3(committedStepState.evaluation.state);
       finalEvaluation = committedStepState.evaluation;
       events.push(...stepEvents);
       const controlDisplacement = dot2(model.controlVector, displacements);
@@ -30744,6 +33478,249 @@ var DisplacementControlNonlinearStaticSolver2D = class {
       freeDofIds: [...reduction.reducedDofIds],
       restrainedDofIds: [...reduction.constrainedDofIds],
       kinematicReduction: reduction.toJSON()
+    };
+  }
+};
+
+// src/domain/fem/nonlinear/CyclicMasonryPierAnalysis2D.js
+function assertPositive20(value, label) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`CyclicMasonryPierAnalysis2D requires a positive ${label}.`);
+  }
+}
+function normalizedResidual(residual, axialCompression, momentScale) {
+  const forceScale = Math.max(Math.abs(axialCompression), 1);
+  return Math.sqrt(
+    (residual[0] / forceScale) ** 2 + (residual[1] / Math.max(momentScale, 1)) ** 2
+  );
+}
+function benchmarkPoint(step, targetDisplacement, response, iterationCount) {
+  const compressedLength = Math.min(...response.compressedLengths);
+  return {
+    step,
+    iterationCount,
+    lateralDisplacement: targetDisplacement,
+    axialDisplacement: response.localDisplacements[3],
+    topRotation: response.localDisplacements[5],
+    lateralForce: response.localForces[4],
+    drift: targetDisplacement / response.analysisHeight,
+    baseMoment: response.localForces[2],
+    topMoment: response.localForces[5],
+    shear: response.shearForce,
+    axialForce: -response.axialForce,
+    compressedLength,
+    compressedLengthBottom: response.compressedLengths[0],
+    compressedLengthTop: response.compressedLengths[1],
+    compressionDamage: response.compressionDamage,
+    compressionDamageBottom: response.bottomInterface.maxCompressionDamage,
+    compressionDamageTop: response.topInterface.maxCompressionDamage,
+    shearDamage: response.shearDamage,
+    shearPlasticDeformation: response.shear.plasticDeformation,
+    pinchingFactor: response.shear.pinchingFactor,
+    diagonalTensionCapacity: response.shear.capacities.diagonalTension,
+    slidingCapacity: response.shear.capacities.sliding,
+    energyDissipated: response.energyDissipated,
+    predominantMechanism: response.predominantMechanism,
+    mechanismsActivated: [...response.mechanismsActivated],
+    rockingIndex: response.mechanismIndices.rocking,
+    crushingIndex: response.mechanismIndices.crushing,
+    diagonalCrackingIndex: response.mechanismIndices.diagonalTension,
+    slidingIndex: response.mechanismIndices.sliding,
+    shearDeformation: response.shearDeformation,
+    interfaceRotations: [...response.interfaceRotations],
+    localIterations: response.localIterations,
+    localResidualNorm: response.localResidualNorm
+  };
+}
+function cyclicMasonryPierHistoryToCsv(points) {
+  if (!Array.isArray(points)) {
+    throw new Error(
+      "cyclicMasonryPierHistoryToCsv requires an array of analysis points."
+    );
+  }
+  const columns = [
+    "step",
+    "lateralDisplacement",
+    "lateralForce",
+    "drift",
+    "baseMoment",
+    "shear",
+    "axialForce",
+    "compressedLength",
+    "compressionDamage",
+    "shearDamage",
+    "energyDissipated",
+    "predominantMechanism"
+  ];
+  const rows = points.map(
+    (point2) => columns.map((column) => point2[column]).join(",")
+  );
+  return [columns.join(","), ...rows].join("\n");
+}
+var CyclicMasonryPierAnalysis2D = class {
+  constructor({ linearSolver = new DenseLinearSolver() } = {}) {
+    this.linearSolver = linearSolver;
+  }
+  solve({
+    element,
+    axialCompression,
+    lateralDisplacements,
+    boundaryCondition = "cantilever",
+    tolerance = 1e-6,
+    maxIterations = 30,
+    throwOnFailure = false
+  } = {}) {
+    var _a, _b, _c, _d, _e;
+    if (!element || typeof element.setTrialLocalDisplacements !== "function") {
+      throw new Error(
+        "CyclicMasonryPierAnalysis2D requires a cyclic masonry pier element."
+      );
+    }
+    if (!Number.isFinite(axialCompression) || axialCompression < 0) {
+      throw new Error(
+        "CyclicMasonryPierAnalysis2D requires a non-negative axialCompression."
+      );
+    }
+    if (!Array.isArray(lateralDisplacements) || lateralDisplacements.length === 0 || lateralDisplacements.some((value) => !Number.isFinite(value))) {
+      throw new Error(
+        "CyclicMasonryPierAnalysis2D requires a non-empty finite lateralDisplacements array."
+      );
+    }
+    const normalizedBoundary = String(boundaryCondition).trim().toLowerCase();
+    if (!(/* @__PURE__ */ new Set(["cantilever", "fixed-fixed"])).has(normalizedBoundary)) {
+      throw new Error(
+        'CyclicMasonryPierAnalysis2D boundaryCondition must be "cantilever" or "fixed-fixed".'
+      );
+    }
+    assertPositive20(tolerance, "tolerance");
+    assertPositive20(maxIterations, "maxIterations");
+    const committedAtStart = element.exportState({ committed: true });
+    const warnings = [];
+    const points = [];
+    let axialDisplacement = (_b = (_a = element.getCommittedResponse().localDisplacements) == null ? void 0 : _a[3]) != null ? _b : 0;
+    let topRotation = (_d = (_c = element.getCommittedResponse().localDisplacements) == null ? void 0 : _c[5]) != null ? _d : 0;
+    let termination = {
+      reason: "protocol-completed",
+      step: lateralDisplacements.length,
+      iteration: 0
+    };
+    if (axialCompression > 0 && Math.abs((_e = element.getCommittedResponse().axialForce) != null ? _e : 0) < 1e-12 && Math.abs(axialDisplacement) < 1e-12) {
+      const area = element.width * element.thickness;
+      axialDisplacement = -axialCompression * (element.elasticCoreHeight + 2 * element.hingeLength) / (element.elasticModulus * area);
+    }
+    const targets = lateralDisplacements[0] === 0 ? [...lateralDisplacements] : [0, ...lateralDisplacements];
+    for (let step = 0; step < targets.length; step += 1) {
+      const targetDisplacement = targets[step];
+      let converged = false;
+      let response = null;
+      let residualNorm2 = Infinity;
+      let iteration = 0;
+      for (iteration = 1; iteration <= maxIterations; iteration += 1) {
+        const localDisplacements = [
+          0,
+          0,
+          0,
+          axialDisplacement,
+          targetDisplacement,
+          normalizedBoundary === "fixed-fixed" ? 0 : topRotation
+        ];
+        try {
+          response = element.setTrialLocalDisplacements(localDisplacements);
+        } catch (error) {
+          warnings.push(
+            `Cyclic masonry protocol stopped at step ${step}, iteration ${iteration}: ${error.message}`
+          );
+          termination = {
+            reason: "local-element-nonconvergence",
+            step,
+            iteration
+          };
+          break;
+        }
+        response.analysisHeight = element.height;
+        const axialResidual = response.localForces[3] + axialCompression;
+        const momentResidual = normalizedBoundary === "cantilever" ? response.localForces[5] : 0;
+        const residual = [axialResidual, momentResidual];
+        residualNorm2 = normalizedResidual(
+          residual,
+          axialCompression,
+          Math.max(axialCompression * element.width, 1)
+        );
+        if (residualNorm2 <= tolerance) {
+          converged = true;
+          break;
+        }
+        try {
+          if (normalizedBoundary === "fixed-fixed") {
+            const stiffness = response.localTangent[3][3];
+            if (!Number.isFinite(stiffness) || Math.abs(stiffness) < 1e-14) {
+              throw new Error("zero axial tangent");
+            }
+            axialDisplacement -= axialResidual / stiffness;
+          } else {
+            const tangent = [
+              [response.localTangent[3][3], response.localTangent[3][5]],
+              [response.localTangent[5][3], response.localTangent[5][5]]
+            ];
+            const correction = this.linearSolver.solve(tangent, [
+              -axialResidual,
+              -momentResidual
+            ]);
+            axialDisplacement += correction[0];
+            topRotation += correction[1];
+          }
+        } catch (error) {
+          warnings.push(
+            `Cyclic masonry protocol stopped at step ${step}, iteration ${iteration} because the external equilibrium tangent is singular: ${error.message}`
+          );
+          termination = {
+            reason: "singular-external-tangent",
+            step,
+            iteration
+          };
+          break;
+        }
+      }
+      if (!converged) {
+        element.revertToLastCommit();
+        if (termination.reason === "protocol-completed") {
+          warnings.push(
+            `Cyclic masonry protocol did not converge at step ${step} within ${maxIterations} iterations (normalized residual ${residualNorm2}).`
+          );
+          termination = {
+            reason: "max-iterations",
+            step,
+            iteration: maxIterations
+          };
+        }
+        if (throwOnFailure) {
+          element.importState(committedAtStart, { committed: true });
+          throw new Error(warnings.at(-1));
+        }
+        break;
+      }
+      element.commitState();
+      points.push(
+        benchmarkPoint(step, targetDisplacement, response, iteration)
+      );
+      termination.iteration = iteration;
+    }
+    return {
+      status: termination.reason === "protocol-completed" ? "ok" : "failed",
+      points,
+      warnings,
+      assumptions: [
+        "The protocol prescribes local transverse displacement and maintains the assigned current compressive axial force by Newton iteration.",
+        normalizedBoundary === "cantilever" ? "The top rotation is solved so that the top end moment is zero." : "Both end rotations are fixed to zero.",
+        "No adaptive subdivision is applied; a failed target is rolled back to the last converged committed state."
+      ],
+      termination,
+      finalState: element.exportState({ committed: true }),
+      units: {
+        force: element.units.force,
+        length: element.units.length,
+        moment: `${element.units.force}*${element.units.length}`
+      }
     };
   }
 };
@@ -31649,7 +34626,7 @@ var DesignCodeContext = class {
 
 // src/core/results/checkUtils.js
 var round3 = (value, decimals = 6) => Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
-function assertPositive13(value, label) {
+function assertPositive21(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be a positive number.`);
   }
@@ -31666,7 +34643,7 @@ function utilizationCheck({
   strictCapacity = true
 }) {
   if (strictCapacity) {
-    assertPositive13(capacity, `${id} capacity`);
+    assertPositive21(capacity, `${id} capacity`);
   }
   const utilizationRatio = isFinitePositive3(capacity) ? Math.abs(demand) / capacity : null;
   return {
@@ -31724,7 +34701,7 @@ var APPLICATION_CATALOG = [
     name: "Masonry Piers",
     domain: "masonry",
     maturity: "partial",
-    primaryFocus: "Vertical verification of masonry piers and equivalent-frame 2D idealization with rigid end zones."
+    primaryFocus: "Vertical verification, NTC 2018/Circular 2019 bilinear in-plane capacity envelope, cyclic physical macroelement and equivalent-frame idealization."
   },
   {
     id: "masonry-wall-openings",
@@ -31928,13 +34905,13 @@ var MasonryOutOfPlaneModel = class {
 };
 
 // src/applications/masonry-piers/models/MasonryPierModel.js
-var INTERNAL_UNITS14 = Object.freeze({ force: "N", length: "mm" });
-function assertPositive14(value, label) {
+var INTERNAL_UNITS21 = Object.freeze({ force: "N", length: "mm" });
+function assertPositive22(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`MasonryPierModel requires a positive ${label}.`);
   }
 }
-function assertNonNegative2(value, label) {
+function assertNonNegative7(value, label) {
   if (!Number.isFinite(value) || value < 0) {
     throw new Error(`MasonryPierModel requires a non-negative ${label}.`);
   }
@@ -31966,7 +34943,7 @@ function normalizePlainMaterial(material) {
   if (!units) {
     return { ...material };
   }
-  const unitResolver = createUnitResolver(units, INTERNAL_UNITS14);
+  const unitResolver = createUnitResolver(units, INTERNAL_UNITS21);
   const convertProperties = (properties = {}) => ({
     ...properties,
     fm: unitResolver.stress(properties.fm),
@@ -31991,10 +34968,10 @@ function normalizePlainMaterial(material) {
     originalMechanicalProperties: convertProperties(material.originalMechanicalProperties),
     stateOfFactProperties: convertProperties(material.stateOfFactProperties),
     improvedMechanicalProperties: convertProperties(material.improvedMechanicalProperties),
-    units: INTERNAL_UNITS14,
+    units: INTERNAL_UNITS21,
     metadata: {
       ...material.metadata,
-      unitSystem: INTERNAL_UNITS14,
+      unitSystem: INTERNAL_UNITS21,
       sourceUnitSystem: (_k = (_j = material.metadata) == null ? void 0 : _j.sourceUnitSystem) != null ? _k : unitResolver.sourceUnitSystem
     }
   };
@@ -32025,7 +35002,7 @@ var MasonryPierModel = class {
       throw new Error("A masonry pier model id is required.");
     }
     assertExplicitUnitSystem(units, "MasonryPierModel");
-    const unitResolver = createUnitResolver(units, INTERNAL_UNITS14);
+    const unitResolver = createUnitResolver(units, INTERNAL_UNITS21);
     const resolvedHeight = unitResolver.length((_a = geometry.height) != null ? _a : geometry.h);
     const resolvedLength = unitResolver.length(
       (_d = (_c = (_b = geometry.length) != null ? _b : geometry.L) != null ? _c : geometry.b) != null ? _d : geometry.width
@@ -32041,18 +35018,18 @@ var MasonryPierModel = class {
       (_j = (_i = idealization.rigidEndZoneTop) != null ? _i : idealization.rigidTop) != null ? _j : idealization.topRigidZone,
       unitResolver.length
     )) != null ? _k : 0;
-    assertPositive14(resolvedHeight, "geometry.height");
-    assertPositive14(resolvedLength, "geometry.length");
-    assertPositive14(resolvedThickness, "geometry.thickness");
-    assertNonNegative2(resolvedRigidBottom, "idealization.rigidEndZoneBottom");
-    assertNonNegative2(resolvedRigidTop, "idealization.rigidEndZoneTop");
+    assertPositive22(resolvedHeight, "geometry.height");
+    assertPositive22(resolvedLength, "geometry.length");
+    assertPositive22(resolvedThickness, "geometry.thickness");
+    assertNonNegative7(resolvedRigidBottom, "idealization.rigidEndZoneBottom");
+    assertNonNegative7(resolvedRigidTop, "idealization.rigidEndZoneTop");
     if (resolvedRigidBottom + resolvedRigidTop >= resolvedHeight) {
       throw new Error(
         "MasonryPierModel rigid end zones must leave a positive deformable height."
       );
     }
     this.id = id;
-    this.units = INTERNAL_UNITS14;
+    this.units = INTERNAL_UNITS21;
     this.geometry = {
       baseX: unitResolver.length((_m = (_l = geometry.baseX) != null ? _l : geometry.x) != null ? _m : 0),
       baseY: unitResolver.length((_o = (_n = geometry.baseY) != null ? _n : geometry.y) != null ? _o : 0),
@@ -32125,7 +35102,7 @@ var MasonryPierModel = class {
     };
     this.metadata = {
       ...metadata,
-      unitSystem: INTERNAL_UNITS14,
+      unitSystem: INTERNAL_UNITS21,
       sourceUnitSystem: (_J = metadata.sourceUnitSystem) != null ? _J : unitResolver.sourceUnitSystem
     };
   }
@@ -32392,6 +35369,818 @@ var MasonryPierEquivalentFrameBuilder = class {
   }
 };
 
+// src/norms/ntc2018/masonry/ntc2018MasonryPierCapacity.js
+var EPS3 = 1e-12;
+var NTC2018_MASONRY_PIER_CAPACITY_REFERENCES = Object.freeze({
+  flexural: "NTC 2018, \xA77.8.2.2.1, eq. [7.8.2]",
+  sliding: "NTC 2018, \xA77.8.2.2.2, eq. [7.8.3]; Circolare 2019, \xA7C8.7.1.3.1.1, eq. [C8.7.1.14]",
+  irregularDiagonal: "Circolare 2019, \xA7C8.7.1.3.1.1, eq. [C8.7.1.16]",
+  regularDiagonal: "Circolare 2019, \xA7C8.7.1.3.1.1, eqs. [C8.7.1.17]-[C8.7.1.18]"
+});
+function assertPositive23(value, label) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${label} must be a finite positive value.`);
+  }
+}
+function compression(value) {
+  return Number.isFinite(value) ? Math.max(0, value) : 0;
+}
+function unavailable(mechanism, missing, reference) {
+  return {
+    mechanism,
+    available: false,
+    capacity: null,
+    missing: [...missing],
+    reference
+  };
+}
+function aspectFactor(height, length) {
+  return Math.min(1.5, Math.max(1, height / length));
+}
+function calculateNTC2018MasonryPierFlexuralCapacity({
+  axialCompression,
+  compressiveStrength,
+  length,
+  thickness,
+  shearSpan
+}) {
+  assertPositive23(length, "length");
+  assertPositive23(thickness, "thickness");
+  assertPositive23(shearSpan, "shearSpan");
+  if (!Number.isFinite(compressiveStrength) || compressiveStrength <= 0) {
+    return unavailable(
+      "flexural",
+      ["compressiveStrength"],
+      NTC2018_MASONRY_PIER_CAPACITY_REFERENCES.flexural
+    );
+  }
+  const N = compression(axialCompression);
+  const area = length * thickness;
+  const normalStress = N / area;
+  const compressionRatio = normalStress / compressiveStrength;
+  const reductionFactor = Math.max(
+    0,
+    1 - normalStress / (0.85 * compressiveStrength)
+  );
+  const momentCapacity = N <= EPS3 ? 0 : length ** 2 * thickness * normalStress * reductionFactor / 2;
+  return {
+    mechanism: "flexural",
+    available: true,
+    capacity: momentCapacity / shearSpan,
+    momentCapacity,
+    axialCompression: N,
+    normalStress,
+    compressionRatio,
+    reductionFactor,
+    shearSpan,
+    reference: NTC2018_MASONRY_PIER_CAPACITY_REFERENCES.flexural
+  };
+}
+function calculateNTC2018MasonryPierSlidingCapacity({
+  axialCompression,
+  cohesion,
+  shearStrengthLimit,
+  length,
+  thickness,
+  shearSpan
+}) {
+  assertPositive23(length, "length");
+  assertPositive23(thickness, "thickness");
+  assertPositive23(shearSpan, "shearSpan");
+  const missing = [];
+  if (!Number.isFinite(cohesion) || cohesion < 0) {
+    missing.push("cohesion");
+  }
+  if (!Number.isFinite(shearStrengthLimit) || shearStrengthLimit <= 0) {
+    missing.push("shearStrengthLimit");
+  }
+  if (missing.length > 0) {
+    return unavailable(
+      "bed-joint-sliding",
+      missing,
+      NTC2018_MASONRY_PIER_CAPACITY_REFERENCES.sliding
+    );
+  }
+  const N = compression(axialCompression);
+  const fullArea = length * thickness;
+  let cohesionCandidate;
+  let blockLimitCandidate;
+  const compressedLengthFromCapacity = (capacity2) => {
+    if (N <= EPS3) return length;
+    const eccentricity2 = capacity2 * shearSpan / N;
+    if (eccentricity2 <= length / 6) return length;
+    return Math.max(0, Math.min(length, 3 * (length / 2 - eccentricity2)));
+  };
+  const resolveCohesionCandidate = () => {
+    const fullSectionCapacity = cohesion * fullArea + 0.4 * N;
+    if (N <= EPS3 || fullSectionCapacity * shearSpan / N <= length / 6) {
+      return fullSectionCapacity;
+    }
+    return (1.5 * cohesion * fullArea + 0.4 * N) / (1 + 3 * cohesion * thickness * shearSpan / N);
+  };
+  const resolveBlockLimitCandidate = () => {
+    const fullSectionCapacity = shearStrengthLimit * fullArea;
+    if (N <= EPS3 || fullSectionCapacity * shearSpan / N <= length / 6) {
+      return fullSectionCapacity;
+    }
+    return 1.5 * shearStrengthLimit * fullArea / (1 + 3 * shearStrengthLimit * thickness * shearSpan / N);
+  };
+  if (N <= EPS3) {
+    cohesionCandidate = cohesion * fullArea;
+    blockLimitCandidate = shearStrengthLimit * fullArea;
+  } else {
+    cohesionCandidate = resolveCohesionCandidate();
+    blockLimitCandidate = resolveBlockLimitCandidate();
+  }
+  const capacity = Math.max(0, Math.min(cohesionCandidate, blockLimitCandidate));
+  const eccentricity = N > EPS3 ? capacity * shearSpan / N : 0;
+  const compressedLength = compressedLengthFromCapacity(capacity);
+  const compressedArea = compressedLength * thickness;
+  const normalStress = compressedArea > EPS3 ? N / compressedArea : 0;
+  const uncappedStrength = cohesion + 0.4 * normalStress;
+  return {
+    mechanism: "bed-joint-sliding",
+    available: true,
+    capacity,
+    axialCompression: N,
+    cohesion,
+    frictionCoefficient: 0.4,
+    shearStrengthLimit,
+    cohesionCandidate,
+    blockLimitCandidate,
+    governingLimit: blockLimitCandidate < cohesionCandidate ? "block-shear-limit" : "cohesion-friction",
+    eccentricity,
+    compressedLength,
+    normalStress,
+    effectiveShearStrength: Math.min(uncappedStrength, shearStrengthLimit),
+    shearSpan,
+    reference: NTC2018_MASONRY_PIER_CAPACITY_REFERENCES.sliding
+  };
+}
+function calculateNTC2018MasonryPierIrregularDiagonalCapacity({
+  axialCompression,
+  referenceShearStrength,
+  diagonalTensileStrength = null,
+  length,
+  thickness,
+  height
+}) {
+  assertPositive23(length, "length");
+  assertPositive23(thickness, "thickness");
+  assertPositive23(height, "height");
+  const tensileStrength = Number.isFinite(diagonalTensileStrength) ? diagonalTensileStrength : Number.isFinite(referenceShearStrength) ? 1.5 * referenceShearStrength : null;
+  if (!Number.isFinite(tensileStrength) || tensileStrength <= 0) {
+    return unavailable(
+      "diagonal-cracking-irregular",
+      ["referenceShearStrength or diagonalTensileStrength"],
+      NTC2018_MASONRY_PIER_CAPACITY_REFERENCES.irregularDiagonal
+    );
+  }
+  const N = compression(axialCompression);
+  const area = length * thickness;
+  const normalStress = N / area;
+  const b = aspectFactor(height, length);
+  const capacity = area * tensileStrength * Math.sqrt(1 + normalStress / tensileStrength) / b;
+  return {
+    mechanism: "diagonal-cracking-irregular",
+    available: true,
+    capacity,
+    axialCompression: N,
+    normalStress,
+    diagonalTensileStrength: tensileStrength,
+    aspectFactor: b,
+    reference: NTC2018_MASONRY_PIER_CAPACITY_REFERENCES.irregularDiagonal
+  };
+}
+function calculateNTC2018MasonryPierRegularDiagonalCapacity({
+  axialCompression,
+  cohesion,
+  interlockingCoefficient,
+  localFrictionCoefficient = 0.577,
+  blockTensileStrength,
+  length,
+  thickness,
+  height
+}) {
+  assertPositive23(length, "length");
+  assertPositive23(thickness, "thickness");
+  assertPositive23(height, "height");
+  const missing = [];
+  if (!Number.isFinite(cohesion) || cohesion < 0) missing.push("cohesion");
+  if (!Number.isFinite(interlockingCoefficient) || interlockingCoefficient <= 0) {
+    missing.push("interlockingCoefficient");
+  }
+  if (!Number.isFinite(localFrictionCoefficient) || localFrictionCoefficient <= 0) {
+    missing.push("localFrictionCoefficient");
+  }
+  if (!Number.isFinite(blockTensileStrength) || blockTensileStrength <= 0) {
+    missing.push("blockTensileStrength");
+  }
+  if (missing.length > 0) {
+    return unavailable(
+      "diagonal-cracking-regular",
+      missing,
+      NTC2018_MASONRY_PIER_CAPACITY_REFERENCES.regularDiagonal
+    );
+  }
+  const N = compression(axialCompression);
+  const area = length * thickness;
+  const normalStress = N / area;
+  const b = aspectFactor(height, length);
+  const denominator = 1 + localFrictionCoefficient * interlockingCoefficient;
+  const equivalentCohesion = cohesion / denominator;
+  const equivalentFrictionCoefficient = localFrictionCoefficient / denominator;
+  const jointCandidate = area / b * (equivalentCohesion + equivalentFrictionCoefficient * normalStress);
+  const blockCandidate = area / b * (blockTensileStrength / 2.3) * Math.sqrt(1 + normalStress / blockTensileStrength);
+  return {
+    mechanism: "diagonal-cracking-regular",
+    available: true,
+    capacity: Math.min(jointCandidate, blockCandidate),
+    axialCompression: N,
+    normalStress,
+    aspectFactor: b,
+    localFrictionCoefficient,
+    interlockingCoefficient,
+    equivalentCohesion,
+    equivalentFrictionCoefficient,
+    jointCandidate,
+    blockCandidate,
+    governingLimit: blockCandidate < jointCandidate ? "block-tension" : "stepped-joints",
+    reference: NTC2018_MASONRY_PIER_CAPACITY_REFERENCES.regularDiagonal
+  };
+}
+function selectNTC2018MasonryPierGoverningCapacity(capacities = []) {
+  const available = capacities.filter(
+    (item) => (item == null ? void 0 : item.available) && Number.isFinite(item.capacity) && item.capacity >= 0
+  );
+  if (available.length === 0) {
+    return null;
+  }
+  return available.reduce(
+    (governing, candidate) => candidate.capacity < governing.capacity ? candidate : governing
+  );
+}
+
+// src/norms/ntc2018/masonry/ntc2018MasonryPierDeformation.js
+var NTC2018_MASONRY_PIER_DEFORMATION_REFERENCES = Object.freeze({
+  newOrdinaryFlexural: "NTC 2018, \xA77.8.2.2.1",
+  newOrdinaryShear: "NTC 2018, \xA77.8.2.2.2",
+  existingFlexural: "Circolare 2019, \xA7C8.7.1.3.1.1",
+  existingSliding: "Circolare 2019, \xA7C8.7.1.3.1.1",
+  existingDiagonal: "Circolare 2019, \xA7C8.7.1.3.1.1"
+});
+function assertPositive24(value, label) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${label} must be a finite positive value.`);
+  }
+}
+function calculateNTC2018MasonryPierUltimateDisplacement({
+  height,
+  mechanism,
+  scope = "existing",
+  modernPerforatedBlocks = false
+}) {
+  assertPositive24(height, "height");
+  if (scope !== "existing" && scope !== "new-ordinary") {
+    throw new Error(`Unsupported masonry pier normative scope: ${scope}.`);
+  }
+  const isFlexural = mechanism === "flexural";
+  const isSliding = mechanism === "bed-joint-sliding";
+  const isDiagonal = String(mechanism).startsWith("diagonal-cracking");
+  if (!isFlexural && !isSliding && !isDiagonal) {
+    throw new Error(`Unsupported masonry pier failure mechanism: ${mechanism}.`);
+  }
+  let driftCapacity;
+  let reference;
+  if (scope === "new-ordinary") {
+    driftCapacity = isFlexural ? 0.01 : 5e-3;
+    reference = isFlexural ? NTC2018_MASONRY_PIER_DEFORMATION_REFERENCES.newOrdinaryFlexural : NTC2018_MASONRY_PIER_DEFORMATION_REFERENCES.newOrdinaryShear;
+  } else if (isFlexural) {
+    driftCapacity = 0.01;
+    reference = NTC2018_MASONRY_PIER_DEFORMATION_REFERENCES.existingFlexural;
+  } else if (isSliding) {
+    driftCapacity = 5e-3;
+    reference = NTC2018_MASONRY_PIER_DEFORMATION_REFERENCES.existingSliding;
+  } else {
+    driftCapacity = modernPerforatedBlocks ? 4e-3 : 5e-3;
+    reference = NTC2018_MASONRY_PIER_DEFORMATION_REFERENCES.existingDiagonal;
+  }
+  return {
+    mechanism,
+    scope,
+    driftCapacity,
+    ultimateDisplacement: driftCapacity * height,
+    height,
+    modernPerforatedBlocks: Boolean(modernPerforatedBlocks),
+    reference
+  };
+}
+
+// src/norms/ntc2018/masonry/ntc2018MasonryPierStiffness.js
+var NTC2018_MASONRY_PIER_STIFFNESS_REFERENCE = "NTC 2018, \xA77.8.1.5.2: deformabilit\xE0 flessionale e a taglio; rigidezze fessurate, assumibili pari a met\xE0 delle non fessurate in assenza di valutazioni accurate";
+function assertPositive25(value, label) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${label} must be a finite positive value.`);
+  }
+}
+function calculateNTC2018MasonryPierElasticStiffness({
+  elasticModulus,
+  shearModulus: shearModulus2,
+  length,
+  thickness,
+  deformableHeight,
+  boundaryCondition = "cantilever",
+  shearCorrectionFactor = 5 / 6,
+  crackedStiffnessFactor = 0.5
+}) {
+  assertPositive25(elasticModulus, "elasticModulus");
+  assertPositive25(shearModulus2, "shearModulus");
+  assertPositive25(length, "length");
+  assertPositive25(thickness, "thickness");
+  assertPositive25(deformableHeight, "deformableHeight");
+  assertPositive25(shearCorrectionFactor, "shearCorrectionFactor");
+  assertPositive25(crackedStiffnessFactor, "crackedStiffnessFactor");
+  if (crackedStiffnessFactor > 1) {
+    throw new Error("crackedStiffnessFactor cannot exceed 1.");
+  }
+  if (boundaryCondition !== "cantilever" && boundaryCondition !== "fixed-fixed") {
+    throw new Error(`Unsupported boundaryCondition: ${boundaryCondition}.`);
+  }
+  const area = length * thickness;
+  const inertia = thickness * length ** 3 / 12;
+  const bendingCoefficient = boundaryCondition === "fixed-fixed" ? 12 : 3;
+  const bendingStiffness = crackedStiffnessFactor * bendingCoefficient * elasticModulus * inertia / deformableHeight ** 3;
+  const shearStiffness = crackedStiffnessFactor * shearCorrectionFactor * shearModulus2 * area / deformableHeight;
+  const totalStiffness = 1 / (1 / bendingStiffness + 1 / shearStiffness);
+  return {
+    totalStiffness,
+    bendingStiffness,
+    shearStiffness,
+    bendingCompliance: 1 / bendingStiffness,
+    shearCompliance: 1 / shearStiffness,
+    area,
+    inertia,
+    deformableHeight,
+    boundaryCondition,
+    bendingCoefficient,
+    shearCorrectionFactor,
+    crackedStiffnessFactor,
+    reference: NTC2018_MASONRY_PIER_STIFFNESS_REFERENCE
+  };
+}
+
+// src/norms/ntc2018/masonry/evaluateNTC2018MasonryPier.js
+function normalizeTexture(value = "irregular") {
+  const normalized = String(value).trim().toLowerCase();
+  if (normalized !== "irregular" && normalized !== "regular") {
+    throw new Error(`Unsupported masonryTexture: ${value}.`);
+  }
+  return normalized;
+}
+function responseAtDisplacement({ displacement, stiffness, resistance, yieldDisplacement, ultimateDisplacement }) {
+  if (!Number.isFinite(displacement)) return null;
+  const sign = displacement < 0 ? -1 : 1;
+  const absoluteDisplacement = Math.abs(displacement);
+  if (absoluteDisplacement > ultimateDisplacement) {
+    return {
+      displacement,
+      force: 0,
+      tangent: 0,
+      branch: "failed"
+    };
+  }
+  if (absoluteDisplacement <= yieldDisplacement) {
+    return {
+      displacement,
+      force: stiffness * displacement,
+      tangent: stiffness,
+      branch: "elastic"
+    };
+  }
+  return {
+    displacement,
+    force: sign * resistance,
+    tangent: 0,
+    branch: "plastic-plateau"
+  };
+}
+function evaluateNTC2018MasonryPier({
+  geometry,
+  material,
+  actions,
+  options = {},
+  lateralDisplacement = null
+}) {
+  var _a, _b, _c, _d, _e;
+  const texture = normalizeTexture(options.masonryTexture);
+  const length = geometry.length;
+  const height = geometry.height;
+  const thickness = geometry.thickness;
+  const deformableHeight = (_a = geometry.deformableHeight) != null ? _a : height;
+  const boundaryCondition = (_b = options.boundaryCondition) != null ? _b : "cantilever";
+  const shearSpan = (_c = options.shearSpan) != null ? _c : boundaryCondition === "fixed-fixed" ? height / 2 : height;
+  const axialCompression = Math.max(0, (_d = actions.axialCompression) != null ? _d : 0);
+  const shearAxialCompression = Math.max(
+    0,
+    (_e = actions.shearAxialCompression) != null ? _e : axialCompression
+  );
+  const flexural = calculateNTC2018MasonryPierFlexuralCapacity({
+    axialCompression,
+    compressiveStrength: material.compressiveStrength,
+    length,
+    thickness,
+    shearSpan
+  });
+  const sliding = calculateNTC2018MasonryPierSlidingCapacity({
+    axialCompression: shearAxialCompression,
+    cohesion: material.cohesion,
+    shearStrengthLimit: material.shearStrengthLimit,
+    length,
+    thickness,
+    shearSpan
+  });
+  const diagonal = texture === "regular" ? calculateNTC2018MasonryPierRegularDiagonalCapacity({
+    axialCompression: shearAxialCompression,
+    cohesion: material.cohesion,
+    interlockingCoefficient: material.interlockingCoefficient,
+    localFrictionCoefficient: material.localFrictionCoefficient,
+    blockTensileStrength: material.blockTensileStrength,
+    length,
+    thickness,
+    height
+  }) : calculateNTC2018MasonryPierIrregularDiagonalCapacity({
+    axialCompression: shearAxialCompression,
+    referenceShearStrength: material.referenceShearStrength,
+    diagonalTensileStrength: material.diagonalTensileStrength,
+    length,
+    thickness,
+    height
+  });
+  const capacities = [flexural, sliding, diagonal];
+  const missing = capacities.filter((capacity) => !capacity.available).map((capacity) => ({
+    mechanism: capacity.mechanism,
+    parameters: capacity.missing
+  }));
+  const governing = missing.length === 0 ? selectNTC2018MasonryPierGoverningCapacity(capacities) : null;
+  let stiffness = null;
+  const stiffnessMissing = [];
+  if (!Number.isFinite(material.elasticModulus) || material.elasticModulus <= 0) {
+    stiffnessMissing.push("elasticModulus");
+  }
+  if (!Number.isFinite(material.shearModulus) || material.shearModulus <= 0) {
+    stiffnessMissing.push("shearModulus");
+  }
+  if (stiffnessMissing.length === 0) {
+    stiffness = calculateNTC2018MasonryPierElasticStiffness({
+      elasticModulus: material.elasticModulus,
+      shearModulus: material.shearModulus,
+      length,
+      thickness,
+      deformableHeight,
+      boundaryCondition,
+      shearCorrectionFactor: options.shearCorrectionFactor,
+      crackedStiffnessFactor: options.crackedStiffnessFactor
+    });
+  }
+  if (!governing || !stiffness) {
+    return {
+      complete: false,
+      geometry: { ...geometry, deformableHeight },
+      actions: { axialCompression, shearAxialCompression },
+      options: { ...options, masonryTexture: texture, boundaryCondition, shearSpan },
+      capacities: { flexural, sliding, diagonal },
+      governing: null,
+      stiffness,
+      deformation: null,
+      yieldDisplacement: null,
+      curve: [],
+      response: null,
+      missing: [
+        ...missing,
+        ...stiffnessMissing.length > 0 ? [{ mechanism: "elastic-stiffness", parameters: stiffnessMissing }] : []
+      ]
+    };
+  }
+  const deformation = calculateNTC2018MasonryPierUltimateDisplacement({
+    height,
+    mechanism: governing.mechanism,
+    scope: options.scope,
+    modernPerforatedBlocks: options.modernPerforatedBlocks
+  });
+  const yieldDisplacement = governing.capacity / stiffness.totalStiffness;
+  const consistentBilinear = yieldDisplacement < deformation.ultimateDisplacement;
+  const curve = consistentBilinear ? [
+    { id: "origin", displacement: 0, force: 0 },
+    { id: "yield", displacement: yieldDisplacement, force: governing.capacity },
+    {
+      id: "ultimate",
+      displacement: deformation.ultimateDisplacement,
+      force: governing.capacity
+    }
+  ] : [];
+  return {
+    complete: true,
+    consistentBilinear,
+    geometry: { ...geometry, deformableHeight },
+    actions: { axialCompression, shearAxialCompression },
+    options: { ...options, masonryTexture: texture, boundaryCondition, shearSpan },
+    capacities: { flexural, sliding, diagonal },
+    governing,
+    stiffness,
+    deformation,
+    yieldDisplacement,
+    curve,
+    response: consistentBilinear ? responseAtDisplacement({
+      displacement: lateralDisplacement,
+      stiffness: stiffness.totalStiffness,
+      resistance: governing.capacity,
+      yieldDisplacement,
+      ultimateDisplacement: deformation.ultimateDisplacement
+    }) : null,
+    missing: []
+  };
+}
+
+// src/applications/masonry-piers/models/NTC2018MasonryPierModel.js
+var INTERNAL_UNITS22 = Object.freeze({ force: "N", length: "mm" });
+function normalizeScope(value = "existing") {
+  const normalized = String(value).trim().toLowerCase();
+  if (normalized !== "existing") {
+    throw new Error(
+      `Unsupported NTC 2018 masonry pier scope: ${value}. The autonomous three-mechanism model currently covers existing unreinforced masonry only.`
+    );
+  }
+  return normalized;
+}
+function normalizeTexture2(value = "irregular") {
+  const normalized = String(value).trim().toLowerCase();
+  if (normalized !== "irregular" && normalized !== "regular") {
+    throw new Error(`Unsupported NTC 2018 masonry texture: ${value}.`);
+  }
+  return normalized;
+}
+function normalizeBoundaryCondition(value = "cantilever") {
+  const normalized = String(value).trim().toLowerCase();
+  const aliases = /* @__PURE__ */ new Map([
+    ["cantilever", "cantilever"],
+    ["free", "cantilever"],
+    ["fixed-fixed", "fixed-fixed"],
+    ["fixed", "fixed-fixed"]
+  ]);
+  const resolved = aliases.get(normalized);
+  if (!resolved) {
+    throw new Error(`Unsupported NTC 2018 pier boundary condition: ${value}.`);
+  }
+  return resolved;
+}
+function finiteOrNull4(value, converter = (item) => item) {
+  return Number.isFinite(value) ? converter(value) : null;
+}
+var NTC2018MasonryPierModel = class extends MasonryPierModel {
+  constructor({
+    units,
+    geometry = {},
+    material = null,
+    actions = {},
+    design = {},
+    idealization = {},
+    normative = {},
+    ...rest
+  }) {
+    var _a, _b, _c, _d, _e;
+    const unitResolver = createUnitResolver(units, INTERNAL_UNITS22);
+    super({
+      units,
+      geometry,
+      material,
+      actions,
+      design,
+      idealization,
+      ...rest
+    });
+    const scope = normalizeScope(normative.scope);
+    const strengthConfidenceFactor = scope === "existing" ? this.resolvedConfidenceFactor() : 1;
+    if (!Number.isFinite(strengthConfidenceFactor) || strengthConfidenceFactor <= 0) {
+      throw new Error(
+        "NTC2018MasonryPierModel requires a positive confidence factor for existing masonry."
+      );
+    }
+    const blockCompressiveStrength = finiteOrNull4(
+      normative.blockCompressiveStrength,
+      unitResolver.stress
+    );
+    const blockTensileStrength = finiteOrNull4(
+      normative.blockTensileStrength,
+      unitResolver.stress
+    );
+    const explicitShearStrengthLimit = finiteOrNull4(
+      normative.shearStrengthLimit,
+      unitResolver.stress
+    );
+    const effectiveStrength = (value) => Number.isFinite(value) ? value / strengthConfidenceFactor : null;
+    const effectiveBlockCompression = effectiveStrength(blockCompressiveStrength);
+    this.normative = {
+      scope,
+      analysisType: "nonlinear-static",
+      limitState: "SLC",
+      masonryTexture: normalizeTexture2(normative.masonryTexture),
+      modernPerforatedBlocks: Boolean(normative.modernPerforatedBlocks),
+      boundaryCondition: normalizeBoundaryCondition(
+        (_a = normative.boundaryCondition) != null ? _a : normative.topRotation === "fixed" ? "fixed-fixed" : "cantilever"
+      ),
+      effectiveLength: (_b = finiteOrNull4(geometry.effectiveLength, unitResolver.length)) != null ? _b : this.geometry.length,
+      shearSpan: finiteOrNull4(normative.shearSpan, unitResolver.length),
+      crackedStiffnessFactor: normative.crackedStiffnessFactor == null ? 0.5 : Number(normative.crackedStiffnessFactor),
+      shearCorrectionFactor: (_d = (_c = normative.shearCorrectionFactor) != null ? _c : this.idealization.shearCorrectionFactor) != null ? _d : 5 / 6,
+      shearAxialCompression: finiteOrNull4(
+        (_e = actions.shearAxialForce) != null ? _e : actions.midHeightAxialForce,
+        unitResolver.force
+      ),
+      lateralDisplacement: finiteOrNull4(
+        actions.lateralDisplacement,
+        unitResolver.length
+      ),
+      interlockingCoefficient: finiteOrNull4(
+        normative.interlockingCoefficient
+      ),
+      localFrictionCoefficient: normative.localFrictionCoefficient == null ? 0.577 : Number(normative.localFrictionCoefficient),
+      diagonalTensileStrength: effectiveStrength(
+        finiteOrNull4(normative.diagonalTensileStrength, unitResolver.stress)
+      ),
+      blockCompressiveStrength: effectiveBlockCompression,
+      blockTensileStrength: effectiveStrength(
+        blockTensileStrength != null ? blockTensileStrength : Number.isFinite(blockCompressiveStrength) ? 0.1 * blockCompressiveStrength : null
+      ),
+      shearStrengthLimit: effectiveStrength(
+        explicitShearStrengthLimit != null ? explicitShearStrengthLimit : Number.isFinite(blockCompressiveStrength) ? 0.065 * blockCompressiveStrength / 0.7 : null
+      ),
+      strengthConfidenceFactor
+    };
+  }
+  resolvedNormativeMaterial() {
+    const confidenceFactor = this.normative.strengthConfidenceFactor;
+    const reduceStrength = (value) => Number.isFinite(value) ? value / confidenceFactor : null;
+    return {
+      compressiveStrength: reduceStrength(this.resolveMaterialProperty("fm")),
+      cohesion: reduceStrength(this.resolveMaterialProperty("fv0")),
+      referenceShearStrength: reduceStrength(
+        this.resolveMaterialProperty("tau0")
+      ),
+      diagonalTensileStrength: this.normative.diagonalTensileStrength,
+      shearStrengthLimit: this.normative.shearStrengthLimit,
+      blockCompressiveStrength: this.normative.blockCompressiveStrength,
+      blockTensileStrength: this.normative.blockTensileStrength,
+      interlockingCoefficient: this.normative.interlockingCoefficient,
+      localFrictionCoefficient: this.normative.localFrictionCoefficient,
+      elasticModulus: this.resolvedElasticModulus(),
+      shearModulus: this.resolvedShearModulus()
+    };
+  }
+  evaluate({ lateralDisplacement = this.normative.lateralDisplacement } = {}) {
+    var _a;
+    const axialCompression = Math.max(0, this.compressiveAxialForce());
+    return evaluateNTC2018MasonryPier({
+      geometry: {
+        height: this.geometry.height,
+        length: this.normative.effectiveLength,
+        thickness: this.geometry.thickness,
+        deformableHeight: this.deformableHeight()
+      },
+      material: this.resolvedNormativeMaterial(),
+      actions: {
+        axialCompression,
+        shearAxialCompression: (_a = this.normative.shearAxialCompression) != null ? _a : axialCompression
+      },
+      options: {
+        scope: this.normative.scope,
+        masonryTexture: this.normative.masonryTexture,
+        modernPerforatedBlocks: this.normative.modernPerforatedBlocks,
+        boundaryCondition: this.normative.boundaryCondition,
+        shearSpan: this.normative.shearSpan,
+        crackedStiffnessFactor: this.normative.crackedStiffnessFactor,
+        shearCorrectionFactor: this.normative.shearCorrectionFactor
+      },
+      lateralDisplacement
+    });
+  }
+  toJSON() {
+    return {
+      ...super.toJSON(),
+      modelType: "ntc2018-masonry-pier-bilinear",
+      normative: { ...this.normative }
+    };
+  }
+};
+
+// src/applications/masonry-piers/analysis/NTC2018MasonryPierAnalysis.js
+function resolveModel2(input) {
+  return input instanceof NTC2018MasonryPierModel ? input : new NTC2018MasonryPierModel(input);
+}
+function roundCurve(curve = []) {
+  return curve.map((point2) => ({
+    ...point2,
+    displacement: round3(point2.displacement),
+    force: round3(point2.force)
+  }));
+}
+var NTC2018MasonryPierAnalysis = class {
+  analyze({ model, lateralDisplacement = null } = {}) {
+    const resolvedModel = resolveModel2(model != null ? model : {});
+    const evaluation = resolvedModel.evaluate({
+      lateralDisplacement: Number.isFinite(lateralDisplacement) ? lateralDisplacement : void 0
+    });
+    const warnings = [];
+    const assumptions = [
+      "Compression is positive; tensile axial force does not increase friction and gives zero flexural resistance.",
+      "The resistance is the exact minimum of flexure, bed-joint sliding and diagonal cracking; no compression-ratio switch selects the mechanism.",
+      "The normative model is an elastic-perfectly-plastic monotonic envelope and does not reproduce cyclic degradation, pinching or residual deformation.",
+      "For existing masonry, mean strength parameters are divided by the confidence factor; elastic moduli are not divided by it."
+    ];
+    if (!evaluation.complete) {
+      const missingDescription = evaluation.missing.map((item) => `${item.mechanism}: ${item.parameters.join(", ")}`).join("; ");
+      warnings.push(
+        `The strict normative envelope is incomplete because required inputs are missing (${missingDescription}).`
+      );
+      return new VerificationResult({
+        applicationId: "masonry-piers",
+        status: RESULT_STATUS.NOT_IMPLEMENTED,
+        summary: "The autonomous NTC 2018 masonry-pier model could not evaluate all three required resistance mechanisms.",
+        checks: [
+          {
+            id: "ntc2018-masonry-pier-input-completeness",
+            description: "All normative capacity and stiffness inputs are available",
+            demand: null,
+            capacity: null,
+            utilizationRatio: null,
+            ok: false,
+            metadata: { missing: evaluation.missing }
+          }
+        ],
+        outputs: evaluation,
+        warnings,
+        assumptions,
+        metadata: {
+          code: "NTC2018-Circolare2019",
+          modelId: resolvedModel.id,
+          modelType: "normative-bilinear"
+        }
+      });
+    }
+    const displacementDemand = Number.isFinite(lateralDisplacement) ? Math.abs(lateralDisplacement) : Number.isFinite(resolvedModel.normative.lateralDisplacement) ? Math.abs(resolvedModel.normative.lateralDisplacement) : null;
+    const displacementCapacity = evaluation.deformation.ultimateDisplacement;
+    const displacementRatio = Number.isFinite(displacementDemand) ? displacementDemand / displacementCapacity : null;
+    const checks = [
+      {
+        id: "ntc2018-masonry-pier-bilinear-consistency",
+        description: "Elastic yield displacement is below the normative ultimate displacement",
+        demand: round3(evaluation.yieldDisplacement),
+        capacity: round3(displacementCapacity),
+        utilizationRatio: round3(
+          evaluation.yieldDisplacement / displacementCapacity
+        ),
+        ok: evaluation.consistentBilinear
+      }
+    ];
+    if (Number.isFinite(displacementDemand)) {
+      checks.push({
+        id: "ntc2018-masonry-pier-displacement-capacity",
+        description: "SLC lateral displacement demand does not exceed capacity",
+        demand: round3(displacementDemand),
+        capacity: round3(displacementCapacity),
+        utilizationRatio: round3(displacementRatio),
+        ok: displacementRatio <= 1
+      });
+    }
+    if (!evaluation.consistentBilinear) {
+      warnings.push(
+        "The elastic yield displacement is not below the normative ultimate displacement. No artificial stiffness or displacement cap was introduced."
+      );
+    }
+    const status = checks.every((check) => check.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED;
+    return new VerificationResult({
+      applicationId: "masonry-piers",
+      status,
+      summary: "Autonomous NTC 2018 / Circular 2019 bilinear capacity envelope for an in-plane masonry pier.",
+      utilizationRatio: round3(displacementRatio),
+      demand: round3(displacementDemand),
+      capacity: round3(displacementCapacity),
+      checks,
+      outputs: {
+        ...evaluation,
+        curve: roundCurve(evaluation.curve)
+      },
+      warnings,
+      assumptions,
+      metadata: {
+        code: "NTC2018-Circolare2019",
+        modelId: resolvedModel.id,
+        modelType: "normative-bilinear",
+        units: { ...resolvedModel.units }
+      }
+    });
+  }
+};
+
 // src/applications/masonry-piers/checks/MasonryPierVerticalVerification.js
 var PHI_ECCENTRICITY_VALUES = Object.freeze([0, 0.5, 1, 1.5, 2]);
 var PHI_SLENDERNESS_VALUES = Object.freeze([0, 5, 10, 15, 20]);
@@ -32402,7 +36191,7 @@ var PHI_TABLE = Object.freeze([
   [0.69, 0.48, 0.32, 0.17, null],
   [0.53, 0.36, 0.23, null, null]
 ]);
-function resolveModel2(input) {
+function resolveModel3(input) {
   return input instanceof MasonryPierModel ? input : new MasonryPierModel(input);
 }
 function finiteCheck({
@@ -32511,7 +36300,7 @@ var MasonryPierVerticalVerification = class {
   }
   verify({ model } = {}) {
     var _a, _b, _c;
-    const resolvedModel = resolveModel2(model != null ? model : {});
+    const resolvedModel = resolveModel3(model != null ? model : {});
     const warnings = [];
     const assumptions = [
       "Vertical masonry-pier verification is solved from known section resultants; no standalone FEM analysis is required because no transverse distributed load is assumed along the member axis.",
@@ -32731,7 +36520,7 @@ var MasonryPierApplication = class extends StructuralApplication {
     super({
       id: "masonry-piers",
       name: "Masonry Piers",
-      description: "Vertical verification of masonry piers under axial load and eccentricities, with an equivalent-frame 2D idealization ready for future wall assemblies.",
+      description: "Vertical verification and autonomous NTC 2018 bilinear in-plane capacity envelope for masonry piers, with a separate equivalent-frame idealization.",
       domain: "masonry",
       supportedCodes: ["NTC2018", "Circolare 2019"],
       tags: [
@@ -32739,23 +36528,30 @@ var MasonryPierApplication = class extends StructuralApplication {
         "masonry",
         "equivalent-frame",
         "vertical-loads",
-        "compression"
+        "compression",
+        "nonlinear-static"
       ],
       metadata: {
         maturity: "partial",
         plannedCapabilities: [
           "integration into equivalent-frame wall assemblies",
-          "combined in-plane shear and flexural checks",
           "member extraction from wall-level FEM results"
         ]
       }
     });
   }
   run(input = {}) {
-    var _a, _b;
-    const model = input.model instanceof MasonryPierModel ? input.model : new MasonryPierModel((_a = input.model) != null ? _a : input);
+    var _a, _b, _c, _d, _e;
+    const requestedAnalysis = String(
+      (_b = (_a = input.analysisType) != null ? _a : input.analysis) != null ? _b : "vertical-verification"
+    ).trim().toLowerCase();
+    if (requestedAnalysis === "ntc2018-bilinear" || requestedAnalysis === "in-plane-nonlinear-static" || input.model instanceof NTC2018MasonryPierModel) {
+      const model2 = input.model instanceof NTC2018MasonryPierModel ? input.model : new NTC2018MasonryPierModel((_c = input.model) != null ? _c : input);
+      return new NTC2018MasonryPierAnalysis().analyze({ model: model2 });
+    }
+    const model = input.model instanceof MasonryPierModel ? input.model : new MasonryPierModel((_d = input.model) != null ? _d : input);
     const verification = new MasonryPierVerticalVerification({
-      code: (_b = input.code) != null ? _b : "NTC2018"
+      code: (_e = input.code) != null ? _e : "NTC2018"
     }).verify({ model });
     try {
       const idealization = new MasonryPierEquivalentFrameBuilder().build({ model });
@@ -32779,7 +36575,7 @@ var MasonryPierApplication = class extends StructuralApplication {
 
 // src/applications/masonry-wall-openings/analysis/AlignmentCapacityBilinearization.js
 var DEFAULT_DROP_RATIO = 0.2;
-var EPS2 = 1e-9;
+var EPS4 = 1e-9;
 function normalizePoint2(point2, index) {
   var _a;
   return {
@@ -32801,7 +36597,7 @@ function findPeakPoint(points) {
 }
 function interpolateCrossing(startPoint, endPoint, targetForce) {
   const deltaForce = endPoint.baseShear - startPoint.baseShear;
-  if (Math.abs(deltaForce) <= EPS2) {
+  if (Math.abs(deltaForce) <= EPS4) {
     return endPoint.displacement;
   }
   const ratio = (targetForce - startPoint.baseShear) / deltaForce;
@@ -32813,12 +36609,12 @@ function insertPointAtDisplacement(points, displacement) {
     return points;
   }
   const existingPoint = points.find(
-    (point2) => Math.abs(point2.displacement - displacement) <= EPS2
+    (point2) => Math.abs(point2.displacement - displacement) <= EPS4
   );
   if (existingPoint) {
     return points;
   }
-  if (displacement <= points[0].displacement + EPS2) {
+  if (displacement <= points[0].displacement + EPS4) {
     return [
       {
         id: "inserted-start",
@@ -32831,7 +36627,7 @@ function insertPointAtDisplacement(points, displacement) {
   for (let index = 0; index < points.length - 1; index += 1) {
     const startPoint = points[index];
     const endPoint = points[index + 1];
-    if (displacement > startPoint.displacement + EPS2 && displacement < endPoint.displacement - EPS2) {
+    if (displacement > startPoint.displacement + EPS4 && displacement < endPoint.displacement - EPS4) {
       const ratio = (displacement - startPoint.displacement) / (endPoint.displacement - startPoint.displacement);
       const baseShear = startPoint.baseShear + ratio * (endPoint.baseShear - startPoint.baseShear);
       return [
@@ -32856,14 +36652,14 @@ function insertPointAtDisplacement(points, displacement) {
 }
 function integrateCurveArea(points, maxDisplacement) {
   const clippedPoints = insertPointAtDisplacement(points, maxDisplacement).filter(
-    (point2) => point2.displacement <= maxDisplacement + EPS2
+    (point2) => point2.displacement <= maxDisplacement + EPS4
   );
   let area = 0;
   for (let index = 0; index < clippedPoints.length - 1; index += 1) {
     const startPoint = clippedPoints[index];
     const endPoint = clippedPoints[index + 1];
     const deltaDisplacement = endPoint.displacement - startPoint.displacement;
-    if (deltaDisplacement <= EPS2) {
+    if (deltaDisplacement <= EPS4) {
       continue;
     }
     area += (startPoint.baseShear + endPoint.baseShear) / 2 * deltaDisplacement;
@@ -32871,7 +36667,7 @@ function integrateCurveArea(points, maxDisplacement) {
   return area;
 }
 function resolveSecantPoint(points, peakPoint) {
-  if (!peakPoint || peakPoint.baseShear <= EPS2) {
+  if (!peakPoint || peakPoint.baseShear <= EPS4) {
     return null;
   }
   const targetForce = 0.7 * peakPoint.baseShear;
@@ -32880,7 +36676,7 @@ function resolveSecantPoint(points, peakPoint) {
   for (let index = 0; index < ascendingBranch.length - 1; index += 1) {
     const startPoint = ascendingBranch[index];
     const endPoint = ascendingBranch[index + 1];
-    if (endPoint.baseShear + EPS2 < targetForce) {
+    if (endPoint.baseShear + EPS4 < targetForce) {
       continue;
     }
     const displacement = interpolateCrossing(
@@ -32916,7 +36712,7 @@ function resolveUltimatePoint(points, peakPoint, dropRatio) {
   for (let index = peakIndex; index < points.length - 1; index += 1) {
     const startPoint = points[index];
     const endPoint = points[index + 1];
-    if (endPoint.baseShear > targetForce + EPS2) {
+    if (endPoint.baseShear > targetForce + EPS4) {
       continue;
     }
     return {
@@ -32972,7 +36768,7 @@ function bilinearizeCapacityCurve({
     peakPoint,
     dropRatio
   );
-  const ks = secantPoint && secantPoint.displacement > EPS2 ? secantPoint.baseShear / secantPoint.displacement : 0;
+  const ks = secantPoint && secantPoint.displacement > EPS4 ? secantPoint.baseShear / secantPoint.displacement : 0;
   const actualEnergy = integrateCurveArea(
     normalizedPoints,
     (_a2 = ultimatePoint == null ? void 0 : ultimatePoint.displacement) != null ? _a2 : 0
@@ -32982,14 +36778,14 @@ function bilinearizeCapacityCurve({
       "The capacity curve never dropped by the requested 20% from peak resistance, so the last available point was used as ultimate displacement."
     );
   }
-  if (ks <= EPS2 || !ultimatePoint || ultimatePoint.displacement <= EPS2) {
+  if (ks <= EPS4 || !ultimatePoint || ultimatePoint.displacement <= EPS4) {
     return {
       status: RESULT_STATUS.NOT_VERIFIED,
       warnings: [
         ...warnings,
         "The capacity curve does not provide a finite elastic secant stiffness or a positive ultimate displacement."
       ],
-      ks: ks > EPS2 ? ks : 0,
+      ks: ks > EPS4 ? ks : 0,
       Vy: 0,
       du: (_b = ultimatePoint == null ? void 0 : ultimatePoint.displacement) != null ? _b : 0,
       yieldDisplacement: 0,
@@ -33003,7 +36799,7 @@ function bilinearizeCapacityCurve({
   }
   const radicand = ultimatePoint.displacement ** 2 - 2 * actualEnergy / ks;
   const clampedRadicand = Math.max(radicand, 0);
-  if (radicand < -EPS2) {
+  if (radicand < -EPS4) {
     warnings.push(
       "Equivalent-energy bilinearization reached a negative quadratic radicand; the solution was clamped to preserve a valid bilinear curve."
     );
@@ -33304,7 +37100,7 @@ var NTC2018_EXISTING_MASONRY_KNOWLEDGE_LEVELS = NTC2018_EXISTING_MATERIAL_KNOWLE
 
 // src/norms/ntc2018/materials/createNTC2018Material.js
 var NTC2018_REFERENCE = "DM 17/01/2018 - NTC 2018";
-var INTERNAL_UNITS15 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS23 = Object.freeze({ force: "N", length: "mm" });
 var round4 = (value, decimals = 2) => Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
 var assertCatalogEntry = (catalog, key, message) => {
   const entry = catalog[key];
@@ -33329,7 +37125,7 @@ function createNTC2018ConcreteMaterial({
 }) {
   var _a, _b;
   assertExplicitUnitSystem(units, "createNTC2018ConcreteMaterial");
-  const unitResolver = createUnitResolver(units, INTERNAL_UNITS15);
+  const unitResolver = createUnitResolver(units, INTERNAL_UNITS23);
   const preset = assertCatalogEntry(
     NTC2018_CONCRETE_CLASSES,
     strengthClass,
@@ -33361,7 +37157,7 @@ function createNTC2018ConcreteMaterial({
       fcm: round4(fcm, 2),
       elasticModulus: round4(ecm, 0)
     } : {},
-    units: INTERNAL_UNITS15,
+    units: INTERNAL_UNITS23,
     metadata: {
       ...metadata,
       normativePreset: "NTC2018",
@@ -33396,7 +37192,7 @@ function createNTC2018ReinforcementSteelMaterial({
 }) {
   var _a;
   assertExplicitUnitSystem(units, "createNTC2018ReinforcementSteelMaterial");
-  const unitResolver = createUnitResolver(units, INTERNAL_UNITS15);
+  const unitResolver = createUnitResolver(units, INTERNAL_UNITS23);
   const preset = assertCatalogEntry(
     NTC2018_REINFORCEMENT_STEEL_GRADES,
     grade,
@@ -33427,7 +37223,7 @@ function createNTC2018ReinforcementSteelMaterial({
     existing: existingState.existing,
     knowledgeLevel: (_a = existingState.knowledgeLevel) != null ? _a : knowledgeLevel,
     confidenceFactor: existingState.confidenceFactor,
-    units: INTERNAL_UNITS15,
+    units: INTERNAL_UNITS23,
     metadata: {
       ...metadata,
       normativePreset: "NTC2018",
@@ -33459,7 +37255,7 @@ function createNTC2018StructuralSteelMaterial({
   metadata = {}
 }) {
   assertExplicitUnitSystem(units, "createNTC2018StructuralSteelMaterial");
-  const unitResolver = createUnitResolver(units, INTERNAL_UNITS15);
+  const unitResolver = createUnitResolver(units, INTERNAL_UNITS23);
   const preset = assertCatalogEntry(
     NTC2018_STRUCTURAL_STEEL_GRADES,
     grade,
@@ -33474,7 +37270,7 @@ function createNTC2018StructuralSteelMaterial({
     fyk: preset.fyk,
     fyd: round4(preset.fyk / gammaM0, 2),
     ftk: preset.ftk,
-    units: INTERNAL_UNITS15,
+    units: INTERNAL_UNITS23,
     metadata: {
       ...metadata,
       normativePreset: "NTC2018",
@@ -33497,7 +37293,7 @@ function createNTC2018TimberMaterial({
 }) {
   var _a, _b, _c;
   assertExplicitUnitSystem(units, "createNTC2018TimberMaterial");
-  const unitResolver = createUnitResolver(units, INTERNAL_UNITS15);
+  const unitResolver = createUnitResolver(units, INTERNAL_UNITS23);
   const preset = assertCatalogEntry(
     NTC2018_TIMBER_STRENGTH_CLASSES,
     strengthClass,
@@ -33515,7 +37311,7 @@ function createNTC2018TimberMaterial({
     strengthStandard: preset.strengthStandard,
     serviceClass,
     kmod,
-    units: INTERNAL_UNITS15,
+    units: INTERNAL_UNITS23,
     fmK: preset.fmK,
     fc0K: preset.fc0K,
     ft0K: preset.ft0K,
@@ -33587,7 +37383,7 @@ function createNTC2018ExistingMasonryMaterial({
       modifierSelections,
       surveyFactors,
       improvementFactors,
-      units: INTERNAL_UNITS15,
+      units: INTERNAL_UNITS23,
       metadata: sharedMetadata,
       ...rest
     });
@@ -33605,7 +37401,7 @@ function createNTC2018ExistingMasonryMaterial({
 }
 
 // src/applications/steel-frames/models/SteelRingFramePushoverModel.js
-var INTERNAL_UNITS16 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS24 = Object.freeze({ force: "N", length: "mm" });
 var DEFAULT_REFERENCE_FORCE = 1;
 var DEFAULT_CONTROL_INCREMENT = 1;
 var DEFAULT_MAX_CONTROL_DISPLACEMENT = 120;
@@ -33614,12 +37410,12 @@ var DEFAULT_MAX_ITERATIONS = 100;
 var DEFAULT_TOLERANCE2 = 0.01;
 var DEFAULT_YIELD_TOLERANCE = 1e-9;
 var DEFAULT_BASE_CONDITION = "pinned-base-with-bottom-beam";
-function assertPositive15(value, label) {
+function assertPositive26(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`SteelRingFramePushoverModel requires a positive ${label}.`);
   }
 }
-function assertFinite5(value, label) {
+function assertFinite6(value, label) {
   if (!Number.isFinite(value)) {
     throw new Error(`SteelRingFramePushoverModel requires a finite ${label}.`);
   }
@@ -33702,7 +37498,7 @@ function normalizeSteelMaterial(materialLike, units, defaultGrade = "S275") {
   if ((materialLike == null ? void 0 : materialLike.category) === "steel" || (materialLike == null ? void 0 : materialLike.fyd) != null || (materialLike == null ? void 0 : materialLike.fyk) != null) {
     return new SteelMaterial({
       ...materialLike,
-      units: (_a = materialLike.units) != null ? _a : INTERNAL_UNITS16
+      units: (_a = materialLike.units) != null ? _a : INTERNAL_UNITS24
     });
   }
   if (typeof materialLike === "string" || materialLike == null) {
@@ -33866,7 +37662,7 @@ var SteelRingFramePushoverModel = class {
       throw new Error("A steel ring frame pushover model id is required.");
     }
     assertExplicitUnitSystem(units, "SteelRingFramePushoverModel");
-    const unitResolver = createUnitResolver(units, INTERNAL_UNITS16);
+    const unitResolver = createUnitResolver(units, INTERNAL_UNITS24);
     const resolvedBaseCondition = normalizeBaseCondition(baseCondition);
     const resolvedIncludeBottomBeam = includeBottomBeam == null ? resolvedBaseCondition !== "pinned-base-without-bottom-beam" && resolvedBaseCondition !== "fixed-base" : Boolean(includeBottomBeam);
     const width = unitResolver.length(
@@ -33875,10 +37671,10 @@ var SteelRingFramePushoverModel = class {
     const height = unitResolver.length(
       (_d = (_c = geometry.clearHeight) != null ? _c : geometry.height) != null ? _d : geometry.h
     );
-    assertPositive15(width, "geometry.clearWidth");
-    assertPositive15(height, "geometry.clearHeight");
+    assertPositive26(width, "geometry.clearWidth");
+    assertPositive26(height, "geometry.clearHeight");
     this.id = id;
-    this.units = INTERNAL_UNITS16;
+    this.units = INTERNAL_UNITS24;
     this.geometry = {
       clearWidth: width,
       clearHeight: height,
@@ -33918,25 +37714,25 @@ var SteelRingFramePushoverModel = class {
     this.metadata = {
       ...metadata,
       analysisType: "steel-ring-frame-pushover",
-      unitSystem: INTERNAL_UNITS16,
+      unitSystem: INTERNAL_UNITS24,
       sourceUnitSystem: unitResolver.sourceUnitSystem
     };
-    assertPositive15(
+    assertPositive26(
       this.loading.referenceHorizontalForce,
       "loading.referenceHorizontalForce"
     );
-    assertPositive15(
+    assertPositive26(
       this.solver.controlDisplacementIncrement,
       "solver.controlDisplacementIncrement"
     );
-    assertPositive15(
+    assertPositive26(
       this.solver.maxControlDisplacement,
       "solver.maxControlDisplacement"
     );
-    assertFinite5(this.solver.tolerance, "solver.tolerance");
-    assertPositive15(this.solver.maxIterations, "solver.maxIterations");
-    assertPositive15(this.solver.maxSteps, "solver.maxSteps");
-    assertPositive15(this.solver.yieldTolerance, "solver.yieldTolerance");
+    assertFinite6(this.solver.tolerance, "solver.tolerance");
+    assertPositive26(this.solver.maxIterations, "solver.maxIterations");
+    assertPositive26(this.solver.maxSteps, "solver.maxSteps");
+    assertPositive26(this.solver.yieldTolerance, "solver.yieldTolerance");
   }
   topNodeId() {
     return this.loading.controlNode === "top-right" ? `${this.id}-tr` : `${this.id}-tl`;
@@ -34219,18 +38015,18 @@ var ROTATION_INDEX_BY_POSITION = Object.freeze({
 });
 var SECTION_UNITS = Object.freeze({ force: "N", length: "mm" });
 var DEFAULT_FEM_UNITS = Object.freeze({ force: "kN", length: "m" });
-function assertPositive16(value, label) {
+function assertPositive27(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`SteelPlasticHingeFrameElement2D requires a positive ${label}.`);
   }
 }
-function transpose3(matrix) {
+function transpose4(matrix) {
   if (!Array.isArray(matrix) || matrix.length === 0) {
     return [];
   }
   return matrix[0].map((_, column) => matrix.map((row) => row[column]));
 }
-function multiplyMatrices3(left, right) {
+function multiplyMatrices4(left, right) {
   var _a, _b;
   if (left.length === 0 || right.length === 0) {
     return createZeroMatrix(left.length, (_b = (_a = right[0]) == null ? void 0 : _a.length) != null ? _b : 0);
@@ -34241,22 +38037,22 @@ function multiplyMatrices3(left, right) {
     )
   );
 }
-function multiplyMatrixVector4(matrix, vector) {
+function multiplyMatrixVector5(matrix, vector) {
   return matrix.map(
     (row) => row.reduce((sum, value, index) => sum + value * vector[index], 0)
   );
 }
-function subtractMatrices(left, right) {
+function subtractMatrices2(left, right) {
   return left.map(
     (row, rowIndex) => row.map((value, columnIndex) => value - right[rowIndex][columnIndex])
   );
 }
-function addVectors3(left, right) {
+function addVectors4(left, right) {
   return left.map((value, index) => value + right[index]);
 }
 function invertSmallDenseMatrix(matrix) {
   if (matrix.length === 1 && matrix[0].length === 1) {
-    assertPositive16(Math.abs(matrix[0][0]), "hinge condensation pivot");
+    assertPositive27(Math.abs(matrix[0][0]), "hinge condensation pivot");
     return [[1 / matrix[0][0]]];
   }
   if (matrix.length !== 2 || matrix[0].length !== 2 || matrix[1].length !== 2) {
@@ -34266,7 +38062,7 @@ function invertSmallDenseMatrix(matrix) {
   }
   const [[a, b], [c, d]] = matrix;
   const determinant = a * d - b * c;
-  assertPositive16(Math.abs(determinant), "hinge condensation determinant");
+  assertPositive27(Math.abs(determinant), "hinge condensation determinant");
   return [
     [d / determinant, -b / determinant],
     [-c / determinant, a / determinant]
@@ -34341,8 +38137,8 @@ var SteelPlasticHingeFrameElement2D = class {
     });
     this.plasticMomentStart = plasticMomentStart != null ? plasticMomentStart : this.defaultPlasticMomentCapacity();
     this.plasticMomentEnd = plasticMomentEnd != null ? plasticMomentEnd : this.defaultPlasticMomentCapacity();
-    assertPositive16(this.plasticMomentStart, "plasticMomentStart");
-    assertPositive16(this.plasticMomentEnd, "plasticMomentEnd");
+    assertPositive27(this.plasticMomentStart, "plasticMomentStart");
+    assertPositive27(this.plasticMomentEnd, "plasticMomentEnd");
   }
   defaultPlasticMomentCapacity() {
     var _a, _b, _c, _d;
@@ -34350,8 +38146,8 @@ var SteelPlasticHingeFrameElement2D = class {
     const sectionModulus = (_a = this.section) == null ? void 0 : _a[property];
     const designStrength5 = (_d = (_b = this.material) == null ? void 0 : _b.fyd) != null ? _d : (_c = this.material) == null ? void 0 : _c.fyk;
     const resolver = createUnitResolver(SECTION_UNITS, this.analysisUnits);
-    assertPositive16(sectionModulus, `section ${property}`);
-    assertPositive16(designStrength5, "material fyd");
+    assertPositive27(sectionModulus, `section ${property}`);
+    assertPositive27(designStrength5, "material fyd");
     return resolver.moment(sectionModulus * designStrength5);
   }
   defaultAxialRigidity() {
@@ -34359,8 +38155,8 @@ var SteelPlasticHingeFrameElement2D = class {
     const elasticModulus = (_a = this.material) == null ? void 0 : _a.elasticModulus;
     const area = (_b = this.section) == null ? void 0 : _b.area;
     const resolver = createUnitResolver(SECTION_UNITS, this.analysisUnits);
-    assertPositive16(elasticModulus, "material elasticModulus");
-    assertPositive16(area, "section area");
+    assertPositive27(elasticModulus, "material elasticModulus");
+    assertPositive27(area, "section area");
     return resolver.force(elasticModulus * area);
   }
   defaultFlexuralRigidity() {
@@ -34369,8 +38165,8 @@ var SteelPlasticHingeFrameElement2D = class {
     const property = this.sectionOrientation.inertiaProperty;
     const inertia = (_b = this.section) == null ? void 0 : _b[property];
     const resolver = createUnitResolver(SECTION_UNITS, this.analysisUnits);
-    assertPositive16(elasticModulus, "material elasticModulus");
-    assertPositive16(inertia, `section ${property}`);
+    assertPositive27(elasticModulus, "material elasticModulus");
+    assertPositive27(inertia, `section ${property}`);
     return resolver.convert(elasticModulus * inertia, {
       forceExponent: 1,
       lengthExponent: 2
@@ -34422,7 +38218,7 @@ var SteelPlasticHingeFrameElement2D = class {
       h
     } = this.condensationOperators(hingeState);
     if (positions.length === 0) {
-      const localEndForces2 = multiplyMatrixVector4(k, localDisplacements);
+      const localEndForces2 = multiplyMatrixVector5(k, localDisplacements);
       return {
         hingeState,
         plasticRotations: [],
@@ -34431,9 +38227,9 @@ var SteelPlasticHingeFrameElement2D = class {
         tangentLocalStiffness: k
       };
     }
-    const ht = transpose3(h);
-    const kaa = multiplyMatrices3(ht, multiplyMatrices3(k, h));
-    const htkd = multiplyMatrixVector4(ht, multiplyMatrixVector4(k, localDisplacements));
+    const ht = transpose4(h);
+    const kaa = multiplyMatrices4(ht, multiplyMatrices4(k, h));
+    const htkd = multiplyMatrixVector5(ht, multiplyMatrixVector5(k, localDisplacements));
     const prescribedGeneralizedForce = positions.map(
       (position) => plasticGeneralizedForce(
         position,
@@ -34442,26 +38238,26 @@ var SteelPlasticHingeFrameElement2D = class {
       )
     );
     const invKaa = invertSmallDenseMatrix(kaa);
-    const plasticRotations = multiplyMatrixVector4(
+    const plasticRotations = multiplyMatrixVector5(
       invKaa,
       prescribedGeneralizedForce.map(
         (value, index) => value - htkd[index]
       )
     );
-    const localElasticDisplacements = addVectors3(
+    const localElasticDisplacements = addVectors4(
       localDisplacements,
-      multiplyMatrixVector4(h, plasticRotations)
+      multiplyMatrixVector5(h, plasticRotations)
     );
-    const localEndForces = multiplyMatrixVector4(k, localElasticDisplacements);
-    const tangentLocalStiffness = subtractMatrices(
+    const localEndForces = multiplyMatrixVector5(k, localElasticDisplacements);
+    const tangentLocalStiffness = subtractMatrices2(
       k,
-      multiplyMatrices3(
-        multiplyMatrices3(k, h),
-        multiplyMatrices3(invKaa, multiplyMatrices3(ht, k))
+      multiplyMatrices4(
+        multiplyMatrices4(k, h),
+        multiplyMatrices4(invKaa, multiplyMatrices4(ht, k))
       )
     );
-    const localEquivalentForce = multiplyMatrixVector4(
-      multiplyMatrices3(multiplyMatrices3(k, h), invKaa),
+    const localEquivalentForce = multiplyMatrixVector5(
+      multiplyMatrices4(multiplyMatrices4(k, h), invKaa),
       prescribedGeneralizedForce
     );
     return {
@@ -34513,12 +38309,12 @@ var SteelPlasticHingeFrameElement2D = class {
       trialState = updatedState;
     }
     const transformation = this.transformationMatrix();
-    const tangentGlobalStiffness = multiplyMatrices3(
-      transpose3(transformation),
-      multiplyMatrices3(response.tangentLocalStiffness, transformation)
+    const tangentGlobalStiffness = multiplyMatrices4(
+      transpose4(transformation),
+      multiplyMatrices4(response.tangentLocalStiffness, transformation)
     );
-    const globalEndForces = multiplyMatrixVector4(
-      transpose3(transformation),
+    const globalEndForces = multiplyMatrixVector5(
+      transpose4(transformation),
       response.localEndForces
     );
     return {
@@ -34555,7 +38351,7 @@ var SteelPlasticHingeFrameElement2D = class {
 
 // src/applications/steel-frames/analysis/SteelRingFrame2DBuilder.js
 var FEM_UNITS7 = Object.freeze({ force: "kN", length: "m" });
-function resolveModel3(input) {
+function resolveModel4(input) {
   return input instanceof SteelRingFramePushoverModel ? input : new SteelRingFramePushoverModel(input);
 }
 function serializeFrame(nodes, elements, supports) {
@@ -34567,7 +38363,7 @@ function serializeFrame(nodes, elements, supports) {
 }
 var SteelRingFrame2DBuilder = class {
   build({ model } = {}) {
-    const resolvedModel = resolveModel3(model != null ? model : {});
+    const resolvedModel = resolveModel4(model != null ? model : {});
     const assumptions = [
       "The ring frame is modeled in 2D with Euler-Bernoulli frame members and three nodal DOFs per node: ux, uy, rz.",
       "Plasticity is concentrated at member ends; members remain elastic between hinges and no geometric non-linearity is included in the first MVP.",
@@ -34739,7 +38535,7 @@ var SteelRingFrame2DBuilder = class {
 
 // src/applications/steel-frames/analysis/SteelRingFramePushoverAnalysis.js
 var FEM_UNITS8 = Object.freeze({ force: "kN", length: "m" });
-function resolveModel4(input) {
+function resolveModel5(input) {
   return input instanceof SteelRingFramePushoverModel ? input : new SteelRingFramePushoverModel(input);
 }
 function pointToUserUnits(point2, resolver) {
@@ -34768,7 +38564,7 @@ var SteelRingFramePushoverAnalysis = class {
   }
   analyze({ model } = {}) {
     var _a, _b, _c, _d;
-    const resolvedModel = resolveModel4(model != null ? model : {});
+    const resolvedModel = resolveModel5(model != null ? model : {});
     const frame = this.builder.build({ model: resolvedModel });
     const toFem = createUnitResolver(resolvedModel.units, FEM_UNITS8);
     const solverResult = this.solver.solve({
@@ -34854,7 +38650,7 @@ var SteelRingFramePushoverAnalysis = class {
 };
 
 // src/applications/masonry-wall-openings/models/MasonryWallPierModel.js
-var INTERNAL_UNITS17 = Object.freeze({ force: "N", length: "m" });
+var INTERNAL_UNITS25 = Object.freeze({ force: "N", length: "m" });
 function assertFiniteNonNegative(value, label) {
   if (!Number.isFinite(value) || value < 0) {
     throw new Error(`MasonryWallPierModel requires a finite non-negative ${label}.`);
@@ -34907,7 +38703,7 @@ var MasonryWallPierModel = class {
     assertFiniteNonNegative(resolvedEffectiveLength, "effectiveLength");
     assertFinitePositive(resolvedDeformableHeight, "deformableHeight");
     this.id = id;
-    this.units = INTERNAL_UNITS17;
+    this.units = INTERNAL_UNITS25;
     this.wallId = wallId;
     this.sourceWallIds = [...new Set(sourceWallIds.length > 0 ? sourceWallIds : [wallId])];
     this.alignmentId = alignmentId;
@@ -34958,7 +38754,7 @@ var MasonryWallPierModel = class {
 };
 
 // src/applications/masonry-wall-openings/models/MasonryWallSpandrelModel.js
-var INTERNAL_UNITS18 = Object.freeze({ force: "N", length: "m" });
+var INTERNAL_UNITS26 = Object.freeze({ force: "N", length: "m" });
 function assertFiniteNonNegative2(value, label) {
   if (!Number.isFinite(value) || value < 0) {
     throw new Error(
@@ -35002,7 +38798,7 @@ var MasonryWallSpandrelModel = class {
     const resolvedDeformableLength = deformableLength != null ? deformableLength : xEnd - xStart;
     assertFinitePositive2(resolvedDeformableLength, "deformableLength");
     this.id = id;
-    this.units = INTERNAL_UNITS18;
+    this.units = INTERNAL_UNITS26;
     this.alignmentId = alignmentId;
     this.xStart = xStart;
     this.xEnd = xEnd;
@@ -35041,9 +38837,9 @@ var MasonryWallSpandrelModel = class {
 };
 
 // src/applications/masonry-wall-openings/geometry/sanitizeAlignmentOpenings.js
-var EPS3 = 1e-9;
+var EPS5 = 1e-9;
 function intersectsOrTouches1D(startA, endA, startB, endB) {
-  return Math.min(endA, endB) >= Math.max(startA, startB) - EPS3;
+  return Math.min(endA, endB) >= Math.max(startA, startB) - EPS5;
 }
 function overlapLength1D(startA, endA, startB, endB) {
   return Math.max(0, Math.min(endA, endB) - Math.max(startA, startB));
@@ -35063,7 +38859,7 @@ function rectanglesShouldMerge(rectA, rectB) {
     rectB.yStart,
     rectB.yEnd
   );
-  return xOverlap > EPS3 && yTouch || yOverlap > EPS3 && xTouch;
+  return xOverlap > EPS5 && yTouch || yOverlap > EPS5 && xTouch;
 }
 function mergeRectangles(rectA, rectB) {
   return {
@@ -35136,7 +38932,7 @@ function canRectangularlyMergeFragments(fragmentA, fragmentB) {
   }
   const merged = mergeRectangles(fragmentA, fragmentB);
   const area = rectangleArea(fragmentA) + rectangleArea(fragmentB) - intersectionArea(fragmentA, fragmentB);
-  return Math.abs(area - rectangleArea(merged)) <= EPS3;
+  return Math.abs(area - rectangleArea(merged)) <= EPS5;
 }
 function clipClusterToWalls(cluster, walls) {
   const fragments = [];
@@ -35145,7 +38941,7 @@ function clipClusterToWalls(cluster, walls) {
     const xEnd = Math.min(cluster.xEnd, wall.xEnd);
     const yStart = Math.max(cluster.yStart, 0);
     const yEnd = Math.min(cluster.yEnd, wall.height);
-    if (xEnd - xStart <= EPS3 || yEnd - yStart <= EPS3) {
+    if (xEnd - xStart <= EPS5 || yEnd - yStart <= EPS5) {
       continue;
     }
     fragments.push({
@@ -35222,7 +39018,7 @@ function buildClusterWarnings(cluster) {
         rectB.yStart,
         rectB.yEnd
       );
-      if (xOverlap > EPS3 && yOverlap <= EPS3) {
+      if (xOverlap > EPS5 && yOverlap <= EPS5) {
         warnings.push(
           `Openings ${rectA.id} and ${rectB.id} were merged into one equivalent opening because they are vertically stacked or touching.`
         );
@@ -35248,12 +39044,12 @@ function buildResidualPierWarnings({ alignment, sanitizedOpenings }) {
     for (const opening of wallOpenings) {
       const leftGap = opening.xStart - wall.xStart;
       const rightGap = wall.xEnd - opening.xEnd;
-      if (leftGap > EPS3 && leftGap < threshold - EPS3) {
+      if (leftGap > EPS5 && leftGap < threshold - EPS5) {
         warnings.push(
           `Opening ${opening.id} leaves a residual lateral pier of ${leftGap.toFixed(3)} m at the left edge of wall ${wall.id}.`
         );
       }
-      if (rightGap > EPS3 && rightGap < threshold - EPS3) {
+      if (rightGap > EPS5 && rightGap < threshold - EPS5) {
         warnings.push(
           `Opening ${opening.id} leaves a residual lateral pier of ${rightGap.toFixed(3)} m at the right edge of wall ${wall.id}.`
         );
@@ -35269,7 +39065,7 @@ function buildResidualPierWarnings({ alignment, sanitizedOpenings }) {
         next.yStart,
         next.yEnd
       );
-      if (horizontalGap > EPS3 && horizontalGap < threshold - EPS3 && verticalOverlap > EPS3) {
+      if (horizontalGap > EPS5 && horizontalGap < threshold - EPS5 && verticalOverlap > EPS5) {
         warnings.push(
           `Openings ${current.id} and ${next.id} leave a residual pier of ${horizontalGap.toFixed(3)} m in wall ${wall.id}.`
         );
@@ -35316,7 +39112,7 @@ function sanitizeAlignmentOpenings({ alignment }) {
     for (const fragment of clippedFragments) {
       const width = fragment.xEnd - fragment.xStart;
       const height = fragment.yEnd - fragment.yStart;
-      if (width <= EPS3 || height <= EPS3) {
+      if (width <= EPS5 || height <= EPS5) {
         continue;
       }
       const preservedRingFrame = resolveSharedComponent(
@@ -35354,16 +39150,16 @@ function sanitizeAlignmentOpenings({ alignment }) {
 }
 
 // src/applications/masonry-wall-openings/geometry/extractEquivalentFrameMembers.js
-var EPS4 = 1e-9;
+var EPS6 = 1e-9;
 var DOLCE_INCLINATION_RADIANS = Math.PI / 6;
 function uniqueSorted(values = []) {
   return [...new Set(values.filter(Number.isFinite))].sort((left, right) => left - right);
 }
 function intervalsOverlap(startA, endA, startB, endB) {
-  return Math.min(endA, endB) - Math.max(startA, startB) > EPS4;
+  return Math.min(endA, endB) - Math.max(startA, startB) > EPS6;
 }
 function sameCoordinate(left, right) {
-  return Math.abs(left - right) <= EPS4;
+  return Math.abs(left - right) <= EPS6;
 }
 function serializeComparable2(value) {
   return JSON.stringify(value != null ? value : null);
@@ -35450,7 +39246,7 @@ function resolveDolceDeformableZone({
     height,
     Math.max(...influences.map((influence) => influence.rawYEnd))
   );
-  const deformableHeight = Math.max(EPS4, yEnd - yStart);
+  const deformableHeight = Math.max(EPS6, yEnd - yStart);
   return {
     axisX,
     deformableHeight,
@@ -35483,7 +39279,7 @@ function resolveSharedThickness(walls) {
   }
   const values = walls.map((wall) => wall.thickness);
   const reference = values[0];
-  return values.every((value) => Math.abs(value - reference) <= EPS4) ? reference : Math.min(...values);
+  return values.every((value) => Math.abs(value - reference) <= EPS6) ? reference : Math.min(...values);
 }
 function findOpeningsForWall(wall, sanitizedOpenings) {
   return sanitizedOpenings.filter(
@@ -35504,12 +39300,12 @@ function buildPiers({ alignment, sanitizedOpenings }) {
       const xStart = xBreaks[index];
       const xEnd = xBreaks[index + 1];
       const length = xEnd - xStart;
-      if (length <= EPS4) {
+      if (length <= EPS6) {
         continue;
       }
       const midpoint = (xStart + xEnd) / 2;
       const occupiedByOpening = wallOpenings.some(
-        (opening) => midpoint > opening.x + EPS4 && midpoint < opening.x + opening.width - EPS4
+        (opening) => midpoint > opening.x + EPS6 && midpoint < opening.x + opening.width - EPS6
       );
       if (occupiedByOpening) {
         continue;
@@ -35526,7 +39322,7 @@ function buildPiers({ alignment, sanitizedOpenings }) {
         leftReduction,
         rightReduction
       });
-      if (effectiveLength <= EPS4) {
+      if (effectiveLength <= EPS6) {
         warnings.push(
           `Pier candidate in wall ${wall.id} between x=${xStart.toFixed(3)} m and x=${xEnd.toFixed(3)} m was reduced to zero effective length by adjacent ring-frame profile widths.`
         );
@@ -35569,13 +39365,13 @@ function resolveSpandrelTopBoundary({ opening, sanitizedOpenings, overlappingWal
   const openingTop = opening.y + opening.height;
   const roofBoundary = Math.min(...overlappingWalls.map((wall) => wall.height));
   const nextOpeningBottom = sanitizedOpenings.filter(
-    (candidate) => candidate.id !== opening.id && candidate.y >= openingTop - EPS4 && intervalsOverlap(
+    (candidate) => candidate.id !== opening.id && candidate.y >= openingTop - EPS6 && intervalsOverlap(
       opening.x,
       opening.x + opening.width,
       candidate.x,
       candidate.x + candidate.width
     )
-  ).map((candidate) => candidate.y).filter((value) => value > openingTop + EPS4).sort((left, right) => left - right)[0];
+  ).map((candidate) => candidate.y).filter((value) => value > openingTop + EPS6).sort((left, right) => left - right)[0];
   return Math.min(roofBoundary, nextOpeningBottom != null ? nextOpeningBottom : roofBoundary);
 }
 function buildSpandrels({ alignment, sanitizedOpenings }) {
@@ -35584,7 +39380,7 @@ function buildSpandrels({ alignment, sanitizedOpenings }) {
   for (const opening of sanitizedOpenings) {
     const openingTop = opening.y + opening.height;
     const overlappingWalls = alignment.walls.filter(
-      (wall) => wall.height > openingTop + EPS4 && intervalsOverlap(wall.xStart, wall.xEnd, opening.x, opening.x + opening.width)
+      (wall) => wall.height > openingTop + EPS6 && intervalsOverlap(wall.xStart, wall.xEnd, opening.x, opening.x + opening.width)
     );
     if (overlappingWalls.length === 0) {
       continue;
@@ -35595,7 +39391,7 @@ function buildSpandrels({ alignment, sanitizedOpenings }) {
       overlappingWalls
     });
     const height = yEnd - openingTop;
-    if (height <= EPS4) {
+    if (height <= EPS6) {
       continue;
     }
     const thickness = resolveSharedThickness(overlappingWalls);
@@ -35674,8 +39470,8 @@ function extractEquivalentFrameMembers({
 }
 
 // src/applications/masonry-wall-openings/models/MasonryWallOpeningsModel.js
-var INTERNAL_UNITS19 = Object.freeze({ force: "N", length: "m" });
-function assertPositive17(value, label) {
+var INTERNAL_UNITS27 = Object.freeze({ force: "N", length: "m" });
+function assertPositive28(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`MasonryWallOpeningsModel requires a positive ${label}.`);
   }
@@ -35735,19 +39531,19 @@ var MasonryWallOpeningsModel = class {
       throw new Error("A masonry wall openings model id is required.");
     }
     assertExplicitUnitSystem(units, "MasonryWallOpeningsModel");
-    const unitResolver = createUnitResolver(units, INTERNAL_UNITS19);
+    const unitResolver = createUnitResolver(units, INTERNAL_UNITS27);
     let cursor = 0;
     this.id = id;
     this.label = label != null ? label : id;
-    this.units = INTERNAL_UNITS19;
+    this.units = INTERNAL_UNITS27;
     this.walls = walls.map((wall, index) => {
       var _a2, _b2, _c2;
       const resolvedLength = unitResolver.length(wall.length);
       const resolvedHeight = unitResolver.length(wall.height);
       const resolvedThickness = unitResolver.length(wall.thickness);
-      assertPositive17(resolvedLength, `walls[${index}].length`);
-      assertPositive17(resolvedHeight, `walls[${index}].height`);
-      assertPositive17(resolvedThickness, `walls[${index}].thickness`);
+      assertPositive28(resolvedLength, `walls[${index}].length`);
+      assertPositive28(resolvedHeight, `walls[${index}].height`);
+      assertPositive28(resolvedThickness, `walls[${index}].thickness`);
       const normalizedWall = {
         id: (_a2 = wall.id) != null ? _a2 : `wall-${index + 1}`,
         index,
@@ -35778,8 +39574,8 @@ var MasonryWallOpeningsModel = class {
       if (!Number.isFinite(resolvedY)) {
         throw new Error(`MasonryWallOpeningsModel requires a finite openings[${index}].y.`);
       }
-      assertPositive17(resolvedWidth, `openings[${index}].width`);
-      assertPositive17(resolvedHeight, `openings[${index}].height`);
+      assertPositive28(resolvedWidth, `openings[${index}].width`);
+      assertPositive28(resolvedHeight, `openings[${index}].height`);
       return {
         id: (_a2 = opening.id) != null ? _a2 : `opening-${index + 1}`,
         index,
@@ -35805,7 +39601,7 @@ var MasonryWallOpeningsModel = class {
     };
     this.metadata = {
       ...metadata,
-      unitSystem: INTERNAL_UNITS19,
+      unitSystem: INTERNAL_UNITS27,
       sourceUnitSystem: (_g = metadata.sourceUnitSystem) != null ? _g : unitResolver.sourceUnitSystem
     };
   }
@@ -38391,7 +42187,7 @@ function verifySteelBeamColumnInteractionMyMz({
 }
 
 // src/applications/steel-frames/checks/SteelCompressionBuckling.js
-var INTERNAL_UNITS20 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS28 = Object.freeze({ force: "N", length: "mm" });
 var I_H_FAMILIES2 = /* @__PURE__ */ new Set(["IPE", "HEA", "HEB", "HEM"]);
 var CLOSED_HOLLOW_FAMILIES = /* @__PURE__ */ new Set(["CHS", "SHS", "RHS"]);
 var SOLID_DOUBLY_SYMMETRIC_FAMILIES = /* @__PURE__ */ new Set(["ROUND", "FLAT"]);
@@ -38413,8 +42209,8 @@ function normalizedFamily2(section) {
 function sectionResolver(section) {
   var _a, _b;
   return createUnitResolver(
-    (_b = (_a = section == null ? void 0 : section.metadata) == null ? void 0 : _a.unitSystem) != null ? _b : INTERNAL_UNITS20,
-    INTERNAL_UNITS20
+    (_b = (_a = section == null ? void 0 : section.metadata) == null ? void 0 : _a.unitSystem) != null ? _b : INTERNAL_UNITS28,
+    INTERNAL_UNITS28
   );
 }
 function resolveSectionLength(section, ...keys) {
@@ -38530,7 +42326,7 @@ function calculateSteelCompressionBucklingAxis({
   if (radical < -1e-12) {
     return null;
   }
-  const reductionFactor = clamp(
+  const reductionFactor = clamp6(
     1 / (phi + Math.sqrt(Math.max(0, radical))),
     0,
     1
@@ -38709,7 +42505,7 @@ function verifySteelCompressionBuckling({
 }
 
 // src/applications/steel-frames/checks/SteelLateralTorsionalBuckling.js
-var INTERNAL_UNITS21 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS29 = Object.freeze({ force: "N", length: "mm" });
 var I_H_FAMILIES3 = /* @__PURE__ */ new Set(["IPE", "HEA", "HEB", "HEM"]);
 var AUTOMATIC_MCR_FAMILIES = /* @__PURE__ */ new Set([...I_H_FAMILIES3, "RHS"]);
 var LTB_NOT_SUSCEPTIBLE_FAMILIES = /* @__PURE__ */ new Set(["CHS", "SHS", "ROUND"]);
@@ -38723,8 +42519,8 @@ function normalizedFamily3(section) {
 function sectionResolver2(section) {
   var _a, _b;
   return createUnitResolver(
-    (_b = (_a = section == null ? void 0 : section.metadata) == null ? void 0 : _a.unitSystem) != null ? _b : INTERNAL_UNITS21,
-    INTERNAL_UNITS21
+    (_b = (_a = section == null ? void 0 : section.metadata) == null ? void 0 : _a.unitSystem) != null ? _b : INTERNAL_UNITS29,
+    INTERNAL_UNITS29
   );
 }
 function resolveCatalogInertia(section, key, fallback) {
@@ -38737,7 +42533,7 @@ function resolveCatalogInertia(section, key, fallback) {
   if (Number.isFinite(rawValue) && ((_c = section == null ? void 0 : section.metadata) == null ? void 0 : _c.catalogUnitSystem)) {
     return createUnitResolver(
       section.metadata.catalogUnitSystem,
-      INTERNAL_UNITS21
+      INTERNAL_UNITS29
     ).inertia(rawValue);
   }
   return fallback;
@@ -38755,7 +42551,7 @@ function resolveWarpingConstant(section) {
   if (Number.isFinite(rawValue) && ((_c = section == null ? void 0 : section.metadata) == null ? void 0 : _c.catalogUnitSystem)) {
     return createUnitResolver(
       section.metadata.catalogUnitSystem,
-      INTERNAL_UNITS21
+      INTERNAL_UNITS29
     ).convert(rawValue, { lengthExponent: 6 });
   }
   return null;
@@ -38821,7 +42617,7 @@ function reductionFactorLT({
     return null;
   }
   return {
-    chiLT: roundTo(clamp(baseChi * fFactor * kChi, 0, 1)),
+    chiLT: roundTo(clamp6(baseChi * fFactor * kChi, 0, 1)),
     baseChiLT: roundTo(baseChi),
     phiLT: roundTo(phiLT),
     alphaLT: roundTo(alphaLT),
@@ -39104,7 +42900,7 @@ function verifySteelLateralTorsionalBuckling({
 }
 
 // src/applications/steel-frames/checks/SteelSectionClassification.js
-var INTERNAL_UNITS22 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS30 = Object.freeze({ force: "N", length: "mm" });
 var I_H_FAMILIES4 = /* @__PURE__ */ new Set(["IPE", "HEA", "HEB", "HEM"]);
 var RECTANGULAR_HOLLOW_FAMILIES = /* @__PURE__ */ new Set(["SHS", "RHS"]);
 var CIRCULAR_HOLLOW_FAMILIES = /* @__PURE__ */ new Set(["CHS"]);
@@ -39140,8 +42936,8 @@ function normalizedFamily4(section) {
 function sectionResolver3(section) {
   var _a, _b;
   return createUnitResolver(
-    (_b = (_a = section == null ? void 0 : section.metadata) == null ? void 0 : _a.unitSystem) != null ? _b : INTERNAL_UNITS22,
-    INTERNAL_UNITS22
+    (_b = (_a = section == null ? void 0 : section.metadata) == null ? void 0 : _a.unitSystem) != null ? _b : INTERNAL_UNITS30,
+    INTERNAL_UNITS30
   );
 }
 function resolveProfileDimensions(section) {
@@ -39186,7 +42982,7 @@ function circularHollowLimits(epsilon) {
   };
 }
 function internalWebLimits({ epsilon, alpha, psi }) {
-  const safeAlpha = clamp(alpha, 1e-6, 1);
+  const safeAlpha = clamp6(alpha, 1e-6, 1);
   const class1 = safeAlpha > 0.5 ? 396 * epsilon / (13 * safeAlpha - 1) : 36 * epsilon / safeAlpha;
   const class2 = safeAlpha > 0.5 ? 456 * epsilon / (13 * safeAlpha - 1) : 41.5 * epsilon / safeAlpha;
   const class3 = psi > -1 ? 42 * epsilon / (0.67 + 0.33 * psi) : 62 * epsilon * (1 - psi) * Math.sqrt(-psi);
@@ -39249,7 +43045,7 @@ function plateStressParameters({
       secondStress
     };
   }
-  const alpha = sigmaMin >= 0 ? 1 : clamp(sigmaMax / (sigmaMax - sigmaMin), 0, 1);
+  const alpha = sigmaMin >= 0 ? 1 : clamp6(sigmaMax / (sigmaMax - sigmaMin), 0, 1);
   const psi = sigmaMax === 0 ? 1 : sigmaMin / sigmaMax;
   return {
     compressionExists: true,
@@ -39863,7 +43659,7 @@ function classifySteelSection({
 
 // src/applications/steel-frames/fem/SteelMemberFem3DContract.js
 var LIMIT_STATES = /* @__PURE__ */ new Set(["ULS", "SLS", "SLU", "SLE"]);
-var finiteOrNull4 = (value) => Number.isFinite(value) ? value : null;
+var finiteOrNull5 = (value) => Number.isFinite(value) ? value : null;
 function firstFinite4(...values) {
   var _a;
   return (_a = values.find((value) => Number.isFinite(value))) != null ? _a : null;
@@ -39943,9 +43739,9 @@ function normalizeEnd(raw = {}, id) {
   return {
     id: (_c = raw.id) != null ? _c : id,
     coordinates: {
-      x: finiteOrNull4(coordinates.x),
-      y: finiteOrNull4(coordinates.y),
-      z: finiteOrNull4(coordinates.z)
+      x: finiteOrNull5(coordinates.x),
+      y: finiteOrNull5(coordinates.y),
+      z: finiteOrNull5(coordinates.z)
     },
     restraints: {
       ux: Boolean((_d = raw.restraints) == null ? void 0 : _d.ux),
@@ -39980,14 +43776,14 @@ function normalizeMember(source = {}, analysisResult = {}) {
       nonSway: (_t = (_s = stability.nonSway) != null ? _s : source.nonSway) != null ? _t : null
     },
     effectiveLengths: {
-      y: finiteOrNull4((_u = stability.effectiveLengthY) != null ? _u : stability.LcrY),
-      z: finiteOrNull4((_v = stability.effectiveLengthZ) != null ? _v : stability.LcrZ),
-      torsional: finiteOrNull4((_w = stability.effectiveLengthTorsional) != null ? _w : stability.LcrT)
+      y: finiteOrNull5((_u = stability.effectiveLengthY) != null ? _u : stability.LcrY),
+      z: finiteOrNull5((_v = stability.effectiveLengthZ) != null ? _v : stability.LcrZ),
+      torsional: finiteOrNull5((_w = stability.effectiveLengthTorsional) != null ? _w : stability.LcrT)
     },
     effectiveLengthFactors: {
-      y: finiteOrNull4((_x = stability.effectiveLengthFactorY) != null ? _x : stability.kY),
-      z: finiteOrNull4((_y = stability.effectiveLengthFactorZ) != null ? _y : stability.kZ),
-      torsional: finiteOrNull4((_z = stability.effectiveLengthFactorTorsional) != null ? _z : stability.kT)
+      y: finiteOrNull5((_x = stability.effectiveLengthFactorY) != null ? _x : stability.kY),
+      z: finiteOrNull5((_y = stability.effectiveLengthFactorZ) != null ? _y : stability.kZ),
+      torsional: finiteOrNull5((_z = stability.effectiveLengthFactorTorsional) != null ? _z : stability.kT)
     },
     restraintSegments: entries(
       (_B = (_A = source.restraintSegments) != null ? _A : stability.restraintSegments) != null ? _B : stability.segments
@@ -39995,8 +43791,8 @@ function normalizeMember(source = {}, analysisResult = {}) {
       var _a2, _b2, _c2, _d2, _e2, _f2, _g2, _h2, _i2, _j2;
       return {
         id: (_a2 = segment.id) != null ? _a2 : `restraint-segment-${index + 1}`,
-        from: finiteOrNull4((_b2 = segment.from) != null ? _b2 : segment.start),
-        to: finiteOrNull4((_c2 = segment.to) != null ? _c2 : segment.end),
+        from: finiteOrNull5((_b2 = segment.from) != null ? _b2 : segment.start),
+        to: finiteOrNull5((_c2 = segment.to) != null ? _c2 : segment.end),
         lateral: (_e2 = (_d2 = segment.lateral) != null ? _d2 : segment.laterallyRestrained) != null ? _e2 : null,
         torsional: (_g2 = (_f2 = segment.torsional) != null ? _f2 : segment.torsionallyRestrained) != null ? _g2 : null,
         warping: (_i2 = (_h2 = segment.warping) != null ? _h2 : segment.warpingRestrained) != null ? _i2 : null,
@@ -40008,8 +43804,8 @@ function normalizeMember(source = {}, analysisResult = {}) {
       var _a2, _b2, _c2, _d2, _e2;
       return {
         id: (_a2 = panel.id) != null ? _a2 : `web-panel-${index + 1}`,
-        from: finiteOrNull4((_b2 = panel.from) != null ? _b2 : panel.start),
-        to: finiteOrNull4((_c2 = panel.to) != null ? _c2 : panel.end),
+        from: finiteOrNull5((_b2 = panel.from) != null ? _b2 : panel.start),
+        to: finiteOrNull5((_c2 = panel.to) != null ? _c2 : panel.end),
         length: firstFinite4(panel.length, Number.isFinite(panel.to) && Number.isFinite(panel.from) ? panel.to - panel.from : null),
         endPost: (_d2 = panel.endPost) != null ? _d2 : "non-rigid",
         stiffeners: entries(panel.stiffeners).map((stiffener) => ({ ...stiffener })),
@@ -42110,7 +45906,7 @@ var DEFAULT_PIER_DESIGN = Object.freeze({
 var DEFAULT_COMBINATION_TYPE = "ULS_FUNDAMENTAL";
 var DEFAULT_LINTEL_BEARING = 0.3;
 var DEFAULT_EQUILIBRIUM_TOLERANCE = 1e-6;
-var EPS5 = 1e-9;
+var EPS7 = 1e-9;
 function resultToJson(value) {
   return typeof (value == null ? void 0 : value.toJSON) === "function" ? value.toJSON() : value;
 }
@@ -42120,7 +45916,7 @@ function normalizeCombinationType3(value = DEFAULT_COMBINATION_TYPE) {
 function findAdjacentOpening(openings, coordinate, side) {
   var _a;
   return (_a = openings.find(
-    (opening) => side === "left" ? Math.abs(opening.x + opening.width - coordinate) <= EPS5 : Math.abs(opening.x - coordinate) <= EPS5
+    (opening) => side === "left" ? Math.abs(opening.x + opening.width - coordinate) <= EPS7 : Math.abs(opening.x - coordinate) <= EPS7
   )) != null ? _a : null;
 }
 function normalizeLineLoadEntryKey(rawKey) {
@@ -42308,7 +46104,7 @@ function openingWallOverlaps(alignment, opening) {
     wall,
     xStart: Math.max(wall.xStart, opening.x),
     xEnd: Math.min(wall.xEnd, opening.x + opening.width)
-  })).filter((item) => item.xEnd - item.xStart > EPS5).map((item) => ({
+  })).filter((item) => item.xEnd - item.xStart > EPS7).map((item) => ({
     ...item,
     width: item.xEnd - item.xStart,
     openingTop: opening.y + opening.height
@@ -42473,7 +46269,7 @@ function analyzeLintels({
     const span = opening.width + 2 * bearingLength;
     const loadTransfer = openingTransferredLoads[opening.id];
     const provider = resolveLintelProvider(lintel);
-    const openingLoadSegments = loadTransfer.overlaps.filter((item) => Math.abs(item.topLoad) > EPS5 || Math.abs(item.masonryBandLoad) > EPS5).map((item, index) => ({
+    const openingLoadSegments = loadTransfer.overlaps.filter((item) => Math.abs(item.topLoad) > EPS7 || Math.abs(item.masonryBandLoad) > EPS7).map((item, index) => ({
       id: `${alignment.id}-${opening.id}-lintel-segment-${index + 1}`,
       loadCaseId: "combined",
       actionType: "COMBINED",
@@ -42635,10 +46431,10 @@ var AlignmentStaticAnalysis = class {
         warnings
       });
       const leftPier = extracted.piers.find(
-        (pier) => Math.abs(pier.x + pier.length - opening.x) <= EPS5
+        (pier) => Math.abs(pier.x + pier.length - opening.x) <= EPS7
       );
       const rightPier = extracted.piers.find(
-        (pier) => Math.abs(pier.x - (opening.x + opening.width)) <= EPS5
+        (pier) => Math.abs(pier.x - (opening.x + opening.width)) <= EPS7
       );
       openingTransferredLoads[opening.id] = {
         ...loadTransfer,
@@ -42660,7 +46456,7 @@ var AlignmentStaticAnalysis = class {
         continue;
       }
       const transferredLoad = loadTransfer.openingBandLoad;
-      if (transferredLoad <= EPS5) {
+      if (transferredLoad <= EPS7) {
         continue;
       }
       if (leftPier && rightPier) {
@@ -42698,9 +46494,9 @@ var AlignmentStaticAnalysis = class {
           );
           return [
             wall.id,
-            width > EPS5 ? width * ((_b3 = (_a3 = wallLineLoads[wall.id]) == null ? void 0 : _a3.value) != null ? _b3 : 0) : 0
+            width > EPS7 ? width * ((_b3 = (_a3 = wallLineLoads[wall.id]) == null ? void 0 : _a3.value) != null ? _b3 : 0) : 0
           ];
-        }).filter(([, value]) => Math.abs(value) > EPS5)
+        }).filter(([, value]) => Math.abs(value) > EPS7)
       );
       const topDistributedLoad = Object.values(tributaryLoadByWall).reduce(
         (sum, value) => sum + value,
@@ -42719,7 +46515,7 @@ var AlignmentStaticAnalysis = class {
             units: resolvedAlignment.units,
             geometry: {
               height: pier.height,
-              length: pier.effectiveLength > EPS5 ? pier.effectiveLength : pier.length,
+              length: pier.effectiveLength > EPS7 ? pier.effectiveLength : pier.length,
               thickness: pier.thickness,
               baseX: pier.x,
               baseY: 0
@@ -42911,15 +46707,13 @@ var AlignmentStaticAnalysis = class {
 
 // src/applications/masonry-wall-openings/analysis/AlignmentSeismicAggregatedAnalysis.js
 var DEFAULT_TOP_ROTATION = "free";
-var DEFAULT_DRIFT_SHEAR = 5e-3;
 var DEFAULT_RING_FRAME_MAX_DISPLACEMENT = 0.03;
 var DEFAULT_RING_FRAME_MAX_STEPS = 60;
 var DEFAULT_RING_FRAME_MAX_ITERATIONS = 60;
 var DEFAULT_RING_FRAME_CONTROL_INCREMENT_RATIO = 1 / 20;
-var KAPPA_TOE_CRUSHING = 1 / 0.85;
 var SHEAR_CORRECTION_FACTOR = 5 / 6;
 var STEEL_RING_FRAME_USER_UNITS = Object.freeze({ force: "kN", length: "m" });
-var EPS6 = 1e-9;
+var EPS8 = 1e-9;
 function normalizeTopRotation(value = DEFAULT_TOP_ROTATION) {
   const normalized = String(value != null ? value : "").trim().toLowerCase();
   const aliases = /* @__PURE__ */ new Map([
@@ -42937,12 +46731,6 @@ function normalizeTopRotation(value = DEFAULT_TOP_ROTATION) {
   }
   return resolved;
 }
-function minPositive(values = []) {
-  const finitePositiveValues = values.filter(
-    (value) => Number.isFinite(value) && value > EPS6
-  );
-  return finitePositiveValues.length > 0 ? Math.min(...finitePositiveValues) : null;
-}
 function maxFinite(values = []) {
   const finiteValues = values.filter(Number.isFinite);
   return finiteValues.length > 0 ? Math.max(...finiteValues) : null;
@@ -42955,17 +46743,17 @@ function interpolateCurve(points = [], displacement) {
   if (!Number.isFinite(displacement) || points.length === 0) {
     return 0;
   }
-  if (displacement <= points[0].displacement + EPS6) {
+  if (displacement <= points[0].displacement + EPS8) {
     return points[0].baseShear;
   }
   for (let index = 0; index < points.length - 1; index += 1) {
     const startPoint = points[index];
     const endPoint = points[index + 1];
-    if (displacement > endPoint.displacement + EPS6) {
+    if (displacement > endPoint.displacement + EPS8) {
       continue;
     }
     const deltaDisplacement = endPoint.displacement - startPoint.displacement;
-    if (deltaDisplacement <= EPS6) {
+    if (deltaDisplacement <= EPS8) {
       return endPoint.baseShear;
     }
     const ratio = (displacement - startPoint.displacement) / deltaDisplacement;
@@ -42980,216 +46768,22 @@ function roundCurvePoints(points = []) {
     baseShear: round3(point2.baseShear)
   }));
 }
-function resolvePierElasticStiffness({
-  pier,
-  elasticModulus,
-  shearModulus: shearModulus2,
-  topRotation,
-  warnings
-}) {
-  var _a, _b;
-  const length = Number.isFinite(pier.effectiveLength) && pier.effectiveLength > EPS6 ? pier.effectiveLength : pier.length;
-  const deformableHeight = Number.isFinite(pier.deformableHeight) && pier.deformableHeight > EPS6 ? pier.deformableHeight : pier.height;
-  const area = length * pier.thickness;
-  const inertia = pier.thickness * length ** 3 / 12;
-  const bendingStiffnessFactor = topRotation === "fixed" ? 12 : 3;
-  const components = [];
-  if (Number.isFinite(elasticModulus) && elasticModulus > EPS6 && Number.isFinite(shearModulus2) && shearModulus2 > EPS6) {
-    const element = new FrameElement2DTimoshenkoRigidOffsets({
-      id: `${pier.id}-elastic-stiffness-probe`,
-      startNode: { id: `${pier.id}-elastic-base`, x: 0, y: 0 },
-      endNode: { id: `${pier.id}-elastic-top`, x: 0, y: pier.height },
-      axialRigidity: elasticModulus * area,
-      flexuralRigidity: elasticModulus * inertia,
-      shearRigidity: shearModulus2 * area,
-      shearCorrectionFactor: SHEAR_CORRECTION_FACTOR,
-      rigidStartOffset: (_a = pier.rigidBottomLength) != null ? _a : 0,
-      rigidEndOffset: (_b = pier.rigidTopLength) != null ? _b : 0
-    });
-    const stiffnessMatrix = element.globalStiffness();
-    const prescribedDofs = /* @__PURE__ */ new Map([
-      [0, 0],
-      [1, 0],
-      [2, 0],
-      [3, 1]
-    ]);
-    if (topRotation === "fixed") {
-      prescribedDofs.set(5, 0);
-    }
-    const unknownDofs = [3, 4, 5].filter((dof) => !prescribedDofs.has(dof));
-    const prescribedEntries = [...prescribedDofs.entries()];
-    const fullDisplacements = new Array(6).fill(0);
-    for (const [dof, value] of prescribedEntries) {
-      fullDisplacements[dof] = value;
-    }
-    if (unknownDofs.length > 0) {
-      const reducedStiffness = unknownDofs.map(
-        (rowDof) => unknownDofs.map((columnDof) => stiffnessMatrix[rowDof][columnDof])
-      );
-      const reducedLoad = unknownDofs.map(
-        (rowDof) => -prescribedEntries.reduce(
-          (sum, [columnDof, value]) => sum + stiffnessMatrix[rowDof][columnDof] * value,
-          0
-        )
-      );
-      const solution = new DenseLinearSolver().solve(
-        reducedStiffness,
-        reducedLoad
-      );
-      unknownDofs.forEach((dof, index) => {
-        fullDisplacements[dof] = solution[index];
-      });
-    }
-    const forceVector = stiffnessMatrix.map(
-      (row) => row.reduce(
-        (sum, value, index) => sum + value * fullDisplacements[index],
-        0
-      )
-    );
-    const stiffness = Math.abs(forceVector[3]);
-    if (Number.isFinite(stiffness) && stiffness > EPS6) {
-      return stiffness;
-    }
-    warnings.push(
-      `Pier ${pier.id} could not resolve a positive condensed FEM elastic stiffness; the lateral stiffness uses the closed-form available components only.`
-    );
-  }
-  if (Number.isFinite(elasticModulus) && elasticModulus > EPS6) {
-    const bendingStiffness = bendingStiffnessFactor * elasticModulus * inertia / deformableHeight ** 3;
-    if (Number.isFinite(bendingStiffness) && bendingStiffness > EPS6) {
-      components.push(bendingStiffness);
-    }
-  } else {
-    warnings.push(
-      `Pier ${pier.id} could not resolve a finite masonry elastic modulus; the lateral stiffness uses the available components only.`
-    );
-  }
-  if (Number.isFinite(shearModulus2) && shearModulus2 > EPS6) {
-    const shearStiffness = SHEAR_CORRECTION_FACTOR * shearModulus2 * area / deformableHeight;
-    if (Number.isFinite(shearStiffness) && shearStiffness > EPS6) {
-      components.push(shearStiffness);
-    }
-  } else {
-    warnings.push(
-      `Pier ${pier.id} could not resolve a finite masonry shear modulus; the lateral stiffness uses the available components only.`
-    );
-  }
-  if (components.length === 0) {
-    return null;
-  }
-  const compliance = components.reduce((sum, stiffness) => sum + 1 / stiffness, 0);
-  return compliance > EPS6 ? 1 / compliance : null;
-}
-function resolveFlexuralCapacity({
-  axialForce,
-  compressiveStrength,
-  thickness,
-  length,
-  mechanismHeight
-}) {
-  if (!Number.isFinite(axialForce) || axialForce <= EPS6 || !Number.isFinite(compressiveStrength) || compressiveStrength <= EPS6) {
-    return {
-      V: null,
-      MRd: null,
-      compressionRatio: null
-    };
-  }
-  const compressionRatio = axialForce / (compressiveStrength * thickness * length);
-  const reduction = 1 - KAPPA_TOE_CRUSHING * compressionRatio;
-  const V = axialForce / 2 * (length / mechanismHeight) * Math.max(reduction, 0);
-  const MRd = V * mechanismHeight;
-  return {
-    V: V > EPS6 ? V : 0,
-    MRd: MRd > EPS6 ? MRd : 0,
-    compressionRatio
-  };
-}
-function resolveBedJointSlidingCapacity({
-  cohesion,
-  axialForce,
-  thickness,
-  length,
-  mechanismHeight
-}) {
-  if (!Number.isFinite(cohesion) || cohesion <= EPS6) {
-    return {
-      V: null,
-      compressedLength: null,
-      eccentricity: null
-    };
-  }
-  if (!Number.isFinite(axialForce) || axialForce <= EPS6) {
-    return {
-      V: cohesion * thickness * length,
-      compressedLength: length,
-      eccentricity: 0
-    };
-  }
-  const numerator = cohesion * thickness * length + 0.4 * axialForce;
-  const denominator = 1 + 2 * cohesion * thickness * mechanismHeight / axialForce;
-  const V = numerator / denominator;
-  const eccentricity = V * mechanismHeight / axialForce;
-  const compressedLength = Math.max(0, Math.min(length, length - 2 * eccentricity));
-  return {
-    V: V > EPS6 ? V : 0,
-    compressedLength,
-    eccentricity
-  };
-}
-function resolveDiagonalCrackingCapacity({
-  tensileStrength,
-  axialForce,
-  thickness,
-  length,
-  height
-}) {
-  if (!Number.isFinite(tensileStrength) || tensileStrength <= EPS6) {
-    return {
-      V: null,
-      aspectFactor: null
-    };
-  }
-  const aspectFactor = Math.min(Math.max(height / length, 1), 1.5);
-  const baseTerm = tensileStrength * thickness * length;
-  const amplification = Math.max(1 + axialForce / baseTerm, 0);
-  return {
-    V: baseTerm / aspectFactor * Math.sqrt(amplification),
-    aspectFactor
-  };
-}
-function resolveFlexuralDriftCapacity({
-  axialForce,
-  compressiveStrength,
-  thickness,
-  length
-}) {
-  if (!Number.isFinite(axialForce) || axialForce <= EPS6 || !Number.isFinite(compressiveStrength) || compressiveStrength <= EPS6) {
-    return null;
-  }
-  return Math.max(
-    0,
-    Math.min(
-      0.0125 * (1 - axialForce / (compressiveStrength * thickness * length)),
-      0.01
-    )
-  );
-}
 function buildPierContribution({
   alignment,
   pier,
   staticPier,
   topRotation,
-  shearDriftCapacity = DEFAULT_DRIFT_SHEAR,
+  crackedStiffnessFactor,
   warnings
 }) {
-  var _a, _b, _c, _d;
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x;
   if (!staticPier) {
     warnings.push(
       `Pier ${pier.id} was skipped in the seismic aggregation because no seismic axial-force state was available.`
     );
     return null;
   }
-  const length = Number.isFinite(pier.effectiveLength) && pier.effectiveLength > EPS6 ? pier.effectiveLength : pier.length;
+  const length = Number.isFinite(pier.effectiveLength) && pier.effectiveLength > EPS8 ? pier.effectiveLength : pier.length;
   const height = pier.height;
   const mechanismHeight = topRotation === "fixed" ? height / 2 : height;
   const baseAxialForce = Math.max(0, (_a = staticPier.baseReaction) != null ? _a : 0);
@@ -43197,22 +46791,37 @@ function buildPierContribution({
     0,
     ((_b = staticPier.axialForce) != null ? _b : 0) + ((_c = staticPier.selfWeight) != null ? _c : 0) / 2
   );
-  const compressiveStrength = resolveMasonryMaterialProperty({
-    material: pier.material,
-    aliases: ["fm"],
-    targetUnits: alignment.units
-  });
-  const bedJointCohesion = resolveMasonryMaterialProperty({
-    material: pier.material,
-    aliases: ["fv0"],
-    targetUnits: alignment.units
-  });
-  const shearStrength = resolveMasonryMaterialProperty({
-    material: pier.material,
-    aliases: ["tau0"],
-    targetUnits: alignment.units
-  });
-  const tensileStrength = Number.isFinite(shearStrength) && shearStrength > EPS6 ? 1.5 * shearStrength : null;
+  const confidenceFactor = Number.isFinite((_d = pier.material) == null ? void 0 : _d.confidenceFactor) && pier.material.confidenceFactor > EPS8 ? pier.material.confidenceFactor : 1;
+  const resolveStrength = (aliases) => {
+    const value = resolveMasonryMaterialProperty({
+      material: pier.material,
+      aliases,
+      targetUnits: alignment.units
+    });
+    return Number.isFinite(value) ? value / confidenceFactor : null;
+  };
+  const compressiveStrength = resolveStrength(["fm"]);
+  const bedJointCohesion = resolveStrength(["fv0"]);
+  const shearStrength = resolveStrength(["tau0"]);
+  const blockCompressiveStrength = resolveStrength([
+    "fb",
+    "blockCompressiveStrength"
+  ]);
+  const explicitBlockTensileStrength = resolveStrength([
+    "fbt",
+    "blockTensileStrength"
+  ]);
+  const blockTensileStrength = explicitBlockTensileStrength != null ? explicitBlockTensileStrength : Number.isFinite(blockCompressiveStrength) ? 0.1 * blockCompressiveStrength : null;
+  const explicitShearStrengthLimit = resolveStrength([
+    "fvlim",
+    "shearStrengthLimit"
+  ]);
+  const shearStrengthLimit = explicitShearStrengthLimit != null ? explicitShearStrengthLimit : Number.isFinite(blockCompressiveStrength) ? 0.065 * blockCompressiveStrength / 0.7 : null;
+  const masonryTexture = String(
+    (_i = (_h = (_f = (_e = pier.material) == null ? void 0 : _e.metadata) == null ? void 0 : _f.masonryTexture) != null ? _h : (_g = pier.material) == null ? void 0 : _g.masonryTexture) != null ? _i : "irregular"
+  ).trim().toLowerCase();
+  const interlockingCoefficient = (_n = (_m = (_j = pier.material) == null ? void 0 : _j.interlockingCoefficient) != null ? _m : (_l = (_k = pier.material) == null ? void 0 : _k.metadata) == null ? void 0 : _l.interlockingCoefficient) != null ? _n : null;
+  const localFrictionCoefficient = (_s = (_r = (_o = pier.material) == null ? void 0 : _o.localFrictionCoefficient) != null ? _r : (_q = (_p = pier.material) == null ? void 0 : _p.metadata) == null ? void 0 : _q.localFrictionCoefficient) != null ? _s : 0.577;
   const elasticModulus = resolveMasonryMaterialProperty({
     material: pier.material,
     aliases: ["E", "elasticModulus"],
@@ -43223,84 +46832,103 @@ function buildPierContribution({
     aliases: ["G", "shearModulus"],
     targetUnits: alignment.units
   });
-  if (!Number.isFinite(compressiveStrength) || compressiveStrength <= EPS6) {
+  if (!Number.isFinite(compressiveStrength) || compressiveStrength <= EPS8) {
     warnings.push(
       `Pier ${pier.id} was skipped in the seismic aggregation because no finite masonry compressive strength fm could be resolved.`
     );
     return null;
   }
-  const flexural = resolveFlexuralCapacity({
-    axialForce: baseAxialForce,
+  const flexural = calculateNTC2018MasonryPierFlexuralCapacity({
+    axialCompression: baseAxialForce,
     compressiveStrength,
     thickness: pier.thickness,
     length,
-    mechanismHeight
+    shearSpan: mechanismHeight
   });
-  const bedJointSliding = resolveBedJointSlidingCapacity({
+  const bedJointSliding = calculateNTC2018MasonryPierSlidingCapacity({
     cohesion: bedJointCohesion,
-    axialForce: midHeightAxialForce,
+    shearStrengthLimit,
+    axialCompression: midHeightAxialForce,
     thickness: pier.thickness,
     length,
-    mechanismHeight
+    shearSpan: mechanismHeight
   });
-  const diagonalCracking = resolveDiagonalCrackingCapacity({
-    tensileStrength,
-    axialForce: midHeightAxialForce,
+  const diagonalCracking = masonryTexture === "regular" ? calculateNTC2018MasonryPierRegularDiagonalCapacity({
+    axialCompression: midHeightAxialForce,
+    cohesion: bedJointCohesion,
+    interlockingCoefficient,
+    localFrictionCoefficient,
+    blockTensileStrength,
+    thickness: pier.thickness,
+    length,
+    height
+  }) : calculateNTC2018MasonryPierIrregularDiagonalCapacity({
+    axialCompression: midHeightAxialForce,
+    referenceShearStrength: shearStrength,
     thickness: pier.thickness,
     length,
     height
   });
-  const governingShearCapacity = minPositive([
-    bedJointSliding.V,
-    diagonalCracking.V
+  for (const capacity of [flexural, bedJointSliding, diagonalCracking]) {
+    if (!capacity.available) {
+      warnings.push(
+        `Pier ${pier.id} could not evaluate ${capacity.mechanism} with the strict NTC model because ${capacity.missing.join(", ")} is missing. The alignment envelope uses only the available mechanisms.`
+      );
+    }
+  }
+  const governing = selectNTC2018MasonryPierGoverningCapacity([
+    flexural,
+    bedJointSliding,
+    diagonalCracking
   ]);
-  const governingForce = minPositive([flexural.V, governingShearCapacity]);
-  if (!Number.isFinite(governingForce) || governingForce <= EPS6) {
+  const governingForce = (_t = governing == null ? void 0 : governing.capacity) != null ? _t : null;
+  if (!Number.isFinite(governingForce) || governingForce <= EPS8) {
     warnings.push(
       `Pier ${pier.id} produced no positive in-plane seismic resistance and was excluded from the aggregated capacity curve.`
     );
     return null;
   }
-  const governingFamily = Number.isFinite(flexural.V) && flexural.V > EPS6 && flexural.V <= (governingShearCapacity != null ? governingShearCapacity : Number.POSITIVE_INFINITY) + EPS6 ? "flexural" : "shear";
-  const governingMode = governingFamily === "flexural" ? "rocking-toe-crushing" : bedJointSliding.V != null && bedJointSliding.V <= ((_d = diagonalCracking.V) != null ? _d : Number.POSITIVE_INFINITY) + EPS6 ? "bed-joint-sliding" : "diagonal-cracking";
-  const driftCapacity = governingFamily === "flexural" ? resolveFlexuralDriftCapacity({
-    axialForce: baseAxialForce,
-    compressiveStrength,
-    thickness: pier.thickness,
-    length
-  }) : shearDriftCapacity;
-  if (!Number.isFinite(driftCapacity) || driftCapacity <= EPS6) {
+  const governingFamily = governing.mechanism === "flexural" ? "flexural" : "shear";
+  const governingMode = governing.mechanism === "flexural" ? "rocking-toe-crushing" : governing.mechanism.startsWith("diagonal-cracking") ? "diagonal-cracking" : governing.mechanism;
+  const deformation = calculateNTC2018MasonryPierUltimateDisplacement({
+    height,
+    mechanism: governing.mechanism,
+    scope: "existing",
+    modernPerforatedBlocks: Boolean(
+      (_x = (_v = (_u = pier.material) == null ? void 0 : _u.metadata) == null ? void 0 : _v.modernPerforatedBlocks) != null ? _x : (_w = pier.material) == null ? void 0 : _w.modernPerforatedBlocks
+    )
+  });
+  const driftCapacity = deformation.driftCapacity;
+  if (!Number.isFinite(driftCapacity) || driftCapacity <= EPS8) {
     warnings.push(
       `Pier ${pier.id} produced a non-positive drift capacity and was excluded from the aggregated capacity curve.`
     );
     return null;
   }
-  const ultimateDisplacement = driftCapacity * height;
-  let stiffness = resolvePierElasticStiffness({
-    pier,
+  const ultimateDisplacement = deformation.ultimateDisplacement;
+  if (!Number.isFinite(elasticModulus) || elasticModulus <= EPS8 || !Number.isFinite(shearModulus2) || shearModulus2 <= EPS8) {
+    warnings.push(
+      `Pier ${pier.id} was skipped because the strict NTC stiffness requires finite positive E and G; no force/displacement fallback was introduced.`
+    );
+    return null;
+  }
+  const stiffnessResult = calculateNTC2018MasonryPierElasticStiffness({
     elasticModulus,
     shearModulus: shearModulus2,
-    topRotation,
-    warnings
+    length,
+    thickness: pier.thickness,
+    deformableHeight: Number.isFinite(pier.deformableHeight) && pier.deformableHeight > EPS8 ? pier.deformableHeight : height,
+    boundaryCondition: topRotation === "fixed" ? "fixed-fixed" : "cantilever",
+    shearCorrectionFactor: SHEAR_CORRECTION_FACTOR,
+    crackedStiffnessFactor
   });
-  if (!Number.isFinite(stiffness) || stiffness <= EPS6) {
-    const fallbackYieldDisplacement = Math.max(
-      Math.min(0.2 * ultimateDisplacement, 1e-3 * height),
-      0.05 * ultimateDisplacement
-    );
-    stiffness = governingForce / fallbackYieldDisplacement;
+  const stiffness = stiffnessResult.totalStiffness;
+  const yieldDisplacement = governingForce / stiffness;
+  if (yieldDisplacement >= ultimateDisplacement) {
     warnings.push(
-      `Pier ${pier.id} uses a fallback elastic stiffness because no finite E/G combination was available for the Timoshenko estimate.`
+      `Pier ${pier.id} was skipped because its elastic yield displacement is not below the normative ultimate displacement; no artificial stiffness correction was introduced.`
     );
-  }
-  const maximumYieldDisplacement = 0.95 * ultimateDisplacement;
-  let yieldDisplacement = governingForce / stiffness;
-  if (yieldDisplacement >= maximumYieldDisplacement) {
-    yieldDisplacement = maximumYieldDisplacement;
-    stiffness = governingForce / yieldDisplacement;
-    warnings.push(
-      `Pier ${pier.id} reached a yield displacement beyond its drift capacity; the elastic branch was capped at 95% of du to keep a consistent first-release contribution curve.`
-    );
+    return null;
   }
   const curvePoints = [
     {
@@ -43342,19 +46970,24 @@ function buildPierContribution({
     },
     mechanics: {
       flexural: {
-        V: flexural.V,
-        MRd: flexural.MRd,
+        V: flexural.capacity,
+        MRd: flexural.momentCapacity,
         compressionRatio: flexural.compressionRatio
       },
       bedJointSliding: {
-        V: bedJointSliding.V,
+        V: bedJointSliding.capacity,
         compressedLength: bedJointSliding.compressedLength,
-        eccentricity: bedJointSliding.eccentricity
+        eccentricity: bedJointSliding.eccentricity,
+        shearStrengthLimit: bedJointSliding.shearStrengthLimit,
+        governingLimit: bedJointSliding.governingLimit
       },
       diagonalCracking: {
-        V: diagonalCracking.V,
-        aspectFactor: diagonalCracking.aspectFactor
-      }
+        V: diagonalCracking.capacity,
+        aspectFactor: diagonalCracking.aspectFactor,
+        model: diagonalCracking.mechanism
+      },
+      confidenceFactor,
+      stiffness: stiffnessResult
     },
     driftCapacity
   };
@@ -43558,14 +47191,14 @@ var AlignmentSeismicAggregatedAnalysis = class {
     }
     const warnings = [];
     const assumptions = [
-      "The first seismic release follows the official minimum method described in todo.md: the global capacity curve is the sum of the individual pier and ring-frame contributions at a common top-displacement axis.",
+      "The global capacity curve is the sum of the individual pier and ring-frame contributions at a common top-displacement axis.",
       "Pier axial forces are taken from the static vertical analysis in seismic combination: base reaction for flexural capacity and drift, mid-height compression for shear capacity.",
-      "Each masonry pier is represented by an elastic-perfectly-plastic contribution up to its drift-based ultimate displacement, followed by a drop to zero resistance."
+      "Each masonry pier uses the common NTC 2018 / Circular 2019 elastic-perfectly-plastic envelope, with 50% cracked flexural and shear stiffness and no force/displacement fallback."
     ];
     const topRotation = normalizeTopRotation(
       (_a = options.topRotation) != null ? _a : DEFAULT_TOP_ROTATION
     );
-    const shearDriftCapacity = Number.isFinite(options.shearDriftCapacity) && options.shearDriftCapacity > EPS6 ? options.shearDriftCapacity : DEFAULT_DRIFT_SHEAR;
+    const crackedStiffnessFactor = options.crackedStiffnessFactor == null ? 0.5 : Number(options.crackedStiffnessFactor);
     const mechanicalState = resolvedAlignmentState != null ? resolvedAlignmentState : resolveAlignmentMechanicalState({
       alignment,
       stage,
@@ -43603,7 +47236,7 @@ var AlignmentSeismicAggregatedAnalysis = class {
         pier,
         staticPier: staticPiersById[pier.id],
         topRotation,
-        shearDriftCapacity,
+        crackedStiffnessFactor,
         warnings
       })
     ).filter(Boolean);
@@ -43810,7 +47443,7 @@ var AlignmentSeismicAggregatedAnalysis = class {
 // src/applications/masonry-wall-openings/analysis/MasonryEquivalentFrameBuilder.js
 var FEM_UNITS9 = Object.freeze({ force: "kN", length: "m" });
 var SHEAR_CORRECTION_FACTOR2 = 5 / 6;
-var EPS7 = 1e-9;
+var EPS9 = 1e-9;
 function normalizeTopRotation2(value = "free") {
   const normalized = String(value != null ? value : "").trim().toLowerCase();
   const aliases = /* @__PURE__ */ new Map([
@@ -43839,7 +47472,7 @@ function serializeFrame2(nodes, elements, supports, constraints = [], loads = []
 }
 function resolvePierCenterX(pier) {
   var _a, _b;
-  const effectiveLength = Number.isFinite(pier.effectiveLength) && pier.effectiveLength > EPS7 ? pier.effectiveLength : pier.length;
+  const effectiveLength = Number.isFinite(pier.effectiveLength) && pier.effectiveLength > EPS9 ? pier.effectiveLength : pier.length;
   const leftReduction = (_b = (_a = pier.metadata) == null ? void 0 : _a.leftReduction) != null ? _b : 0;
   return pier.x + leftReduction + effectiveLength / 2;
 }
@@ -43851,7 +47484,7 @@ function average2(values = []) {
   return finiteValues.reduce((sum, value) => sum + value, 0) / finiteValues.length;
 }
 function sameCoordinate2(left, right) {
-  return Math.abs(left - right) <= EPS7;
+  return Math.abs(left - right) <= EPS9;
 }
 function createDiaphragmControlNode({ alignment, topNodes = [] }) {
   return new Node({
@@ -43866,7 +47499,7 @@ function createDiaphragmControlNode({ alignment, topNodes = [] }) {
   });
 }
 function buildPierFrameMember({ alignment, pier, topRotation }) {
-  const effectiveLength = Number.isFinite(pier.effectiveLength) && pier.effectiveLength > EPS7 ? pier.effectiveLength : pier.length;
+  const effectiveLength = Number.isFinite(pier.effectiveLength) && pier.effectiveLength > EPS9 ? pier.effectiveLength : pier.length;
   const pierModel = new MasonryPierModel({
     id: `${pier.id}-fem`,
     units: alignment.units,
@@ -44001,13 +47634,13 @@ function resolveSpandrelRigidities({ alignment, spandrel, warnings }) {
   });
   const area = spandrel.height * spandrel.thickness;
   const inertia = spandrel.thickness * spandrel.height ** 3 / 12;
-  if (!Number.isFinite(elasticModulus) || elasticModulus <= EPS7) {
+  if (!Number.isFinite(elasticModulus) || elasticModulus <= EPS9) {
     warnings.push(
       `Spandrel ${spandrel.id} could not resolve a finite masonry elastic modulus and was skipped in the equivalent-frame assembly.`
     );
     return null;
   }
-  if (!Number.isFinite(shearModulus2) || shearModulus2 <= EPS7) {
+  if (!Number.isFinite(shearModulus2) || shearModulus2 <= EPS9) {
     warnings.push(
       `Spandrel ${spandrel.id} could not resolve a finite masonry shear modulus and was skipped in the equivalent-frame assembly.`
     );
@@ -44077,7 +47710,7 @@ function buildSpandrelFrameMember({ alignment, spandrel, pierFrames, warnings })
     y: toFem.length(deformableAxisY)
   };
   const deformableLength = referenceEndNode.x - referenceStartNode.x;
-  if (physicalLength <= EPS7 || deformableLength <= EPS7 || Math.abs(deformableLength - spandrel.deformableLength) > 1e-6) {
+  if (physicalLength <= EPS9 || deformableLength <= EPS9 || Math.abs(deformableLength - spandrel.deformableLength) > 1e-6) {
     warnings.push(
       `Spandrel ${spandrel.id} could not be assembled with a positive deformable length matching the underlying opening and was skipped.`
     );
@@ -44503,7 +48136,7 @@ var MasonryEquivalentFrameBuilder = class {
 
 // src/applications/masonry-wall-openings/analysis/MasonryEquivalentFramePushoverInternalForces.js
 var FEM_UNITS10 = Object.freeze({ force: "kN", length: "m" });
-var EPS8 = 1e-9;
+var EPS10 = 1e-9;
 var NUMERICAL_RESIDUAL_STIFFNESS_RATIO = 1e-9;
 var PLASTIC_GENERALIZED_DOF_DEFINITIONS = Object.freeze({
   start: Object.freeze({
@@ -44540,10 +48173,10 @@ var PLASTIC_GENERALIZED_DOF_DEFINITIONS = Object.freeze({
     }
   })
 });
-function transpose4(matrix) {
+function transpose5(matrix) {
   return matrix[0].map((_, column) => matrix.map((row) => row[column]));
 }
-function multiplyMatrices4(left, right) {
+function multiplyMatrices5(left, right) {
   if (left.length === 0 || right.length === 0) {
     return createZeroMatrix(left.length);
   }
@@ -44553,12 +48186,12 @@ function multiplyMatrices4(left, right) {
     )
   );
 }
-function multiplyMatrixVector5(matrix, vector) {
+function multiplyMatrixVector6(matrix, vector) {
   return matrix.map(
     (row) => row.reduce((sum, value, index) => sum + value * vector[index], 0)
   );
 }
-function subtractMatrices2(left, right) {
+function subtractMatrices3(left, right) {
   return left.map(
     (row, rowIndex) => row.map((value, columnIndex) => value - right[rowIndex][columnIndex])
   );
@@ -44566,10 +48199,10 @@ function subtractMatrices2(left, right) {
 function scalarMatrix(scalar, matrix) {
   return matrix.map((row) => row.map((value) => scalar * value));
 }
-function addVectors4(left, right) {
+function addVectors5(left, right) {
   return left.map((value, index) => value + right[index]);
 }
-function subtractVectors5(left, right) {
+function subtractVectors6(left, right) {
   return left.map((value, index) => value - right[index]);
 }
 function invertDenseMatrix(matrix) {
@@ -44661,9 +48294,9 @@ function activationDelta(previousState, nextState) {
   }
   return events;
 }
-function minPositive2(values = []) {
+function minPositive(values = []) {
   const finitePositiveValues = values.filter(
-    (value) => Number.isFinite(value) && value > EPS8
+    (value) => Number.isFinite(value) && value > EPS10
   );
   return finitePositiveValues.length > 0 ? Math.min(...finitePositiveValues) : null;
 }
@@ -44674,7 +48307,7 @@ function activePositions(state = null, capacitiesByPosition = {}) {
   return ["start", "end", "shear"].filter(
     (position) => {
       var _a;
-      return (state == null ? void 0 : state[position]) != null && Number.isFinite((_a = capacitiesByPosition[position]) == null ? void 0 : _a.value) && capacitiesByPosition[position].value > EPS8;
+      return (state == null ? void 0 : state[position]) != null && Number.isFinite((_a = capacitiesByPosition[position]) == null ? void 0 : _a.value) && capacitiesByPosition[position].value > EPS10;
     }
   );
 }
@@ -44683,7 +48316,7 @@ function responseForState(element, localDisplacements, state, capacitiesByPositi
   const positions = activePositions(state, capacitiesByPosition);
   if (positions.length === 0) {
     return {
-      localEndForces: multiplyMatrixVector5(localElasticStiffness, localDisplacements),
+      localEndForces: multiplyMatrixVector6(localElasticStiffness, localDisplacements),
       tangentLocalStiffness: localElasticStiffness,
       plasticGeneralizedDisplacements: []
     };
@@ -44695,12 +48328,12 @@ function responseForState(element, localDisplacements, state, capacitiesByPositi
       h[rowIndex][columnIndex] = vector[rowIndex];
     }
   });
-  const ht = transpose4(h);
-  const kaa = multiplyMatrices4(ht, multiplyMatrices4(localElasticStiffness, h));
+  const ht = transpose5(h);
+  const kaa = multiplyMatrices5(ht, multiplyMatrices5(localElasticStiffness, h));
   const inverseKaa = invertDenseMatrix(kaa);
-  const elasticGeneralizedForces = multiplyMatrixVector5(
+  const elasticGeneralizedForces = multiplyMatrixVector6(
     ht,
-    multiplyMatrixVector5(localElasticStiffness, localDisplacements)
+    multiplyMatrixVector6(localElasticStiffness, localDisplacements)
   );
   const prescribedGeneralizedForces = positions.map(
     (position) => PLASTIC_GENERALIZED_DOF_DEFINITIONS[position].prescribedGeneralizedForce(
@@ -44708,23 +48341,23 @@ function responseForState(element, localDisplacements, state, capacitiesByPositi
       capacitiesByPosition[position].value
     )
   );
-  const plasticGeneralizedDisplacements = multiplyMatrixVector5(
+  const plasticGeneralizedDisplacements = multiplyMatrixVector6(
     inverseKaa,
-    subtractVectors5(prescribedGeneralizedForces, elasticGeneralizedForces)
+    subtractVectors6(prescribedGeneralizedForces, elasticGeneralizedForces)
   );
-  const localElasticDisplacements = addVectors4(
+  const localElasticDisplacements = addVectors5(
     localDisplacements,
-    multiplyMatrixVector5(h, plasticGeneralizedDisplacements)
+    multiplyMatrixVector6(h, plasticGeneralizedDisplacements)
   );
-  const localEndForces = multiplyMatrixVector5(
+  const localEndForces = multiplyMatrixVector6(
     localElasticStiffness,
     localElasticDisplacements
   );
-  const tangentLocalStiffness = subtractMatrices2(
+  const tangentLocalStiffness = subtractMatrices3(
     localElasticStiffness,
-    multiplyMatrices4(
-      multiplyMatrices4(localElasticStiffness, h),
-      multiplyMatrices4(inverseKaa, multiplyMatrices4(ht, localElasticStiffness))
+    multiplyMatrices5(
+      multiplyMatrices5(localElasticStiffness, h),
+      multiplyMatrices5(inverseKaa, multiplyMatrices5(ht, localElasticStiffness))
     )
   );
   return {
@@ -44741,7 +48374,7 @@ function activateMissingMechanisms(localEndForces, state, capacitiesByPosition, 
       continue;
     }
     const capacity = (_a = capacitiesByPosition[position]) == null ? void 0 : _a.value;
-    if (!Number.isFinite(capacity) || capacity <= EPS8) {
+    if (!Number.isFinite(capacity) || capacity <= EPS10) {
       continue;
     }
     const definition = PLASTIC_GENERALIZED_DOF_DEFINITIONS[position];
@@ -44776,12 +48409,12 @@ function baseShearFromGlobalEndForces(frame, element, globalEndForces) {
 }
 function assembleElementResponse({ frame, element, localEndForces, tangentLocalStiffness }) {
   const transformation = element.transformationMatrix();
-  const tangentGlobalStiffness = multiplyMatrices4(
-    transpose4(transformation),
-    multiplyMatrices4(tangentLocalStiffness, transformation)
+  const tangentGlobalStiffness = multiplyMatrices5(
+    transpose5(transformation),
+    multiplyMatrices5(tangentLocalStiffness, transformation)
   );
-  const globalEndForces = multiplyMatrixVector5(
-    transpose4(transformation),
+  const globalEndForces = multiplyMatrixVector6(
+    transpose5(transformation),
     localEndForces
   );
   const dofIds = element.getDofIds(frame.dofRegistry);
@@ -44810,7 +48443,7 @@ function createMasonryEquivalentFrameContributorDefinition({
   var _a, _b, _c, _d, _e, _f;
   const toFem = createUnitResolver(alignment.units, FEM_UNITS10);
   const flexuralCapacity = (_b = (_a = pier.mechanics) == null ? void 0 : _a.flexural) == null ? void 0 : _b.MRd;
-  const shearCapacity = minPositive2([
+  const shearCapacity = minPositive([
     (_d = (_c = pier.mechanics) == null ? void 0 : _c.bedJointSliding) == null ? void 0 : _d.V,
     (_f = (_e = pier.mechanics) == null ? void 0 : _e.diagonalCracking) == null ? void 0 : _f.V
   ]);
@@ -44825,15 +48458,15 @@ function createMasonryEquivalentFrameContributorDefinition({
       toFem.length(pier.ultimateDisplacement)
     ),
     capacitiesByPosition: {
-      start: Number.isFinite(flexuralCapacity) && flexuralCapacity > EPS8 ? {
+      start: Number.isFinite(flexuralCapacity) && flexuralCapacity > EPS10 ? {
         kind: "moment",
         value: toFem.moment(flexuralCapacity)
       } : null,
-      end: Number.isFinite(endFlexuralCapacity) && endFlexuralCapacity > EPS8 ? {
+      end: Number.isFinite(endFlexuralCapacity) && endFlexuralCapacity > EPS10 ? {
         kind: "moment",
         value: toFem.moment(endFlexuralCapacity)
       } : null,
-      shear: Number.isFinite(shearCapacity) && shearCapacity > EPS8 ? {
+      shear: Number.isFinite(shearCapacity) && shearCapacity > EPS10 ? {
         kind: "force",
         value: toFem.force(shearCapacity)
       } : null
@@ -44863,7 +48496,7 @@ function evaluateContributor({
       NUMERICAL_RESIDUAL_STIFFNESS_RATIO,
       element.localStiffness()
     );
-    const residualLocalEndForces = multiplyMatrixVector5(
+    const residualLocalEndForces = multiplyMatrixVector6(
       residualLocalStiffness,
       localDisplacements2
     );
@@ -44985,7 +48618,7 @@ function evaluateElasticElement({ frame, element, displacements }) {
     frame.dofRegistry
   );
   const localStiffness = element.localStiffness();
-  const localEndForces = multiplyMatrixVector5(localStiffness, localDisplacements);
+  const localEndForces = multiplyMatrixVector6(localStiffness, localDisplacements);
   const assembled = assembleElementResponse({
     frame,
     element,
@@ -45298,7 +48931,7 @@ var DEFAULT_SAMPLE_COUNT = 6;
 var DEFAULT_TOLERANCE3 = 1e-6;
 var DEFAULT_MAX_ITERATIONS2 = 60;
 var DEFAULT_YIELD_TOLERANCE2 = 1e-9;
-var EPS9 = 1e-9;
+var EPS11 = 1e-9;
 function normalizeTopRotation3(value = DEFAULT_TOP_ROTATION2) {
   const normalized = String(value != null ? value : "").trim().toLowerCase();
   const aliases = /* @__PURE__ */ new Map([
@@ -45337,17 +48970,17 @@ function interpolateCurve2(points = [], displacement) {
   if (!Number.isFinite(displacement) || points.length === 0) {
     return 0;
   }
-  if (displacement <= points[0].displacement + EPS9) {
+  if (displacement <= points[0].displacement + EPS11) {
     return points[0].baseShear;
   }
   for (let index = 0; index < points.length - 1; index += 1) {
     const startPoint = points[index];
     const endPoint = points[index + 1];
-    if (displacement > endPoint.displacement + EPS9) {
+    if (displacement > endPoint.displacement + EPS11) {
       continue;
     }
     const deltaDisplacement = endPoint.displacement - startPoint.displacement;
-    if (deltaDisplacement <= EPS9) {
+    if (deltaDisplacement <= EPS11) {
       return endPoint.baseShear;
     }
     const ratio = (displacement - startPoint.displacement) / deltaDisplacement;
@@ -45357,7 +48990,7 @@ function interpolateCurve2(points = [], displacement) {
 }
 function metricDelta(id, label, aggregatedValue, femValue) {
   const delta = Number.isFinite(aggregatedValue) && Number.isFinite(femValue) ? femValue - aggregatedValue : null;
-  const variationPercent = Number.isFinite(delta) && Number.isFinite(aggregatedValue) && Math.abs(aggregatedValue) > EPS9 ? delta / aggregatedValue * 100 : null;
+  const variationPercent = Number.isFinite(delta) && Number.isFinite(aggregatedValue) && Math.abs(aggregatedValue) > EPS11 ? delta / aggregatedValue * 100 : null;
   return {
     id,
     label,
@@ -45390,7 +49023,7 @@ function sampleCurveComparison({
     const aggregatedBaseShear = interpolateCurve2(aggregatedCurve, displacement);
     const femBaseShear = interpolateCurve2(femCurve, displacement);
     const delta = femBaseShear - aggregatedBaseShear;
-    const variationPercent = Math.abs(aggregatedBaseShear) > EPS9 ? delta / aggregatedBaseShear * 100 : null;
+    const variationPercent = Math.abs(aggregatedBaseShear) > EPS11 ? delta / aggregatedBaseShear * 100 : null;
     return {
       id: `sample-${index + 1}`,
       displacement: round3(displacement),
@@ -45734,7 +49367,7 @@ var DEFAULT_TOLERANCE4 = 1e-6;
 var DEFAULT_MAX_ITERATIONS3 = 60;
 var DEFAULT_YIELD_TOLERANCE3 = 1e-9;
 var DIRECT_MASONRY_MECHANISM_MODEL = "equivalent-frame-hinges-and-shear-plateau";
-var EPS10 = 1e-9;
+var EPS12 = 1e-9;
 function normalizeTopRotation4(value = DEFAULT_TOP_ROTATION3) {
   const normalized = String(value != null ? value : "").trim().toLowerCase();
   const aliases = /* @__PURE__ */ new Map([
@@ -45779,17 +49412,17 @@ function interpolateCurve3(points = [], displacement) {
   if (!Number.isFinite(displacement) || points.length === 0) {
     return 0;
   }
-  if (displacement <= points[0].displacement + EPS10) {
+  if (displacement <= points[0].displacement + EPS12) {
     return points[0].baseShear;
   }
   for (let index = 0; index < points.length - 1; index += 1) {
     const startPoint = points[index];
     const endPoint = points[index + 1];
-    if (displacement > endPoint.displacement + EPS10) {
+    if (displacement > endPoint.displacement + EPS12) {
       continue;
     }
     const deltaDisplacement = endPoint.displacement - startPoint.displacement;
-    if (deltaDisplacement <= EPS10) {
+    if (deltaDisplacement <= EPS12) {
       return endPoint.baseShear;
     }
     const ratio = (displacement - startPoint.displacement) / deltaDisplacement;
@@ -45816,7 +49449,7 @@ function buildAggregateCapacityCurve2(contributors = []) {
 }
 function metricDelta2(id, label, aggregatedValue, femValue) {
   const delta = Number.isFinite(aggregatedValue) && Number.isFinite(femValue) ? femValue - aggregatedValue : null;
-  const variationPercent = Number.isFinite(delta) && Number.isFinite(aggregatedValue) && Math.abs(aggregatedValue) > EPS10 ? delta / aggregatedValue * 100 : null;
+  const variationPercent = Number.isFinite(delta) && Number.isFinite(aggregatedValue) && Math.abs(aggregatedValue) > EPS12 ? delta / aggregatedValue * 100 : null;
   return {
     id,
     label,
@@ -45835,7 +49468,7 @@ function sampleCurveComparison2({
 }) {
   var _a;
   const referenceYieldDisplacement = Number.isFinite(yieldDisplacement) && yieldDisplacement >= 0 ? yieldDisplacement : 0;
-  const referenceUltimateDisplacement = Number.isFinite(ultimateDisplacement) && ultimateDisplacement > EPS10 ? ultimateDisplacement : (_a = maxFinite3(aggregatedCurve.map((point2) => point2.displacement))) != null ? _a : 0;
+  const referenceUltimateDisplacement = Number.isFinite(ultimateDisplacement) && ultimateDisplacement > EPS12 ? ultimateDisplacement : (_a = maxFinite3(aggregatedCurve.map((point2) => point2.displacement))) != null ? _a : 0;
   const intermediateFractions = Array.from(
     { length: Math.max(1, sampleCount) },
     (_, index) => (index + 1) / (sampleCount + 1)
@@ -45852,7 +49485,7 @@ function sampleCurveComparison2({
     const aggregatedBaseShear = interpolateCurve3(aggregatedCurve, displacement);
     const femBaseShear = interpolateCurve3(femCurve, displacement);
     const delta = femBaseShear - aggregatedBaseShear;
-    const variationPercent = Math.abs(aggregatedBaseShear) > EPS10 ? delta / aggregatedBaseShear * 100 : null;
+    const variationPercent = Math.abs(aggregatedBaseShear) > EPS12 ? delta / aggregatedBaseShear * 100 : null;
     return {
       id: `sample-${index + 1}`,
       displacement: round3(displacement),
@@ -46229,7 +49862,7 @@ var AlignmentEquivalentFramePushoverAnalysis = class {
             (config) => config.failureDisplacement
           )
         );
-        if (Number.isFinite(maxControlDisplacement) && maxControlDisplacement > EPS10) {
+        if (Number.isFinite(maxControlDisplacement) && maxControlDisplacement > EPS12) {
           directSolverResult = this.frameSolver.solve({
             frame: directFrame,
             contributorsByElementId: contributorConfigs,
@@ -46557,7 +50190,7 @@ var AlignmentEquivalentFramePushoverAnalysis = class {
 // src/applications/masonry-wall-openings/analysis/AlignmentStateComparisonAnalysis.js
 var APPLICATION_ID = "masonry-wall-openings";
 var DEFAULT_STIFFNESS_TOLERANCE_RATIO = 0.15;
-var EPS11 = 1e-9;
+var EPS13 = 1e-9;
 function resolveStiffnessToleranceRatio(options = {}) {
   var _a, _b;
   const candidate = (_b = (_a = options.stiffnessToleranceRatio) != null ? _a : options.stiffnessVariationTolerance) != null ? _b : options.stiffnessTolerance;
@@ -46592,7 +50225,7 @@ function splitComparisonOptions(options = {}) {
   };
 }
 function resolveRatio(referenceValue, candidateValue) {
-  if (!Number.isFinite(referenceValue) || Math.abs(referenceValue) <= EPS11 || !Number.isFinite(candidateValue)) {
+  if (!Number.isFinite(referenceValue) || Math.abs(referenceValue) <= EPS13 || !Number.isFinite(candidateValue)) {
     return null;
   }
   return candidateValue / referenceValue;
@@ -46610,7 +50243,7 @@ function buildVariationBandCheck({
 }) {
   const ratio = resolveRatio(referenceValue, candidateValue);
   const variationRatio = resolveVariationRatio(referenceValue, candidateValue);
-  const ok = Number.isFinite(variationRatio) && Math.abs(variationRatio) <= toleranceRatio + EPS11;
+  const ok = Number.isFinite(variationRatio) && Math.abs(variationRatio) <= toleranceRatio + EPS13;
   return {
     id,
     description,
@@ -46639,7 +50272,7 @@ function buildNonDecreasingCheck({
 }) {
   const ratio = resolveRatio(referenceValue, candidateValue);
   const variationRatio = resolveVariationRatio(referenceValue, candidateValue);
-  const ok = Number.isFinite(referenceValue) && Number.isFinite(candidateValue) && candidateValue >= referenceValue - EPS11;
+  const ok = Number.isFinite(referenceValue) && Number.isFinite(candidateValue) && candidateValue >= referenceValue - EPS13;
   return {
     id,
     description,
@@ -46703,7 +50336,7 @@ function buildCheckReading(check) {
     if (!check.ok) {
       return `La rigidezza equivalente varia di ${signedPercentText(check.variationPercent)} e supera la banda di confronto ammessa.`;
     }
-    if (Math.abs(check.variationPercent) <= EPS11) {
+    if (Math.abs(check.variationPercent) <= EPS13) {
       return "La rigidezza equivalente resta sostanzialmente invariata rispetto allo stato di fatto.";
     }
     return `La rigidezza equivalente varia di ${signedPercentText(check.variationPercent)} e resta entro la banda di confronto configurata.`;
@@ -46715,7 +50348,7 @@ function buildCheckReading(check) {
     if (!check.ok) {
       return `La resistenza laterale equivalente si riduce di ${signedPercentText(check.variationPercent)} rispetto allo stato di fatto.`;
     }
-    if (Math.abs(check.variationPercent) <= EPS11) {
+    if (Math.abs(check.variationPercent) <= EPS13) {
       return "La resistenza laterale equivalente resta invariata.";
     }
     return `La resistenza laterale equivalente aumenta di ${signedPercentText(check.variationPercent)}.`;
@@ -46727,7 +50360,7 @@ function buildCheckReading(check) {
     if (!check.ok) {
       return `La deformabilita equivalente si riduce di ${signedPercentText(check.variationPercent)} rispetto allo stato di fatto.`;
     }
-    if (Math.abs(check.variationPercent) <= EPS11) {
+    if (Math.abs(check.variationPercent) <= EPS13) {
       return "La deformabilita equivalente resta invariata.";
     }
     return `La deformabilita equivalente aumenta di ${signedPercentText(check.variationPercent)}.`;
@@ -51947,7 +55580,7 @@ var createScaServiceDeflectionAnalysisResult = createServiceDeflectionAnalysisRe
 var runScaRcDeflectionAnalysis = runRcServiceDeflectionAnalysis;
 
 // src/applications/reinforced-concrete-plates/ReinforcedConcretePlateModel.js
-var INTERNAL_UNITS23 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS31 = Object.freeze({ force: "N", length: "mm" });
 var UNIT_WIDTH = 1e3;
 var DIRECTIONS = Object.freeze(["x", "y"]);
 var FACES = Object.freeze(["top", "bottom"]);
@@ -52110,7 +55743,7 @@ var ReinforcedConcretePlateModel = class {
       throw new Error("A reinforced concrete plate model id is required.");
     }
     assertExplicitUnitSystem(units, "ReinforcedConcretePlateModel");
-    const resolver = createUnitResolver(units, INTERNAL_UNITS23);
+    const resolver = createUnitResolver(units, INTERNAL_UNITS31);
     const thickness = positive10(
       resolver.length(Number(geometry.thickness)),
       "geometry.thickness"
@@ -52178,7 +55811,7 @@ var ReinforcedConcretePlateModel = class {
       positive10(deflection.spanY, "analysis.deflection.spanY");
     }
     this.id = id;
-    this.units = INTERNAL_UNITS23;
+    this.units = INTERNAL_UNITS31;
     this.materials = { ...materials };
     this.geometry = { thickness, unitWidth };
     this.reinforcement = normalizedReinforcement;
@@ -52195,7 +55828,7 @@ var ReinforcedConcretePlateModel = class {
     };
     this.metadata = {
       ...metadata,
-      unitSystem: INTERNAL_UNITS23,
+      unitSystem: INTERNAL_UNITS31,
       sourceUnitSystem: resolver.sourceUnitSystem
     };
   }
@@ -55758,7 +59391,7 @@ var ReinforcedConcreteSectionVerification = class {
 };
 
 // src/applications/reinforced-concrete-plates/sections/createPlateStripSection.js
-var INTERNAL_UNITS24 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS32 = Object.freeze({ force: "N", length: "mm" });
 function equivalentBarForLayer({ layer: layer2, width, material, idPrefix }) {
   const grade = ["B450A", "B450C"].includes(material == null ? void 0 : material.grade) ? material.grade : "B450C";
   return new ReinforcementBar({
@@ -55770,7 +59403,7 @@ function equivalentBarForLayer({ layer: layer2, width, material, idPrefix }) {
     material,
     y: layer2.axis,
     z: width / 2,
-    units: INTERNAL_UNITS24,
+    units: INTERNAL_UNITS32,
     metadata: {
       face: layer2.face,
       direction: layer2.direction,
@@ -55792,7 +59425,7 @@ function createPlateStripSection({ model, direction } = {}) {
     name: `${direction.toUpperCase()} plate strip concrete`,
     width,
     height: model.geometry.thickness,
-    units: INTERNAL_UNITS24
+    units: INTERNAL_UNITS32
   });
   const groups = [];
   const reinforcementBars2 = [];
@@ -55829,7 +59462,7 @@ function createPlateStripSection({ model, direction } = {}) {
     concreteMaterial: model.materials.concreteMaterial,
     reinforcementMaterial: model.materials.reinforcementMaterial,
     referenceModularRatio: (_b = (_a = model.analysis.serviceability) == null ? void 0 : _a.modularRatio) != null ? _b : 15,
-    units: INTERNAL_UNITS24,
+    units: INTERNAL_UNITS32,
     metadata: {
       direction,
       plateModelId: model.id,
@@ -55882,7 +59515,7 @@ function uniqueStrings2(values) {
 }
 
 // src/applications/reinforced-concrete-plates/checks/verifyPlateBending.js
-var INTERNAL_UNITS25 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS33 = Object.freeze({ force: "N", length: "mm" });
 var METHOD = "wood-armer-equivalent-strip-rc-uls-uniaxial-fiber-solver";
 function plateStripMesh(model) {
   var _a, _b;
@@ -55910,7 +59543,7 @@ function verifyPlateBending({ model, transformedState } = {}) {
       mesh: plateStripMesh(model),
       solver: model.analysis.solver,
       actions: { nEd: 0, mEd },
-      units: INTERNAL_UNITS25
+      units: INTERNAL_UNITS33
     });
     const sectionResult = new ReinforcedConcreteSectionVerification().verify(sectionModel);
     const baseCheck = (_a = sectionResult.checks[0]) != null ? _a : {
@@ -55971,7 +59604,7 @@ function utilizationCheck3(options) {
     strictCapacity: false
   });
 }
-function clamp2(value, min, max) {
+function clamp7(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 function requiredParametersMissing(params, requiredKeys, warnings) {
@@ -56249,7 +59882,7 @@ function computeWithTransverseResistance({ params, shear, units, warnings }) {
   let cotTheta = null;
   let thetaSelection = "optimized-intersection";
   if (shear.thetaSelection === "fixed" && Number.isFinite(shear.cotTheta)) {
-    cotTheta = clamp2(shear.cotTheta, cotThetaRange.min, cotThetaRange.max);
+    cotTheta = clamp7(shear.cotTheta, cotThetaRange.min, cotThetaRange.max);
     thetaSelection = "fixed";
   } else if (vRsdMin > vRcdAtMinCot) {
     cotTheta = cotThetaRange.min;
@@ -56259,7 +59892,7 @@ function computeWithTransverseResistance({ params, shear, units, warnings }) {
     thetaSelection = "steel-boundary-max-cot";
   } else {
     const raw = params.bw * alphaC * fcdPrime * params.transverseReinforcement.spacing / (params.transverseReinforcement.area * params.transverseReinforcement.fyd * sinAlpha) - 1;
-    cotTheta = clamp2(
+    cotTheta = clamp7(
       Math.sqrt(Math.max(raw, 0)),
       cotThetaRange.min,
       cotThetaRange.max
@@ -56681,11 +60314,11 @@ function resolveCompression({
     return Math.max(resolver.force(shear.nEdCompression), 0);
   }
   const convention = (_a = shear.normalForceSignConvention) != null ? _a : "compression-negative";
-  let compression = 0;
+  let compression2 = 0;
   if (convention === "compression-positive") {
-    compression = nEd != null ? nEd : 0;
+    compression2 = nEd != null ? nEd : 0;
   } else if (convention === "compression-negative" || convention === "tension-positive") {
-    compression = -(nEd != null ? nEd : 0);
+    compression2 = -(nEd != null ? nEd : 0);
   } else {
     warnings.push(
       `Unsupported shear.normalForceSignConvention ${convention}; compression contribution ignored.`
@@ -56694,12 +60327,12 @@ function resolveCompression({
     return 0;
   }
   sources.nEdCompression = `from-nEd-${convention}`;
-  if (compression < 0) {
+  if (compression2 < 0) {
     warnings.push(
       "Normal force is tensile for the selected convention; compression contribution in shear resistance was set to zero."
     );
   }
-  return Math.max(compression, 0);
+  return Math.max(compression2, 0);
 }
 function resolveTransverseReinforcement({
   shear,
@@ -57136,7 +60769,7 @@ var ReinforcedConcreteShearVerification = class {
 };
 
 // src/applications/reinforced-concrete-plates/checks/verifyPlateShear.js
-var INTERNAL_UNITS26 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS34 = Object.freeze({ force: "N", length: "mm" });
 var METHOD_WITHOUT = "ntc2018-4.1.2.3.5.1-wood-armer-strip";
 var METHOD_WITH = "ntc2018-4.1.2.3.5.2-wood-armer-strip-s-links";
 var MOMENT_TOLERANCE2 = 1e-9;
@@ -57192,7 +60825,7 @@ function verifyFace({ model, transformedState, direction, face, section }) {
       tensionFace: face,
       transverseReinforcement
     },
-    units: INTERNAL_UNITS26
+    units: INTERNAL_UNITS34
   });
 }
 function verifyPlateShear({ model, transformedState } = {}) {
@@ -58725,7 +62358,7 @@ function positive12(value, label) {
   }
   return value;
 }
-function clamp3(value, lower, upper) {
+function clamp8(value, lower, upper) {
   return Math.min(Math.max(value, lower), upper);
 }
 function calculateEn1992Punching2023WithoutShearReinforcement({
@@ -58754,7 +62387,7 @@ function calculateEn1992Punching2023WithoutShearReinforcement({
   const rawDdg = 16 + dLower * aggregateStrengthFactor;
   const dDg = Math.min(rawDdg, 40);
   const rawKpb = 3.6 * Math.sqrt(1 - b0 / b05);
-  const kpb = clamp3(rawKpb, 1, 2.5);
+  const kpb = clamp8(rawKpb, 1, 2.5);
   const uncappedResistance = 0.6 / resolvedGammaV * kpb * Math.cbrt(100 * rhoL * resolvedFck * dDg / dv);
   const resistanceLimit = 0.5 / resolvedGammaV * Math.sqrt(resolvedFck);
   const tauRdc = Math.min(uncappedResistance, resistanceLimit);
@@ -58990,7 +62623,7 @@ function calculateEn1992PunchingBetaE2023({
 }
 
 // src/norms/en1992/punching/geometry/generateEn1992PunchingPerimeters.js
-var INTERNAL_UNITS27 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS35 = Object.freeze({ force: "N", length: "mm" });
 var GEOMETRY_TOLERANCE = 1e-6;
 function line(start, end) {
   return { type: "line", start, end };
@@ -59081,7 +62714,7 @@ function createPerimeter({
     role,
     position,
     offset,
-    units: INTERNAL_UNITS27,
+    units: INTERNAL_UNITS35,
     components: [{ closed, segments }],
     source: {
       method: "generated",
@@ -60347,7 +63980,7 @@ var ReinforcedConcretePunchingApplication = class extends StructuralApplication 
 };
 
 // src/applications/reinforced-concrete-columns/ReinforcedConcreteColumnModel.js
-var INTERNAL_UNITS28 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS36 = Object.freeze({ force: "N", length: "mm" });
 function positiveLength(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be a positive length.`);
@@ -60434,7 +64067,7 @@ var ReinforcedConcreteColumnModel = class {
       throw new Error("ReinforcedConcreteColumnModel requires a section.");
     }
     assertExplicitUnitSystem(units, "ReinforcedConcreteColumnModel");
-    const resolver = createUnitResolver(units, INTERNAL_UNITS28);
+    const resolver = createUnitResolver(units, INTERNAL_UNITS36);
     const resolvedLength = positiveLength(
       resolver.length(length),
       "ReinforcedConcreteColumnModel length"
@@ -60490,10 +64123,10 @@ var ReinforcedConcreteColumnModel = class {
     this.detailing = convertDetailing(detailing, resolver);
     this.mesh = { ...mesh };
     this.solver = { ...solver };
-    this.units = INTERNAL_UNITS28;
+    this.units = INTERNAL_UNITS36;
     this.metadata = {
       ...metadata,
-      unitSystem: INTERNAL_UNITS28,
+      unitSystem: INTERNAL_UNITS36,
       sourceUnitSystem: resolver.sourceUnitSystem
     };
   }
@@ -60522,7 +64155,7 @@ var ReinforcedConcreteColumnDetailingVerification = class {
   constructor({ code = "NTC2018" } = {}) {
     this.code = code;
   }
-  verify({ model, compression, normalizedAxialForce } = {}) {
+  verify({ model, compression: compression2, normalizedAxialForce } = {}) {
     var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w;
     const detailing = model.detailing;
     if (!detailing) {
@@ -60564,7 +64197,7 @@ var ReinforcedConcreteColumnDetailingVerification = class {
       Number((_k = transverse.designStrength) != null ? _k : (_j = model.reinforcementMaterial) == null ? void 0 : _j.fyd),
       "transverse design strength"
     );
-    const minimumArea = Math.max(0.1 * compression / fyd, 3e-3 * area);
+    const minimumArea = Math.max(0.1 * compression2 / fyd, 3e-3 * area);
     const maximumArea = 0.04 * area;
     const ordinaryHoopSpacing = Math.min(12 * minBarDiameter, 250);
     const ordinaryHoopDiameter = Math.max(6, maxBarDiameter / 4);
@@ -60673,7 +64306,7 @@ var ReinforcedConcreteColumnDetailingVerification = class {
         nationalMinimumDiameterMultiple: 20,
         nationalMinimumLength: 150
       });
-      const axialTension = compression <= 0 && Math.abs(model.actions.nEd) > 0;
+      const axialTension = compression2 <= 0 && Math.abs(model.actions.nEd) > 0;
       const requiredLength = base.designLength * (axialTension ? 1.5 : 1);
       checks.push(minCheck("rc-column-longitudinal-anchorage", "Column longitudinal bar anchorage", requiredLength, anchor.availableLength, { reference: axialTension ? "NTC2018-7.4.6.2.2" : "NTC2018-4.1.2.3.10", fbd: round3(bond.fbd), axialTensionFactor: axialTension ? 1.5 : 1 }));
       anchorageOutput = { ...base, requiredLength, fbd: bond.fbd };
@@ -60704,8 +64337,8 @@ var ReinforcedConcreteColumnDetailingVerification = class {
 };
 
 // src/applications/reinforced-concrete-columns/ReinforcedConcreteColumnVerification.js
-var INTERNAL_UNITS29 = Object.freeze({ force: "N", length: "mm" });
-var EPS12 = 1e-9;
+var INTERNAL_UNITS37 = Object.freeze({ force: "N", length: "mm" });
+var EPS14 = 1e-9;
 function concreteSectionFrom2(section) {
   var _a;
   return (_a = section == null ? void 0 : section.concreteSection) != null ? _a : section;
@@ -60727,7 +64360,7 @@ function resolveAxis({
   firstOrderMoment,
   totalMoment,
   secondOrderFlag,
-  compression,
+  compression: compression2,
   lambdaLimit,
   nominalRigidity,
   momentDistributionFactor,
@@ -60736,13 +64369,13 @@ function resolveAxis({
 }) {
   const radiusOfGyration = Number.isFinite(inertia) && inertia > 0 && concreteArea > 0 ? Math.sqrt(inertia / concreteArea) : null;
   const slenderness = radiusOfGyration ? effectiveLength / radiusOfGyration : null;
-  const secondOrderRequired = compression > 0 && Number.isFinite(slenderness) && Number.isFinite(lambdaLimit) && slenderness > lambdaLimit;
+  const secondOrderRequired = compression2 > 0 && Number.isFinite(slenderness) && Number.isFinite(lambdaLimit) && slenderness > lambdaLimit;
   const explicitTotal = Number.isFinite(totalMoment);
-  const imperfectionEccentricity = includeImperfectionWhenMomentIsZero && compression > 0 && Math.abs(firstOrderMoment) <= EPS12 ? memberLength / 300 : 0;
-  const firstOrderWithImperfection = firstOrderMoment + (firstOrderMoment < 0 ? -1 : 1) * compression * imperfectionEccentricity;
+  const imperfectionEccentricity = includeImperfectionWhenMomentIsZero && compression2 > 0 && Math.abs(firstOrderMoment) <= EPS14 ? memberLength / 300 : 0;
+  const firstOrderWithImperfection = firstOrderMoment + (firstOrderMoment < 0 ? -1 : 1) * compression2 * imperfectionEccentricity;
   const criticalLoad = Number.isFinite(nominalRigidity) && nominalRigidity > 0 ? Math.PI ** 2 * nominalRigidity / effectiveLength ** 2 : null;
-  const stableForMagnification = Number.isFinite(criticalLoad) && criticalLoad > compression;
-  const magnificationFactor = secondOrderRequired && stableForMagnification ? 1 + momentDistributionFactor / (criticalLoad / compression - 1) : 1;
+  const stableForMagnification = Number.isFinite(criticalLoad) && criticalLoad > compression2;
+  const magnificationFactor = secondOrderRequired && stableForMagnification ? 1 + momentDistributionFactor / (criticalLoad / compression2 - 1) : 1;
   const generatedTotalMoment = secondOrderRequired && stableForMagnification ? firstOrderWithImperfection * magnificationFactor : null;
   const secondOrderIncluded = !secondOrderRequired || explicitTotal || secondOrderFlag === true || Number.isFinite(generatedTotalMoment);
   const designMoment = explicitTotal ? totalMoment : Number.isFinite(generatedTotalMoment) ? generatedTotalMoment : firstOrderWithImperfection;
@@ -60815,11 +64448,11 @@ var ReinforcedConcreteColumnVerification = class {
         }
       });
     }
-    const compression = compressionFrom(
+    const compression2 = compressionFrom(
       model.actions.nEd,
       model.stability.compressionSignConvention
     );
-    const normalizedAxialForce = compression / (concreteArea * fcd);
+    const normalizedAxialForce = compression2 / (concreteArea * fcd);
     const lambdaLimit = normalizedAxialForce > 0 ? 25 / Math.sqrt(normalizedAxialForce) : Number.POSITIVE_INFINITY;
     const creepCoefficient = model.stability.creepCoefficient;
     const gammaCE = (_b = model.stability.gammaCE) != null ? _b : 1.2;
@@ -60836,7 +64469,7 @@ var ReinforcedConcreteColumnVerification = class {
       firstOrderMoment: model.actions.mxEd,
       totalMoment: model.actions.mxEdTotal,
       secondOrderFlag: (_d = model.stability.mxIncludesSecondOrder) != null ? _d : sharedSecondOrderFlag,
-      compression,
+      compression: compression2,
       lambdaLimit,
       nominalRigidity: nominalRigidityFor(concreteSection.inertiaY),
       momentDistributionFactor: model.stability.momentDistributionFactor,
@@ -60851,7 +64484,7 @@ var ReinforcedConcreteColumnVerification = class {
       firstOrderMoment: model.actions.myEd,
       totalMoment: model.actions.myEdTotal,
       secondOrderFlag: (_e = model.stability.myIncludesSecondOrder) != null ? _e : sharedSecondOrderFlag,
-      compression,
+      compression: compression2,
       lambdaLimit,
       nominalRigidity: nominalRigidityFor(concreteSection.inertiaZ),
       momentDistributionFactor: model.stability.momentDistributionFactor,
@@ -60865,7 +64498,7 @@ var ReinforcedConcreteColumnVerification = class {
     const baseOutputs2 = {
       columnId: model.id,
       nEd: round3(model.actions.nEd),
-      compression: round3(compression),
+      compression: round3(compression2),
       concreteArea: round3(concreteArea),
       fcd: round3(fcd),
       normalizedAxialForce: round3(normalizedAxialForce, 9),
@@ -60943,7 +64576,7 @@ var ReinforcedConcreteColumnVerification = class {
         mxEd: axisMx.designMoment,
         myEd: axisMy.designMoment
       },
-      units: INTERNAL_UNITS29,
+      units: INTERNAL_UNITS37,
       metadata: {
         sourceColumnId: model.id
       }
@@ -61001,7 +64634,7 @@ var ReinforcedConcreteColumnVerification = class {
           concreteMaterial: model.concreteMaterial,
           reinforcementMaterial: model.reinforcementMaterial,
           shear,
-          units: INTERNAL_UNITS29
+          units: INTERNAL_UNITS37
         });
         result.checks = result.checks.map((check) => {
           var _a3, _b3, _c3;
@@ -61023,7 +64656,7 @@ var ReinforcedConcreteColumnVerification = class {
     );
     const detailingResult = model.detailing ? new ReinforcedConcreteColumnDetailingVerification({
       code: this.code
-    }).verify({ model, compression, normalizedAxialForce }) : null;
+    }).verify({ model, compression: compression2, normalizedAxialForce }) : null;
     const checks = [
       ...axes.map((axis) => axis.check),
       resistanceCheck,
@@ -61123,7 +64756,7 @@ var ReinforcedConcreteColumnApplication = class extends StructuralApplication {
 };
 
 // src/applications/reinforced-concrete-isolated-footings/ReinforcedConcreteIsolatedFootingModel.js
-var INTERNAL_UNITS30 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS38 = Object.freeze({ force: "N", length: "mm" });
 function positive15(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be positive.`);
@@ -61190,7 +64823,7 @@ var ReinforcedConcreteIsolatedFootingModel = class {
       throw new Error("A reinforced-concrete isolated footing id is required.");
     }
     assertExplicitUnitSystem(units, "ReinforcedConcreteIsolatedFootingModel");
-    const resolver = createUnitResolver(units, INTERNAL_UNITS30);
+    const resolver = createUnitResolver(units, INTERNAL_UNITS38);
     const widthX = positive15(
       resolver.length(Number(geometry.widthX)),
       "geometry.widthX"
@@ -61320,10 +64953,10 @@ var ReinforcedConcreteIsolatedFootingModel = class {
     };
     this.mesh = { targetFiberCount: 50, ...mesh };
     this.solver = { tolerance: 1e-6, maxIterations: 100, ...solver };
-    this.units = INTERNAL_UNITS30;
+    this.units = INTERNAL_UNITS38;
     this.metadata = {
       ...metadata,
-      unitSystem: INTERNAL_UNITS30,
+      unitSystem: INTERNAL_UNITS38,
       sourceUnitSystem: resolver.sourceUnitSystem
     };
   }
@@ -61352,7 +64985,7 @@ var ReinforcedConcreteIsolatedFootingModel = class {
 };
 
 // src/applications/reinforced-concrete-isolated-footings/ReinforcedConcreteIsolatedFootingVerification.js
-var INTERNAL_UNITS31 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS39 = Object.freeze({ force: "N", length: "mm" });
 var UNIT_WIDTH2 = 1e3;
 var PUNCHING_2004 = "EN1992_1_1_2004_A1_2014";
 function totalVerticalForce(model) {
@@ -61370,7 +65003,7 @@ function createFootingStrip({ model, direction }) {
     id: `${model.id}-${direction}-footing-strip-concrete`,
     width: UNIT_WIDTH2,
     height: model.geometry.thickness,
-    units: INTERNAL_UNITS31
+    units: INTERNAL_UNITS39
   });
   const reinforcementBar = new ReinforcementBar({
     id: `bottom-${direction}-equivalent-layer`,
@@ -61379,7 +65012,7 @@ function createFootingStrip({ model, direction }) {
     material: model.materials.reinforcementMaterial,
     y: layer2.axisFromBottom,
     z: UNIT_WIDTH2 / 2,
-    units: INTERNAL_UNITS31,
+    units: INTERNAL_UNITS39,
     metadata: {
       equivalentDistributedArea: true,
       direction,
@@ -61393,7 +65026,7 @@ function createFootingStrip({ model, direction }) {
     reinforcementBars: [reinforcementBar],
     concreteMaterial: model.materials.concreteMaterial,
     reinforcementMaterial: model.materials.reinforcementMaterial,
-    units: INTERNAL_UNITS31,
+    units: INTERNAL_UNITS39,
     metadata: {
       direction,
       unitWidth: UNIT_WIDTH2,
@@ -61476,7 +65109,7 @@ function verifyDirection({ model, contact, direction }) {
     mesh: model.mesh,
     solver: model.solver,
     actions: { nEd: 0, mEd },
-    units: INTERNAL_UNITS31
+    units: INTERNAL_UNITS39
   });
   const bendingResult = new ReinforcedConcreteSectionVerification().verify(
     sectionModel
@@ -61508,7 +65141,7 @@ function verifyDirection({ model, contact, direction }) {
       longitudinalReinforcementArea: strip.layer.areaPerMeter,
       tensionFace: "bottom"
     },
-    units: INTERNAL_UNITS31
+    units: INTERNAL_UNITS39
   });
   const sourceShearCheck = (_b = shearResult.checks[0]) != null ? _b : {};
   const shearCheck = {
@@ -61642,7 +65275,7 @@ function verifyPunchingForFooting({ model, contact, directions }) {
   );
   const connection = new PunchingConnectionModel({
     id: `${model.id}-footing-punching`,
-    units: INTERNAL_UNITS31,
+    units: INTERNAL_UNITS39,
     slab: {
       thickness: model.geometry.thickness,
       boundary: [
@@ -61690,7 +65323,7 @@ function verifyPunchingForFooting({ model, contact, directions }) {
     connectionId: connection.id,
     localFrameId: connection.localFrame.id,
     combinationType: "ULS",
-    units: INTERNAL_UNITS31,
+    units: INTERNAL_UNITS39,
     components: {
       fz: model.actions.columnVerticalForce,
       mx: model.actions.momentX,
@@ -62082,7 +65715,7 @@ var ReinforcedConcreteIsolatedFootingApplication = class extends StructuralAppli
 };
 
 // src/applications/reinforced-concrete-sections/checks/ReinforcedConcreteTorsionVerification.js
-var INTERNAL_UNITS32 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS40 = Object.freeze({ force: "N", length: "mm" });
 var COT_THETA_MIN = 1;
 var COT_THETA_MAX = 2.5;
 function concreteSectionFrom3(section) {
@@ -62098,7 +65731,7 @@ function polygonPerimeter(points = []) {
     return sum + Math.hypot(next.y - point2.y, next.z - point2.z);
   }, 0);
 }
-function clamp4(value, min, max) {
+function clamp9(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 function resolveGeometry2({ section, torsion, resolver, warnings, sources }) {
@@ -62228,7 +65861,7 @@ function resolveCotTheta({ torsion, transverse, longitudinal, geometry, warnings
     const aS = transverse.area / transverse.spacing;
     const compatible = Math.sqrt(aL / aS);
     return {
-      value: clamp4(compatible, COT_THETA_MIN, COT_THETA_MAX),
+      value: clamp9(compatible, COT_THETA_MIN, COT_THETA_MAX),
       source: "pure-torsion-compatible-reinforcement",
       unclamped: compatible
     };
@@ -62263,7 +65896,7 @@ function verifyTorsionActions({
   units
 }) {
   var _a, _b, _c, _d, _e, _f, _g;
-  const resolver = createUnitResolver(units, INTERNAL_UNITS32);
+  const resolver = createUnitResolver(units, INTERNAL_UNITS40);
   const convertedTEd = Math.abs(resolver.moment(tEd != null ? tEd : 0));
   const convertedVEd = Math.abs(resolver.force(vEd != null ? vEd : 0));
   const convertedNEd = resolver.force(nEd != null ? nEd : 0);
@@ -62388,12 +66021,12 @@ function verifyTorsionActions({
         shear: shearInput,
         nEd: convertedNEd,
         mEd: convertedMEd,
-        units: INTERNAL_UNITS32
+        units: INTERNAL_UNITS40
       });
       shearAtCotTheta = computeWithTransverseResistanceAtCotTheta({
         params: shearParams,
         shear: shearInput,
-        units: INTERNAL_UNITS32,
+        units: INTERNAL_UNITS40,
         cotTheta: cot
       });
       warnings.push(...(_c = shearAtCotTheta.warnings) != null ? _c : []);
@@ -62504,7 +66137,7 @@ var ReinforcedConcreteTorsionVerification = class {
     reinforcementMaterial = ((_b) => (_b = context.reinforcementMaterial) != null ? _b : section == null ? void 0 : section.reinforcementMaterial)(),
     torsion = ((_c) => (_c = context.torsion) != null ? _c : this.torsion)(),
     shear = ((_d) => (_d = context.shear) != null ? _d : this.shear)(),
-    units = ((_h) => (_h = ((_g) => (_g = ((_e) => (_e = context.units) != null ? _e : torsion == null ? void 0 : torsion.units)()) != null ? _g : ((_f) => (_f = section == null ? void 0 : section.metadata) == null ? void 0 : _f.unitSystem)())()) != null ? _h : INTERNAL_UNITS32)()
+    units = ((_h) => (_h = ((_g) => (_g = ((_e) => (_e = context.units) != null ? _e : torsion == null ? void 0 : torsion.units)()) != null ? _g : ((_f) => (_f = section == null ? void 0 : section.metadata) == null ? void 0 : _f.unitSystem)())()) != null ? _h : INTERNAL_UNITS40)()
   } = {}) {
     if (!section || !concreteMaterial) {
       return {
@@ -63624,7 +67257,7 @@ var ReinforcedConcreteFoundationBeamApplication = class extends StructuralApplic
 };
 
 // src/applications/reinforced-concrete-beam-column-joints/ReinforcedConcreteBeamColumnJointModel.js
-var INTERNAL_UNITS33 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS41 = Object.freeze({ force: "N", length: "mm" });
 function positive17(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be positive.`);
@@ -63694,7 +67327,7 @@ var ReinforcedConcreteBeamColumnJointModel = class {
       throw new Error("A reinforced-concrete beam-column joint id is required.");
     }
     assertExplicitUnitSystem(units, "ReinforcedConcreteBeamColumnJointModel");
-    const resolver = createUnitResolver(units, INTERNAL_UNITS33);
+    const resolver = createUnitResolver(units, INTERNAL_UNITS41);
     const concreteMaterial = materials.concreteMaterial;
     const reinforcementMaterial = materials.reinforcementMaterial;
     const transverseReinforcementMaterial = (_a = materials.transverseReinforcementMaterial) != null ? _a : reinforcementMaterial;
@@ -63862,10 +67495,10 @@ var ReinforcedConcreteBeamColumnJointModel = class {
         "eccentricity.reinforcementArea"
       )
     };
-    this.units = INTERNAL_UNITS33;
+    this.units = INTERNAL_UNITS41;
     this.metadata = {
       ...metadata,
-      unitSystem: INTERNAL_UNITS33,
+      unitSystem: INTERNAL_UNITS41,
       sourceUnitSystem: resolver.sourceUnitSystem
     };
   }
@@ -63963,7 +67596,7 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
       reinforcementDesignStrength: fyd,
       columnShearAbove: model.actions.columnShearAbove
     });
-    const compression = calculateNTC2018JointCompressionCapacity({
+    const compression2 = calculateNTC2018JointCompressionCapacity({
       jointType: normativeJointType,
       fck,
       fcd,
@@ -64000,10 +67633,10 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
         id: "rc-joint-diagonal-compression",
         description: "Joint diagonal compression resistance",
         demand: demand.demand,
-        capacity: compression.capacity,
+        capacity: compression2.capacity,
         metadata: {
-          equation: compression.equation,
-          eta: round3(compression.eta),
+          equation: compression2.equation,
+          eta: round3(compression2.eta),
           normalizedAxialForce: round3(normalizedAxialForce)
         }
       }),
@@ -64170,10 +67803,10 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
           beamForce: round3(demand.beamForce)
         },
         compression: {
-          ...compression,
-          capacity: round3(compression.capacity),
-          eta: round3(compression.eta),
-          radicand: round3(compression.radicand)
+          ...compression2,
+          capacity: round3(compression2.capacity),
+          eta: round3(compression2.eta),
+          radicand: round3(compression2.radicand)
         },
         tension: {
           selectedMethod: model.tensionMethod,
@@ -64372,7 +68005,7 @@ var ReinforcedConcreteBeamColumnJointApplication = class extends StructuralAppli
 };
 
 // src/applications/reinforced-concrete-strut-and-tie/ReinforcedConcreteStrutAndTieModel.js
-var INTERNAL_UNITS34 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS42 = Object.freeze({ force: "N", length: "mm" });
 var STRENGTH_MODELS = /* @__PURE__ */ new Set([
   "uncracked-uniaxial",
   "transverse-tension"
@@ -64423,7 +68056,7 @@ var ReinforcedConcreteStrutAndTieModel = class {
       throw new Error("A reinforced-concrete strut-and-tie model id is required.");
     }
     assertExplicitUnitSystem(units, "ReinforcedConcreteStrutAndTieModel");
-    const resolver = createUnitResolver(units, INTERNAL_UNITS34);
+    const resolver = createUnitResolver(units, INTERNAL_UNITS42);
     const concreteMaterial = materials.concreteMaterial;
     const reinforcementMaterial = materials.reinforcementMaterial;
     if (!concreteMaterial || !reinforcementMaterial) {
@@ -64486,7 +68119,7 @@ var ReinforcedConcreteStrutAndTieModel = class {
       members: normalizedMembers,
       loads: normalizedLoads,
       supports: normalizedSupports,
-      units: INTERNAL_UNITS34,
+      units: INTERNAL_UNITS42,
       metadata
     });
     const nodeIds = new Set(this.domainModel.nodes.map((node) => node.id));
@@ -64572,10 +68205,10 @@ var ReinforcedConcreteStrutAndTieModel = class {
     this.id = id;
     this.members = normalizedMembers.map((member) => ({ ...member }));
     this.materials = { concreteMaterial, reinforcementMaterial };
-    this.units = INTERNAL_UNITS34;
+    this.units = INTERNAL_UNITS42;
     this.metadata = {
       ...metadata,
-      unitSystem: INTERNAL_UNITS34,
+      unitSystem: INTERNAL_UNITS42,
       sourceUnitSystem: resolver.sourceUnitSystem
     };
   }
@@ -66457,7 +70090,7 @@ var SteelFrameModel = class {
 
 // src/applications/timber-concrete-composite-beams/checks/TimberConcreteCompositeBeamVerification.js
 var round8 = (value, decimals = 6) => Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
-function assertPositive18(value, label) {
+function assertPositive29(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be a positive number.`);
   }
@@ -66621,9 +70254,9 @@ var TimberConcreteCompositeBeamVerification = class {
       gammaConnector,
       alphaCc
     } = model;
-    assertPositive18(span, "Beam span");
-    assertPositive18(reinforcementSpacing, "Reinforcement spacing");
-    assertPositive18(connectorSpacing, "Connector spacing");
+    assertPositive29(span, "Beam span");
+    assertPositive29(reinforcementSpacing, "Reinforcement spacing");
+    assertPositive29(connectorSpacing, "Connector spacing");
     const idealComposite = model.createIdealCompositeSection();
     const slabWidth = slabSection.width;
     const slabHeight = slabSection.height;
@@ -66639,17 +70272,17 @@ var TimberConcreteCompositeBeamVerification = class {
     const fyk = (_i = reinforcementMaterial == null ? void 0 : reinforcementMaterial.fyk) != null ? _i : (_h = reinforcement == null ? void 0 : reinforcement.material) == null ? void 0 : _h.fyk;
     const connectorKu = connector.ku;
     const connectorFvrk = connector.fvrk;
-    assertPositive18(slabWidth, "Slab width");
-    assertPositive18(slabHeight, "Slab height");
-    assertPositive18(timberSection.width, "Timber width");
-    assertPositive18(timberSection.height, "Timber height");
-    assertPositive18(ew, "Timber elastic modulus");
-    assertPositive18(ec, "Concrete elastic modulus");
-    assertPositive18(fmK, "Timber bending strength");
-    assertPositive18(fck, "Concrete compressive strength");
-    assertPositive18(fyk, "Reinforcement yield strength");
-    assertPositive18(connectorKu, "Connector ULS stiffness");
-    assertPositive18(connectorFvrk, "Connector resistance");
+    assertPositive29(slabWidth, "Slab width");
+    assertPositive29(slabHeight, "Slab height");
+    assertPositive29(timberSection.width, "Timber width");
+    assertPositive29(timberSection.height, "Timber height");
+    assertPositive29(ew, "Timber elastic modulus");
+    assertPositive29(ec, "Concrete elastic modulus");
+    assertPositive29(fmK, "Timber bending strength");
+    assertPositive29(fck, "Concrete compressive strength");
+    assertPositive29(fyk, "Reinforcement yield strength");
+    assertPositive29(connectorKu, "Connector ULS stiffness");
+    assertPositive29(connectorFvrk, "Connector resistance");
     const fcd = alphaCc * fck / gammaConcrete;
     const fyd = fyk / gammaSteel;
     const fmD = kmod * fmK / gammaTimber / confidenceFactor;
@@ -66776,9 +70409,9 @@ var TimberConcreteCompositeBeamVerification = class {
       loads,
       deflectionLimitDenominator
     } = model;
-    assertPositive18(span, "Beam span");
-    assertPositive18(reinforcementSpacing, "Reinforcement spacing");
-    assertPositive18(connectorSpacing, "Connector spacing");
+    assertPositive29(span, "Beam span");
+    assertPositive29(reinforcementSpacing, "Reinforcement spacing");
+    assertPositive29(connectorSpacing, "Connector spacing");
     const idealComposite = model.createIdealCompositeSection();
     const slabWidth = slabSection.width;
     const slabHeight = slabSection.height;
@@ -66794,17 +70427,17 @@ var TimberConcreteCompositeBeamVerification = class {
     const connectorKser = connector.kser;
     const connectorKu = connector.ku;
     const connectorFvrk = connector.fvrk;
-    assertPositive18(slabWidth, "Slab width");
-    assertPositive18(slabHeight, "Slab height");
-    assertPositive18(timberWidth, "Timber width");
-    assertPositive18(timberHeight, "Timber height");
-    assertPositive18(qUls, "ULS line load");
-    assertPositive18(qSleRare, "SLE line load");
-    assertPositive18(ew, "Timber elastic modulus");
-    assertPositive18(ec, "Concrete elastic modulus");
-    assertPositive18(fmK, "Timber bending strength");
-    assertPositive18(fck, "Concrete compressive strength");
-    assertPositive18(fyk, "Reinforcement yield strength");
+    assertPositive29(slabWidth, "Slab width");
+    assertPositive29(slabHeight, "Slab height");
+    assertPositive29(timberWidth, "Timber width");
+    assertPositive29(timberHeight, "Timber height");
+    assertPositive29(qUls, "ULS line load");
+    assertPositive29(qSleRare, "SLE line load");
+    assertPositive29(ew, "Timber elastic modulus");
+    assertPositive29(ec, "Concrete elastic modulus");
+    assertPositive29(fmK, "Timber bending strength");
+    assertPositive29(fck, "Concrete compressive strength");
+    assertPositive29(fyk, "Reinforcement yield strength");
     const fcd = alphaCc * fck / gammaConcrete;
     const fyd = fyk / gammaSteel;
     const fmD = kmod * fmK / gammaTimber / confidenceFactor;
@@ -67031,7 +70664,7 @@ var TimberConcreteCompositeBeamApplication = class extends StructuralApplication
 
 // src/applications/timber-concrete-composite-beams/analysis/TimberConcreteCompositeBeamSectionProvider.js
 var DEFAULT_UNITS5 = Object.freeze({ force: "N", length: "mm" });
-function assertPositive19(value, label) {
+function assertPositive30(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be a positive number.`);
   }
@@ -67093,12 +70726,12 @@ var TimberConcreteCompositeBeamSectionProvider = class {
       connector,
       connectorSpacing
     } = this.model;
-    assertPositive19(span, "Beam span");
-    assertPositive19(connectorSpacing, "Connector spacing");
-    assertPositive19(timberMaterial == null ? void 0 : timberMaterial.elasticModulus, "Timber elastic modulus");
-    assertPositive19(concreteMaterial == null ? void 0 : concreteMaterial.elasticModulus, "Concrete elastic modulus");
-    assertPositive19(connector == null ? void 0 : connector.kser, "Connector service stiffness kser");
-    assertPositive19(connector == null ? void 0 : connector.ku, "Connector ultimate stiffness ku");
+    assertPositive30(span, "Beam span");
+    assertPositive30(connectorSpacing, "Connector spacing");
+    assertPositive30(timberMaterial == null ? void 0 : timberMaterial.elasticModulus, "Timber elastic modulus");
+    assertPositive30(concreteMaterial == null ? void 0 : concreteMaterial.elasticModulus, "Concrete elastic modulus");
+    assertPositive30(connector == null ? void 0 : connector.kser, "Connector service stiffness kser");
+    assertPositive30(connector == null ? void 0 : connector.ku, "Connector ultimate stiffness ku");
     const idealComposite = this.model.createIdealCompositeSection();
     const ew = timberMaterial.elasticModulus;
     const ec = concreteMaterial.elasticModulus;
@@ -67109,10 +70742,10 @@ var TimberConcreteCompositeBeamSectionProvider = class {
     const disconnectedInertia = timberSection.inertiaY + n * slabSection.inertiaY;
     const idealInertia = idealComposite.inertiaY;
     const collaborationInertia = idealInertia - disconnectedInertia;
-    assertPositive19(centroidDistance, "Composite centroid distance");
-    assertPositive19(disconnectedInertia, "Disconnected transformed inertia");
-    assertPositive19(idealInertia, "Ideal transformed inertia");
-    assertPositive19(collaborationInertia, "Collaboration inertia contribution");
+    assertPositive30(centroidDistance, "Composite centroid distance");
+    assertPositive30(disconnectedInertia, "Disconnected transformed inertia");
+    assertPositive30(idealInertia, "Ideal transformed inertia");
+    assertPositive30(collaborationInertia, "Collaboration inertia contribution");
     const gammaUls = 1 / (1 + Math.PI ** 2 * ew * collaborationInertia * connectorSpacing / (connector.ku * span ** 2 * centroidDistance ** 2));
     const gammaSle = 1 / (1 + Math.PI ** 2 * ew * collaborationInertia * connectorSpacing / (connector.kser * span ** 2 * centroidDistance ** 2));
     return {
@@ -67162,7 +70795,7 @@ var TimberConcreteCompositeBeamSectionProvider = class {
     const timberShearArea = resolveShearArea3(timberSection);
     const slabShearArea = resolveShearArea3(slabSection);
     const shearRigidity = Number.isFinite(timberShearModulus) && Number.isFinite(concreteShearModulus) && Number.isFinite(timberShearArea) && Number.isFinite(slabShearArea) ? timberShearModulus * timberShearArea + concreteShearModulus * slabShearArea : null;
-    assertPositive19(gammaProperties.idealComposite.area, "Ideal transformed area");
+    assertPositive30(gammaProperties.idealComposite.area, "Ideal transformed area");
     const properties = {
       axialRigidity: effectiveTimberModulus * gammaProperties.idealComposite.area,
       flexuralRigidity: effectiveTimberModulus * inertiaEffective,
@@ -67213,7 +70846,7 @@ function createTimberConcreteCompositeBeamSectionProvider(options = {}) {
 }
 
 // src/applications/timber-concrete-composite-beams/models/TimberConcreteCompositeBeamModel.js
-var INTERNAL_UNITS35 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS43 = Object.freeze({ force: "N", length: "mm" });
 var TimberConcreteCompositeBeamModel = class {
   constructor({
     id,
@@ -67301,7 +70934,7 @@ var TimberConcreteCompositeBeamModel = class {
           centroidY: this.timberCentroidY(),
           modularRatio: 1,
           role: "timber",
-          units: INTERNAL_UNITS35
+          units: INTERNAL_UNITS43
         }),
         new CompositeSectionComponent({
           name: "Concrete slab",
@@ -67310,10 +70943,10 @@ var TimberConcreteCompositeBeamModel = class {
           centroidY: this.slabCentroidY(),
           modularRatio,
           role: "slab",
-          units: INTERNAL_UNITS35
+          units: INTERNAL_UNITS43
         })
       ],
-      units: INTERNAL_UNITS35,
+      units: INTERNAL_UNITS43,
       metadata: {
         ...this.metadata,
         modularRatio
@@ -67324,7 +70957,7 @@ var TimberConcreteCompositeBeamModel = class {
 
 // src/applications/timber-xlam-composite-beams/checks/TimberXlamCompositeBeamVerification.js
 var round9 = (value, decimals = 6) => Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
-function assertPositive20(value, label) {
+function assertPositive31(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be a positive number.`);
   }
@@ -67498,7 +71131,7 @@ var TimberXlamCompositeBeamVerification = class {
       gammaXlam,
       gammaTimber
     } = model;
-    assertPositive20(span, "Beam span");
+    assertPositive31(span, "Beam span");
     const l = span;
     const e1 = xlamMaterial.elasticModulus;
     const e2 = timberMaterial.elasticModulus;
@@ -67511,15 +71144,15 @@ var TimberXlamCompositeBeamVerification = class {
     const a = model.relativeCentroidDistance();
     const kslu = connector.ku;
     const seq = connector.spacing;
-    assertPositive20(e1, "XLAM elastic modulus");
-    assertPositive20(e2, "Timber elastic modulus");
-    assertPositive20(a1, "XLAM effective area");
-    assertPositive20(a2, "Timber area");
-    assertPositive20(j1, "XLAM inertia");
-    assertPositive20(j2, "Timber inertia");
-    assertPositive20(a, "Relative centroid distance");
-    assertPositive20(kslu, "Connector ULS stiffness");
-    assertPositive20(seq, "Connector spacing");
+    assertPositive31(e1, "XLAM elastic modulus");
+    assertPositive31(e2, "Timber elastic modulus");
+    assertPositive31(a1, "XLAM effective area");
+    assertPositive31(a2, "Timber area");
+    assertPositive31(j1, "XLAM inertia");
+    assertPositive31(j2, "Timber inertia");
+    assertPositive31(a, "Relative centroid distance");
+    assertPositive31(kslu, "Connector ULS stiffness");
+    assertPositive31(seq, "Connector spacing");
     const gamma1Uls = 1 / (1 + Math.PI ** 2 * e1 * a1 * seq / (kslu * l ** 2));
     const gamma2Uls = 1 / (1 + Math.PI ** 2 * e2 * a2 * seq / (kslu * l ** 2));
     const a2Uls = gamma1Uls * e1 * a1 * a / (gamma1Uls * e1 * a1 + e2 * a2);
@@ -67540,10 +71173,10 @@ var TimberXlamCompositeBeamVerification = class {
     const timberFlexuralResistance = kmod / gammaTimber * timberMaterial.fmK;
     const xlamShearResistance = kmod / gammaXlam * timberShearStrength(xlamMaterial);
     const timberShearResistance = kmod / gammaTimber * timberShearStrength(timberMaterial);
-    assertPositive20(xlamFlexuralResistance, "XLAM flexural resistance");
-    assertPositive20(timberFlexuralResistance, "Timber flexural resistance");
-    assertPositive20(xlamShearResistance, "XLAM shear resistance");
-    assertPositive20(timberShearResistance, "Timber shear resistance");
+    assertPositive31(xlamFlexuralResistance, "XLAM flexural resistance");
+    assertPositive31(timberFlexuralResistance, "Timber flexural resistance");
+    assertPositive31(xlamShearResistance, "XLAM shear resistance");
+    assertPositive31(timberShearResistance, "Timber shear resistance");
     const checks = [
       {
         id: "xlam-min-stress",
@@ -67655,7 +71288,7 @@ var TimberXlamCompositeBeamVerification = class {
       deflectionLimitShortDenominator,
       deflectionLimitLongDenominator
     } = model;
-    assertPositive20(span, "Beam span");
+    assertPositive31(span, "Beam span");
     const l = span;
     const qUls = loads.ulsLineLoad;
     const qPermanent = loads.slePermanentLineLoad;
@@ -67672,19 +71305,19 @@ var TimberXlamCompositeBeamVerification = class {
     const kslu = connector.ku;
     const ksle = connector.kser;
     const seq = connector.spacing;
-    assertPositive20(qUls, "ULS line load");
-    assertPositive20(qPermanent, "SLE permanent line load");
-    assertPositive20(qVariable, "SLE variable line load");
-    assertPositive20(e1, "XLAM elastic modulus");
-    assertPositive20(e2, "Timber elastic modulus");
-    assertPositive20(a1, "XLAM effective area");
-    assertPositive20(a2, "Timber area");
-    assertPositive20(j1, "XLAM inertia");
-    assertPositive20(j2, "Timber inertia");
-    assertPositive20(a, "Relative centroid distance");
-    assertPositive20(kslu, "Connector ULS stiffness");
-    assertPositive20(ksle, "Connector SLE stiffness");
-    assertPositive20(seq, "Connector spacing");
+    assertPositive31(qUls, "ULS line load");
+    assertPositive31(qPermanent, "SLE permanent line load");
+    assertPositive31(qVariable, "SLE variable line load");
+    assertPositive31(e1, "XLAM elastic modulus");
+    assertPositive31(e2, "Timber elastic modulus");
+    assertPositive31(a1, "XLAM effective area");
+    assertPositive31(a2, "Timber area");
+    assertPositive31(j1, "XLAM inertia");
+    assertPositive31(j2, "Timber inertia");
+    assertPositive31(a, "Relative centroid distance");
+    assertPositive31(kslu, "Connector ULS stiffness");
+    assertPositive31(ksle, "Connector SLE stiffness");
+    assertPositive31(seq, "Connector spacing");
     const gamma1Uls = 1 / (1 + Math.PI ** 2 * e1 * a1 * seq / (kslu * l ** 2));
     const gamma2Uls = 1 / (1 + Math.PI ** 2 * e2 * a2 * seq / (kslu * l ** 2));
     const a2Uls = gamma1Uls * e1 * a1 * a / (gamma1Uls * e1 * a1 + e2 * a2);
@@ -67722,10 +71355,10 @@ var TimberXlamCompositeBeamVerification = class {
     const timberFlexuralResistance = kmod / gammaTimber * timberMaterial.fmK;
     const xlamShearResistance = kmod / gammaXlam * timberShearStrength(xlamMaterial);
     const timberShearResistance = kmod / gammaTimber * timberShearStrength(timberMaterial);
-    assertPositive20(xlamFlexuralResistance, "XLAM flexural resistance");
-    assertPositive20(timberFlexuralResistance, "Timber flexural resistance");
-    assertPositive20(xlamShearResistance, "XLAM shear resistance");
-    assertPositive20(timberShearResistance, "Timber shear resistance");
+    assertPositive31(xlamFlexuralResistance, "XLAM flexural resistance");
+    assertPositive31(timberFlexuralResistance, "Timber flexural resistance");
+    assertPositive31(xlamShearResistance, "XLAM shear resistance");
+    assertPositive31(timberShearResistance, "Timber shear resistance");
     const checks = [
       {
         id: "xlam-min-stress",
@@ -67925,7 +71558,7 @@ var TimberXlamCompositeBeamApplication = class extends StructuralApplication {
 
 // src/applications/timber-xlam-composite-beams/analysis/TimberXlamCompositeBeamSectionProvider.js
 var DEFAULT_UNITS6 = Object.freeze({ force: "N", length: "mm" });
-function assertPositive21(value, label) {
+function assertPositive32(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be a positive number.`);
   }
@@ -67995,16 +71628,16 @@ var TimberXlamCompositeBeamSectionProvider = class {
     const a = this.model.relativeCentroidDistance();
     const connectorStiffness = ultimate ? connector.ku : connector.kser;
     const spacing = connector.spacing;
-    assertPositive21(span, "Beam span");
-    assertPositive21(e1, "XLAM elastic modulus");
-    assertPositive21(e2, "Timber elastic modulus");
-    assertPositive21(a1, "XLAM area");
-    assertPositive21(a2, "Timber area");
-    assertPositive21(j1, "XLAM inertia");
-    assertPositive21(j2, "Timber inertia");
-    assertPositive21(a, "Relative centroid distance");
-    assertPositive21(connectorStiffness, "Connector stiffness");
-    assertPositive21(spacing, "Connector spacing");
+    assertPositive32(span, "Beam span");
+    assertPositive32(e1, "XLAM elastic modulus");
+    assertPositive32(e2, "Timber elastic modulus");
+    assertPositive32(a1, "XLAM area");
+    assertPositive32(a2, "Timber area");
+    assertPositive32(j1, "XLAM inertia");
+    assertPositive32(j2, "Timber inertia");
+    assertPositive32(a, "Relative centroid distance");
+    assertPositive32(connectorStiffness, "Connector stiffness");
+    assertPositive32(spacing, "Connector spacing");
     const gamma1 = 1 / (1 + Math.PI ** 2 * e1 * a1 * spacing / (connectorStiffness * span ** 2));
     const gamma2 = 1 / (1 + Math.PI ** 2 * e2 * a2 * spacing / (connectorStiffness * span ** 2));
     const a2Lever = gamma1 * e1 * a1 * a / (gamma1 * e1 * a1 + e2 * a2);
@@ -68281,7 +71914,7 @@ function verifyTimberLateralTorsionalStability({
   let e005 = null;
   let e005Source = null;
   if (isFinitePositive8(kcrit)) {
-    resolvedKcrit = clamp(kcrit, 0, 1);
+    resolvedKcrit = clamp6(kcrit, 0, 1);
     criticalStressSource = "user-provided-kcrit";
     if (kcrit > 1) {
       warnings.push("User-provided timber kcrit was greater than 1 and has been capped to 1.");
@@ -69068,7 +72701,7 @@ var TimberBeamModel = class {
 
 // src/applications/xlam-panels-out-of-plane/checks/XlamOutOfPlanePanelVerification.js
 var round10 = (value, decimals = 6) => Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
-function assertPositive22(value, label) {
+function assertPositive33(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be a positive number.`);
   }
@@ -69096,16 +72729,16 @@ var XlamOutOfPlanePanelVerification = class {
       deflectionLimitDenominator,
       longTermDeflectionLimitDenominator
     } = model;
-    assertPositive22(span, "Panel span");
+    assertPositive33(span, "Panel span");
     const qUls = loads.ulsLineLoad;
     const qSle = (_a = loads.sleLineLoad) != null ? _a : 0;
     const qPermanent = (_b = loads.slePermanentLineLoad) != null ? _b : 0;
     const qVariable = (_c = loads.sleVariableLineLoad) != null ? _c : 0;
     const e0 = (_d = material.e0Mean) != null ? _d : material.elasticModulus;
     const rollingShearStrength = (_g = (_e = material.rollingShearStrength) != null ? _e : material.fvK) != null ? _g : (_f = material.metadata) == null ? void 0 : _f.fvK;
-    assertPositive22(qUls, "ULS line load");
-    assertPositive22(e0, "XLAM longitudinal modulus");
-    assertPositive22(rollingShearStrength, "XLAM rolling shear strength");
+    assertPositive33(qUls, "ULS line load");
+    assertPositive33(e0, "XLAM longitudinal modulus");
+    assertPositive33(rollingShearStrength, "XLAM rolling shear strength");
     const stiffness = section.calculateShearStiffness(material);
     const bendingStiffness = section.calculateBendingStiffness(material);
     const slenderness = span / stiffness.totalHeight;
@@ -69726,7 +73359,7 @@ function listItalianHistoricalReinforcementSteelGrades() {
 }
 
 // src/norms/italian-historical/materials/createItalianHistoricalMaterial.js
-var INTERNAL_UNITS36 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS44 = Object.freeze({ force: "N", length: "mm" });
 var HISTORICAL_REINFORCEMENT_ELONGATION_CHARACTERISTIC = 0.075;
 var round11 = (value, decimals = 2) => Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
 function assertCatalogEntry2(catalog, key, message) {
@@ -69753,7 +73386,7 @@ function createItalianHistoricalReinforcementSteelMaterial({
 }) {
   var _a, _b;
   assertExplicitUnitSystem(units, "createItalianHistoricalReinforcementSteelMaterial");
-  const unitResolver = createUnitResolver(units, INTERNAL_UNITS36);
+  const unitResolver = createUnitResolver(units, INTERNAL_UNITS44);
   const preset = assertCatalogEntry2(
     ITALIAN_HISTORICAL_REINFORCEMENT_STEEL_GRADES,
     grade,
@@ -69784,7 +73417,7 @@ function createItalianHistoricalReinforcementSteelMaterial({
     existing: existingState.existing,
     knowledgeLevel: (_a = existingState.knowledgeLevel) != null ? _a : knowledgeLevel,
     confidenceFactor: existingState.confidenceFactor,
-    units: INTERNAL_UNITS36,
+    units: INTERNAL_UNITS44,
     metadata: {
       ...metadata,
       normativePreset: "ITALIAN_HISTORICAL_REINFORCEMENT",
@@ -69835,6 +73468,7 @@ export {
   BeamReportMarkdownRenderer,
   BeamSectionActionVerifier,
   BeamSystem,
+  INTERNAL_UNITS as CYCLIC_MASONRY_INTERNAL_UNITS,
   CalculationResult,
   CircularSection,
   ClimaticAction,
@@ -69849,6 +73483,10 @@ export {
   CrackedSectionBeamModel,
   CrackedSectionDeflectionAnalysis,
   CrossSection,
+  CyclicMasonryCompressionMaterial,
+  CyclicMasonryPier2D,
+  CyclicMasonryPierAnalysis2D,
+  CyclicMasonryShearMaterial,
   DEFAULT_SECTION_ROTATION,
   DenseLinearSolver,
   DesignCodeContext,
@@ -69890,6 +73528,7 @@ export {
   LoadCombination,
   MASONRY_PIER_CAPACITY_CURVE_COMPARISON_REPORT_SCHEMA_VERSION,
   MasonryEquivalentFrameBuilder,
+  MasonryFiberInterface2D,
   MasonryMaterial,
   MasonryOutOfPlaneApplication,
   MasonryOutOfPlaneKinematicAnalysis,
@@ -69911,7 +73550,10 @@ export {
   MicropileBromsAnalysis,
   MicropileBromsApplication,
   MicropileBromsModel,
+  MohrCoulombModel,
   NTC2018ExistingMasonryMaterial,
+  NTC2018MasonryPierAnalysis,
+  NTC2018MasonryPierModel,
   NTC2018SlabLoadAnalysis,
   NTC2018_ACTION_COMBINATION_FACTORS,
   NTC2018_ACTION_PARTIAL_FACTORS,
@@ -69926,6 +73568,9 @@ export {
   NTC2018_EXISTING_MATERIAL_KNOWLEDGE_LEVELS,
   NTC2018_GLULAM_TIMBER_STRENGTH_CLASSES,
   NTC2018_LOAD_DURATION_CLASSES,
+  NTC2018_MASONRY_PIER_CAPACITY_REFERENCES,
+  NTC2018_MASONRY_PIER_DEFORMATION_REFERENCES,
+  NTC2018_MASONRY_PIER_STIFFNESS_REFERENCE,
   NTC2018_REINFORCEMENT_STEEL_GRADES,
   NTC2018_SLAB_MATERIAL_WEIGHT_DATABASE,
   NTC2018_SLAB_VARIABLE_ACTIONS_DATABASE,
@@ -70019,6 +73664,7 @@ export {
   SingleBeamFemBuilder,
   SingleBeamModel,
   SlabLoad,
+  SlidingStrengthModel,
   SnowAction,
   SolidTimberMaterial,
   SteelBeamSectionProvider,
@@ -70065,6 +73711,7 @@ export {
   TimberXlamCompositeBeamSectionProvider,
   TimberXlamCompositeBeamVerification,
   TrafficAction,
+  TurnsekSheppardModel,
   VariableAction,
   VariableLoad,
   VerificationResult,
@@ -70081,7 +73728,7 @@ export {
   applyNTC2018ExistingMasonryMaltaBuonaUpdate,
   applyNTC2018ExistingMasonryModifierToggle,
   assertExplicitUnitSystem,
-  assertPositive13 as assertPositiveCheckValue,
+  assertPositive21 as assertPositiveCheckValue,
   bilinearizeCapacityCurve,
   calculateElasticCriticalMomentLT,
   calculateEn1992AnchorageLength,
@@ -70096,6 +73743,12 @@ export {
   calculateNTC2018JointCompressionCapacity,
   calculateNTC2018JointShearDemand,
   calculateNTC2018JointTensionReinforcement,
+  calculateNTC2018MasonryPierElasticStiffness,
+  calculateNTC2018MasonryPierFlexuralCapacity,
+  calculateNTC2018MasonryPierIrregularDiagonalCapacity,
+  calculateNTC2018MasonryPierRegularDiagonalCapacity,
+  calculateNTC2018MasonryPierSlidingCapacity,
+  calculateNTC2018MasonryPierUltimateDisplacement,
   calculateSectionMassProperties,
   calculateSteelCompressionBucklingAxis,
   calculateSteelMethodBInteractionCoefficients,
@@ -70116,6 +73769,7 @@ export {
   createItalianHistoricalReinforcementSteelMaterial,
   createLongitudinalReinforcementLayout,
   createMasonryPierCapacityCurveComparisonReportArtifacts,
+  createMasonryShearStrengthModel,
   createNTC2018AccidentalAction,
   createNTC2018BeamCombinations,
   createNTC2018ConcreteMaterial,
@@ -70149,7 +73803,9 @@ export {
   createUnitResolver,
   createXlamBeamSectionProvider,
   createXlamPanelSection,
+  cyclicMasonryPierHistoryToCsv,
   evaluateNTC2018ExistingMasonryWorkflow,
+  evaluateNTC2018MasonryPier,
   extractEquivalentFrameMembers,
   getItalianHistoricalReinforcementSteelGrade,
   getNTC2018ActionCombinationFactors,
@@ -70200,6 +73856,7 @@ export {
   sanitizeAlignmentOpenings,
   selectNTC2018ExistingMasonryParameterLevel,
   selectNTC2018ExistingMasonryTypology,
+  selectNTC2018MasonryPierGoverningCapacity,
   splitPrincipalActions,
   steelBucklingCurveImperfectionFactor,
   steelMemberFem3DToLegacyAnalysisResult,

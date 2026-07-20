@@ -1,8 +1,15 @@
 import { CalculationResult } from "../../../core/results/CalculationResult.js";
 import { round, uniqueStrings } from "../../../core/results/checkUtils.js";
-import { FrameElement2DTimoshenkoRigidOffsets } from "../../../domain/fem/index.js";
-import { DenseLinearSolver } from "../../../domain/math/DenseLinearSolver.js";
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
+import {
+  calculateNTC2018MasonryPierElasticStiffness,
+  calculateNTC2018MasonryPierFlexuralCapacity,
+  calculateNTC2018MasonryPierIrregularDiagonalCapacity,
+  calculateNTC2018MasonryPierRegularDiagonalCapacity,
+  calculateNTC2018MasonryPierSlidingCapacity,
+  calculateNTC2018MasonryPierUltimateDisplacement,
+  selectNTC2018MasonryPierGoverningCapacity,
+} from "../../../norms/ntc2018/masonry/index.js";
 import { SteelRingFramePushoverAnalysis } from "../../steel-frames/analysis/SteelRingFramePushoverAnalysis.js";
 import { extractEquivalentFrameMembers } from "../geometry/extractEquivalentFrameMembers.js";
 import { sanitizeAlignmentOpenings } from "../geometry/sanitizeAlignmentOpenings.js";
@@ -13,12 +20,10 @@ import { AlignmentStaticAnalysis } from "./AlignmentStaticAnalysis.js";
 import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 
 const DEFAULT_TOP_ROTATION = "free";
-const DEFAULT_DRIFT_SHEAR = 0.005;
 const DEFAULT_RING_FRAME_MAX_DISPLACEMENT = 0.03;
 const DEFAULT_RING_FRAME_MAX_STEPS = 60;
 const DEFAULT_RING_FRAME_MAX_ITERATIONS = 60;
 const DEFAULT_RING_FRAME_CONTROL_INCREMENT_RATIO = 1 / 20;
-const KAPPA_TOE_CRUSHING = 1 / 0.85;
 const SHEAR_CORRECTION_FACTOR = 5 / 6;
 const STEEL_RING_FRAME_USER_UNITS = Object.freeze({ force: "kN", length: "m" });
 const EPS = 1e-9;
@@ -45,16 +50,6 @@ function normalizeTopRotation(value = DEFAULT_TOP_ROTATION) {
   }
 
   return resolved;
-}
-
-function minPositive(values = []) {
-  const finitePositiveValues = values.filter(
-    (value) => Number.isFinite(value) && value > EPS,
-  );
-
-  return finitePositiveValues.length > 0
-    ? Math.min(...finitePositiveValues)
-    : null;
 }
 
 function maxFinite(values = []) {
@@ -121,261 +116,12 @@ function roundCurvePoints(points = []) {
   }));
 }
 
-function resolvePierElasticStiffness({
-  pier,
-  elasticModulus,
-  shearModulus,
-  topRotation,
-  warnings,
-}) {
-  const length =
-    Number.isFinite(pier.effectiveLength) && pier.effectiveLength > EPS
-      ? pier.effectiveLength
-      : pier.length;
-  const deformableHeight =
-    Number.isFinite(pier.deformableHeight) && pier.deformableHeight > EPS
-      ? pier.deformableHeight
-      : pier.height;
-  const area = length * pier.thickness;
-  const inertia = (pier.thickness * length ** 3) / 12;
-  const bendingStiffnessFactor = topRotation === "fixed" ? 12 : 3;
-  const components = [];
-
-  if (
-    Number.isFinite(elasticModulus) &&
-    elasticModulus > EPS &&
-    Number.isFinite(shearModulus) &&
-    shearModulus > EPS
-  ) {
-    const element = new FrameElement2DTimoshenkoRigidOffsets({
-      id: `${pier.id}-elastic-stiffness-probe`,
-      startNode: { id: `${pier.id}-elastic-base`, x: 0, y: 0 },
-      endNode: { id: `${pier.id}-elastic-top`, x: 0, y: pier.height },
-      axialRigidity: elasticModulus * area,
-      flexuralRigidity: elasticModulus * inertia,
-      shearRigidity: shearModulus * area,
-      shearCorrectionFactor: SHEAR_CORRECTION_FACTOR,
-      rigidStartOffset: pier.rigidBottomLength ?? 0,
-      rigidEndOffset: pier.rigidTopLength ?? 0,
-    });
-    const stiffnessMatrix = element.globalStiffness();
-    const prescribedDofs = new Map([
-      [0, 0],
-      [1, 0],
-      [2, 0],
-      [3, 1],
-    ]);
-
-    if (topRotation === "fixed") {
-      prescribedDofs.set(5, 0);
-    }
-
-    const unknownDofs = [3, 4, 5].filter((dof) => !prescribedDofs.has(dof));
-    const prescribedEntries = [...prescribedDofs.entries()];
-    const fullDisplacements = new Array(6).fill(0);
-
-    for (const [dof, value] of prescribedEntries) {
-      fullDisplacements[dof] = value;
-    }
-
-    if (unknownDofs.length > 0) {
-      const reducedStiffness = unknownDofs.map((rowDof) =>
-        unknownDofs.map((columnDof) => stiffnessMatrix[rowDof][columnDof]),
-      );
-      const reducedLoad = unknownDofs.map((rowDof) =>
-        -prescribedEntries.reduce(
-          (sum, [columnDof, value]) =>
-            sum + stiffnessMatrix[rowDof][columnDof] * value,
-          0,
-        ),
-      );
-      const solution = new DenseLinearSolver().solve(
-        reducedStiffness,
-        reducedLoad,
-      );
-
-      unknownDofs.forEach((dof, index) => {
-        fullDisplacements[dof] = solution[index];
-      });
-    }
-
-    const forceVector = stiffnessMatrix.map((row) =>
-      row.reduce(
-        (sum, value, index) => sum + value * fullDisplacements[index],
-        0,
-      ),
-    );
-    const stiffness = Math.abs(forceVector[3]);
-
-    if (Number.isFinite(stiffness) && stiffness > EPS) {
-      return stiffness;
-    }
-
-    warnings.push(
-      `Pier ${pier.id} could not resolve a positive condensed FEM elastic stiffness; the lateral stiffness uses the closed-form available components only.`,
-    );
-  }
-
-  if (Number.isFinite(elasticModulus) && elasticModulus > EPS) {
-    const bendingStiffness =
-      (bendingStiffnessFactor * elasticModulus * inertia) /
-      deformableHeight ** 3;
-
-    if (Number.isFinite(bendingStiffness) && bendingStiffness > EPS) {
-      components.push(bendingStiffness);
-    }
-  } else {
-    warnings.push(
-      `Pier ${pier.id} could not resolve a finite masonry elastic modulus; the lateral stiffness uses the available components only.`,
-    );
-  }
-
-  if (Number.isFinite(shearModulus) && shearModulus > EPS) {
-    const shearStiffness =
-      (SHEAR_CORRECTION_FACTOR * shearModulus * area) / deformableHeight;
-
-    if (Number.isFinite(shearStiffness) && shearStiffness > EPS) {
-      components.push(shearStiffness);
-    }
-  } else {
-    warnings.push(
-      `Pier ${pier.id} could not resolve a finite masonry shear modulus; the lateral stiffness uses the available components only.`,
-    );
-  }
-
-  if (components.length === 0) {
-    return null;
-  }
-
-  const compliance = components.reduce((sum, stiffness) => sum + 1 / stiffness, 0);
-
-  return compliance > EPS ? 1 / compliance : null;
-}
-
-function resolveFlexuralCapacity({
-  axialForce,
-  compressiveStrength,
-  thickness,
-  length,
-  mechanismHeight,
-}) {
-  if (
-    !Number.isFinite(axialForce) ||
-    axialForce <= EPS ||
-    !Number.isFinite(compressiveStrength) ||
-    compressiveStrength <= EPS
-  ) {
-    return {
-      V: null,
-      MRd: null,
-      compressionRatio: null,
-    };
-  }
-
-  const compressionRatio =
-    axialForce / (compressiveStrength * thickness * length);
-  const reduction = 1 - KAPPA_TOE_CRUSHING * compressionRatio;
-  const V =
-    (axialForce / 2) * (length / mechanismHeight) * Math.max(reduction, 0);
-  const MRd = V * mechanismHeight;
-
-  return {
-    V: V > EPS ? V : 0,
-    MRd: MRd > EPS ? MRd : 0,
-    compressionRatio,
-  };
-}
-
-function resolveBedJointSlidingCapacity({
-  cohesion,
-  axialForce,
-  thickness,
-  length,
-  mechanismHeight,
-}) {
-  if (!Number.isFinite(cohesion) || cohesion <= EPS) {
-    return {
-      V: null,
-      compressedLength: null,
-      eccentricity: null,
-    };
-  }
-
-  if (!Number.isFinite(axialForce) || axialForce <= EPS) {
-    return {
-      V: cohesion * thickness * length,
-      compressedLength: length,
-      eccentricity: 0,
-    };
-  }
-
-  const numerator = cohesion * thickness * length + 0.4 * axialForce;
-  const denominator = 1 + (2 * cohesion * thickness * mechanismHeight) / axialForce;
-  const V = numerator / denominator;
-  const eccentricity = (V * mechanismHeight) / axialForce;
-  const compressedLength = Math.max(0, Math.min(length, length - 2 * eccentricity));
-
-  return {
-    V: V > EPS ? V : 0,
-    compressedLength,
-    eccentricity,
-  };
-}
-
-function resolveDiagonalCrackingCapacity({
-  tensileStrength,
-  axialForce,
-  thickness,
-  length,
-  height,
-}) {
-  if (!Number.isFinite(tensileStrength) || tensileStrength <= EPS) {
-    return {
-      V: null,
-      aspectFactor: null,
-    };
-  }
-
-  const aspectFactor = Math.min(Math.max(height / length, 1), 1.5);
-  const baseTerm = tensileStrength * thickness * length;
-  const amplification = Math.max(1 + axialForce / baseTerm, 0);
-
-  return {
-    V: (baseTerm / aspectFactor) * Math.sqrt(amplification),
-    aspectFactor,
-  };
-}
-
-function resolveFlexuralDriftCapacity({
-  axialForce,
-  compressiveStrength,
-  thickness,
-  length,
-}) {
-  if (
-    !Number.isFinite(axialForce) ||
-    axialForce <= EPS ||
-    !Number.isFinite(compressiveStrength) ||
-    compressiveStrength <= EPS
-  ) {
-    return null;
-  }
-
-  return Math.max(
-    0,
-    Math.min(
-      0.0125 * (1 - axialForce / (compressiveStrength * thickness * length)),
-      0.01,
-    ),
-  );
-}
-
 function buildPierContribution({
   alignment,
   pier,
   staticPier,
   topRotation,
-  shearDriftCapacity = DEFAULT_DRIFT_SHEAR,
+  crackedStiffnessFactor,
   warnings,
 }) {
   if (!staticPier) {
@@ -396,25 +142,60 @@ function buildPierContribution({
     0,
     (staticPier.axialForce ?? 0) + (staticPier.selfWeight ?? 0) / 2,
   );
-  const compressiveStrength = resolveMasonryMaterialProperty({
-    material: pier.material,
-    aliases: ["fm"],
-    targetUnits: alignment.units,
-  });
-  const bedJointCohesion = resolveMasonryMaterialProperty({
-    material: pier.material,
-    aliases: ["fv0"],
-    targetUnits: alignment.units,
-  });
-  const shearStrength = resolveMasonryMaterialProperty({
-    material: pier.material,
-    aliases: ["tau0"],
-    targetUnits: alignment.units,
-  });
-  const tensileStrength =
-    Number.isFinite(shearStrength) && shearStrength > EPS
-      ? 1.5 * shearStrength
-      : null;
+  const confidenceFactor =
+    Number.isFinite(pier.material?.confidenceFactor) &&
+    pier.material.confidenceFactor > EPS
+      ? pier.material.confidenceFactor
+      : 1;
+  const resolveStrength = (aliases) => {
+    const value = resolveMasonryMaterialProperty({
+      material: pier.material,
+      aliases,
+      targetUnits: alignment.units,
+    });
+
+    return Number.isFinite(value) ? value / confidenceFactor : null;
+  };
+  const compressiveStrength = resolveStrength(["fm"]);
+  const bedJointCohesion = resolveStrength(["fv0"]);
+  const shearStrength = resolveStrength(["tau0"]);
+  const blockCompressiveStrength = resolveStrength([
+    "fb",
+    "blockCompressiveStrength",
+  ]);
+  const explicitBlockTensileStrength = resolveStrength([
+    "fbt",
+    "blockTensileStrength",
+  ]);
+  const blockTensileStrength =
+    explicitBlockTensileStrength ??
+    (Number.isFinite(blockCompressiveStrength)
+      ? 0.1 * blockCompressiveStrength
+      : null);
+  const explicitShearStrengthLimit = resolveStrength([
+    "fvlim",
+    "shearStrengthLimit",
+  ]);
+  const shearStrengthLimit =
+    explicitShearStrengthLimit ??
+    (Number.isFinite(blockCompressiveStrength)
+      ? (0.065 * blockCompressiveStrength) / 0.7
+      : null);
+  const masonryTexture = String(
+    pier.material?.metadata?.masonryTexture ??
+      pier.material?.masonryTexture ??
+      "irregular",
+  )
+    .trim()
+    .toLowerCase();
+  const interlockingCoefficient =
+    pier.material?.interlockingCoefficient ??
+    pier.material?.metadata?.interlockingCoefficient ??
+    null;
+  const localFrictionCoefficient =
+    pier.material?.localFrictionCoefficient ??
+    pier.material?.metadata?.localFrictionCoefficient ??
+    0.577;
   const elasticModulus = resolveMasonryMaterialProperty({
     material: pier.material,
     aliases: ["E", "elasticModulus"],
@@ -433,32 +214,54 @@ function buildPierContribution({
     return null;
   }
 
-  const flexural = resolveFlexuralCapacity({
-    axialForce: baseAxialForce,
+  const flexural = calculateNTC2018MasonryPierFlexuralCapacity({
+    axialCompression: baseAxialForce,
     compressiveStrength,
     thickness: pier.thickness,
     length,
-    mechanismHeight,
+    shearSpan: mechanismHeight,
   });
-  const bedJointSliding = resolveBedJointSlidingCapacity({
+  const bedJointSliding = calculateNTC2018MasonryPierSlidingCapacity({
     cohesion: bedJointCohesion,
-    axialForce: midHeightAxialForce,
+    shearStrengthLimit,
+    axialCompression: midHeightAxialForce,
     thickness: pier.thickness,
     length,
-    mechanismHeight,
+    shearSpan: mechanismHeight,
   });
-  const diagonalCracking = resolveDiagonalCrackingCapacity({
-    tensileStrength,
-    axialForce: midHeightAxialForce,
-    thickness: pier.thickness,
-    length,
-    height,
-  });
-  const governingShearCapacity = minPositive([
-    bedJointSliding.V,
-    diagonalCracking.V,
+  const diagonalCracking = masonryTexture === "regular"
+    ? calculateNTC2018MasonryPierRegularDiagonalCapacity({
+        axialCompression: midHeightAxialForce,
+        cohesion: bedJointCohesion,
+        interlockingCoefficient,
+        localFrictionCoefficient,
+        blockTensileStrength,
+        thickness: pier.thickness,
+        length,
+        height,
+      })
+    : calculateNTC2018MasonryPierIrregularDiagonalCapacity({
+        axialCompression: midHeightAxialForce,
+        referenceShearStrength: shearStrength,
+        thickness: pier.thickness,
+        length,
+        height,
+      });
+
+  for (const capacity of [flexural, bedJointSliding, diagonalCracking]) {
+    if (!capacity.available) {
+      warnings.push(
+        `Pier ${pier.id} could not evaluate ${capacity.mechanism} with the strict NTC model because ${capacity.missing.join(", ")} is missing. The alignment envelope uses only the available mechanisms.`,
+      );
+    }
+  }
+
+  const governing = selectNTC2018MasonryPierGoverningCapacity([
+    flexural,
+    bedJointSliding,
+    diagonalCracking,
   ]);
-  const governingForce = minPositive([flexural.V, governingShearCapacity]);
+  const governingForce = governing?.capacity ?? null;
 
   if (!Number.isFinite(governingForce) || governingForce <= EPS) {
     warnings.push(
@@ -468,27 +271,23 @@ function buildPierContribution({
   }
 
   const governingFamily =
-    Number.isFinite(flexural.V) &&
-    flexural.V > EPS &&
-    flexural.V <= (governingShearCapacity ?? Number.POSITIVE_INFINITY) + EPS
-      ? "flexural"
-      : "shear";
+    governing.mechanism === "flexural" ? "flexural" : "shear";
   const governingMode =
-    governingFamily === "flexural"
+    governing.mechanism === "flexural"
       ? "rocking-toe-crushing"
-      : bedJointSliding.V != null &&
-          bedJointSliding.V <= (diagonalCracking.V ?? Number.POSITIVE_INFINITY) + EPS
-        ? "bed-joint-sliding"
-        : "diagonal-cracking";
-  const driftCapacity =
-    governingFamily === "flexural"
-      ? resolveFlexuralDriftCapacity({
-          axialForce: baseAxialForce,
-          compressiveStrength,
-          thickness: pier.thickness,
-          length,
-        })
-      : shearDriftCapacity;
+      : governing.mechanism.startsWith("diagonal-cracking")
+        ? "diagonal-cracking"
+        : governing.mechanism;
+  const deformation = calculateNTC2018MasonryPierUltimateDisplacement({
+    height,
+    mechanism: governing.mechanism,
+    scope: "existing",
+    modernPerforatedBlocks: Boolean(
+      pier.material?.metadata?.modernPerforatedBlocks ??
+        pier.material?.modernPerforatedBlocks,
+    ),
+  });
+  const driftCapacity = deformation.driftCapacity;
 
   if (!Number.isFinite(driftCapacity) || driftCapacity <= EPS) {
     warnings.push(
@@ -497,36 +296,41 @@ function buildPierContribution({
     return null;
   }
 
-  const ultimateDisplacement = driftCapacity * height;
-  let stiffness = resolvePierElasticStiffness({
-    pier,
-    elasticModulus,
-    shearModulus,
-    topRotation,
-    warnings,
-  });
+  const ultimateDisplacement = deformation.ultimateDisplacement;
 
-  if (!Number.isFinite(stiffness) || stiffness <= EPS) {
-    const fallbackYieldDisplacement = Math.max(
-      Math.min(0.2 * ultimateDisplacement, 0.001 * height),
-      0.05 * ultimateDisplacement,
-    );
-
-    stiffness = governingForce / fallbackYieldDisplacement;
+  if (
+    !Number.isFinite(elasticModulus) ||
+    elasticModulus <= EPS ||
+    !Number.isFinite(shearModulus) ||
+    shearModulus <= EPS
+  ) {
     warnings.push(
-      `Pier ${pier.id} uses a fallback elastic stiffness because no finite E/G combination was available for the Timoshenko estimate.`,
+      `Pier ${pier.id} was skipped because the strict NTC stiffness requires finite positive E and G; no force/displacement fallback was introduced.`,
     );
+    return null;
   }
 
-  const maximumYieldDisplacement = 0.95 * ultimateDisplacement;
-  let yieldDisplacement = governingForce / stiffness;
+  const stiffnessResult = calculateNTC2018MasonryPierElasticStiffness({
+    elasticModulus,
+    shearModulus,
+    length,
+    thickness: pier.thickness,
+    deformableHeight:
+      Number.isFinite(pier.deformableHeight) && pier.deformableHeight > EPS
+        ? pier.deformableHeight
+        : height,
+    boundaryCondition: topRotation === "fixed" ? "fixed-fixed" : "cantilever",
+    shearCorrectionFactor: SHEAR_CORRECTION_FACTOR,
+    crackedStiffnessFactor,
+  });
+  const stiffness = stiffnessResult.totalStiffness;
+  const yieldDisplacement = governingForce / stiffness;
 
-  if (yieldDisplacement >= maximumYieldDisplacement) {
-    yieldDisplacement = maximumYieldDisplacement;
-    stiffness = governingForce / yieldDisplacement;
+  if (yieldDisplacement >= ultimateDisplacement) {
     warnings.push(
-      `Pier ${pier.id} reached a yield displacement beyond its drift capacity; the elastic branch was capped at 95% of du to keep a consistent first-release contribution curve.`,
+      `Pier ${pier.id} was skipped because its elastic yield displacement is not below the normative ultimate displacement; no artificial stiffness correction was introduced.`,
     );
+    return null;
   }
 
   const curvePoints = [
@@ -570,19 +374,24 @@ function buildPierContribution({
     },
     mechanics: {
       flexural: {
-        V: flexural.V,
-        MRd: flexural.MRd,
+        V: flexural.capacity,
+        MRd: flexural.momentCapacity,
         compressionRatio: flexural.compressionRatio,
       },
       bedJointSliding: {
-        V: bedJointSliding.V,
+        V: bedJointSliding.capacity,
         compressedLength: bedJointSliding.compressedLength,
         eccentricity: bedJointSliding.eccentricity,
+        shearStrengthLimit: bedJointSliding.shearStrengthLimit,
+        governingLimit: bedJointSliding.governingLimit,
       },
       diagonalCracking: {
-        V: diagonalCracking.V,
+        V: diagonalCracking.capacity,
         aspectFactor: diagonalCracking.aspectFactor,
+        model: diagonalCracking.mechanism,
       },
+      confidenceFactor,
+      stiffness: stiffnessResult,
     },
     driftCapacity,
   };
@@ -870,17 +679,17 @@ export class AlignmentSeismicAggregatedAnalysis {
 
     const warnings = [];
     const assumptions = [
-      "The first seismic release follows the official minimum method described in todo.md: the global capacity curve is the sum of the individual pier and ring-frame contributions at a common top-displacement axis.",
+      "The global capacity curve is the sum of the individual pier and ring-frame contributions at a common top-displacement axis.",
       "Pier axial forces are taken from the static vertical analysis in seismic combination: base reaction for flexural capacity and drift, mid-height compression for shear capacity.",
-      "Each masonry pier is represented by an elastic-perfectly-plastic contribution up to its drift-based ultimate displacement, followed by a drop to zero resistance.",
+      "Each masonry pier uses the common NTC 2018 / Circular 2019 elastic-perfectly-plastic envelope, with 50% cracked flexural and shear stiffness and no force/displacement fallback.",
     ];
     const topRotation = normalizeTopRotation(
       options.topRotation ?? DEFAULT_TOP_ROTATION,
     );
-    const shearDriftCapacity = Number.isFinite(options.shearDriftCapacity)
-      && options.shearDriftCapacity > EPS
-      ? options.shearDriftCapacity
-      : DEFAULT_DRIFT_SHEAR;
+    const crackedStiffnessFactor =
+      options.crackedStiffnessFactor == null
+        ? 0.5
+        : Number(options.crackedStiffnessFactor);
     const mechanicalState =
       resolvedAlignmentState ??
       resolveAlignmentMechanicalState({
@@ -928,7 +737,7 @@ export class AlignmentSeismicAggregatedAnalysis {
           pier,
           staticPier: staticPiersById[pier.id],
           topRotation,
-          shearDriftCapacity,
+          crackedStiffnessFactor,
           warnings,
         }),
       )

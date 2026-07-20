@@ -85,6 +85,16 @@ Una nuova API che non puo funzionare in tutti questi ambienti deve essere
 isolata in un entry point esplicito e non deve contaminare gli entry point
 portabili.
 
+Il macroelemento murario ciclico, i relativi materiali, l'interfaccia a fibre
+e il protocollo isolato sono esportati dal package root; elemento e protocollo
+sono esportati anche da `strutture-js/domain/fem`. Il metodo e i limiti sono
+descritti in [Macroelemento ciclico 2D per maschi murari](cyclic-masonry-pier.md).
+Il distinto inviluppo bilineare NTC 2018/Circolare 2019 è esportato dagli entry
+point `strutture-js/norms/ntc2018` e
+`strutture-js/applications/masonry-piers`; campo, formule e differenze rispetto
+al macroelemento fisico sono descritti in
+[Modello normativo NTC 2018 del maschio murario](ntc2018-masonry-pier.md).
+
 ## Tracciabilita della versione
 
 Il risultato non deduce autonomamente la versione installata. Il consumer deve

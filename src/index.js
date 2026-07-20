@@ -8,6 +8,16 @@ export { SolidTimberMaterial } from "./domain/materials/SolidTimberMaterial.js";
 export { GlulamTimberMaterial } from "./domain/materials/GlulamTimberMaterial.js";
 export { MasonryMaterial } from "./domain/materials/MasonryMaterial.js";
 export { ExistingMasonryMaterial } from "./domain/materials/ExistingMasonryMaterial.js";
+export {
+  CYCLIC_MASONRY_INTERNAL_UNITS,
+  CyclicMasonryCompressionMaterial,
+  CyclicMasonryShearMaterial,
+  MohrCoulombModel,
+  SlidingStrengthModel,
+  TurnsekSheppardModel,
+  createMasonryShearStrengthModel,
+} from "./domain/materials/masonry/index.js";
+export { MasonryFiberInterface2D } from "./domain/sections/masonry/index.js";
 export { NTC2018ExistingMasonryMaterial } from "./norms/ntc2018/materials/NTC2018ExistingMasonryMaterial.js";
 export {
   EXISTING_MATERIAL_CONFIDENCE_LEVELS,
@@ -143,6 +153,9 @@ export {
 } from "./domain/constitutive-laws/index.js";
 export {
   BeamLinePreprocessor2D,
+  CyclicMasonryPier2D,
+  CyclicMasonryPierAnalysis2D,
+  cyclicMasonryPierHistoryToCsv,
   DofRegistry,
   DisplacementControlNonlinearStaticSolver2D,
   FemAssembler2D,
@@ -218,6 +231,8 @@ export {
   MasonryPierEquivalentFrameBuilder,
   MasonryPierModel,
   MasonryPierVerticalVerification,
+  NTC2018MasonryPierAnalysis,
+  NTC2018MasonryPierModel,
   MasonryWallOpeningsApplication,
   AlignmentSeismicAggregatedAnalysis,
   AlignmentEquivalentFramePushoverAnalysis,
@@ -409,6 +424,17 @@ export {
   NTC2018_TIMBER_STRENGTH_CLASSES,
   NTC2018_ULS_PARTIAL_FACTORS,
   NTC2018_VARIABLE_ACTION_CATEGORIES,
+  NTC2018_MASONRY_PIER_CAPACITY_REFERENCES,
+  NTC2018_MASONRY_PIER_DEFORMATION_REFERENCES,
+  NTC2018_MASONRY_PIER_STIFFNESS_REFERENCE,
+  calculateNTC2018MasonryPierElasticStiffness,
+  calculateNTC2018MasonryPierFlexuralCapacity,
+  calculateNTC2018MasonryPierIrregularDiagonalCapacity,
+  calculateNTC2018MasonryPierRegularDiagonalCapacity,
+  calculateNTC2018MasonryPierSlidingCapacity,
+  calculateNTC2018MasonryPierUltimateDisplacement,
+  evaluateNTC2018MasonryPier,
+  selectNTC2018MasonryPierGoverningCapacity,
   createNTC2018AccidentalAction,
   createNTC2018ConcreteMaterial,
   createNTC2018ExistingMasonryMaterial,

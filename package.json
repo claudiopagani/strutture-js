@@ -48,6 +48,8 @@
     "example:ntc2018": "node examples/ntc2018-presets.js",
     "example:applications": "node examples/application-registry.js",
     "example:steel-consumer": "node examples/steel-beam-consumer.js",
+    "example:masonry-cyclic": "node examples/cyclic-masonry-pier.js",
+    "example:masonry-ntc2018": "node examples/ntc2018-masonry-pier.js",
     "example:rc-sections": "node examples/rc-sections.js",
     "example:rc-sections:1000": "node examples/rc-sections-1000.js",
     "example:rc-plates": "node examples/rc-plates.js",

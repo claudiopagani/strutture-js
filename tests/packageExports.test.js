@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import * as PublicApi from "strutture-js";
 import * as ApplicationsApi from "strutture-js/applications";
+import * as MasonryPiersApi from "strutture-js/applications/masonry-piers";
 import * as RcDeflectionApi from "strutture-js/applications/rc-cracked-deflection";
 import * as RcPlatesApi from "strutture-js/applications/reinforced-concrete-plates";
 import * as RcPunchingApi from "strutture-js/applications/reinforced-concrete-punching";
@@ -62,6 +63,15 @@ test("package root export exposes the main public API", () => {
   assert.equal(typeof PublicApi.ReinforcedConcreteTorsionVerification, "function");
   assert.equal(typeof PublicApi.HyperstaticDeflectionIteration, "function");
   assert.equal(typeof PublicApi.SectionMomentCurvatureCurve, "function");
+  assert.equal(typeof PublicApi.CyclicMasonryCompressionMaterial, "function");
+  assert.equal(typeof PublicApi.CyclicMasonryShearMaterial, "function");
+  assert.equal(typeof PublicApi.MasonryFiberInterface2D, "function");
+  assert.equal(typeof PublicApi.CyclicMasonryPier2D, "function");
+  assert.equal(typeof PublicApi.CyclicMasonryPierAnalysis2D, "function");
+  assert.equal(typeof PublicApi.cyclicMasonryPierHistoryToCsv, "function");
+  assert.equal(typeof PublicApi.NTC2018MasonryPierModel, "function");
+  assert.equal(typeof PublicApi.NTC2018MasonryPierAnalysis, "function");
+  assert.equal(typeof PublicApi.evaluateNTC2018MasonryPier, "function");
   assert.equal(typeof PublicApi.RESULT_STATUS, "object");
 });
 
@@ -73,6 +83,7 @@ test("applications subpath export exposes application registry helpers", () => {
   assert.equal(typeof ApplicationsApi.runScaRcDeflectionAnalysis, "function");
   assert.equal(typeof ApplicationsApi.HyperstaticDeflectionIteration, "function");
   assert.equal(typeof ApplicationsApi.SectionMomentCurvatureCurve, "function");
+  assert.equal(typeof ApplicationsApi.NTC2018MasonryPierModel, "function");
   assert.equal(typeof ApplicationsApi.ReinforcedConcretePlateModel, "function");
   assert.equal(typeof ApplicationsApi.ReinforcedConcreteColumnModel, "function");
   assert.equal(
@@ -84,6 +95,7 @@ test("applications subpath export exposes application registry helpers", () => {
 
 test("granular ESM subpaths expose applications, solvers and catalogs", () => {
   assert.equal(typeof RcDeflectionApi.CrackedSectionDeflectionAnalysis, "function");
+  assert.equal(typeof MasonryPiersApi.NTC2018MasonryPierAnalysis, "function");
   assert.equal(typeof RcPlatesApi.ReinforcedConcretePlateVerification, "function");
   assert.equal(typeof RcPlatesApi.woodArmer, "function");
   assert.equal(typeof RcPunchingApi.PunchingVerificationRequest, "function");
@@ -112,6 +124,8 @@ test("granular ESM subpaths expose applications, solvers and catalogs", () => {
     "function",
   );
   assert.equal(typeof FemApi.LinearStaticSolver2D, "function");
+  assert.equal(typeof FemApi.CyclicMasonryPier2D, "function");
+  assert.equal(typeof FemApi.CyclicMasonryPierAnalysis2D, "function");
   assert.equal(typeof MathApi.BandedLinearSolver, "function");
   assert.equal(typeof MathApi.rayPolygonCapacity, "function");
   assert.equal(typeof StrutAndTieApi.StrutAndTieAnalysis2D, "function");
@@ -124,6 +138,11 @@ test("granular ESM subpaths expose applications, solvers and catalogs", () => {
 
 test("ntc2018 subpath export exposes normative adapters", () => {
   assert.equal(typeof Ntc2018Api.createNTC2018ConcreteMaterial, "function");
+  assert.equal(typeof Ntc2018Api.evaluateNTC2018MasonryPier, "function");
+  assert.equal(
+    typeof Ntc2018Api.calculateNTC2018MasonryPierSlidingCapacity,
+    "function",
+  );
   assert.equal(typeof Ntc2018Api.createNTC2018BeamCombinations, "function");
   assert.equal(typeof Ntc2018Api.NTC2018_CONCRETE_CLASSES, "object");
   assert.equal(typeof Ntc2018Api.calculateNTC2018JointCompressionCapacity, "function");

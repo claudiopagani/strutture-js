@@ -26,7 +26,7 @@ export const APPLICATION_CATALOG = [
     domain: "masonry",
     maturity: "partial",
     primaryFocus:
-      "Vertical verification of masonry piers and equivalent-frame 2D idealization with rigid end zones.",
+      "Vertical verification, NTC 2018/Circular 2019 bilinear in-plane capacity envelope, cyclic physical macroelement and equivalent-frame idealization.",
   },
   {
     id: "masonry-wall-openings",

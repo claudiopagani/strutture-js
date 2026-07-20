@@ -168,7 +168,7 @@ test("state comparison flags excessive stiffness variation beyond the default an
   assert.equal(result.outputs.comparison.du.ok, true);
 });
 
-test("state comparison flags project solutions that reduce equivalent strength", () => {
+test("state comparison flags project solutions that reduce strength and switch to the lower shear drift", () => {
   const alignment = createComparisonAlignment({
     material: createStrengthReducingDesignMaterial(),
     id: "alignment-state-comparison-strength",
@@ -181,7 +181,7 @@ test("state comparison flags project solutions that reduce equivalent strength",
   assert.equal(result.status, "not-verified");
   assert.equal(result.outputs.comparison.Vy.ok, false);
   assert.equal(result.outputs.comparison.ks.ok, true);
-  assert.equal(result.outputs.comparison.du.ok, true);
+  assert.equal(result.outputs.comparison.du.ok, false);
   assert.ok(result.outputs.comparison.Vy.designValue < result.outputs.comparison.Vy.stateOfFactValue);
 });
 

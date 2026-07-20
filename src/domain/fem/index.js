@@ -4,8 +4,13 @@ export {
   FrameElement2DEulerBernoulli,
   FrameElement2DTimoshenko,
   FrameElement2DTimoshenkoRigidOffsets,
+  CyclicMasonryPier2D,
 } from "./elements/index.js";
 export { FemAssembler2D } from "./FemAssembler2D.js";
 export { KinematicConstraintReducer2D } from "./KinematicConstraintReducer2D.js";
 export { LinearStaticSolver2D } from "./LinearStaticSolver2D.js";
-export { DisplacementControlNonlinearStaticSolver2D } from "./nonlinear/index.js";
+export {
+  CyclicMasonryPierAnalysis2D,
+  DisplacementControlNonlinearStaticSolver2D,
+  cyclicMasonryPierHistoryToCsv,
+} from "./nonlinear/index.js";

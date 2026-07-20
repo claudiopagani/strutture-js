@@ -132,7 +132,7 @@ Stato sintetico dei moduli applicativi:
 | --- | --- | --- |
 | `single-beam-design` | Implementato locale | Analisi FEM 2D e verifiche locali; il percorso c.a. include torsione assegnata, dettaglio, ancoraggi, duttilita e deformazioni a lungo termine. |
 | `steel-frames` | Parziale | Verifiche di aste in acciaio da risultati FEM e pushover standalone di cerchiature metalliche rettangolari. |
-| `masonry-piers` | Parziale | Verifica verticale NTC 2018 di maschi murari e idealizzazione 2D a telaio equivalente. |
+| `masonry-piers` | Parziale | Verifica verticale, inviluppo bilineare NTC 2018/Circolare 2019, idealizzazione a telaio equivalente e distinto macroelemento fisico ciclico 2D. |
 | `masonry-wall-openings` | Implementato | Verifiche di cerchiature su allineamenti murari, confronto pre/post e contributo laterale della cerchiatura. |
 | `masonry-ring-beams` | Scaffold | Modello e placeholder per cerchiature in muratura. |
 | `reinforced-concrete-sections` | Implementato | Analisi SLU/SLE di sezioni in c.a. a fibre. |
@@ -324,6 +324,8 @@ Nel repository gli esempi importano spesso da `./src/index.js` per usare diretta
 npm run example
 npm run example:ntc2018
 npm run example:applications
+npm run example:masonry-cyclic
+npm run example:masonry-ntc2018
 npm run example:rc-sections
 npm run example:beam-reports
 npm run example:masonry-wall-openings:cerchiature
@@ -356,6 +358,8 @@ Documentazione utile:
 - [docs/public-api-policy.md](docs/public-api-policy.md);
 - [docs/consumer-integration.md](docs/consumer-integration.md);
 - [docs/implementation-boundaries.md](docs/implementation-boundaries.md);
+- [docs/cyclic-masonry-pier.md](docs/cyclic-masonry-pier.md);
+- [docs/ntc2018-masonry-pier.md](docs/ntc2018-masonry-pier.md);
 - [docs/reinforced-concrete-module-progression.md](docs/reinforced-concrete-module-progression.md);
 - [docs/result-status.md](docs/result-status.md);
 - [docs/steel-beam-method.md](docs/steel-beam-method.md);

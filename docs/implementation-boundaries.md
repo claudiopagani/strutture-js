@@ -9,6 +9,10 @@ Un limite implementativo descrive cio che la libreria non calcola ancora o non s
 Esempi attuali:
 
 * la libreria non e un software normativo completo;
+* il modello bilineare NTC 2018/Circolare 2019 del maschio copre la muratura
+  ordinaria esistente in analisi statica non lineare allo SLC; non copre ancora
+  muratura armata, confinata, fasce di piano o il profilo autonomo a tre
+  meccanismi per costruzioni nuove;
 * `masonry-ring-beams`, `masonry-out-of-plane` e `micropiles-broms` restano placeholder dichiarati;
 * le verifiche acciaio non coprono ancora torsione e proprieta efficaci per classe 4;
 * il workflow pilastri RC esegue lo screening della snellezza e richiede

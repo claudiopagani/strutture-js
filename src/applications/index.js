@@ -27,6 +27,8 @@ export { MasonryPierApplication } from "./masonry-piers/index.js";
 export { MasonryPierEquivalentFrameBuilder } from "./masonry-piers/index.js";
 export { MasonryPierModel } from "./masonry-piers/index.js";
 export { MasonryPierVerticalVerification } from "./masonry-piers/index.js";
+export { NTC2018MasonryPierAnalysis } from "./masonry-piers/index.js";
+export { NTC2018MasonryPierModel } from "./masonry-piers/index.js";
 export { MasonryWallOpeningsApplication } from "./masonry-wall-openings/index.js";
 export { AlignmentSeismicAggregatedAnalysis } from "./masonry-wall-openings/index.js";
 export { AlignmentEquivalentFramePushoverAnalysis } from "./masonry-wall-openings/index.js";

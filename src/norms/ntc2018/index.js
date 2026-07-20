@@ -25,6 +25,20 @@ export {
 export { NTC2018ExistingMasonryMaterial } from "./materials/NTC2018ExistingMasonryMaterial.js";
 
 export {
+  NTC2018_MASONRY_PIER_CAPACITY_REFERENCES,
+  NTC2018_MASONRY_PIER_DEFORMATION_REFERENCES,
+  NTC2018_MASONRY_PIER_STIFFNESS_REFERENCE,
+  calculateNTC2018MasonryPierElasticStiffness,
+  calculateNTC2018MasonryPierFlexuralCapacity,
+  calculateNTC2018MasonryPierIrregularDiagonalCapacity,
+  calculateNTC2018MasonryPierRegularDiagonalCapacity,
+  calculateNTC2018MasonryPierSlidingCapacity,
+  calculateNTC2018MasonryPierUltimateDisplacement,
+  evaluateNTC2018MasonryPier,
+  selectNTC2018MasonryPierGoverningCapacity,
+} from "./masonry/index.js";
+
+export {
   applyNTC2018ExistingMasonryMaltaBuonaUpdate,
   applyNTC2018ExistingMasonryModifierToggle,
   createNTC2018ExistingMasonryModifierState,

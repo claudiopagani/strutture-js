@@ -6,6 +6,7 @@ import {
   MasonryPierEquivalentFrameBuilder,
   MasonryPierModel,
   MasonryPierVerticalVerification,
+  NTC2018MasonryPierModel,
   createNTC2018ExistingMasonryMaterial,
 } from "../src/index.js";
 
@@ -63,6 +64,38 @@ test("masonry pier verification reproduces tabulated Phi-based vertical checks",
   assert.ok(governing);
   approx(governing.capacity, 338550);
   approx(governing.demand, 216200);
+});
+
+test("masonry pier application routes the autonomous NTC bilinear workflow", () => {
+  const model = new NTC2018MasonryPierModel({
+    id: "pier-ntc-bilinear",
+    units,
+    geometry: { height: 3000, length: 1500, thickness: 300 },
+    material: {
+      units,
+      fm: 4,
+      tau0: 0.08,
+      fv0: 0.12,
+      E: 1800,
+      G: 600,
+    },
+    actions: { axialForce: 300000, lateralDisplacement: 20 },
+    design: { confidenceFactor: 1.2 },
+    normative: {
+      scope: "existing",
+      masonryTexture: "irregular",
+      blockCompressiveStrength: 12,
+    },
+  });
+  const result = new MasonryPierApplication().run({
+    analysisType: "ntc2018-bilinear",
+    model,
+  });
+
+  assert.equal(result.status, "ok");
+  assert.equal(result.outputs.governing.mechanism, "flexural");
+  assert.equal(result.outputs.deformation.ultimateDisplacement, 30);
+  assert.equal(result.metadata.modelType, "normative-bilinear");
 });
 
 test("masonry pier application includes equivalent-frame idealization with rigid ends", () => {
