@@ -150,6 +150,7 @@ Stato sintetico dei moduli applicativi:
 | `rc-cracked-deflection` | Implementato nel perimetro dichiarato | Integrazione delle curvature fessurate su risultati FEM SLE. |
 | `masonry-out-of-plane` | Scaffold | Modello e placeholder per cinematismi fuori piano. |
 | `micropiles-broms` | Scaffold | Modello e placeholder per analisi Broms dei micropali. |
+| `geotechnical-earth-pressures` | Implementato locale | Modello del sito 1D/2D, campo di pressione interstiziale e situazione di progetto serializzabili; Rankine drenata/non drenata, riposo, Coulomb attiva/passiva con geometria planare, Mononobe-Okabe e cuneo pseudo-statico stratificato con parete inclinata e attritiva nel campo documentato. |
 
 ## Architettura
 
@@ -188,7 +189,9 @@ migliorare il tree-shaking sono disponibili subpath granulari:
 
 ```js
 import { BandedLinearSolver } from "strutture-js/domain/math";
+import { GroundProfile } from "strutture-js/domain/geotechnics";
 import { CrackedSectionDeflectionAnalysis } from "strutture-js/applications/rc-cracked-deflection";
+import { listSoilTypes } from "strutture-js/catalogs/soil-types";
 import { getSteelProfileSectionData } from "strutture-js/catalogs/steel-profiles";
 ```
 
@@ -324,6 +327,7 @@ Nel repository gli esempi importano spesso da `./src/index.js` per usare diretta
 npm run example
 npm run example:ntc2018
 npm run example:applications
+npm run example:geotechnics
 npm run example:masonry-cyclic
 npm run example:masonry-ntc2018
 npm run example:rc-sections
@@ -358,6 +362,9 @@ Documentazione utile:
 - [docs/public-api-policy.md](docs/public-api-policy.md);
 - [docs/consumer-integration.md](docs/consumer-integration.md);
 - [docs/implementation-boundaries.md](docs/implementation-boundaries.md);
+- [docs/geotechnical-ground-model.md](docs/geotechnical-ground-model.md);
+- [docs/geotechnical-earth-pressure-method.md](docs/geotechnical-earth-pressure-method.md);
+- [docs/geotechnical-microapps-progression.md](docs/geotechnical-microapps-progression.md);
 - [docs/cyclic-masonry-pier.md](docs/cyclic-masonry-pier.md);
 - [docs/ntc2018-masonry-pier.md](docs/ntc2018-masonry-pier.md);
 - [docs/reinforced-concrete-module-progression.md](docs/reinforced-concrete-module-progression.md);

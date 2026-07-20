@@ -91,6 +91,44 @@ export {
   integrateFootingPressureStrip,
 } from "./domain/foundations/index.js";
 export {
+  EARTH_PRESSURE_METHODS,
+  EARTH_PRESSURE_STATES,
+  GEOTECHNICAL_INTERNAL_UNITS,
+  GEOTECHNICAL_DESIGN_SITUATION_SCHEMA_VERSION,
+  GEOTECHNICAL_DESIGN_SITUATION_TYPES,
+  GEOTECHNICAL_DRAINAGE_CONDITIONS,
+  GEOTECHNICAL_LIMIT_STATES,
+  GEOTECHNICAL_SEISMIC_MODELS,
+  GEOTECHNICAL_TIME_CONDITIONS,
+  GROUND_MODEL_SCHEMA_VERSION,
+  GROUND_PROFILE_SCHEMA_VERSION,
+  GROUND_SECTION_2D_SCHEMA_VERSION,
+  LateralEarthPressureAnalysis,
+  PORE_PRESSURE_FIELD_2D_MODELS,
+  PORE_PRESSURE_FIELD_2D_SCHEMA_VERSION,
+  PRESSURE_DIAGRAM_2D_SCHEMA_VERSION,
+  PressureDiagram2D,
+  SOIL_DRAINAGE_CONDITIONS,
+  SOIL_PARAMETER_BASES,
+  SOIL_STRENGTH_MODELS,
+  SOIL_STRUCTURE_INTERFACE_MODELS,
+  SOIL_STRUCTURE_INTERFACE_SCHEMA_VERSION,
+  SoilMaterial,
+  SoilStructureInterface,
+  GeotechnicalDesignSituation,
+  GroundModel,
+  GroundProfile,
+  GroundSection2D,
+  PorePressureField2D,
+  VerticalStressProfile,
+  coulombActiveEarthPressureCoefficient,
+  coulombPassiveEarthPressureCoefficient,
+  integratePressureSegments,
+  jakyAtRestCoefficient,
+  mononobeOkabeActiveEarthPressureCoefficient,
+  rankineEarthPressureCoefficients,
+} from "./domain/geotechnics/index.js";
+export {
   AxialMember2D,
   STRUT_AND_TIE_MEMBER_TYPES,
   StrutAndTieAnalysis2D,
@@ -183,6 +221,13 @@ export {
   listXlamPanelProducts,
   registerXlamPanelProduct,
 } from "./domain/catalogs/xlamPanelCatalog.js";
+export {
+  SOIL_TYPE_CATALOG,
+  SOIL_TYPE_IDS,
+  createSoilMaterialFromType,
+  getSoilTypeData,
+  listSoilTypes,
+} from "./catalogs/soil-types.js";
 export { ShearConnector } from "./domain/connectors/ShearConnector.js";
 export { TimberDowelConnector } from "./domain/connectors/TimberDowelConnector.js";
 export { TecnariaConnector } from "./domain/connectors/TecnariaConnector.js";
@@ -257,6 +302,7 @@ export {
   MasonryRingBeamApplication,
   MasonryRingBeamModel,
   MasonryRingBeamVerification,
+  GeotechnicalEarthPressureApplication,
   MicropileBromsAnalysis,
   MicropileBromsApplication,
   MicropileBromsModel,
@@ -463,7 +509,9 @@ export {
   calculateNTC2018JointCompressionCapacity,
   calculateNTC2018JointShearDemand,
   calculateNTC2018JointTensionReinforcement,
+  calculateNTC2018RetainingWallSeismicCoefficients,
   classifyNTC2018JointConfinement,
+  createNTC2018MononobeOkabeSeismicInput,
   ntc2018JointOverstrengthFactor,
   applyNTC2018ExistingMasonryMaltaBuonaUpdate,
   applyNTC2018ExistingMasonryModifierToggle,
@@ -482,6 +530,7 @@ export {
   createNTC2018BeamCombinations,
   createNTC2018SLECombination,
   createNTC2018ULSFundamentalCombination,
+  NTC2018_RETAINING_WALL_SEISMIC_REFERENCE,
 } from "./norms/ntc2018/index.js";
 
 export {

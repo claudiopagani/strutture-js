@@ -148,4 +148,12 @@ export const APPLICATION_CATALOG = [
     maturity: "scaffolded",
     primaryFocus: "Micropile lateral analysis based on Broms theory.",
   },
+  {
+    id: "geotechnical-earth-pressures",
+    name: "Geotechnical Earth Pressures",
+    domain: "geotechnics",
+      maturity: "implemented-local",
+      primaryFocus:
+        "Serializable layered static pressure diagrams, planar Coulomb actions, restricted Mononobe-Okabe thrusts and layered pseudostatic trial-wedge resultants.",
+  },
 ];

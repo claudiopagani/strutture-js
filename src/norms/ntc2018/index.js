@@ -112,3 +112,9 @@ export {
   classifyNTC2018JointConfinement,
   ntc2018JointOverstrengthFactor,
 } from "./reinforced-concrete/ntc2018BeamColumnJoint.js";
+
+export {
+  NTC2018_RETAINING_WALL_SEISMIC_REFERENCE,
+  calculateNTC2018RetainingWallSeismicCoefficients,
+  createNTC2018MononobeOkabeSeismicInput,
+} from "./geotechnics/ntc2018RetainingWallSeismic.js";

@@ -12,8 +12,11 @@ Sono supportati il package root e i subpath ufficiali correnti:
 - `strutture-js/applications`;
 - `strutture-js/applications/<application-id>`;
 - `strutture-js/domain/fem`;
+- `strutture-js/domain/geotechnics`;
 - `strutture-js/domain/math`;
 - `strutture-js/domain/strut-and-tie`;
+- `strutture-js/catalogs/soil-types`;
+- `strutture-js/catalogs/wall-interface-types`;
 - `strutture-js/catalogs/steel-profiles`;
 - `strutture-js/norms/italian-historical`;
 - `strutture-js/norms/ntc2018`;

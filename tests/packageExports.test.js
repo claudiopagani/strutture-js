@@ -14,7 +14,11 @@ import * as RcBeamColumnJointsApi from "strutture-js/applications/reinforced-con
 import * as RcStrutAndTieApi from "strutture-js/applications/reinforced-concrete-strut-and-tie";
 import * as FemApi from "strutture-js/domain/fem";
 import * as MathApi from "strutture-js/domain/math";
+import * as GeotechnicsApi from "strutture-js/domain/geotechnics";
 import * as StrutAndTieApi from "strutture-js/domain/strut-and-tie";
+import * as SoilTypesApi from "strutture-js/catalogs/soil-types";
+import * as WallInterfaceTypesApi from
+  "strutture-js/catalogs/wall-interface-types";
 import * as SteelProfilesApi from "strutture-js/catalogs/steel-profiles";
 import * as ItalianHistoricalApi from "strutture-js/norms/italian-historical";
 import * as Ntc2018Api from "strutture-js/norms/ntc2018";
@@ -46,6 +50,21 @@ test("package root export exposes the main public API", () => {
   );
   assert.equal(typeof PublicApi.RectangularFootingContactAnalysis, "function");
   assert.equal(typeof PublicApi.FoundationBeamAnalysis, "function");
+  assert.equal(typeof PublicApi.GroundProfile, "function");
+  assert.equal(typeof PublicApi.GroundSection2D, "function");
+  assert.equal(typeof PublicApi.PorePressureField2D, "function");
+  assert.equal(typeof PublicApi.GroundModel, "function");
+  assert.equal(typeof PublicApi.GeotechnicalDesignSituation, "function");
+  assert.equal(typeof PublicApi.SoilStructureInterface, "function");
+  assert.equal(
+    typeof PublicApi.calculateNTC2018RetainingWallSeismicCoefficients,
+    "function",
+  );
+  assert.equal(typeof PublicApi.LateralEarthPressureAnalysis, "function");
+  assert.equal(
+    typeof PublicApi.coulombPassiveEarthPressureCoefficient,
+    "function",
+  );
   assert.equal(
     typeof PublicApi.ReinforcedConcreteFoundationBeamApplication,
     "function",
@@ -128,6 +147,29 @@ test("granular ESM subpaths expose applications, solvers and catalogs", () => {
   assert.equal(typeof FemApi.CyclicMasonryPierAnalysis2D, "function");
   assert.equal(typeof MathApi.BandedLinearSolver, "function");
   assert.equal(typeof MathApi.rayPolygonCapacity, "function");
+  assert.equal(typeof GeotechnicsApi.SoilMaterial, "function");
+  assert.equal(typeof GeotechnicsApi.GroundSection2D, "function");
+  assert.equal(typeof GeotechnicsApi.PorePressureField2D, "function");
+  assert.equal(typeof GeotechnicsApi.GroundModel, "function");
+  assert.equal(
+    typeof GeotechnicsApi.GeotechnicalDesignSituation,
+    "function",
+  );
+  assert.equal(typeof GeotechnicsApi.PressureDiagram2D, "function");
+  assert.equal(
+    typeof GeotechnicsApi.coulombPassiveEarthPressureCoefficient,
+    "function",
+  );
+  assert.equal(typeof SoilTypesApi.createSoilMaterialFromType, "function");
+  assert.equal(
+    typeof WallInterfaceTypesApi.createSoilStructureInterfaceFromWallSurface,
+    "function",
+  );
+  assert.equal(
+    WallInterfaceTypesApi.WALL_SURFACE_TYPE_CATALOG["formed-concrete"]
+      .materialType,
+    "concrete",
+  );
   assert.equal(typeof StrutAndTieApi.StrutAndTieAnalysis2D, "function");
   assert.ok(SteelProfilesApi.STEEL_PROFILE_FAMILIES.includes("IPE"));
   assert.equal(

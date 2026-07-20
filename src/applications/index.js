@@ -3,6 +3,7 @@ import { MasonryOutOfPlaneApplication } from "./masonry-out-of-plane/index.js";
 import { MasonryPierApplication } from "./masonry-piers/index.js";
 import { MasonryWallOpeningsApplication } from "./masonry-wall-openings/index.js";
 import { MasonryRingBeamApplication } from "./masonry-ring-beams/index.js";
+import { GeotechnicalEarthPressureApplication } from "./geotechnical-earth-pressures/index.js";
 import { MicropileBromsApplication } from "./micropiles-broms/index.js";
 import { RCrackedDeflectionApplication } from "./rc-cracked-deflection/index.js";
 import { ReinforcedConcretePlateApplication } from "./reinforced-concrete-plates/index.js";
@@ -55,6 +56,7 @@ export { sanitizeAlignmentOpenings } from "./masonry-wall-openings/index.js";
 export { MasonryRingBeamApplication } from "./masonry-ring-beams/index.js";
 export { MasonryRingBeamModel } from "./masonry-ring-beams/index.js";
 export { MasonryRingBeamVerification } from "./masonry-ring-beams/index.js";
+export { GeotechnicalEarthPressureApplication } from "./geotechnical-earth-pressures/index.js";
 export { MicropileBromsApplication } from "./micropiles-broms/index.js";
 export { MicropileBromsAnalysis } from "./micropiles-broms/index.js";
 export { MicropileBromsModel } from "./micropiles-broms/index.js";
@@ -213,5 +215,6 @@ export function createDefaultApplicationRegistry() {
     new RCrackedDeflectionApplication(),
     new MasonryOutOfPlaneApplication(),
     new MicropileBromsApplication(),
+    new GeotechnicalEarthPressureApplication(),
   ]);
 }
