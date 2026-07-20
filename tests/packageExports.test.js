@@ -12,6 +12,10 @@ import * as RcFootingsApi from "strutture-js/applications/reinforced-concrete-is
 import * as RcFoundationBeamsApi from "strutture-js/applications/reinforced-concrete-foundation-beams";
 import * as RcBeamColumnJointsApi from "strutture-js/applications/reinforced-concrete-beam-column-joints";
 import * as RcStrutAndTieApi from "strutture-js/applications/reinforced-concrete-strut-and-tie";
+import * as SlopeStabilityApi from
+  "strutture-js/applications/geotechnical-slope-stability";
+import * as ShallowFoundationApi from
+  "strutture-js/applications/geotechnical-shallow-foundations";
 import * as FemApi from "strutture-js/domain/fem";
 import * as MathApi from "strutture-js/domain/math";
 import * as GeotechnicsApi from "strutture-js/domain/geotechnics";
@@ -61,6 +65,27 @@ test("package root export exposes the main public API", () => {
     "function",
   );
   assert.equal(typeof PublicApi.LateralEarthPressureAnalysis, "function");
+  assert.equal(typeof PublicApi.CircularSlipSurface2D, "function");
+  assert.equal(typeof PublicApi.CircularSlopeStabilityAnalysis, "function");
+  assert.equal(typeof PublicApi.spencerMethod, "function");
+  assert.equal(
+    typeof PublicApi.GeotechnicalSlopeStabilityApplication,
+    "function",
+  );
+  assert.equal(
+    typeof PublicApi.GeotechnicalShallowFoundationApplication,
+    "function",
+  );
+  assert.equal(typeof PublicApi.ShallowFoundationModel, "function");
+  assert.equal(typeof PublicApi.ShallowFoundationActionState, "function");
+  assert.equal(
+    typeof PublicApi.ShallowFoundationServiceabilityAnalysis,
+    "function",
+  );
+  assert.equal(
+    typeof PublicApi.calculateShallowFoundationDifferentialMovement,
+    "function",
+  );
   assert.equal(
     typeof PublicApi.coulombPassiveEarthPressureCoefficient,
     "function",
@@ -110,6 +135,18 @@ test("applications subpath export exposes application registry helpers", () => {
     "function",
   );
   assert.equal(typeof ApplicationsApi.getSteelVerificationCapabilities, "function");
+  assert.equal(
+    typeof ApplicationsApi.GeotechnicalSlopeStabilityApplication,
+    "function",
+  );
+  assert.equal(
+    typeof ApplicationsApi.GeotechnicalShallowFoundationApplication,
+    "function",
+  );
+  assert.equal(
+    typeof ApplicationsApi.ShallowFoundationServiceabilityAnalysis,
+    "function",
+  );
 });
 
 test("granular ESM subpaths expose applications, solvers and catalogs", () => {
@@ -142,6 +179,31 @@ test("granular ESM subpaths expose applications, solvers and catalogs", () => {
     typeof RcStrutAndTieApi.ReinforcedConcreteStrutAndTieVerification,
     "function",
   );
+  assert.equal(
+    typeof SlopeStabilityApi.GeotechnicalSlopeStabilityApplication,
+    "function",
+  );
+  assert.equal(
+    typeof SlopeStabilityApi.CircularSlopeStabilityAnalysis,
+    "function",
+  );
+  assert.equal(typeof SlopeStabilityApi.spencerMethod, "function");
+  assert.equal(
+    typeof ShallowFoundationApi.GeotechnicalShallowFoundationApplication,
+    "function",
+  );
+  assert.equal(
+    typeof ShallowFoundationApi.ShallowFoundationUltimateLimitStateAnalysis,
+    "function",
+  );
+  assert.equal(
+    typeof ShallowFoundationApi.ShallowFoundationServiceabilityAnalysis,
+    "function",
+  );
+  assert.equal(
+    typeof ShallowFoundationApi.calculateRigidFoundationElasticStiffness,
+    "function",
+  );
   assert.equal(typeof FemApi.LinearStaticSolver2D, "function");
   assert.equal(typeof FemApi.CyclicMasonryPier2D, "function");
   assert.equal(typeof FemApi.CyclicMasonryPierAnalysis2D, "function");
@@ -156,6 +218,19 @@ test("granular ESM subpaths expose applications, solvers and catalogs", () => {
     "function",
   );
   assert.equal(typeof GeotechnicsApi.PressureDiagram2D, "function");
+  assert.equal(typeof GeotechnicsApi.CircularSlipSurface2D, "function");
+  assert.equal(typeof GeotechnicsApi.SlopeSliceDiscretizer2D, "function");
+  assert.equal(typeof GeotechnicsApi.spencerMethod, "function");
+  assert.equal(typeof GeotechnicsApi.ShallowFoundationModel, "function");
+  assert.equal(
+    typeof GeotechnicsApi.ShallowFoundationServiceabilityAnalysis,
+    "function",
+  );
+  assert.equal(typeof GeotechnicsApi.SOIL_DEFORMATION_MODELS, "object");
+  assert.equal(
+    typeof GeotechnicsApi.calculateShallowFoundationBearingCapacity,
+    "function",
+  );
   assert.equal(
     typeof GeotechnicsApi.coulombPassiveEarthPressureCoefficient,
     "function",

@@ -1,0 +1,24 @@
+export { GeotechnicalShallowFoundationApplication } from
+  "./GeotechnicalShallowFoundationApplication.js";
+export {
+  SHALLOW_FOUNDATION_ACTION_BASES,
+  SHALLOW_FOUNDATION_ACTION_STATE_SCHEMA_VERSION,
+  SHALLOW_FOUNDATION_BEARING_METHODS,
+  SHALLOW_FOUNDATION_BEARING_SELECTIONS,
+  SHALLOW_FOUNDATION_MODEL_SCHEMA_VERSION,
+  SHALLOW_FOUNDATION_SHAPES,
+  SHALLOW_FOUNDATION_SETTLEMENT_METHODS,
+  SHALLOW_FOUNDATION_SLS_RESULT_SCHEMA_VERSION,
+  SHALLOW_FOUNDATION_ULS_RESULT_SCHEMA_VERSION,
+  ShallowFoundationActionState,
+  ShallowFoundationModel,
+  ShallowFoundationUltimateLimitStateAnalysis,
+  ShallowFoundationServiceabilityAnalysis,
+  calculateRigidFoundationElasticStiffness,
+  calculateSchmertmannStrainInfluence,
+  calculateShallowFoundationDifferentialMovement,
+  calculateShallowFoundationVerticalStressInfluence,
+  calculateShallowFoundationBearingCapacity,
+  calculateShallowFoundationEffectiveGeometry,
+  calculateShallowFoundationSlidingResistance,
+} from "../../domain/geotechnics/index.js";

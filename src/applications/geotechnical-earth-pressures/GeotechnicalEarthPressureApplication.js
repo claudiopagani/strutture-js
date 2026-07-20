@@ -27,7 +27,7 @@ export class GeotechnicalEarthPressureApplication extends StructuralApplication 
           "inclined Coulomb is homogeneous, drained and cohesionless",
           "homogeneous dry cohesionless Mononobe-Okabe analysis",
           "layered pseudostatic trial wedge supports a planar inclined frictional wall but remains a no-groundwater, resultant-only approximation",
-          "global slope stability is a separate future geotechnical analysis",
+          "global slope stability is handled by the separate geotechnical-slope-stability application",
         ],
       },
     });

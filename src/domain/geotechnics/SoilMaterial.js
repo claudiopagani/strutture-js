@@ -25,6 +25,27 @@ export const SOIL_STRENGTH_MODELS = Object.freeze([
   "total-stress-undrained",
 ]);
 
+export const SOIL_DEFORMATION_MODELS = Object.freeze([
+  "schmertmann-cpt",
+  "constrained-modulus",
+  "isotropic-elastic",
+]);
+
+export const SOIL_MODULUS_DEFINITIONS = Object.freeze([
+  "secant",
+  "tangent",
+  "unload-reload",
+  "strain-compatible",
+  "small-strain",
+  "cpt-correlated-equivalent",
+]);
+
+export const SOIL_SETTLEMENT_COMPONENTS = Object.freeze([
+  "immediate",
+  "primary-consolidation",
+  "combined-volume-change",
+]);
+
 function finitePositive(value, label, { allowZero = false } = {}) {
   if (!Number.isFinite(value) || (allowZero ? value < 0 : value <= 0)) {
     throw new Error(
@@ -170,6 +191,153 @@ function normalizeParameterSet(input, resolver, angleUnits, index) {
   };
 }
 
+function normalizeOptionalRange(input, resolver, label, quantity) {
+  if (input == null) return null;
+  if (!Array.isArray(input) || input.length !== 2) {
+    throw new Error(`${label} must contain [minimum, maximum].`);
+  }
+  const convert = quantity === "stress"
+    ? (value) => resolver.stress(Number(value))
+    : (value) => Number(value);
+  const minimum = convert(input[0]);
+  const maximum = convert(input[1]);
+  if (
+    !Number.isFinite(minimum) ||
+    !Number.isFinite(maximum) ||
+    minimum < 0 ||
+    maximum <= minimum
+  ) {
+    throw new Error(`${label} requires 0 <= minimum < maximum.`);
+  }
+  return [minimum, maximum];
+}
+
+function normalizeDeformationParameterSet(input, resolver, index) {
+  const label = `deformationParameterSets[${index}]`;
+  const id = input?.id;
+  if (!id) throw new Error(`${label}.id is required.`);
+  const basis = input.basis;
+  if (!SOIL_PARAMETER_BASES.includes(basis)) {
+    throw new Error(`${label}.basis is unsupported: ${basis}.`);
+  }
+  const drainage = input.drainage;
+  if (!SOIL_DRAINAGE_CONDITIONS.includes(drainage)) {
+    throw new Error(`${label}.drainage is unsupported: ${drainage}.`);
+  }
+  const model = input.model;
+  if (!SOIL_DEFORMATION_MODELS.includes(model)) {
+    throw new Error(`${label}.model is unsupported: ${model}.`);
+  }
+  const settlementComponent = input.settlementComponent ?? "immediate";
+  if (!SOIL_SETTLEMENT_COMPONENTS.includes(settlementComponent)) {
+    throw new Error(
+      `${label}.settlementComponent is unsupported: ${settlementComponent}.`,
+    );
+  }
+  const provenance = structuredClone(input.provenance ?? {});
+  if (typeof provenance.source !== "string" || !provenance.source.trim()) {
+    throw new Error(`${label}.provenance.source is required.`);
+  }
+  const stressRange = normalizeOptionalRange(
+    input.stressRange,
+    resolver,
+    `${label}.stressRange`,
+    "stress",
+  );
+  const strainRange = normalizeOptionalRange(
+    input.strainRange,
+    resolver,
+    `${label}.strainRange`,
+    "strain",
+  );
+
+  const common = {
+    id,
+    basis,
+    drainage,
+    model,
+    settlementComponent,
+    stressRange,
+    strainRange,
+    provenance,
+    metadata: structuredClone(input.metadata ?? {}),
+  };
+
+  if (model === "schmertmann-cpt") {
+    if (drainage !== "drained") {
+      throw new Error(`${label} Schmertmann CPT data must be drained.`);
+    }
+    if (settlementComponent !== "immediate") {
+      throw new Error(
+        `${label} Schmertmann CPT data must describe immediate settlement.`,
+      );
+    }
+    return {
+      ...common,
+      coneTipResistance: finitePositive(
+        resolver.stress(Number(input.coneTipResistance)),
+        `${label}.coneTipResistance`,
+      ),
+      soilApplicability: "cohesionless",
+      testMethod: "CPT",
+      modulusDefinition: "cpt-correlated-equivalent",
+    };
+  }
+
+  const modulusDefinition = input.modulusDefinition ?? "secant";
+  if (!SOIL_MODULUS_DEFINITIONS.includes(modulusDefinition)) {
+    throw new Error(
+      `${label}.modulusDefinition is unsupported: ${modulusDefinition}.`,
+    );
+  }
+
+  if (model === "constrained-modulus") {
+    return {
+      ...common,
+      constrainedModulus: finitePositive(
+        resolver.stress(Number(input.constrainedModulus)),
+        `${label}.constrainedModulus`,
+      ),
+      modulusDefinition,
+      testMethod: input.testMethod ?? "assigned",
+      boundaryCondition: "one-dimensional-confined-compression",
+    };
+  }
+
+  const poissonRatio = Number(input.poissonRatio);
+  if (!Number.isFinite(poissonRatio) || poissonRatio < 0 || poissonRatio >= 0.5) {
+    throw new Error(`${label}.poissonRatio must satisfy 0 <= value < 0.5.`);
+  }
+  const hasYoung = input.youngModulus != null;
+  const hasShear = input.shearModulus != null;
+  if (hasYoung === hasShear) {
+    throw new Error(
+      `${label} isotropic-elastic data require exactly one of youngModulus or shearModulus.`,
+    );
+  }
+  const youngModulus = hasYoung
+    ? finitePositive(
+        resolver.stress(Number(input.youngModulus)),
+        `${label}.youngModulus`,
+      )
+    : null;
+  const shearModulus = hasShear
+    ? finitePositive(
+        resolver.stress(Number(input.shearModulus)),
+        `${label}.shearModulus`,
+      )
+    : youngModulus / (2 * (1 + poissonRatio));
+  return {
+    ...common,
+    youngModulus: youngModulus ?? 2 * shearModulus * (1 + poissonRatio),
+    shearModulus,
+    poissonRatio,
+    inputModulus: hasYoung ? "young" : "shear",
+    modulusDefinition,
+    boundaryCondition: "isotropic-elastic-continuum",
+  };
+}
+
 export class SoilMaterial {
   constructor({
     id,
@@ -179,6 +347,8 @@ export class SoilMaterial {
     unitWeight,
     parameterSets = [],
     defaultParameterSetId = null,
+    deformationParameterSets = [],
+    defaultDeformationParameterSetId = null,
     angleUnits = null,
     units = null,
     metadata = {},
@@ -208,6 +378,33 @@ export class SoilMaterial {
       );
     }
 
+    if (!Array.isArray(deformationParameterSets)) {
+      throw new Error("SoilMaterial deformationParameterSets must be an array.");
+    }
+    const normalizedDeformationSets = deformationParameterSets.map(
+      (parameterSet, index) =>
+        normalizeDeformationParameterSet(parameterSet, resolver, index),
+    );
+    const deformationIds = normalizedDeformationSets.map(({ id: setId }) =>
+      setId);
+    if (new Set(deformationIds).size !== deformationIds.length) {
+      throw new Error(
+        "SoilMaterial deformation parameter set ids must be unique.",
+      );
+    }
+    const resolvedDeformationDefault = defaultDeformationParameterSetId ??
+      (normalizedDeformationSets.length === 1
+        ? normalizedDeformationSets[0].id
+        : null);
+    if (
+      resolvedDeformationDefault != null &&
+      !deformationIds.includes(resolvedDeformationDefault)
+    ) {
+      throw new Error(
+        `Unknown SoilMaterial default deformation parameter set: ${resolvedDeformationDefault}.`,
+      );
+    }
+
     this.id = id;
     this.name = name;
     this.category = "soil";
@@ -216,6 +413,8 @@ export class SoilMaterial {
     this.unitWeight = normalizeUnitWeight(unitWeight, resolver);
     this.parameterSets = normalizedSets;
     this.defaultParameterSetId = resolvedDefault;
+    this.deformationParameterSets = normalizedDeformationSets;
+    this.defaultDeformationParameterSetId = resolvedDeformationDefault;
     this.units = INTERNAL_UNITS;
     this.metadata = {
       ...structuredClone(metadata ?? {}),
@@ -243,6 +442,24 @@ export class SoilMaterial {
     return parameterSet;
   }
 
+  getDeformationParameterSet(parameterSetId = null) {
+    const selectedId = parameterSetId ?? this.defaultDeformationParameterSetId;
+    if (selectedId == null) {
+      throw new Error(
+        `SoilMaterial ${this.id} requires an explicit deformationParameterSetId.`,
+      );
+    }
+    const parameterSet = this.deformationParameterSets.find(
+      ({ id }) => id === selectedId,
+    );
+    if (!parameterSet) {
+      throw new Error(
+        `Unknown deformation parameter set ${selectedId} for SoilMaterial ${this.id}.`,
+      );
+    }
+    return parameterSet;
+  }
+
   toJSON() {
     return {
       id: this.id,
@@ -253,6 +470,8 @@ export class SoilMaterial {
       unitWeight: { ...this.unitWeight },
       parameterSets: structuredClone(this.parameterSets),
       defaultParameterSetId: this.defaultParameterSetId,
+      deformationParameterSets: structuredClone(this.deformationParameterSets),
+      defaultDeformationParameterSetId: this.defaultDeformationParameterSetId,
       units: { ...this.units },
       metadata: structuredClone(this.metadata),
     };

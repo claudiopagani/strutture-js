@@ -87,11 +87,15 @@ essere inseriti esplicitamente e accompagnati dalla loro provenienza. Questa
 regola permette sia la scelta da catalogo sia la definizione manuale senza
 far passare intervalli indicativi per dati di progetto.
 
-Il modello corrente contiene i dati già consumati dalle analisi di spinta:
-pesi di volume, resistenza Mohr-Coulomb efficace, resistenza non drenata e
-coefficiente a riposo assegnato. Deformabilità, permeabilità, consolidazione e
-leggi costitutive cicliche saranno aggiunte come blocchi tipizzati quando una
-microapp ne consumerà davvero i valori e disporrà delle relative validazioni.
+Il modello contiene inoltre `deformationParameterSets` distinti dai set
+resistenti. I blocchi implementati sono CPT per Schmertmann, modulo vincolato e
+mezzo isotropo elastico. Ogni blocco dichiara base, drenaggio, componente del
+cedimento, tipo di modulo, intervalli di tensione/deformazione quando noti e
+una fonte obbligatoria. Sono consumati dalla microapp delle fondazioni
+superficiali senza creare correlazioni implicite fra prove diverse.
+
+Permeabilità, storia tensionale completa, consolidazione e leggi costitutive
+cicliche restano blocchi futuri: non sono simulati mediante metadati generici.
 
 ## `GroundProfile`: compatibilità 1D
 
@@ -251,7 +255,9 @@ parametri alimentano un'analisi. Contiene:
 - eventuale base richiesta dei parametri;
 - selezione di profilo, sezione e campo di pressione interstiziale;
 - identificativo della fase costruttiva;
-- mappa dei set di parametri per materiale, zona, strato e interfaccia;
+- mappa dei set resistenti per materiale, zona e strato;
+- mappa separata dei set deformativi per materiale, zona e strato;
+- mappa dei set di interfaccia;
 - autorizzazione esplicita all'uso di valori indicativi;
 - input pseudostatici per la situazione sismica;
 - contesto normativo serializzabile, senza dipendenza del dominio da una norma.
@@ -272,6 +278,11 @@ valori indicativi.
 La mappa delle interfacce restituisce solo l'identificativo scelto: l'oggetto
 `SoilStructureInterface` e la sua relazione con la struttura appartengono al
 consumer che possiede la geometria dell'opera.
+
+`resolveDeformationParameterSet()` applica la stessa precedenza zona, strato,
+materiale e default, ma consulta soltanto `deformationParameterSets`. Il
+risultato tracciato non consente quindi a un set resistente e a uno deformativo
+con identificativi simili di sostituirsi accidentalmente.
 
 ### Sisma e norme
 
@@ -396,10 +407,17 @@ interstiziale e risoluzione della situazione di progetto.
 
 ## Campo non implementato
 
-La chiusura di questi quattro contratti non implica che siano implementati:
+La chiusura di questi quattro contratti non implica che siano implementati
+tutti i solutori. La stabilità statica e pseudostatica dei pendii e la
+capacita/cedimento immediato delle fondazioni superficiali sono disponibili
+nei rispettivi perimetri documentati in
+[`geotechnical-slope-stability-method.md`](geotechnical-slope-stability-method.md)
+e [`geotechnical-shallow-foundations.md`](geotechnical-shallow-foundations.md).
+Restano non implementati:
 
-- stabilità dei pendii e ricerca delle superfici di scorrimento;
-- capacità portante e cedimenti delle fondazioni;
+- superfici di scorrimento non circolari, risposta dinamica e spostamenti
+  permanenti per pendii;
+- consolidazione e cedimenti dipendenti dal tempo delle fondazioni;
 - capacità assiale o laterale dei pali;
 - verifica completa di muri e paratie;
 - generazione di molle o leggi `p-y`, `t-z`, `q-z`;

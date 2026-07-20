@@ -19,11 +19,25 @@ Esempi attuali:
   omogenea, Mononobe-Okabe attiva omogenea e il cuneo pseudo-statico
   stratificato a inclinazione costante con parete planare inclinata e
   attritiva nel campo documentato; restano fuori campo le superfici di rottura
-  curve, la falda nel cuneo pseudo-statico, la stabilita globale dei pendii e
-  le verifiche di muri, paratie, pali e fondazioni;
+  curve, la falda nel cuneo pseudo-statico e le verifiche di muri, paratie,
+  pali e fondazioni;
+* `geotechnical-slope-stability` risolve pendii statici e pseudostatici 2D su
+  superfici circolari con Spencer; Bishop semplificato e metodo ordinario
+  restano confronti statici. Sono inclusi terreni stratificati, falda
+  assegnata e sovraccarichi verticali nel campo documentato. Non sono coperti
+  risposta dinamica o spostamenti permanenti, inerzia dei sovraccarichi,
+  superfici non circolari, acqua esterna, fessure di trazione, rinforzi,
+  analisi 3D o verifiche normative automatiche;
+* `geotechnical-shallow-foundations` copre capacita ULS statica e cedimento
+  immediato SLS nel campo dei metodi documentati. Lo SLS separa CPT, modulo
+  vincolato e semispazio elastico equivalente e fornisce movimenti/rigidezze
+  solo quando giustificati dal metodo. Non copre consolidazione o creep,
+  cedimenti sismici, fondazioni flessibili o interagenti, contatto non lineare,
+  base o piano campagna inclinati, passiva di incasso, uplift o verifiche
+  normative automatiche;
 * `GroundModel`, `GroundSection2D`, `PorePressureField2D` e
   `GeotechnicalDesignSituation` sono contratti dati operativi e serializzabili:
-  non costituiscono un solutore di stabilita, filtrazione, capacita portante,
+  non costituiscono da soli un solutore di filtrazione, capacita portante,
   cedimento, interazione terreno-struttura o FEM continuo; la sezione e 2D con
   superficie monovaluata rispetto a `x`, zone poligonali senza fori e campo di
   pressione interstiziale assegnato;

@@ -4,6 +4,8 @@ import { MasonryPierApplication } from "./masonry-piers/index.js";
 import { MasonryWallOpeningsApplication } from "./masonry-wall-openings/index.js";
 import { MasonryRingBeamApplication } from "./masonry-ring-beams/index.js";
 import { GeotechnicalEarthPressureApplication } from "./geotechnical-earth-pressures/index.js";
+import { GeotechnicalShallowFoundationApplication } from "./geotechnical-shallow-foundations/index.js";
+import { GeotechnicalSlopeStabilityApplication } from "./geotechnical-slope-stability/index.js";
 import { MicropileBromsApplication } from "./micropiles-broms/index.js";
 import { RCrackedDeflectionApplication } from "./rc-cracked-deflection/index.js";
 import { ReinforcedConcretePlateApplication } from "./reinforced-concrete-plates/index.js";
@@ -57,6 +59,30 @@ export { MasonryRingBeamApplication } from "./masonry-ring-beams/index.js";
 export { MasonryRingBeamModel } from "./masonry-ring-beams/index.js";
 export { MasonryRingBeamVerification } from "./masonry-ring-beams/index.js";
 export { GeotechnicalEarthPressureApplication } from "./geotechnical-earth-pressures/index.js";
+export {
+  GeotechnicalShallowFoundationApplication,
+  SHALLOW_FOUNDATION_ACTION_BASES,
+  SHALLOW_FOUNDATION_ACTION_STATE_SCHEMA_VERSION,
+  SHALLOW_FOUNDATION_BEARING_METHODS,
+  SHALLOW_FOUNDATION_BEARING_SELECTIONS,
+  SHALLOW_FOUNDATION_MODEL_SCHEMA_VERSION,
+  SHALLOW_FOUNDATION_SHAPES,
+  SHALLOW_FOUNDATION_SETTLEMENT_METHODS,
+  SHALLOW_FOUNDATION_SLS_RESULT_SCHEMA_VERSION,
+  SHALLOW_FOUNDATION_ULS_RESULT_SCHEMA_VERSION,
+  ShallowFoundationActionState,
+  ShallowFoundationModel,
+  ShallowFoundationServiceabilityAnalysis,
+  ShallowFoundationUltimateLimitStateAnalysis,
+  calculateRigidFoundationElasticStiffness,
+  calculateSchmertmannStrainInfluence,
+  calculateShallowFoundationDifferentialMovement,
+  calculateShallowFoundationBearingCapacity,
+  calculateShallowFoundationEffectiveGeometry,
+  calculateShallowFoundationSlidingResistance,
+  calculateShallowFoundationVerticalStressInfluence,
+} from "./geotechnical-shallow-foundations/index.js";
+export { GeotechnicalSlopeStabilityApplication } from "./geotechnical-slope-stability/index.js";
 export { MicropileBromsApplication } from "./micropiles-broms/index.js";
 export { MicropileBromsAnalysis } from "./micropiles-broms/index.js";
 export { MicropileBromsModel } from "./micropiles-broms/index.js";
@@ -216,5 +242,7 @@ export function createDefaultApplicationRegistry() {
     new MasonryOutOfPlaneApplication(),
     new MicropileBromsApplication(),
     new GeotechnicalEarthPressureApplication(),
+    new GeotechnicalShallowFoundationApplication(),
+    new GeotechnicalSlopeStabilityApplication(),
   ]);
 }

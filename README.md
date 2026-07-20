@@ -151,6 +151,8 @@ Stato sintetico dei moduli applicativi:
 | `masonry-out-of-plane` | Scaffold | Modello e placeholder per cinematismi fuori piano. |
 | `micropiles-broms` | Scaffold | Modello e placeholder per analisi Broms dei micropali. |
 | `geotechnical-earth-pressures` | Implementato locale | Modello del sito 1D/2D, campo di pressione interstiziale e situazione di progetto serializzabili; Rankine drenata/non drenata, riposo, Coulomb attiva/passiva con geometria planare, Mononobe-Okabe e cuneo pseudo-statico stratificato con parete inclinata e attritiva nel campo documentato. |
+| `geotechnical-shallow-foundations` | Implementato locale ULS + SLS immediato | Capacita portante statica USACE/Meyerhof e FHWA/Vesic, area efficace, falda, punch-through e scorrimento; cedimenti stratificati da CPT o modulo vincolato, rigidezze/rotazioni elastiche rigide e cedimenti differenziali. Consolidazione e adapter normativi restano separati. |
+| `geotechnical-slope-stability` | Implementato locale | Stabilità statica e pseudostatica 2D su superfici circolari assegnate o ricercate, con Spencer, diagnostiche statiche Bishop/Fellenius, stratigrafia, falda assegnata e sovraccarichi verticali nel campo documentato. |
 
 ## Architettura
 
@@ -364,6 +366,8 @@ Documentazione utile:
 - [docs/implementation-boundaries.md](docs/implementation-boundaries.md);
 - [docs/geotechnical-ground-model.md](docs/geotechnical-ground-model.md);
 - [docs/geotechnical-earth-pressure-method.md](docs/geotechnical-earth-pressure-method.md);
+- [docs/geotechnical-slope-stability-method.md](docs/geotechnical-slope-stability-method.md);
+- [docs/geotechnical-shallow-foundations.md](docs/geotechnical-shallow-foundations.md);
 - [docs/geotechnical-microapps-progression.md](docs/geotechnical-microapps-progression.md);
 - [docs/cyclic-masonry-pier.md](docs/cyclic-masonry-pier.md);
 - [docs/ntc2018-masonry-pier.md](docs/ntc2018-masonry-pier.md);

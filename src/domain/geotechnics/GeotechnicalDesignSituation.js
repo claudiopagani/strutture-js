@@ -199,6 +199,18 @@ export class GeotechnicalDesignSituation {
         parameterSelection.byInterface,
         "parameterSelection.byInterface",
       ),
+      deformationByMaterial: normalizeStringMap(
+        parameterSelection.deformationByMaterial,
+        "parameterSelection.deformationByMaterial",
+      ),
+      deformationByZone: normalizeStringMap(
+        parameterSelection.deformationByZone,
+        "parameterSelection.deformationByZone",
+      ),
+      deformationByLayer: normalizeStringMap(
+        parameterSelection.deformationByLayer,
+        "parameterSelection.deformationByLayer",
+      ),
     };
     this.allowIndicativeValues = Boolean(allowIndicativeValues);
     this.seismic = normalizeSeismic(seismic, situationType);
@@ -244,6 +256,29 @@ export class GeotechnicalDesignSituation {
     )) {
       const layer = selectedLayer(groundModel, profileId, layerId);
       groundModel.getMaterial(layer.materialId).getParameterSet(parameterSetId);
+    }
+    for (const [materialId, parameterSetId] of Object.entries(
+      this.parameterSelection.deformationByMaterial,
+    )) {
+      groundModel.getMaterial(materialId).getDeformationParameterSet(
+        parameterSetId,
+      );
+    }
+    for (const [zoneId, parameterSetId] of Object.entries(
+      this.parameterSelection.deformationByZone,
+    )) {
+      const zone = selectedZone(groundModel, sectionId, zoneId);
+      groundModel.getMaterial(zone.materialId).getDeformationParameterSet(
+        parameterSetId,
+      );
+    }
+    for (const [layerId, parameterSetId] of Object.entries(
+      this.parameterSelection.deformationByLayer,
+    )) {
+      const layer = selectedLayer(groundModel, profileId, layerId);
+      groundModel.getMaterial(layer.materialId).getDeformationParameterSet(
+        parameterSetId,
+      );
     }
     return true;
   }
@@ -342,6 +377,95 @@ export class GeotechnicalDesignSituation {
     return this.parameterSelection.byInterface[interfaceId] ?? null;
   }
 
+  resolveDeformationParameterSet({
+    groundModel,
+    materialId = null,
+    zoneId = null,
+    layerId = null,
+  } = {}) {
+    this.validateAgainst(groundModel);
+    const { profileId, sectionId } = this.spatialSelection;
+    const zone = selectedZone(groundModel, sectionId, zoneId);
+    const layer = selectedLayer(groundModel, profileId, layerId);
+    const resolvedMaterialId = materialId ?? zone?.materialId ?? layer?.materialId;
+    if (!resolvedMaterialId) {
+      throw new Error(
+        "Deformation-parameter resolution requires materialId, zoneId or layerId.",
+      );
+    }
+    if (zone && zone.materialId !== resolvedMaterialId) {
+      throw new Error(`Zone ${zone.id} does not use material ${resolvedMaterialId}.`);
+    }
+    if (layer && layer.materialId !== resolvedMaterialId) {
+      throw new Error(`Layer ${layer.id} does not use material ${resolvedMaterialId}.`);
+    }
+    const material = groundModel.getMaterial(resolvedMaterialId);
+    const candidates = [
+      zone && {
+        id: this.parameterSelection.deformationByZone[zone.id],
+        source: "zone",
+        sourceId: zone.id,
+      },
+      layer && {
+        id: this.parameterSelection.deformationByLayer[layer.id],
+        source: "layer",
+        sourceId: layer.id,
+      },
+      {
+        id: this.parameterSelection.deformationByMaterial[material.id],
+        source: "material",
+        sourceId: material.id,
+      },
+      {
+        id: material.defaultDeformationParameterSetId,
+        source: "material-default",
+        sourceId: material.id,
+      },
+    ].filter((candidate) => candidate?.id != null);
+    if (candidates.length === 0) {
+      throw new Error(
+        `No deformation parameter set is selected for material ${material.id} in design situation ${this.id}.`,
+      );
+    }
+    const selected = candidates[0];
+    const parameterSet = material.getDeformationParameterSet(selected.id);
+    if (
+      this.drainageCondition !== "mixed" &&
+      parameterSet.drainage !== this.drainageCondition
+    ) {
+      throw new Error(
+        `Deformation parameter set ${parameterSet.id} is ${parameterSet.drainage}, but design situation ${this.id} requires ${this.drainageCondition}.`,
+      );
+    }
+    if (
+      this.requiredParameterBasis != null &&
+      parameterSet.basis !== this.requiredParameterBasis
+    ) {
+      throw new Error(
+        `Deformation parameter set ${parameterSet.id} has basis ${parameterSet.basis}, but ${this.requiredParameterBasis} is required.`,
+      );
+    }
+    if (parameterSet.basis === "indicative" && !this.allowIndicativeValues) {
+      throw new Error(
+        `Indicative deformation parameter set ${parameterSet.id} is not authorized by design situation ${this.id}.`,
+      );
+    }
+    return {
+      groundModelId: groundModel.id,
+      designSituationId: this.id,
+      materialId: material.id,
+      zoneId: zone?.id ?? null,
+      layerId: layer?.id ?? null,
+      parameterSetId: parameterSet.id,
+      selectionSource: selected.source,
+      selectionSourceId: selected.sourceId,
+      parameterSet: structuredClone(parameterSet),
+      warnings: parameterSet.basis === "indicative"
+        ? ["An indicative deformation parameter set was explicitly authorized."]
+        : [],
+    };
+  }
+
   toJSON() {
     return {
       schemaVersion: this.schemaVersion,
@@ -366,4 +490,3 @@ export class GeotechnicalDesignSituation {
     };
   }
 }
-

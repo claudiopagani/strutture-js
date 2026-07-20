@@ -5,7 +5,13 @@
 | Fonte | Uso nel modulo | Limite conservato |
 | --- | --- | --- |
 | [JRC, Assembling the Ground Model and the Derived Values](https://eurocodes.jrc.ec.europa.eu/publications/assembling-ground-model-and-derived-values) | Riferimento concettuale per separare modello interpretato del sito, rappresentazioni in sezione, valori derivati e successive scelte di progetto. | Il riferimento non prescrive gli schemi software e non rende i DTO una implementazione normativa completa dell'Eurocodice 7. |
-| [USACE EM 1110-2-1902, Slope Stability (2003)](https://www.publications.usace.army.mil/Portals/76/Publications/EngineerManuals/EM_1110-2-1902.pdf) | Riferimento primario per il ruolo delle pressioni interstiziali nelle future analisi di stabilita; nella campagna corrente controlla la rappresentazione assegnata del campo, non implementa ancora il metodo delle strisce. | La stabilita del pendio non e ancora operativa. `PorePressureField2D` interpola un campo assegnato e non risolve filtrazione o consolidazione. |
+| [USACE EM 1110-2-1902, Slope Stability (2003)](https://www.publications.usace.army.mil/Portals/76/Publications/EngineerManuals/EM_1110-2-1902.pdf) | Riferimento primario per metodo ordinario, Bishop semplificato, Spencer, discretizzazione, pressione interstiziale, ricerca e verifica dei risultati. | Il workflow resta circolare. Bishop non soddisfa l'equilibrio orizzontale e non è usato col sisma; non sono implementati acqua esterna, fessure di trazione, rapido svaso, superfici non circolari o filtrazione. |
+| [USACE EM 1110-1-1905, Geotechnical Design of Shallow Foundations on Soils (2025)](https://publibrary.sec.usace.army.mil/api/download?filename=EM+1110-1-1905_Geotechincal+Design+of+Shallow+Foundations+on+Soils_2025+07+22+-+Final.pdf&id=54658636-77d2-48df-f26b-5295a01899a7&preview=true) | Dimensioni efficaci, capacità portante USACE/Meyerhof e FHWA/Vesic, correzione di falda, punch-through `2V:1H`, scorrimento, tensioni verticali approssimate e cedimento immediato Schmertmann; esempi B-3/B-4/C-7. | Il solver corrente è statico, con base e terreno orizzontali; il punch-through è limitato a strato forte sopra strato debole non drenato. Il ramo SLS non include il fattore temporale `C2`, consolidazione o creep. Il totale stampato dell'esempio C-7 è internamente incoerente con i contributi di riga e non è usato come target. |
+| [FHWA GEC 6, Shallow Foundations, FHWA-IF-02-054 (2002)](https://www.fhwa.dot.gov/engineering/geotech/pubs/010943.pdf) | Fattori Vesic, correzioni di falda e politica di esclusione del fattore d'inclinazione quando sono usati i fattori di forma. | Il ramo FHWA resta un metodo di capacità ultima; non produce resistenza di progetto o verifica normativa senza adapter. |
+| [NIST GCR 12-917-21, Soil-Structure Interaction for Building Structures (2012)](https://www.nist.gov/publications/soil-structure-interaction-building-structures) | Rigidezze statiche verticali e rocking di Pais-Kausel per fondazioni rettangolari rigide, inclusi i moltiplicatori di incasso delle tabelle 2-2a/2-2b. | Richiede un semispazio elastico omogeneo equivalente e rigidezza compatibile con il livello deformativo; non rappresenta contatto non lineare, stratigrafia generale o fondazioni flessibili. |
+| [FEMA P-2091, A Practical Guide to Soil-Structure Interaction (2020)](https://www.fema.gov/sites/default/files/documents/fema_p-2091-soil-structure-interaction.pdf) | Controllo indipendente delle equazioni di rigidezza NIST/Pais-Kausel e delle cautele su variabilità e riduzione della rigidezza del terreno. | La guida è orientata all'interazione terreno-struttura; il kernel usa soltanto il ramo statico dichiarato e non implementa la risposta dinamica della fondazione. |
+| [Spencer, A method of analysis of the stability of embankments assuming parallel inter-slice forces (1967)](https://doi.org/10.1680/geot.1967.17.1.11) | Formulazione originaria del metodo con risultanti interstriscia parallele e soluzione congiunta del fattore di sicurezza e della loro inclinazione. | L'implementazione corrente usa basi rettilinee di striscia e superfici circolari; la trazione normale non viene sostituita implicitamente con una fessura. |
+| [USBR Design Standards No. 13, Chapter 4, Static Stability Analysis (2011)](https://www.usbr.gov/tsc/techreferences/designstandards-datacollectionguides/finalds-pdfs/DS13-4.pdf) | Equazioni di ricorrenza e procedura di soluzione di Spencer, incluse le forze esterne applicate alle strisce. | L'azione pseudostatica implementata è un carico statico equivalente; il solver non determina `kh`, `kv`, risposta dinamica o spostamenti permanenti. |
 | [USACE EM 1110-2-2502, Retaining and Flood Walls (1989)](https://www.publications.usace.army.mil/portals/76/publications/engineermanuals/em_1110-2-2502.pdf) | Pressioni attive, passive e a riposo; Coulomb con geometria planare; analisi non drenata con `phi_u=0` e `c=su`; separazione tra terreno e acqua; metodo generale a cunei e approssimazione stratificata a inclinazione costante del paragrafo 3-13c(4)(b). | La spinta passiva richiede movimenti compatibili. Coulomb passiva e limitata a `delta <= phi/3`; il cuneo stratificato implementato fornisce una risultante approssimata e non una distribuzione. La fessura di trazione riempita d'acqua non e dedotta automaticamente. |
 | [USACE EM 1110-2-2502, Retaining and Flood Walls (2022), tabella 6.2](https://www.publications.usace.army.mil/Portals/76/Users/182/86/2486/EM%201110-2-2502.pdf) | Classi di superficie della parete e valori raccomandati di `delta` o `delta/phi` in funzione della classe di terreno a contatto. | I valori sono esposti come `indicative`, richiedono autorizzazione esplicita e sono limitati a `delta <= phi`; muratura, legno e superfici non tabellate richiedono valori di progetto. |
 | [Caltrans Trenching and Shoring Manual (2025), capitolo 4](https://dot.ca.gov/-/media/dot-media/programs/engineering/documents/structureconstruction/ts/ts-chpt-4-a11y.pdf) | Equilibrio del cuneo attivo generale con parete inclinata e attrito di parete; controllo del segno delle componenti e massimizzazione rispetto al piano di scorrimento. | La combinazione con l'approssimazione stratificata USACE e una inferenza metodologica esplicitamente dichiarata; adesione di parete e superficie di rottura curva non sono incluse. |
@@ -45,3 +51,38 @@
 Le tolleranze sono assolute e dichiarate per ciascun confronto. I valori
 attesi sono costanti nel caso di validazione e non sono calcolati richiamando i
 kernel sottoposti a verifica.
+
+`validation/geotechnicalSlopeStabilityValidationCampaign.js` aggiunge cinque
+casi indipendenti:
+
+1. equazioni USACE C-12, C-15 e C-16 su strisce assegnate;
+2. area e peso di una massa confrontati con la formula esatta del segmento
+   circolare;
+3. identità fra Bishop e metodo ordinario nel limite in tensioni totali con
+   `phi_u = 0` e geometria compatibile;
+4. Spencer statico nel limite `phi = 0`, confrontato con la chiusura analitica
+   dei momenti e con l'inclinazione interstriscia costruita;
+5. lo stesso limite con inerzia orizzontale pseudostatica, verificando
+   separatamente fattore, forza locale e momento globale.
+
+`validation/geotechnicalShallowFoundationValidationCampaign.js` aggiunge
+quattro casi indipendenti:
+
+1. esempio pubblicato USACE B-3 con rottura nello strato superficiale e
+   punch-through nella argilla debole;
+2. esempio pubblicato USACE B-4 in condizioni non drenate;
+3. ricalcolo chiuso delle dimensioni efficaci di una fondazione circolare
+   eccentrica;
+4. equilibrio chiuso dello scorrimento drenato con attrito e adesione.
+
+`validation/geotechnicalShallowFoundationServiceabilityValidationCampaign.js`
+aggiunge quattro casi indipendenti:
+
+1. fattore di influenza delle tensioni per il quadrato dell'esempio USACE
+   C-7 confrontato con il valore tabellato;
+2. percorso completo delle equazioni Schmertmann sui dati di strato C-7, con
+   `C2=1` e target ricalcolato indipendentemente dai contributi pubblicati;
+3. rigidezze verticali e rocking Pais-Kausel per un rettangolo 2 m x 4 m,
+   confrontate con costanti indipendenti;
+4. cedimento differenziale e distorsione angolare verificati con geometria
+   chiusa.

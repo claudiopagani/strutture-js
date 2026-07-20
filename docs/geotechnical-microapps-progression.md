@@ -156,7 +156,20 @@ concrete.
 - cuneo pseudo-statico a inclinazione costante per stratigrafia orizzontale,
   parete planare inclinata e attritiva.
 
-Non è ancora un workflow completo di muro, paratia o pendio.
+Non è ancora un workflow completo di muro o paratia. La stabilità del pendio è
+ora gestita da una microapp separata, che riusa lo stesso modello del sito.
+
+`geotechnical-slope-stability` copre, nel perimetro circolare corrente:
+
+- superfici circolari assegnate;
+- Spencer statico e pseudostatico;
+- Bishop semplificato e metodo ordinario delle strisce come metodi statici;
+- terreni drenati, non drenati e zone stratificate;
+- campi di pressione interstiziale assegnati e sovraccarichi verticali;
+- ricerca vincolata ingresso-uscita-saetta con diagnostica dei candidati.
+
+Le superfici non circolari, l'acqua esterna, le opere di rinforzo, la risposta
+dinamica e gli spostamenti permanenti restano fuori dal perimetro corrente.
 
 ### 4.3 Integrazione strutturale disponibile
 
@@ -261,7 +274,7 @@ geometrica senza dipendere ancora dal FEM strutturale.
 
 ### 7.1 Collocazione
 
-La stabilità del pendio è una nuova applicazione geotecnica, non un nuovo
+La stabilità del pendio è un'applicazione geotecnica, non un nuovo
 modello del terreno e non un modulo strutturale. Consuma:
 
 - `GroundModel` con una `GroundSection2D`;
@@ -269,41 +282,47 @@ modello del terreno e non un modulo strutturale. Consuma:
 - `GeotechnicalDesignSituation`;
 - sovraccarichi, eventuali azioni sismiche e vincoli di ricerca specifici.
 
-Percorso previsto: `src/applications/geotechnical-slope-stability`.
+Percorso operativo: `src/applications/geotechnical-slope-stability`.
 
-### 7.2 Primo perimetro implementabile
+### 7.2 Primo perimetro implementato
 
-Il primo incremento dovrebbe coprire:
+Il primo incremento copre:
 
 - sezione 2D in deformazione piana;
 - superfici di scorrimento circolari;
 - terreni drenati Mohr-Coulomb e non drenati in tensioni totali;
 - pressione interstiziale letta dal campo 2D;
 - sovraccarichi verticali distribuiti sulla superficie;
-- metodo delle strisce con almeno un metodo semplificato e un metodo di
-  equilibrio più completo, scelti dopo aver fissato le fonti;
+- Spencer come metodo a equilibrio completo e come metodo obbligatorio per il
+  ramo pseudostatico;
+- Bishop semplificato come default statico e metodo ordinario delle strisce
+  come confronto diagnostico statico;
 - ricerca controllata della superficie critica;
 - restituzione della superficie, delle strisce, dei contributi e del fattore
   di sicurezza;
-- analisi pseudostatica come incremento successivo del medesimo workflow.
+- ramo pseudostatico con `H_i = kh W_i` e
+  `V_i = (1-kv) W_i + Q_i`, coefficienti assegnati dalla situazione di
+  progetto e nessuna inferenza normativa nel solver.
 
 USACE EM 1110-2-1902 è una base primaria per metodi, pressioni interstiziali,
 selezione dei parametri, ricerca e interpretazione:
 [USACE, Slope Stability](https://www.publications.usace.army.mil/Portals/76/Publications/EngineerManuals/EM_1110-2-1902.pdf).
 
-La scelta dei metodi specifici e delle relative equazioni deve essere
-formalizzata nel documento metodologico prima del codice; questo piano non
-sostituisce la fonte.
+Scelte, equazioni e campo di validità sono formalizzati in
+[`geotechnical-slope-stability-method.md`](geotechnical-slope-stability-method.md);
+questo piano non sostituisce la fonte.
 
 ### 7.3 Oggetti di dominio necessari
 
-- `SlipSurface2D`: geometria interrogabile e punti di intersezione;
-- `SliceDiscretization2D`: strisce, basi, pesi, materiali e pressioni;
-- `SlopeLoad2D`: sovraccarico, forza o linea di carico con convenzione unica;
-- `SlopeStabilityProblem`: riferimenti e opzioni di ricerca;
-- risultato della singola superficie separato dal risultato di ricerca.
+- `CircularSlipSurface2D`: geometria interrogabile e punti di intersezione;
+- `SlopeSliceDiscretizer2D`: strisce, basi, pesi, materiali e pressioni;
+- `SlopeSurfaceSurcharge2D`: sovraccarico verticale uniforme;
+- `spencerMethod`: soluzione iterativa con inclinazione costante delle
+  risultanti interstriscia;
+- `CircularSlopeStabilityAnalysis`: soluzione assegnata e ricerca critica;
+- `GeotechnicalSlopeStabilityApplication`: orchestrazione e risultato comune.
 
-Vanno introdotti quando implementati, senza classi vuote.
+Non sono state introdotte classi vuote per carichi o superfici future.
 
 ### 7.4 Sequenza interna
 
@@ -330,17 +349,24 @@ Vanno introdotti quando implementati, senza classi vuote.
 
 ### 7.6 Validazione
 
-La campagna deve crescere per livelli:
+La campagna corrente contiene aritmetica indipendente delle equazioni, una
+soluzione geometrica esatta per area e peso e il caso limite `phi_u = 0`. I
+test di regressione coprono inoltre:
 
-- pendio omogeneo asciutto con benchmark pubblicato;
-- falda orizzontale;
+- pendio omogeneo asciutto;
+- campo freatico assegnato;
 - stratigrafia a due materiali;
 - coesione e attrito;
 - caso non drenato;
 - convergenza al raffinamento delle strisce;
 - ricerca che recupera una superficie critica nota;
 - confronto fra metodi e spiegazione delle differenze;
-- pseudostatica, solo dopo la validazione statica.
+- Spencer statico e pseudostatico, inclusi equilibrio globale, azioni `kh/kv`
+  e rifiuto della trazione normale non modellata.
+
+Resta da aggiungere un benchmark completo pubblicato con geometria e tabella
+delle strisce prima di considerare il kernel un controllo unico per opere
+maggiori.
 
 ### 7.7 Ponte al FEM
 
@@ -357,14 +383,19 @@ gli input, le query geometriche e la validazione globale.
 
 ### 7.8 Definizione di completo
 
-La prima versione è completa solo quando:
+Il primo incremento operativo soddisfa:
 
 - tutte le grandezze sono serializzabili e tracciate;
 - il metodo di una superficie e la ricerca sono testabili separatamente;
-- esistono benchmark indipendenti;
+- esistono controlli indipendenti delle equazioni e della geometria;
 - il raffinamento delle strisce è documentato;
 - i fallimenti numerici sono distinti dai casi fisicamente non supportati;
 - esiste un documento metodologico con campo di validità.
+
+L'estensione Spencer ha introdotto il metodo a equilibrio completo e il ramo
+pseudostatico con benchmark analitici dedicati. Per chiudere anche l'uso come
+controllo unico di opere maggiori resta necessario un benchmark pubblicato
+completo di geometria, strisce e risultati intermedi.
 
 ## 8. Microapp 2 — Fondazioni superficiali
 
@@ -429,6 +460,49 @@ Questo modulo prepara:
 - confronto piastra rigida/continua;
 - trasferimento bidirezionale di azioni e spostamenti;
 - benchmark del continuo sotto fondazione.
+
+### 8.5 Stato degli incrementi ULS e SLS immediato
+
+L'incremento ULS statico e implementato in
+`src/applications/geotechnical-shallow-foundations` con:
+
+- DTO di fondazione e risultante alla base versionati;
+- rettangolo, nastro e cerchio;
+- area efficace ed eccentricita;
+- confronto USACE/Meyerhof e FHWA/Vesic;
+- drenato, non drenato, falda locale e sovraccarico;
+- punch-through documentato forte-su-debole non drenato;
+- scorrimento di base con `SoilStructureInterface`;
+- contratto unidirezionale verso la struttura;
+- test e campagna di validazione sugli esempi USACE B-3/B-4.
+
+L'incremento SLS statico immediato e implementato nello stesso entry point ma
+in un solver distinto, con:
+
+- set deformativi tipizzati e selezione tracciata per strato, zona o
+  materiale;
+- Schmertmann stratificato da CPT e fattori USACE 2025;
+- integrazione delle deformazioni da modulo vincolato con raffinamento e
+  controllo di convergenza;
+- rigidezze statiche, cedimento e rotazioni Pais-Kausel per rettangolo rigido
+  su semispazio elastico omogeneo equivalente;
+- `movementState` serializzabile, confronto fra due fondazioni e distorsione
+  angolare;
+- criteri SLS assegnati senza limiti normativi impliciti;
+- campagna indipendente su USACE C-7, rigidezze NIST e compatibilita
+  geometrica.
+
+Restano incrementi distinti:
+
+1. adapter normativi per trasformare parametri e resistenze ultime in valori
+   di progetto;
+2. consolidazione, creep e storia tensionale nel tempo;
+3. passiva di fondazione incassata, base/terreno inclinati e sisma;
+4. fondazione flessibile, interazione fra fondazioni e rigidezza non lineare;
+5. accoppiamento iterativo e FEM continuo.
+
+Il metodo, i limiti e il ponte strutturale sono descritti in
+[Fondazioni superficiali geotecniche](geotechnical-shallow-foundations.md).
 
 ## 9. Microapp 3 — Muro di sostegno completo
 
@@ -954,46 +1028,51 @@ Una microapp è pronta quando:
 - dichiara come interagisce con strutture e FEM;
 - non duplica materiali, falda o geometria del sito.
 
-## 23. Decisioni da assumere all'avvio della stabilità del pendio
+## 23. Decisioni assunte per la stabilità del pendio v1
 
-Il prossimo lavoro dovrebbe iniziare con un breve documento metodologico che
-chiuda queste decisioni:
+Le decisioni sono ora chiuse e tracciate nel documento metodologico:
 
-- primo/i metodo/i di equilibrio limite;
-- forma iniziale delle superfici: circolare soltanto o anche composita;
-- convenzione di discretizzazione delle strisce;
-- campionamento della pressione interstiziale;
-- rappresentazione dei sovraccarichi;
-- strategia di ricerca globale/locale;
-- criteri di ammissibilità e convergenza;
-- gestione dei confini tra materiali;
-- struttura del risultato dettagliato;
-- benchmark pubblici da riprodurre;
-- perimetro statico prima dell'estensione pseudostatica;
-- adapter normativo iniziale, mantenuto separato dal solver.
+- Spencer disponibile come metodo completo; Bishop semplificato resta il
+  default statico e Fellenius il confronto diagnostico;
+- sole superfici circolari nel v1;
+- integrazione dei pesi a cinque punti e resistenza campionata alla base;
+- pressione interstiziale al punto medio della base;
+- sovraccarico uniforme verticale sulla proiezione orizzontale;
+- griglia ingresso-uscita-saetta seguita da raffinamento locale;
+- risultato dettagliato di strisce, metodi, candidati e rifiuti;
+- pseudostatica circolare risolta con Spencer e coefficienti `kh/kv`
+  espliciti; nessuna risposta dinamica o stima di spostamento;
+- nessun adapter normativo implicito nel solver.
 
-La prima implementazione consigliata è una singola superficie assegnata. Solo
-dopo averla validata si aggiunge la ricerca della superficie critica. In questo
-modo un errore di equilibrio non viene confuso con un errore dell'ottimizzatore.
+La superficie assegnata è stata implementata e validata prima della ricerca,
+mantenendo separati errore di equilibrio ed errore di ottimizzazione.
 
-## 24. Sequenza operativa per riprendere il lavoro
+## 24. Stato della sequenza operativa e ripresa
 
-Se lo sviluppo viene interrotto, ripartire da qui:
+I punti da 1 a 9 della sequenza originaria e l'estensione Spencer/sisma sono
+completati nel perimetro circolare corrente:
 
-1. leggere `docs/geotechnical-ground-model.md` e verificare che gli schemi v1
-   non siano cambiati;
-2. eseguire i test del modello geotecnico e la campagna di validazione;
-3. creare `docs/geotechnical-slope-stability-method.md` con le decisioni della
-   sezione 23 e fonti puntuali;
-4. implementare e validare la geometria di una superficie di scorrimento;
-5. implementare la discretizzazione in strisce come kernel indipendente;
-6. implementare un solver per superficie assegnata;
-7. aggiungere benchmark statici drenati e non drenati;
-8. implementare la ricerca e la sua diagnostica;
-9. creare l'applicazione e il relativo contratto serializzabile;
-10. aggiungere l'adapter normativo soltanto dopo la stabilizzazione del kernel;
-11. documentare il ponte con la futura riduzione della resistenza FEM;
-12. eseguire `npm run check` prima della consegna.
+1. contratti del modello verificati;
+2. test e campagna geotecnica eseguiti;
+3. documento metodologico creato;
+4. geometria circolare implementata e validata;
+5. discretizzazione indipendente implementata;
+6. solver della superficie assegnata implementato;
+7. casi drenati e non drenati coperti;
+8. ricerca e diagnostica implementate;
+9. applicazione e contratto serializzabile esportati.
+10. Spencer statico validato con chiusura indipendente di forze e momenti;
+11. azioni pseudostatiche `kh/kv` integrate e validate con Spencer.
+
+Per riprendere l'estensione avanzata:
+
+1. aggiungere un benchmark completo pubblicato;
+2. aggiungere un metodo rigoroso per superfici non circolari, se richiesto;
+3. estendere carichi e acqua esterna;
+4. introdurre superfici non circolari;
+5. aggiungere analisi di spostamento o dinamica come workflow separato;
+6. creare eventuali adapter normativi senza inserirli nel dominio;
+7. confrontare il risultato con la futura riduzione della resistenza FEM.
 
 Al termine della stabilità del pendio, rivalutare l'ordine tra fondazioni
 superficiali e muro in base alla priorità d'uso, mantenendo invariati i

@@ -156,4 +156,20 @@ export const APPLICATION_CATALOG = [
       primaryFocus:
         "Serializable layered static pressure diagrams, planar Coulomb actions, restricted Mononobe-Okabe thrusts and layered pseudostatic trial-wedge resultants.",
   },
+  {
+    id: "geotechnical-shallow-foundations",
+    name: "Geotechnical Shallow Foundations",
+    domain: "geotechnics",
+    maturity: "implemented-local",
+    primaryFocus:
+      "Static ULS bearing/sliding plus immediate SLS settlement, rigid-foundation rotation and differential-movement analysis connected to GroundModel.",
+  },
+  {
+    id: "geotechnical-slope-stability",
+    name: "Geotechnical Slope Stability",
+      domain: "geotechnics",
+      maturity: "implemented-local",
+      primaryFocus:
+        "Static and pseudostatic circular slip-surface analysis with Spencer, static Bishop/Ordinary diagnostics and bounded critical-surface search.",
+  },
 ];
