@@ -179,9 +179,9 @@ dinamica e gli spostamenti permanenti restano fuori dal perimetro corrente.
   le calcola dal `GroundModel`.
 - La trave di fondazione usa un modulo di sottofondo assegnato; non lo deriva
   dal terreno.
-- `micropiles-broms` è uno scaffold e non deve essere considerato una capacità
-  laterale disponibile. La sua funzione dovrà essere assorbita in una
-  applicazione generica per fondazioni profonde.
+- `micropiles-broms` e un entry point deprecato di compatibilita. La capacita
+  laterale disponibile e esposta dall'applicazione generale
+  `geotechnical-lateral-piles`, con Broms come metodo selezionabile.
 
 ## 5. Contratto comune di una microapp
 
@@ -504,22 +504,26 @@ Restano incrementi distinti:
 Il metodo, i limiti e il ponte strutturale sono descritti in
 [Fondazioni superficiali geotecniche](geotechnical-shallow-foundations.md).
 
-## 9. Microapp 3 — Muro di sostegno completo
+## 9. Microapp 3 — Muro di sostegno, orchestrazione geotecnica
 
-### 9.1 Riutilizzo immediato
+### 9.1 Stato implementato
 
-Il kernel delle spinte è già disponibile. Manca l'orchestrazione dell'opera:
+L'orchestrazione geotecnica locale è disponibile in
+`src/applications/geotechnical-retaining-walls`:
 
 - geometria di muro, mensola, fondazione e terreno a monte/valle;
 - peso proprio e sovraccarichi;
 - combinazioni di pressione attiva, a riposo, passiva, acqua e sisma;
 - stabilità a scorrimento, ribaltamento e capacità portante;
 - stato di contatto sotto fondazione;
-- verifica strutturale del fusto, della platea e degli elementi accessori;
-- stabilità globale tramite la microapp pendio.
+- contratto di azioni verso la verifica strutturale del fusto, della platea e
+  degli elementi accessori;
+- stabilità globale circolare tramite un collegamento di screening alla
+  microapp pendio.
 
-Percorso previsto: `src/applications/geotechnical-retaining-walls`, con
-composizione esplicita verso le applicazioni RC o muratura pertinenti.
+La verifica strutturale e il modello opera-terreno FEM completo restano
+consumer separati. Il metodo e i limiti sono documentati in
+[Muri di sostegno geotecnici](geotechnical-retaining-walls.md).
 
 ### 9.2 Distinzioni necessarie
 
@@ -554,6 +558,14 @@ Il muro è il primo caso di interfaccia estesa terreno-struttura. Prepara:
 - trasferimento delle pressioni dal continuo agli elementi strutturali.
 
 ## 10. Microapp 4 — Fondazioni profonde, capacità verticale
+
+Stato corrente: primo incremento implementato in
+`src/applications/geotechnical-deep-foundations`. Sono disponibili
+`DeepFoundationModel`, `AxialPileLoadScenario` e
+`AxialPileCapacityAnalysis`, con integrazione stratificata del fusto,
+compressione/trazione distinte, falda idrostatica, punta separata e
+conversione di resistenza soltanto esplicita. La documentazione operativa è in
+[Fondazioni profonde — capacità assiale](geotechnical-deep-foundations.md).
 
 ### 10.1 Perimetro progressivo
 
@@ -600,6 +612,36 @@ Il contratto deve supportare due modalità:
 - stato tensionale iniziale e installazione.
 
 ## 11. Microapp 5 — Fondazioni profonde, risposta laterale
+
+### 11.0 Stato implementato
+
+`src/applications/geotechnical-lateral-piles` implementa il meccanismo limite
+statico Broms per un palo singolo corto, rigido e a testa libera, nei rami
+omogenei coesivo non drenato e incoerente drenato. Il contratto e indipendente
+dal nome del metodo, restituisce capacita, infissione richiesta e azioni per la
+verifica strutturale, e mantiene `micropiles-broms` come alias deprecato.
+
+Il metodo `beam-on-py-springs` implementa inoltre il modello ridotto di
+risposta statica non lineare:
+
+- palo Euler-Bernoulli a `EI` costante assegnato;
+- mesh conforme alle interfacce stratigrafiche;
+- curve `p-y` statiche monotone assegnate per strato e profondita;
+- interpolazione della risposta fra stazioni;
+- molle nodali tributarie con stato secante e tangente;
+- testa e punta libere o vincolate in traslazione e rotazione;
+- Newton incrementale con ricerca lineare e cutback;
+- spostamenti, rotazioni, tagli, momenti, reazioni ed equilibrio globale;
+- contratto nodale serializzabile verso il FEM strutturale.
+
+Non sono dedotte correlazioni empiriche dai soli parametri del terreno. Ogni
+curva ha fonte esplicita; generatori metodologici specifici potranno produrre
+lo stesso contratto senza modificare il solver. Restano distinti il carico
+ciclico/sismico, `P-delta`, rigidezza strutturale non lineare, gruppi e moto
+imposto del terreno.
+
+Metodo, campo di validita e validazione sono descritti in
+[Fondazioni profonde soggette ad azioni laterali](geotechnical-lateral-piles.md).
 
 ### 11.1 Obiettivo
 

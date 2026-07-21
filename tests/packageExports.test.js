@@ -16,6 +16,12 @@ import * as SlopeStabilityApi from
   "strutture-js/applications/geotechnical-slope-stability";
 import * as ShallowFoundationApi from
   "strutture-js/applications/geotechnical-shallow-foundations";
+import * as RetainingWallApi from
+  "strutture-js/applications/geotechnical-retaining-walls";
+import * as DeepFoundationApi from
+  "strutture-js/applications/geotechnical-deep-foundations";
+import * as LateralPileApi from
+  "strutture-js/applications/geotechnical-lateral-piles";
 import * as FemApi from "strutture-js/domain/fem";
 import * as MathApi from "strutture-js/domain/math";
 import * as GeotechnicsApi from "strutture-js/domain/geotechnics";
@@ -78,6 +84,32 @@ test("package root export exposes the main public API", () => {
   );
   assert.equal(typeof PublicApi.ShallowFoundationModel, "function");
   assert.equal(typeof PublicApi.ShallowFoundationActionState, "function");
+  assert.equal(typeof PublicApi.RetainingWallModel, "function");
+  assert.equal(typeof PublicApi.RetainingWallLoadScenario, "function");
+  assert.equal(typeof PublicApi.RetainingWallAnalysis, "function");
+  assert.equal(
+    typeof PublicApi.GeotechnicalRetainingWallApplication,
+    "function",
+  );
+  assert.equal(typeof PublicApi.DeepFoundationModel, "function");
+  assert.equal(typeof PublicApi.AxialPileLoadScenario, "function");
+  assert.equal(typeof PublicApi.AxialPileCapacityAnalysis, "function");
+  assert.equal(typeof PublicApi.LateralPileLoadScenario, "function");
+  assert.equal(typeof PublicApi.LateralPileCapacityAnalysis, "function");
+  assert.equal(typeof PublicApi.PileTransferLaw, "function");
+  assert.equal(typeof PublicApi.LateralPileResponseScenario, "function");
+  assert.equal(
+    typeof PublicApi.LateralPileBeamOnSpringsAnalysis,
+    "function",
+  );
+  assert.equal(
+    typeof PublicApi.GeotechnicalDeepFoundationApplication,
+    "function",
+  );
+  assert.equal(
+    typeof PublicApi.GeotechnicalLateralPileApplication,
+    "function",
+  );
   assert.equal(
     typeof PublicApi.ShallowFoundationServiceabilityAnalysis,
     "function",
@@ -144,6 +176,18 @@ test("applications subpath export exposes application registry helpers", () => {
     "function",
   );
   assert.equal(
+    typeof ApplicationsApi.GeotechnicalRetainingWallApplication,
+    "function",
+  );
+  assert.equal(
+    typeof ApplicationsApi.GeotechnicalDeepFoundationApplication,
+    "function",
+  );
+  assert.equal(
+    typeof ApplicationsApi.GeotechnicalLateralPileApplication,
+    "function",
+  );
+  assert.equal(
     typeof ApplicationsApi.ShallowFoundationServiceabilityAnalysis,
     "function",
   );
@@ -204,6 +248,32 @@ test("granular ESM subpaths expose applications, solvers and catalogs", () => {
     typeof ShallowFoundationApi.calculateRigidFoundationElasticStiffness,
     "function",
   );
+  assert.equal(
+    typeof RetainingWallApi.GeotechnicalRetainingWallApplication,
+    "function",
+  );
+  assert.equal(typeof RetainingWallApi.RetainingWallModel, "function");
+  assert.equal(typeof RetainingWallApi.RetainingWallAnalysis, "function");
+  assert.equal(
+    typeof DeepFoundationApi.GeotechnicalDeepFoundationApplication,
+    "function",
+  );
+  assert.equal(typeof DeepFoundationApi.DeepFoundationModel, "function");
+  assert.equal(typeof DeepFoundationApi.AxialPileLoadScenario, "function");
+  assert.equal(typeof DeepFoundationApi.AxialPileCapacityAnalysis, "function");
+  assert.equal(
+    typeof LateralPileApi.GeotechnicalLateralPileApplication,
+    "function",
+  );
+  assert.equal(typeof LateralPileApi.DeepFoundationModel, "function");
+  assert.equal(typeof LateralPileApi.LateralPileLoadScenario, "function");
+  assert.equal(typeof LateralPileApi.LateralPileCapacityAnalysis, "function");
+  assert.equal(typeof LateralPileApi.PileTransferLaw, "function");
+  assert.equal(typeof LateralPileApi.LateralPileResponseScenario, "function");
+  assert.equal(
+    typeof LateralPileApi.LateralPileBeamOnSpringsAnalysis,
+    "function",
+  );
   assert.equal(typeof FemApi.LinearStaticSolver2D, "function");
   assert.equal(typeof FemApi.CyclicMasonryPier2D, "function");
   assert.equal(typeof FemApi.CyclicMasonryPierAnalysis2D, "function");
@@ -213,6 +283,19 @@ test("granular ESM subpaths expose applications, solvers and catalogs", () => {
   assert.equal(typeof GeotechnicsApi.GroundSection2D, "function");
   assert.equal(typeof GeotechnicsApi.PorePressureField2D, "function");
   assert.equal(typeof GeotechnicsApi.GroundModel, "function");
+  assert.equal(typeof GeotechnicsApi.DeepFoundationModel, "function");
+  assert.equal(typeof GeotechnicsApi.AxialPileCapacityAnalysis, "function");
+  assert.equal(typeof GeotechnicsApi.LateralPileLoadScenario, "function");
+  assert.equal(typeof GeotechnicsApi.LateralPileCapacityAnalysis, "function");
+  assert.equal(typeof GeotechnicsApi.PileTransferLaw, "function");
+  assert.equal(
+    typeof GeotechnicsApi.LateralPileResponseScenario,
+    "function",
+  );
+  assert.equal(
+    typeof GeotechnicsApi.LateralPileBeamOnSpringsAnalysis,
+    "function",
+  );
   assert.equal(
     typeof GeotechnicsApi.GeotechnicalDesignSituation,
     "function",
@@ -222,6 +305,7 @@ test("granular ESM subpaths expose applications, solvers and catalogs", () => {
   assert.equal(typeof GeotechnicsApi.SlopeSliceDiscretizer2D, "function");
   assert.equal(typeof GeotechnicsApi.spencerMethod, "function");
   assert.equal(typeof GeotechnicsApi.ShallowFoundationModel, "function");
+  assert.equal(typeof GeotechnicsApi.RetainingWallModel, "function");
   assert.equal(
     typeof GeotechnicsApi.ShallowFoundationServiceabilityAnalysis,
     "function",

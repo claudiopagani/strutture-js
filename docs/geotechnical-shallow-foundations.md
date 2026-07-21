@@ -331,6 +331,16 @@ qeq = V / A' - uD
 oppure `V/B' - uD` per il nastriforme. Il termine `uD` e la pressione
 interstiziale locale alla base.
 
+Il comportamento predefinito
+`baseUpliftTreatment = "subtract-uniform-pressure"` applica questa
+sottrazione uniforme. Un orchestratore che abbia gia inserito nella
+risultante verticale e nel momento un sollevamento, anche non uniforme, deve
+usare `"included-in-action-resultant"`: in quel caso `uD` non viene sottratta
+una seconda volta dalla domanda o dallo scorrimento, ma la falda continua a
+governare tensione efficace e pesi di volume. L'opzione non calcola una
+resistenza a sollevamento; dichiara soltanto dove la relativa azione e stata
+assemblata.
+
 La tensione geostatica e integrata strato per strato tra superficie e base:
 
 - `unitWeight.bulk` sopra la superficie d'acqua;

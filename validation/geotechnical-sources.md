@@ -8,6 +8,8 @@
 | [USACE EM 1110-2-1902, Slope Stability (2003)](https://www.publications.usace.army.mil/Portals/76/Publications/EngineerManuals/EM_1110-2-1902.pdf) | Riferimento primario per metodo ordinario, Bishop semplificato, Spencer, discretizzazione, pressione interstiziale, ricerca e verifica dei risultati. | Il workflow resta circolare. Bishop non soddisfa l'equilibrio orizzontale e non è usato col sisma; non sono implementati acqua esterna, fessure di trazione, rapido svaso, superfici non circolari o filtrazione. |
 | [USACE EM 1110-1-1905, Geotechnical Design of Shallow Foundations on Soils (2025)](https://publibrary.sec.usace.army.mil/api/download?filename=EM+1110-1-1905_Geotechincal+Design+of+Shallow+Foundations+on+Soils_2025+07+22+-+Final.pdf&id=54658636-77d2-48df-f26b-5295a01899a7&preview=true) | Dimensioni efficaci, capacità portante USACE/Meyerhof e FHWA/Vesic, correzione di falda, punch-through `2V:1H`, scorrimento, tensioni verticali approssimate e cedimento immediato Schmertmann; esempi B-3/B-4/C-7. | Il solver corrente è statico, con base e terreno orizzontali; il punch-through è limitato a strato forte sopra strato debole non drenato. Il ramo SLS non include il fattore temporale `C2`, consolidazione o creep. Il totale stampato dell'esempio C-7 è internamente incoerente con i contributi di riga e non è usato come target. |
 | [FHWA GEC 6, Shallow Foundations, FHWA-IF-02-054 (2002)](https://www.fhwa.dot.gov/engineering/geotech/pubs/010943.pdf) | Fattori Vesic, correzioni di falda e politica di esclusione del fattore d'inclinazione quando sono usati i fattori di forma. | Il ramo FHWA resta un metodo di capacità ultima; non produce resistenza di progetto o verifica normativa senza adapter. |
+| [USACE EM 1110-2-2906, Design of Pile Foundations (1991)](https://www.publications.usace.army.mil/Portals/76/Publications/EngineerManuals/EM_1110-2-2906.pdf) | Capacità assiale del palo singolo come somma di fusto e punta; metodo efficace `K sigma'_v tan(delta)`, metodo non drenato `alpha su`, punta `Nq sigma'_v` o `Nc su`, calcolo strato per strato e distinzione compressione/trazione. | Coefficienti, limiti e conversione a resistenza di progetto non sono dedotti dalla tecnologia del palo. Il kernel non risolve compatibilità dei picchi, strati deboli vicini alla punta, attrito negativo, cedimenti, gruppi o risposta ciclica. |
+| [FHWA GEC 9, FHWA-HIF-18-031, Design and Analysis of Laterally Loaded Deep Foundations (2018)](https://www.fhwa.dot.gov/engineering/geotech/pubs/hif18031.pdf) | Metodo limite Broms, equazioni 6-8--6-17; modello `p-y` come trave su molle non lineari, equazioni 6-1--6-5; grandezze di risposta e cautele sulla base empirica delle curve. | Broms resta limitato a pali corti omogenei. Il solver `p-y` usa curve statiche monotone assegnate e `EI` costante: non genera correlazioni empiriche, non include carico assiale/geometrico, ciclico/sisma, gruppi, moto del terreno o verifica strutturale. |
 | [NIST GCR 12-917-21, Soil-Structure Interaction for Building Structures (2012)](https://www.nist.gov/publications/soil-structure-interaction-building-structures) | Rigidezze statiche verticali e rocking di Pais-Kausel per fondazioni rettangolari rigide, inclusi i moltiplicatori di incasso delle tabelle 2-2a/2-2b. | Richiede un semispazio elastico omogeneo equivalente e rigidezza compatibile con il livello deformativo; non rappresenta contatto non lineare, stratigrafia generale o fondazioni flessibili. |
 | [FEMA P-2091, A Practical Guide to Soil-Structure Interaction (2020)](https://www.fema.gov/sites/default/files/documents/fema_p-2091-soil-structure-interaction.pdf) | Controllo indipendente delle equazioni di rigidezza NIST/Pais-Kausel e delle cautele su variabilità e riduzione della rigidezza del terreno. | La guida è orientata all'interazione terreno-struttura; il kernel usa soltanto il ramo statico dichiarato e non implementa la risposta dinamica della fondazione. |
 | [Spencer, A method of analysis of the stability of embankments assuming parallel inter-slice forces (1967)](https://doi.org/10.1680/geot.1967.17.1.11) | Formulazione originaria del metodo con risultanti interstriscia parallele e soluzione congiunta del fattore di sicurezza e della loro inclinazione. | L'implementazione corrente usa basi rettilinee di striscia e superfici circolari; la trazione normale non viene sostituita implicitamente con una fessura. |
@@ -86,3 +88,42 @@ aggiunge quattro casi indipendenti:
    confrontate con costanti indipendenti;
 4. cedimento differenziale e distorsione angolare verificati con geometria
    chiusa.
+
+`validation/geotechnicalRetainingWallValidationCampaign.js` aggiunge tre casi
+indipendenti:
+
+1. spinta Rankine, quota della risultante, pesi e attrito di base di un muro a
+   mensola asciutto;
+2. forza e baricentro di una distribuzione lineare di uplift con carichi
+   idraulici diversi a punta e tallone;
+3. inerzia pseudostatica orizzontale e verticale di un componente del muro,
+   verificata direttamente da `kh W` e `kv W`.
+
+`validation/geotechnicalDeepFoundationValidationCampaign.js` aggiunge tre casi
+indipendenti:
+
+1. integrazione del fusto a due strati con metodo `beta`, falda idrostatica e
+   punta `Nq`;
+2. fusto `alpha su` e punta `Nc su` in condizioni non drenate;
+3. trazione non drenata con sola resistenza di fusto e punta nulla.
+
+`validation/geotechnicalLateralPileValidationCampaign.js` aggiunge tre casi
+indipendenti:
+
+1. ramo Broms coesivo con ricalcolo delle equazioni 6-8--6-12 e della radice
+   di capacita per l'infissione disponibile;
+2. ramo Broms incoerente con `Kp`, momento massimo, capacita nominale e fattore
+   di conversione assegnato;
+3. ramo incoerente completamente sommerso con controllo indipendente di
+   `gamma_sat - gamma_w` e della capacita risultante.
+
+`validation/geotechnicalLateralPilePyValidationCampaign.js` aggiunge tre casi
+indipendenti:
+
+1. nucleo di trave confrontato con la soluzione chiusa di una mensola
+   Euler-Bernoulli;
+2. palo lungo con legge `p-y` lineare confrontato con la soluzione chiusa
+   semi-infinita di Winkler, con tolleranze esplicite per lunghezza finita e
+   discretizzazione;
+3. equilibrio esatto di una molla `p-y` a plateau accoppiata a un elemento
+   flessionale con rotazioni e punta vincolate.

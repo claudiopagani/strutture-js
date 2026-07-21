@@ -4,6 +4,9 @@ import { MasonryPierApplication } from "./masonry-piers/index.js";
 import { MasonryWallOpeningsApplication } from "./masonry-wall-openings/index.js";
 import { MasonryRingBeamApplication } from "./masonry-ring-beams/index.js";
 import { GeotechnicalEarthPressureApplication } from "./geotechnical-earth-pressures/index.js";
+import { GeotechnicalDeepFoundationApplication } from "./geotechnical-deep-foundations/index.js";
+import { GeotechnicalLateralPileApplication } from "./geotechnical-lateral-piles/index.js";
+import { GeotechnicalRetainingWallApplication } from "./geotechnical-retaining-walls/index.js";
 import { GeotechnicalShallowFoundationApplication } from "./geotechnical-shallow-foundations/index.js";
 import { GeotechnicalSlopeStabilityApplication } from "./geotechnical-slope-stability/index.js";
 import { MicropileBromsApplication } from "./micropiles-broms/index.js";
@@ -60,9 +63,68 @@ export { MasonryRingBeamModel } from "./masonry-ring-beams/index.js";
 export { MasonryRingBeamVerification } from "./masonry-ring-beams/index.js";
 export { GeotechnicalEarthPressureApplication } from "./geotechnical-earth-pressures/index.js";
 export {
+  AXIAL_PILE_BASE_RESISTANCE_METHODS,
+  AXIAL_PILE_CAPACITY_REFERENCE,
+  AXIAL_PILE_CAPACITY_RESULT_SCHEMA_VERSION,
+  AXIAL_PILE_EFFECTIVE_STRESS_COEFFICIENT_MODELS,
+  AXIAL_PILE_LOAD_DIRECTIONS,
+  AXIAL_PILE_LOAD_SCENARIO_SCHEMA_VERSION,
+  AXIAL_PILE_RESISTANCE_CONVERSION_MODELS,
+  AXIAL_PILE_SHAFT_RESISTANCE_METHODS,
+  DEEP_FOUNDATION_DISPLACEMENT_CLASSES,
+  DEEP_FOUNDATION_ELEMENT_TYPES,
+  DEEP_FOUNDATION_GEOMETRY_MODELS,
+  DEEP_FOUNDATION_MODEL_SCHEMA_VERSION,
+  AxialPileCapacityAnalysis,
+  AxialPileLoadScenario,
+  DeepFoundationModel,
+  GeotechnicalDeepFoundationApplication,
+} from "./geotechnical-deep-foundations/index.js";
+export {
+  GeotechnicalLateralPileApplication,
+  LATERAL_PILE_BEHAVIOR_CLASSIFICATIONS,
+  LATERAL_PILE_BROMS_REFERENCE,
+  LATERAL_PILE_CAPACITY_METHODS,
+  LATERAL_PILE_CAPACITY_RESULT_SCHEMA_VERSION,
+  LATERAL_PILE_HEAD_CONDITIONS,
+  LATERAL_PILE_LOAD_SCENARIO_SCHEMA_VERSION,
+  LATERAL_PILE_ACTION_REFERENCE_POINTS,
+  LATERAL_PILE_END_RESTRAINTS,
+  LATERAL_PILE_PY_REFERENCE,
+  LATERAL_PILE_PY_RESULT_SCHEMA_VERSION,
+  LATERAL_PILE_RESPONSE_METHODS,
+  LATERAL_PILE_RESPONSE_SCENARIO_SCHEMA_VERSION,
+  LATERAL_PILE_RESISTANCE_CONVERSION_MODELS,
+  LATERAL_PILE_SOIL_RESPONSE_MODELS,
+  LATERAL_PILE_SOIL_BRANCHES,
+  PILE_TRANSFER_CURVE_MODELS,
+  PILE_TRANSFER_EXTRAPOLATION_MODELS,
+  PILE_TRANSFER_LAW_KINDS,
+  PILE_TRANSFER_LAW_SCHEMA_VERSION,
+  LateralPileBeamOnSpringsAnalysis,
+  LateralPileCapacityAnalysis,
+  LateralPileLoadScenario,
+  LateralPileResponseScenario,
+  PileTransferLaw,
+} from "./geotechnical-lateral-piles/index.js";
+export {
+  GeotechnicalRetainingWallApplication,
+  RETAINING_WALL_ANALYSIS_RESULT_SCHEMA_VERSION,
+  RETAINING_WALL_BASE_UPLIFT_MODELS,
+  RETAINING_WALL_LOAD_SCENARIO_SCHEMA_VERSION,
+  RETAINING_WALL_MODEL_SCHEMA_VERSION,
+  RETAINING_WALL_SEISMIC_DIRECTIONS,
+  RETAINING_WALL_TYPES,
+  RetainingWallAnalysis,
+  RetainingWallLoadScenario,
+  RetainingWallModel,
+  calculateRetainingWallPolygonProperties,
+} from "./geotechnical-retaining-walls/index.js";
+export {
   GeotechnicalShallowFoundationApplication,
   SHALLOW_FOUNDATION_ACTION_BASES,
   SHALLOW_FOUNDATION_ACTION_STATE_SCHEMA_VERSION,
+  SHALLOW_FOUNDATION_BASE_UPLIFT_TREATMENTS,
   SHALLOW_FOUNDATION_BEARING_METHODS,
   SHALLOW_FOUNDATION_BEARING_SELECTIONS,
   SHALLOW_FOUNDATION_MODEL_SCHEMA_VERSION,
@@ -241,8 +303,11 @@ export function createDefaultApplicationRegistry() {
     new RCrackedDeflectionApplication(),
     new MasonryOutOfPlaneApplication(),
     new MicropileBromsApplication(),
+    new GeotechnicalDeepFoundationApplication(),
+    new GeotechnicalLateralPileApplication(),
     new GeotechnicalEarthPressureApplication(),
     new GeotechnicalShallowFoundationApplication(),
+    new GeotechnicalRetainingWallApplication(),
     new GeotechnicalSlopeStabilityApplication(),
   ]);
 }

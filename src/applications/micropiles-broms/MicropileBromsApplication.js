@@ -7,38 +7,22 @@ export class MicropileBromsApplication extends StructuralApplication {
       id: "micropiles-broms",
       name: "Micropiles Broms",
       description:
-        "Lateral capacity and embedded length assessment for micropiles based on Broms theory.",
+        "Deprecated compatibility entry point for Broms lateral-pile capacity.",
       domain: "geotechnics",
-      supportedCodes: ["Broms"],
+      supportedCodes: ["broms-short-free-head"],
       tags: ["micropiles", "soil-structure", "lateral-load", "geotechnical"],
       metadata: {
-        maturity: "scaffolded",
-        plannedCapabilities: [
-          "short and long pile assumptions",
-          "free-head and fixed-head conditions",
-          "cohesive and cohesionless soil branches",
-          "result envelopes and design summaries",
+        maturity: "deprecated-compatibility",
+        replacementApplicationId: "geotechnical-lateral-piles",
+        limitations: [
+          "legacy MicropileBromsModel inputs remain not implemented",
+          "new general lateral-pile inputs are delegated to geotechnical-lateral-piles",
         ],
       },
     });
   }
 
   run(input = {}) {
-    const analysis = new MicropileBromsAnalysis().analyze({
-      pileId: input.model?.id ?? null,
-    });
-
-    return this.createPlaceholderResult({
-      summary:
-        "Micropile Broms module scaffold created with a dedicated geotechnical analysis placeholder.",
-      warnings: analysis.warnings,
-      outputs: {
-        pileId: input.model?.id ?? null,
-        analysis: analysis.toJSON(),
-      },
-      assumptions: [
-        "Geotechnical soil idealization should remain independent from structural pile section checks.",
-      ],
-    });
+    return new MicropileBromsAnalysis().analyze(input);
   }
 }

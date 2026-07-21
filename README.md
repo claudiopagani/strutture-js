@@ -150,9 +150,12 @@ Stato sintetico dei moduli applicativi:
 | `xlam-panels-out-of-plane` | Implementato | Verifica fuori piano di pannelli XLAM/CLT come strip 1D. |
 | `rc-cracked-deflection` | Implementato nel perimetro dichiarato | Integrazione delle curvature fessurate su risultati FEM SLE. |
 | `masonry-out-of-plane` | Scaffold | Modello e placeholder per cinematismi fuori piano. |
-| `micropiles-broms` | Scaffold | Modello e placeholder per analisi Broms dei micropali. |
+| `micropiles-broms` | Deprecato | Entry point di compatibilita: inoltra i nuovi contratti al modulo generale; il vecchio modello incompleto resta `not-implemented`. |
+| `geotechnical-deep-foundations` | Implementato locale | Capacità assiale statica del palo singolo verticale: fusto per strato con metodo alpha, beta/K-tan-delta o resistenza assegnata; punta separata, falda, compressione/trazione e conversione esplicita della resistenza. |
+| `geotechnical-lateral-piles` | Implementato locale | Capacita limite Broms e risposta statica non lineare del palo singolo come trave Euler-Bernoulli su curve p-y assegnate per strato/profondita, con condizioni di testa/punta, tangenti, diagrammi ed equilibrio. |
 | `geotechnical-earth-pressures` | Implementato locale | Modello del sito 1D/2D, campo di pressione interstiziale e situazione di progetto serializzabili; Rankine drenata/non drenata, riposo, Coulomb attiva/passiva con geometria planare, Mononobe-Okabe e cuneo pseudo-statico stratificato con parete inclinata e attritiva nel campo documentato. |
 | `geotechnical-shallow-foundations` | Implementato locale ULS + SLS immediato | Capacita portante statica USACE/Meyerhof e FHWA/Vesic, area efficace, falda, punch-through e scorrimento; cedimenti stratificati da CPT o modulo vincolato, rigidezze/rotazioni elastiche rigide e cedimenti differenziali. Consolidazione e adapter normativi restano separati. |
+| `geotechnical-retaining-walls` | Implementato locale | Geometria parametrica o poligonale, pesi, spinte, acqua e uplift, inerzia pseudostatica, scorrimento, ribaltamento, contatto monolatero e composizione esplicita con portanza e stabilità globale circolare di screening. La verifica strutturale consuma il contratto di azioni separato. |
 | `geotechnical-slope-stability` | Implementato locale | Stabilità statica e pseudostatica 2D su superfici circolari assegnate o ricercate, con Spencer, diagnostiche statiche Bishop/Fellenius, stratigrafia, falda assegnata e sovraccarichi verticali nel campo documentato. |
 
 ## Architettura
@@ -331,6 +334,10 @@ npm run example
 npm run example:ntc2018
 npm run example:applications
 npm run example:geotechnics
+npm run example:geotechnical-retaining-wall
+npm run example:geotechnical-deep-foundation
+npm run example:geotechnical-lateral-pile
+npm run example:geotechnical-lateral-pile-py
 npm run example:masonry-cyclic
 npm run example:masonry-ntc2018
 npm run example:rc-sections
@@ -369,6 +376,9 @@ Documentazione utile:
 - [docs/geotechnical-earth-pressure-method.md](docs/geotechnical-earth-pressure-method.md);
 - [docs/geotechnical-slope-stability-method.md](docs/geotechnical-slope-stability-method.md);
 - [docs/geotechnical-shallow-foundations.md](docs/geotechnical-shallow-foundations.md);
+- [docs/geotechnical-retaining-walls.md](docs/geotechnical-retaining-walls.md);
+- [docs/geotechnical-deep-foundations.md](docs/geotechnical-deep-foundations.md);
+- [docs/geotechnical-lateral-piles.md](docs/geotechnical-lateral-piles.md);
 - [docs/geotechnical-microapps-progression.md](docs/geotechnical-microapps-progression.md);
 - [docs/cyclic-masonry-pier.md](docs/cyclic-masonry-pier.md);
 - [docs/ntc2018-masonry-pier.md](docs/ntc2018-masonry-pier.md);

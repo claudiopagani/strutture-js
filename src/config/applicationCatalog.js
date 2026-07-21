@@ -145,8 +145,25 @@ export const APPLICATION_CATALOG = [
     id: "micropiles-broms",
     name: "Micropiles Broms",
     domain: "geotechnics",
-    maturity: "scaffolded",
-    primaryFocus: "Micropile lateral analysis based on Broms theory.",
+    maturity: "deprecated-compatibility",
+    primaryFocus:
+      "Deprecated compatibility scaffold; new calculations use geotechnical-lateral-piles with Broms as a selectable method.",
+  },
+  {
+    id: "geotechnical-deep-foundations",
+    name: "Geotechnical Deep Foundations",
+    domain: "geotechnics",
+    maturity: "implemented-local",
+    primaryFocus:
+      "Method-neutral static axial capacity of a single vertical pile, with layer-by-layer shaft resistance and distinct compression/tension contracts.",
+  },
+  {
+    id: "geotechnical-lateral-piles",
+    name: "Geotechnical Lateral Piles",
+    domain: "geotechnics",
+    maturity: "implemented-local",
+    primaryFocus:
+      "Static Broms capacity and nonlinear single-pile response as an Euler-Bernoulli beam on assigned depth-dependent p-y curves, with structural/FEM state transfer.",
   },
   {
     id: "geotechnical-earth-pressures",
@@ -163,6 +180,14 @@ export const APPLICATION_CATALOG = [
     maturity: "implemented-local",
     primaryFocus:
       "Static ULS bearing/sliding plus immediate SLS settlement, rigid-foundation rotation and differential-movement analysis connected to GroundModel.",
+  },
+  {
+    id: "geotechnical-retaining-walls",
+    name: "Geotechnical Retaining Walls",
+    domain: "geotechnics",
+    maturity: "implemented-local",
+    primaryFocus:
+      "Method-neutral 2D wall actions, sliding, overturning, base contact, uplift and explicit coupling to bearing and circular global-stability analyses.",
   },
   {
     id: "geotechnical-slope-stability",

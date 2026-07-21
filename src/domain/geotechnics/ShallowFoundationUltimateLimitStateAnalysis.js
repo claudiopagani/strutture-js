@@ -27,6 +27,11 @@ export const SHALLOW_FOUNDATION_BEARING_SELECTIONS = Object.freeze([
   "fhwa-vesic-2002",
 ]);
 
+export const SHALLOW_FOUNDATION_BASE_UPLIFT_TREATMENTS = Object.freeze([
+  "subtract-uniform-pressure",
+  "included-in-action-resultant",
+]);
+
 const USACE_REFERENCE =
   "USACE EM 1110-1-1905 (31 July 2025), Chapter 5, equations 5-2 through 5-30 and Tables 5-2 through 5-4";
 const FHWA_REFERENCE =
@@ -848,6 +853,7 @@ export class ShallowFoundationUltimateLimitStateAnalysis {
     porePressureFieldId = null,
     surfaceSurcharge = 0,
     bearingSelection = "minimum",
+    baseUpliftTreatment = "subtract-uniform-pressure",
     sliding = {},
     criteria = {},
     units = null,
@@ -859,6 +865,13 @@ export class ShallowFoundationUltimateLimitStateAnalysis {
       );
       if (!SHALLOW_FOUNDATION_BEARING_SELECTIONS.includes(bearingSelection)) {
         throw new Error(`Unsupported bearingSelection: ${bearingSelection}.`);
+      }
+      if (!SHALLOW_FOUNDATION_BASE_UPLIFT_TREATMENTS.includes(
+        baseUpliftTreatment,
+      )) {
+        throw new Error(
+          `Unsupported baseUpliftTreatment: ${baseUpliftTreatment}.`,
+        );
       }
       const groundModel = normalizeGroundModel(groundModelInput, units);
       const designSituation = normalizeDesignSituation(
@@ -1121,7 +1134,10 @@ export class ShallowFoundationUltimateLimitStateAnalysis {
         methodCapacities,
         bearingSelection,
       );
-      const upliftPressure = waterState.porePressureAtBase;
+      const upliftPressure = baseUpliftTreatment ===
+          "included-in-action-resultant"
+        ? 0
+        : waterState.porePressureAtBase;
       const equivalentBearingPressure = foundation.shape === "strip"
         ? geometry.actions.vertical / geometry.effectiveWidth - upliftPressure
         : geometry.actions.vertical / geometry.effectiveArea - upliftPressure;
@@ -1246,6 +1262,8 @@ export class ShallowFoundationUltimateLimitStateAnalysis {
           groundwater: {
             ...waterState,
             waterTableDepth,
+            baseUpliftTreatment,
+            porePressureAppliedToActionResultant: upliftPressure,
           },
           bearing: {
             demand: equivalentBearingPressure,
@@ -1312,6 +1330,9 @@ export class ShallowFoundationUltimateLimitStateAnalysis {
         assumptions: [
           "The foundation base and adjacent ground surface are horizontal.",
           "The supplied action resultant acts at the base center and includes foundation self-weight and all other applicable permanent vertical loads.",
+          baseUpliftTreatment === "included-in-action-resultant"
+            ? "Base uplift, including any nonuniform uplift moment, is already included in the supplied action resultant and is not subtracted again as a uniform pressure."
+            : "Hydrostatic uplift at the base is represented by a uniform pressure evaluated at the foundation center and is subtracted by this solver.",
           "Bearing failure is represented by general shear with superposed Nc, Nq and Ngamma terms.",
           "USACE/Meyerhof includes shape and load-inclination factors; FHWA/Vesic omits inclination factors when shape factors are used, following the cited FHWA recommendation.",
           "Hydrostatic-horizontal and phreatic-line pore-pressure fields are represented by their local water elevation at the foundation center.",

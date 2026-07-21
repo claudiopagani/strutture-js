@@ -24,6 +24,22 @@ import {
 } from
   "./geotechnicalShallowFoundationServiceabilityValidationCampaign.js";
 import {
+  formatGeotechnicalRetainingWallValidationReport,
+  runGeotechnicalRetainingWallValidationCampaign,
+} from "./geotechnicalRetainingWallValidationCampaign.js";
+import {
+  formatGeotechnicalDeepFoundationValidationReport,
+  runGeotechnicalDeepFoundationValidationCampaign,
+} from "./geotechnicalDeepFoundationValidationCampaign.js";
+import {
+  formatGeotechnicalLateralPileValidationReport,
+  runGeotechnicalLateralPileValidationCampaign,
+} from "./geotechnicalLateralPileValidationCampaign.js";
+import {
+  formatGeotechnicalLateralPilePyValidationReport,
+  runGeotechnicalLateralPilePyValidationCampaign,
+} from "./geotechnicalLateralPilePyValidationCampaign.js";
+import {
   formatCyclicMasonryPierValidationReport,
   runCyclicMasonryPierValidationCampaign,
 } from "./cyclicMasonryPierValidationCampaign.js";
@@ -41,6 +57,14 @@ const geotechnicalShallowFoundationCampaign =
   runGeotechnicalShallowFoundationValidationCampaign();
 const geotechnicalShallowFoundationServiceabilityCampaign =
   runGeotechnicalShallowFoundationServiceabilityValidationCampaign();
+const geotechnicalRetainingWallCampaign =
+  runGeotechnicalRetainingWallValidationCampaign();
+const geotechnicalDeepFoundationCampaign =
+  runGeotechnicalDeepFoundationValidationCampaign();
+const geotechnicalLateralPileCampaign =
+  runGeotechnicalLateralPileValidationCampaign();
+const geotechnicalLateralPilePyCampaign =
+  runGeotechnicalLateralPilePyValidationCampaign();
 const cyclicMasonryPierCampaign = runCyclicMasonryPierValidationCampaign();
 const ntc2018MasonryPierCampaign = runNTC2018MasonryPierValidationCampaign();
 const wantsJson = process.argv.includes("--json");
@@ -53,6 +77,10 @@ if (wantsJson) {
     geotechnicalSlopeStabilityCampaign,
     geotechnicalShallowFoundationCampaign,
     geotechnicalShallowFoundationServiceabilityCampaign,
+    geotechnicalRetainingWallCampaign,
+    geotechnicalDeepFoundationCampaign,
+    geotechnicalLateralPileCampaign,
+    geotechnicalLateralPilePyCampaign,
     cyclicMasonryPierCampaign,
     ntc2018MasonryPierCampaign,
   }, null, 2));
@@ -75,6 +103,22 @@ if (wantsJson) {
     geotechnicalShallowFoundationServiceabilityCampaign,
   ));
   console.log("");
+  console.log(formatGeotechnicalRetainingWallValidationReport(
+    geotechnicalRetainingWallCampaign,
+  ));
+  console.log("");
+  console.log(formatGeotechnicalDeepFoundationValidationReport(
+    geotechnicalDeepFoundationCampaign,
+  ));
+  console.log("");
+  console.log(formatGeotechnicalLateralPileValidationReport(
+    geotechnicalLateralPileCampaign,
+  ));
+  console.log("");
+  console.log(formatGeotechnicalLateralPilePyValidationReport(
+    geotechnicalLateralPilePyCampaign,
+  ));
+  console.log("");
   console.log(formatCyclicMasonryPierValidationReport(cyclicMasonryPierCampaign));
   console.log("");
   console.log(formatNTC2018MasonryPierValidationReport(ntc2018MasonryPierCampaign));
@@ -87,6 +131,10 @@ if (
   geotechnicalSlopeStabilityCampaign.status !== "ok" ||
   geotechnicalShallowFoundationCampaign.status !== "ok" ||
   geotechnicalShallowFoundationServiceabilityCampaign.status !== "ok" ||
+  geotechnicalRetainingWallCampaign.status !== "ok" ||
+  geotechnicalDeepFoundationCampaign.status !== "ok" ||
+  geotechnicalLateralPileCampaign.status !== "ok" ||
+  geotechnicalLateralPilePyCampaign.status !== "ok" ||
   cyclicMasonryPierCampaign.status !== "ok" ||
   ntc2018MasonryPierCampaign.status !== "ok"
 ) {

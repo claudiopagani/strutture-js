@@ -39,6 +39,62 @@ export {
   ShallowFoundationModel,
 } from "./ShallowFoundationModel.js";
 export {
+  DEEP_FOUNDATION_DISPLACEMENT_CLASSES,
+  DEEP_FOUNDATION_ELEMENT_TYPES,
+  DEEP_FOUNDATION_GEOMETRY_MODELS,
+  DEEP_FOUNDATION_MODEL_SCHEMA_VERSION,
+  DeepFoundationModel,
+} from "./DeepFoundationModel.js";
+export {
+  AXIAL_PILE_BASE_RESISTANCE_METHODS,
+  AXIAL_PILE_EFFECTIVE_STRESS_COEFFICIENT_MODELS,
+  AXIAL_PILE_LOAD_DIRECTIONS,
+  AXIAL_PILE_LOAD_SCENARIO_SCHEMA_VERSION,
+  AXIAL_PILE_RESISTANCE_CONVERSION_MODELS,
+  AXIAL_PILE_SHAFT_RESISTANCE_METHODS,
+  AxialPileLoadScenario,
+} from "./AxialPileLoadScenario.js";
+export {
+  AXIAL_PILE_CAPACITY_REFERENCE,
+  AXIAL_PILE_CAPACITY_RESULT_SCHEMA_VERSION,
+  AxialPileCapacityAnalysis,
+} from "./AxialPileCapacityAnalysis.js";
+export {
+  LATERAL_PILE_BEHAVIOR_CLASSIFICATIONS,
+  LATERAL_PILE_CAPACITY_METHODS,
+  LATERAL_PILE_HEAD_CONDITIONS,
+  LATERAL_PILE_LOAD_SCENARIO_SCHEMA_VERSION,
+  LATERAL_PILE_RESISTANCE_CONVERSION_MODELS,
+  LATERAL_PILE_SOIL_BRANCHES,
+  LateralPileLoadScenario,
+} from "./LateralPileLoadScenario.js";
+export {
+  LATERAL_PILE_BROMS_REFERENCE,
+  LATERAL_PILE_CAPACITY_RESULT_SCHEMA_VERSION,
+  LateralPileCapacityAnalysis,
+} from "./LateralPileCapacityAnalysis.js";
+export {
+  PILE_TRANSFER_CURVE_MODELS,
+  PILE_TRANSFER_EXTRAPOLATION_MODELS,
+  PILE_TRANSFER_LAW_KINDS,
+  PILE_TRANSFER_LAW_SCHEMA_VERSION,
+  PileTransferLaw,
+} from "./PileTransferLaw.js";
+export {
+  LATERAL_PILE_ACTION_REFERENCE_POINTS,
+  LATERAL_PILE_END_RESTRAINTS,
+  LATERAL_PILE_RESPONSE_METHODS,
+  LATERAL_PILE_RESPONSE_SCENARIO_SCHEMA_VERSION,
+  LATERAL_PILE_SOIL_RESPONSE_MODELS,
+  LateralPileResponseScenario,
+} from "./LateralPileResponseScenario.js";
+export {
+  LATERAL_PILE_PY_REFERENCE,
+  LATERAL_PILE_PY_RESULT_SCHEMA_VERSION,
+  LateralPileBeamOnSpringsAnalysis,
+} from "./LateralPileBeamOnSpringsAnalysis.js";
+export {
+  SHALLOW_FOUNDATION_BASE_UPLIFT_TREATMENTS,
   SHALLOW_FOUNDATION_BEARING_METHODS,
   SHALLOW_FOUNDATION_BEARING_SELECTIONS,
   SHALLOW_FOUNDATION_ULS_RESULT_SCHEMA_VERSION,
@@ -47,6 +103,22 @@ export {
   calculateShallowFoundationEffectiveGeometry,
   calculateShallowFoundationSlidingResistance,
 } from "./ShallowFoundationUltimateLimitStateAnalysis.js";
+export {
+  RETAINING_WALL_MODEL_SCHEMA_VERSION,
+  RETAINING_WALL_TYPES,
+  RetainingWallModel,
+  calculateRetainingWallPolygonProperties,
+} from "./RetainingWallModel.js";
+export {
+  RETAINING_WALL_BASE_UPLIFT_MODELS,
+  RETAINING_WALL_LOAD_SCENARIO_SCHEMA_VERSION,
+  RETAINING_WALL_SEISMIC_DIRECTIONS,
+  RetainingWallLoadScenario,
+} from "./RetainingWallLoadScenario.js";
+export {
+  RETAINING_WALL_ANALYSIS_RESULT_SCHEMA_VERSION,
+  RetainingWallAnalysis,
+} from "./RetainingWallAnalysis.js";
 export {
   SHALLOW_FOUNDATION_SETTLEMENT_METHODS,
   SHALLOW_FOUNDATION_SLS_RESULT_SCHEMA_VERSION,
