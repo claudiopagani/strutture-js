@@ -166,10 +166,13 @@ ora gestita da una microapp separata, che riusa lo stesso modello del sito.
 - Bishop semplificato e metodo ordinario delle strisce come metodi statici;
 - terreni drenati, non drenati e zone stratificate;
 - campi di pressione interstiziale assegnati e sovraccarichi verticali;
-- ricerca vincolata ingresso-uscita-saetta con diagnostica dei candidati.
+- ricerca vincolata ingresso-uscita-saetta con diagnostica dei candidati;
+- tiranti cementati rettilinei con forza FHWA piena, proporzionale nel bulbo o
+  nulla dietro il bulbo, risolti con Spencer.
 
-Le superfici non circolari, l'acqua esterna, le opere di rinforzo, la risposta
-dinamica e gli spostamenti permanenti restano fuori dal perimetro corrente.
+Le superfici non circolari, l'acqua esterna, i rinforzi diversi dai tiranti
+coperti, la risposta dinamica e gli spostamenti permanenti restano fuori dal
+perimetro corrente.
 
 ### 4.3 Integrazione strutturale disponibile
 
@@ -298,6 +301,8 @@ Il primo incremento copre:
 - Bishop semplificato come default statico e metodo ordinario delle strisce
   come confronto diagnostico statico;
 - ricerca controllata della superficie critica;
+- tiranti verificati importati mediante `GroundAnchorStabilityAction2D`, con
+  copertura delle relazioni superficie-bulbo nella ricerca;
 - restituzione della superficie, delle strisce, dei contributi e del fattore
   di sicurezza;
 - ramo pseudostatico con `H_i = kh W_i` e
@@ -697,9 +702,22 @@ Questa tappa viene dopo muri e pali laterali perché combina:
 - fasi di scavo e variazioni di falda;
 - stabilità globale e fondo scavo.
 
-Percorso previsto: `src/applications/geotechnical-excavation-support`.
+Percorso implementato:
+`src/applications/geotechnical-embedded-retaining-walls`.
 
-### 12.2 Prima versione
+Il nucleo corrente e chiuso nel perimetro ridotto documentato in
+[Paratie e scavi sostenuti](geotechnical-embedded-retaining-walls.md). Sono
+disponibili trave Euler-Bernoulli a `EI` variabile, molle efficaci assegnate sui
+due lati, falda separata, sequenza deterministica di scavo, diagrammi statici o
+pseudostatici, sostegni installati nello stato deformato, pretensione,
+equilibrio e ponte serializzabile verso il FEM.
+
+Il progetto dei tiranti e chiuso in una microapp autonoma,
+[`geotechnical-ground-anchors`](geotechnical-ground-anchors.md), che consuma
+le reazioni della paratia e restituisce geometria, capacita del bulbo,
+verifiche del tendine, protezione, collaudi e payload di accoppiamento.
+
+### 12.2 Prima versione implementata
 
 - paratia 2D come trave per unità di larghezza;
 - strati e falda da `GroundModel`;
@@ -711,22 +729,33 @@ Percorso previsto: `src/applications/geotechnical-excavation-support`.
 - azioni nella paratia e reazioni dei sostegni;
 - controlli di convergenza e sensibilità alla discretizzazione.
 
-### 12.3 Incrementi
+### 12.3 Modulo tiranti implementato separatamente
 
-- tiranti con pretensione e prove;
-- puntoni e telai di contrasto;
-- fondo scavo, sifonamento e sollevamento;
-- consolidazione e movimenti nel tempo;
-- edifici adiacenti come carichi e vincoli;
-- stabilità globale richiamando il solver di pendio;
-- modelli apparenti di pressione come workflow distinti, non mescolati alle
-  pressioni limite.
+- conversione delle reazioni per fase in forza del singolo tirante;
+- superficie critica assegnata o cuneo Rankine ristretto;
+- lunghezza libera, bulbo stratificato e resistenza terreno-boiacca;
+- tendine, testata e aderenza interna con capacita assegnabili;
+- protezione anticorrosiva FHWA;
+- proof test, performance test, extended creep e lunghezza libera apparente;
+- contratti verso struttura, stabilita globale e link assiale FEM.
 
-### 12.4 Ponte al FEM
+La verifica della parete e dei correnti usa i moduli strutturali. La stabilità
+globale resta nel workflow di pendio: il risultato verificato del tirante è
+convertito in `GroundAnchorStabilityAction2D` e il solutore Spencer mobilita la
+forza completa davanti al bulbo, proporzionale nel bulbo e nulla dietro la sua
+estremità secondo FHWA GEC 4, sezione 5.8.3.2. Gli altri rinforzi restano fuori
+dal perimetro.
+Fondo scavo, filtrazione, consolidazione, dinamica e rilascio 3D sono esclusi
+dal perimetro scelto e non costituiscono ulteriori incrementi di questa
+microapp.
 
-La paratia obbliga a introdurre `ConstructionStage` come contratto operativo:
-attivazione/disattivazione di terreno, elementi, carichi, sostegni e campi
-idraulici. Questa stessa sequenza sarà consumata dal FEM continuo.
+### 12.4 Ponte al FEM disponibile
+
+`EmbeddedRetainingWallScenario.stages` realizza la prima sequenza operativa:
+attivazione/disattivazione del contatto dei due lati, carichi, sostegni e campi
+idraulici. E una sequenza specifica del modello ridotto, gia serializzabile e
+predisposta a diventare input del futuro contratto generale
+`ConstructionStage` del FEM continuo.
 
 ## 13. Applicazioni successive
 
@@ -750,10 +779,11 @@ Questa tappa è il precursore del FEM idromeccanico.
 - cedimento e pressione interstiziale nel tempo;
 - validazione contro soluzioni analitiche prima dell'accoppiamento FEM.
 
-### 13.3 Tiranti, chiodature e rinforzi
+### 13.3 Chiodature e altri rinforzi
 
-- elementi resistenti con aderenza, lunghezza libera e ancorata;
-- interazione con pendio o paratia;
+- generalizzazione oltre i tiranti cementati rettilinei già implementati;
+- chiodature, geosintetici e pali stabilizzanti;
+- leggi di aderenza e compatibilità specifiche;
 - fasi e pretensione;
 - verifiche geotecniche e strutturali separate;
 - output come elementi o interfacce del FEM.
@@ -917,11 +947,15 @@ Ogni blocco deve avere:
 
 ## 16. Fasi costruttive
 
-`constructionStageId` esiste già nella situazione di progetto come riferimento,
-ma il motore delle fasi non è implementato.
+`constructionStageId` esiste nella situazione di progetto come riferimento.
+Il primo motore operativo e ora quello specifico delle paratie:
+`EmbeddedRetainingWallScenario.stages`, con sequenza deterministica,
+conservazione degli spostamenti, transizione incrementale e attivazione di
+contatto, acqua, carichi e sostegni. Non esiste ancora un contratto generale
+`ConstructionStage` condiviso da tutto il FEM.
 
-Quando paratie o FEM lo richiederanno, `ConstructionStage` dovrà descrivere
-delta di stato, non copie complete opache:
+Quando il FEM continuo richiedera il contratto generale, `ConstructionStage`
+dovra descrivere delta di stato, non copie complete opache:
 
 - elementi terreno attivati/disattivati;
 - elementi strutturali e interfacce attivati/disattivati;
@@ -931,7 +965,10 @@ delta di stato, non copie complete opache:
 - pretensioni o stati iniziali;
 - dipendenza dalla fase precedente.
 
-Il grafo deve essere almeno una sequenza deterministica nella prima versione.
+La microapp paratie usa intenzionalmente stati attivi completi e trasparenti
+per ogni fase; una futura migrazione al contratto generale dovra conservare la
+stessa semantica senza rendere opachi i delta. Il grafo generale deve essere
+almeno una sequenza deterministica nella prima versione.
 Ramificazioni di scenario possono essere gestite dal consumer usando più
 sequenze, senza introdurre subito un orchestratore complesso nel dominio.
 
@@ -1084,6 +1121,8 @@ Le decisioni sono ora chiuse e tracciate nel documento metodologico:
 - risultato dettagliato di strisce, metodi, candidati e rifiuti;
 - pseudostatica circolare risolta con Spencer e coefficienti `kh/kv`
   espliciti; nessuna risposta dinamica o stima di spostamento;
+- tiranti cementati rettilinei inseriti come forze puntuali nell'equilibrio di
+  Spencer, con forza piena/proporzionale/nulla secondo FHWA GEC 4;
 - nessun adapter normativo implicito nel solver.
 
 La superficie assegnata è stata implementata e validata prima della ricerca,
@@ -1104,7 +1143,9 @@ completati nel perimetro circolare corrente:
 8. ricerca e diagnostica implementate;
 9. applicazione e contratto serializzabile esportati.
 10. Spencer statico validato con chiusura indipendente di forze e momenti;
-11. azioni pseudostatiche `kh/kv` integrate e validate con Spencer.
+11. azioni pseudostatiche `kh/kv` integrate e validate con Spencer;
+12. interazione tirante-superficie e forza puntuale in Spencer implementate e
+    validate con geometria e chiusura indipendenti.
 
 Per riprendere l'estensione avanzata:
 

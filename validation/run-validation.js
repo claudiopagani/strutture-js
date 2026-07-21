@@ -40,6 +40,14 @@ import {
   runGeotechnicalLateralPilePyValidationCampaign,
 } from "./geotechnicalLateralPilePyValidationCampaign.js";
 import {
+  formatGeotechnicalEmbeddedRetainingWallValidationReport,
+  runGeotechnicalEmbeddedRetainingWallValidationCampaign,
+} from "./geotechnicalEmbeddedRetainingWallValidationCampaign.js";
+import {
+  formatGeotechnicalGroundAnchorValidationReport,
+  runGeotechnicalGroundAnchorValidationCampaign,
+} from "./geotechnicalGroundAnchorValidationCampaign.js";
+import {
   formatCyclicMasonryPierValidationReport,
   runCyclicMasonryPierValidationCampaign,
 } from "./cyclicMasonryPierValidationCampaign.js";
@@ -65,6 +73,10 @@ const geotechnicalLateralPileCampaign =
   runGeotechnicalLateralPileValidationCampaign();
 const geotechnicalLateralPilePyCampaign =
   runGeotechnicalLateralPilePyValidationCampaign();
+const geotechnicalEmbeddedRetainingWallCampaign =
+  runGeotechnicalEmbeddedRetainingWallValidationCampaign();
+const geotechnicalGroundAnchorCampaign =
+  runGeotechnicalGroundAnchorValidationCampaign();
 const cyclicMasonryPierCampaign = runCyclicMasonryPierValidationCampaign();
 const ntc2018MasonryPierCampaign = runNTC2018MasonryPierValidationCampaign();
 const wantsJson = process.argv.includes("--json");
@@ -81,6 +93,8 @@ if (wantsJson) {
     geotechnicalDeepFoundationCampaign,
     geotechnicalLateralPileCampaign,
     geotechnicalLateralPilePyCampaign,
+    geotechnicalEmbeddedRetainingWallCampaign,
+    geotechnicalGroundAnchorCampaign,
     cyclicMasonryPierCampaign,
     ntc2018MasonryPierCampaign,
   }, null, 2));
@@ -119,6 +133,14 @@ if (wantsJson) {
     geotechnicalLateralPilePyCampaign,
   ));
   console.log("");
+  console.log(formatGeotechnicalEmbeddedRetainingWallValidationReport(
+    geotechnicalEmbeddedRetainingWallCampaign,
+  ));
+  console.log("");
+  console.log(formatGeotechnicalGroundAnchorValidationReport(
+    geotechnicalGroundAnchorCampaign,
+  ));
+  console.log("");
   console.log(formatCyclicMasonryPierValidationReport(cyclicMasonryPierCampaign));
   console.log("");
   console.log(formatNTC2018MasonryPierValidationReport(ntc2018MasonryPierCampaign));
@@ -135,6 +157,8 @@ if (
   geotechnicalDeepFoundationCampaign.status !== "ok" ||
   geotechnicalLateralPileCampaign.status !== "ok" ||
   geotechnicalLateralPilePyCampaign.status !== "ok" ||
+  geotechnicalEmbeddedRetainingWallCampaign.status !== "ok" ||
+  geotechnicalGroundAnchorCampaign.status !== "ok" ||
   cyclicMasonryPierCampaign.status !== "ok" ||
   ntc2018MasonryPierCampaign.status !== "ok"
 ) {

@@ -19,7 +19,8 @@
 | [Caltrans Trenching and Shoring Manual (2025), capitolo 4](https://dot.ca.gov/-/media/dot-media/programs/engineering/documents/structureconstruction/ts/ts-chpt-4-a11y.pdf) | Equilibrio del cuneo attivo generale con parete inclinata e attrito di parete; controllo del segno delle componenti e massimizzazione rispetto al piano di scorrimento. | La combinazione con l'approssimazione stratificata USACE e una inferenza metodologica esplicitamente dichiarata; adesione di parete e superficie di rottura curva non sono incluse. |
 | [USACE EM 1110-2-2100, Stability Analysis of Concrete Structures (2005), Appendix G](https://www.publications.usace.army.mil/portals/76/publications/engineermanuals/em_1110-2-2100.pdf) | Equazioni di Mononobe-Okabe, angolo d'inerzia e condizioni di applicabilita. | Mononobe-Okabe fornisce la risultante, non una distribuzione univoca; il modulo limita la formula chiusa a terreno omogeneo, asciutto e incoerente. |
 | [FHWA-HRT-05-067, Seismic Retrofitting Manual for Highway Structures, Part 2 (2006)](https://rosap.ntl.bts.gov/view/dot/834/dot_834_DS1.pdf) | Poligono delle forze del cuneo pseudo-statico, inerzia orizzontale/verticale e ricerca del cuneo che massimizza la spinta attiva. | Il modulo combina questo equilibrio pseudo-statico con l'approssimazione stratificata USACE; la combinazione e dichiarata come inferenza metodologica e non come formula chiusa della fonte. |
-| [FHWA IF-99-015, Ground Anchors and Anchored Systems (1999)](https://www.fhwa.dot.gov/engineering/geotech/pubs/if99015.pdf) | Controllo concettuale degli stati attivo, passivo e a riposo e della dipendenza dalla deformabilita/movimento della struttura. | Non si assume la piena resistenza passiva senza compatibilita cinematica. |
+| [FHWA IF-99-015, Ground Anchors and Anchored Systems (1999)](https://www.fhwa.dot.gov/engineering/geotech/pubs/if99015.pdf) | Stati di spinta e comportamento delle paratie ancorate; progetto dei tiranti cementati; sezione 5.8.3.2 per superfici dietro ciascun ordine e forza intera o proporzionale quando la superficie passa davanti al bulbo o lo attraversa. | Curve pressione-spostamento e rigidezze restano input assegnati. Il progetto del tirante è separato dalla verifica strutturale di parete/correnti; il solver globale usa Spencer, tensione di aderenza uniforme e forza di progetto di una sorgente verificata. |
+| [FHWA-HRT-10-077, Composite Behavior of Geosynthetic Reinforced Soil Mass, Chapter 6 (2013)](https://www.fhwa.dot.gov/publications/research/infrastructure/10077/006.cfm) | Riferimento istituzionale per il ruolo di molle/interfacce, tiranti o puntoni e costruzione per fasi nei modelli geotecnici agli elementi finiti. | Il modulo paratie usa una trave su molle indipendenti e una sequenza ridotta; non implementa il continuo geotecnico descritto dalla panoramica. |
 | [Shi, Gong e Zhang, Earth pressure of layered soil on retaining structures, Soil Dynamics and Earthquake Engineering 83 (2016)](https://doi.org/10.1016/j.soildyn.2015.12.015) | Confronto indipendente sul problema stratificato statico e dinamico e sui limiti delle superfici piane, in particolare per la passiva con attrito di parete. | Il metodo numerico dell'articolo, basato su elementi sottili e superficie ottimizzata, non e riprodotto dal kernel a cuneo piano. |
 | [D.M. 17 gennaio 2018, NTC 2018](https://www.gazzettaufficiale.it/eli/id/2018/02/20/18A00716/sg), sezione 7.11.6.2.1 | Adapter esplicito `kh=betaM*(amax/g)` e `kv=+/-0.5kh` per muri di sostegno. | `amax/g`, `betaM` e scelta del segno di `kv` non vengono inferiti dal modulo. |
 | [ISO 14688-1:2017](https://www.iso.org/standard/66345.html) e [ISO 14688-2:2017](https://www.iso.org/standard/66346.html) | Tassonomia generale del catalogo di tipologie di terreno. | Il catalogo e solo classificatorio: non fornisce valori meccanici o correlazioni sito-specifiche. |
@@ -54,7 +55,7 @@ Le tolleranze sono assolute e dichiarate per ciascun confronto. I valori
 attesi sono costanti nel caso di validazione e non sono calcolati richiamando i
 kernel sottoposti a verifica.
 
-`validation/geotechnicalSlopeStabilityValidationCampaign.js` aggiunge cinque
+`validation/geotechnicalSlopeStabilityValidationCampaign.js` aggiunge sette
 casi indipendenti:
 
 1. equazioni USACE C-12, C-15 e C-16 su strisce assegnate;
@@ -65,7 +66,11 @@ casi indipendenti:
 4. Spencer statico nel limite `phi = 0`, confrontato con la chiusura analitica
    dei momenti e con l'inclinazione interstriscia costruita;
 5. lo stesso limite con inerzia orizzontale pseudostatica, verificando
-   separatamente fattore, forza locale e momento globale.
+   separatamente fattore, forza locale e momento globale;
+6. intersezione linea-circonferenza e rapporti FHWA di forza piena,
+   proporzionale nel bulbo e nulla dietro il bulbo;
+7. chiusura analitica di Spencer con azione puntuale resistente, componenti
+   firmate e momento applicato.
 
 `validation/geotechnicalShallowFoundationValidationCampaign.js` aggiunge
 quattro casi indipendenti:
@@ -127,3 +132,24 @@ indipendenti:
    discretizzazione;
 3. equilibrio esatto di una molla `p-y` a plateau accoppiata a un elemento
    flessionale con rotazioni e punta vincolate.
+
+`validation/geotechnicalEmbeddedRetainingWallValidationCampaign.js` aggiunge
+tre casi indipendenti:
+
+1. paratia a mensola con pressione uniforme confrontata con spostamento,
+   rotazione e momento della soluzione chiusa Euler-Bernoulli;
+2. paratia lunga tra due letti lineari uguali confrontata con la soluzione
+   semi-infinita di Winkler usando la rigidezza combinata dei due lati;
+3. singolo grado di liberta flessionale con sostegno elastico confrontato con
+   la somma indipendente delle rigidezze della trave e del sostegno.
+
+`validation/geotechnicalGroundAnchorValidationCampaign.js` aggiunge tre casi
+indipendenti riferiti a FHWA GEC 4, FHWA-IF-99-015 (1999), sezioni 5.3, 6.4 e
+7.4.5:
+
+1. intersezione esatta del bulbo con due zone e somma delle capacita di
+   trasferimento ammissibili;
+2. conversione della reazione orizzontale per unita di parete nella forza del
+   singolo tirante inclinato;
+3. lunghezza libera apparente ricalcolata con l'equazione 49 e movimento di
+   creep fra 1 e 10 minuti.

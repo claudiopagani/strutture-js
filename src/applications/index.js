@@ -5,6 +5,8 @@ import { MasonryWallOpeningsApplication } from "./masonry-wall-openings/index.js
 import { MasonryRingBeamApplication } from "./masonry-ring-beams/index.js";
 import { GeotechnicalEarthPressureApplication } from "./geotechnical-earth-pressures/index.js";
 import { GeotechnicalDeepFoundationApplication } from "./geotechnical-deep-foundations/index.js";
+import { GeotechnicalEmbeddedRetainingWallApplication } from "./geotechnical-embedded-retaining-walls/index.js";
+import { GeotechnicalGroundAnchorApplication } from "./geotechnical-ground-anchors/index.js";
 import { GeotechnicalLateralPileApplication } from "./geotechnical-lateral-piles/index.js";
 import { GeotechnicalRetainingWallApplication } from "./geotechnical-retaining-walls/index.js";
 import { GeotechnicalShallowFoundationApplication } from "./geotechnical-shallow-foundations/index.js";
@@ -62,6 +64,54 @@ export { MasonryRingBeamApplication } from "./masonry-ring-beams/index.js";
 export { MasonryRingBeamModel } from "./masonry-ring-beams/index.js";
 export { MasonryRingBeamVerification } from "./masonry-ring-beams/index.js";
 export { GeotechnicalEarthPressureApplication } from "./geotechnical-earth-pressures/index.js";
+export {
+  EMBEDDED_RETAINING_WALL_END_RESTRAINTS,
+  EMBEDDED_RETAINING_WALL_LOADING_CONDITIONS,
+  EMBEDDED_RETAINING_WALL_MODEL_SCHEMA_VERSION,
+  EMBEDDED_RETAINING_WALL_REFERENCES,
+  EMBEDDED_RETAINING_WALL_RESULT_SCHEMA_VERSION,
+  EMBEDDED_RETAINING_WALL_SCENARIO_SCHEMA_VERSION,
+  EMBEDDED_RETAINING_WALL_SUPPORT_BEHAVIORS,
+  EMBEDDED_RETAINING_WALL_SUPPORT_TYPES,
+  EMBEDDED_RETAINING_WALL_TYPES,
+  WALL_SOIL_REACTION_EXTRAPOLATION_MODELS,
+  WALL_SOIL_REACTION_LAW_SCHEMA_VERSION,
+  WALL_SOIL_REACTION_MODELS,
+  EmbeddedRetainingWallAnalysis,
+  EmbeddedRetainingWallModel,
+  EmbeddedRetainingWallScenario,
+  GeotechnicalEmbeddedRetainingWallApplication,
+  WallSoilReactionLaw,
+} from "./geotechnical-embedded-retaining-walls/index.js";
+export {
+  GROUND_ANCHOR_BOND_CATALOG,
+  GROUND_ANCHOR_BOND_CATALOG_IDS,
+  GROUND_ANCHOR_BOND_CATALOG_REFERENCE,
+  GROUND_ANCHOR_BOND_RESISTANCE_MODELS,
+  GROUND_ANCHOR_CORROSION_CLASSES,
+  GROUND_ANCHOR_DEMAND_SOURCES,
+  GROUND_ANCHOR_DESIGN_REFERENCE,
+  GROUND_ANCHOR_DESIGN_RESULT_SCHEMA_VERSION,
+  GROUND_ANCHOR_DESIGN_SCENARIO_SCHEMA_VERSION,
+  GROUND_ANCHOR_FAILURE_SURFACE_MODELS,
+  GROUND_ANCHOR_FHWA_CRITERIA,
+  GROUND_ANCHOR_GROUND_CLASSES,
+  GROUND_ANCHOR_HORIZONTAL_DIRECTIONS,
+  GROUND_ANCHOR_STABILITY_ACTION_2D_SCHEMA_VERSION,
+  GROUND_ANCHOR_STABILITY_FORCE_MODELS,
+  GROUND_ANCHOR_STABILITY_REFERENCE,
+  GROUND_ANCHOR_MODEL_SCHEMA_VERSION,
+  GROUND_ANCHOR_TENDON_TYPES,
+  GROUND_ANCHOR_TEST_TYPES,
+  GeotechnicalGroundAnchorApplication,
+  GroundAnchorAnalysis,
+  GroundAnchorDesignScenario,
+  GroundAnchorModel,
+  GroundAnchorStabilityAction2D,
+  getGroundAnchorBondCatalogEntry,
+  groundAnchorDemandFromEmbeddedWallResult,
+  listGroundAnchorBondCatalogEntries,
+} from "./geotechnical-ground-anchors/index.js";
 export {
   AXIAL_PILE_BASE_RESISTANCE_METHODS,
   AXIAL_PILE_CAPACITY_REFERENCE,
@@ -304,6 +354,8 @@ export function createDefaultApplicationRegistry() {
     new MasonryOutOfPlaneApplication(),
     new MicropileBromsApplication(),
     new GeotechnicalDeepFoundationApplication(),
+    new GeotechnicalEmbeddedRetainingWallApplication(),
+    new GeotechnicalGroundAnchorApplication(),
     new GeotechnicalLateralPileApplication(),
     new GeotechnicalEarthPressureApplication(),
     new GeotechnicalShallowFoundationApplication(),

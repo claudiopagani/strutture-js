@@ -94,6 +94,60 @@ export {
   LateralPileBeamOnSpringsAnalysis,
 } from "./LateralPileBeamOnSpringsAnalysis.js";
 export {
+  WALL_SOIL_REACTION_EXTRAPOLATION_MODELS,
+  WALL_SOIL_REACTION_LAW_SCHEMA_VERSION,
+  WALL_SOIL_REACTION_MODELS,
+  WallSoilReactionLaw,
+} from "./WallSoilReactionLaw.js";
+export {
+  EMBEDDED_RETAINING_WALL_END_RESTRAINTS,
+  EMBEDDED_RETAINING_WALL_MODEL_SCHEMA_VERSION,
+  EMBEDDED_RETAINING_WALL_TYPES,
+  EmbeddedRetainingWallModel,
+} from "./EmbeddedRetainingWallModel.js";
+export {
+  EMBEDDED_RETAINING_WALL_LOADING_CONDITIONS,
+  EMBEDDED_RETAINING_WALL_SCENARIO_SCHEMA_VERSION,
+  EMBEDDED_RETAINING_WALL_SUPPORT_BEHAVIORS,
+  EMBEDDED_RETAINING_WALL_SUPPORT_TYPES,
+  EmbeddedRetainingWallScenario,
+} from "./EmbeddedRetainingWallScenario.js";
+export {
+  EMBEDDED_RETAINING_WALL_REFERENCES,
+  EMBEDDED_RETAINING_WALL_RESULT_SCHEMA_VERSION,
+  EmbeddedRetainingWallAnalysis,
+} from "./EmbeddedRetainingWallAnalysis.js";
+export {
+  GROUND_ANCHOR_BOND_CATALOG,
+  GROUND_ANCHOR_BOND_CATALOG_IDS,
+  GROUND_ANCHOR_BOND_CATALOG_REFERENCE,
+  getGroundAnchorBondCatalogEntry,
+  listGroundAnchorBondCatalogEntries,
+} from "./groundAnchorBondCatalog.js";
+export {
+  GROUND_ANCHOR_CORROSION_CLASSES,
+  GROUND_ANCHOR_HORIZONTAL_DIRECTIONS,
+  GROUND_ANCHOR_MODEL_SCHEMA_VERSION,
+  GROUND_ANCHOR_TENDON_TYPES,
+  GroundAnchorModel,
+} from "./GroundAnchorModel.js";
+export {
+  GROUND_ANCHOR_BOND_RESISTANCE_MODELS,
+  GROUND_ANCHOR_DEMAND_SOURCES,
+  GROUND_ANCHOR_DESIGN_SCENARIO_SCHEMA_VERSION,
+  GROUND_ANCHOR_FAILURE_SURFACE_MODELS,
+  GROUND_ANCHOR_GROUND_CLASSES,
+  GROUND_ANCHOR_TEST_TYPES,
+  GroundAnchorDesignScenario,
+} from "./GroundAnchorDesignScenario.js";
+export {
+  GROUND_ANCHOR_DESIGN_REFERENCE,
+  GROUND_ANCHOR_DESIGN_RESULT_SCHEMA_VERSION,
+  GROUND_ANCHOR_FHWA_CRITERIA,
+  GroundAnchorAnalysis,
+  groundAnchorDemandFromEmbeddedWallResult,
+} from "./GroundAnchorAnalysis.js";
+export {
   SHALLOW_FOUNDATION_BASE_UPLIFT_TREATMENTS,
   SHALLOW_FOUNDATION_BEARING_METHODS,
   SHALLOW_FOUNDATION_BEARING_SELECTIONS,
@@ -133,6 +187,12 @@ export {
   SLOPE_MOVEMENT_DIRECTIONS,
   CircularSlipSurface2D,
 } from "./CircularSlipSurface2D.js";
+export {
+  GROUND_ANCHOR_STABILITY_ACTION_2D_SCHEMA_VERSION,
+  GROUND_ANCHOR_STABILITY_FORCE_MODELS,
+  GROUND_ANCHOR_STABILITY_REFERENCE,
+  GroundAnchorStabilityAction2D,
+} from "./GroundAnchorStabilityAction2D.js";
 export {
   SLOPE_SURFACE_SURCHARGE_2D_SCHEMA_VERSION,
   SlopeSurfaceSurcharge2D,

@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   CIRCULAR_SLIP_SURFACE_2D_SCHEMA_VERSION,
   CIRCULAR_SLOPE_STABILITY_RESULT_SCHEMA_VERSION,
+  GROUND_ANCHOR_STABILITY_ACTION_2D_SCHEMA_VERSION,
   SLOPE_SLICE_DISCRETIZATION_2D_SCHEMA_VERSION,
   SLOPE_SURFACE_SURCHARGE_2D_SCHEMA_VERSION,
   CircularSlipSurface2D,
@@ -11,6 +12,7 @@ import {
   GeotechnicalDesignSituation,
   GeotechnicalSlopeStabilityApplication,
   GroundModel,
+  GroundAnchorStabilityAction2D,
   GroundSection2D,
   PorePressureField2D,
   SlopeSurfaceSurcharge2D,
@@ -135,6 +137,31 @@ function assignedCircle(sagitta = 2) {
     exit: { x: 10, z: 0 },
     sagitta,
     units,
+  });
+}
+
+function groundAnchorAction({
+  id = "slope-anchor",
+  freeLength = 3,
+  bondLength = 2,
+  designTendonForce = 10,
+  sourceVerificationStatus = "ok",
+} = {}) {
+  const inclination = 10 * Math.PI / 180;
+  const pointAtDistance = (distance) => ({
+    x: 8 - distance * Math.cos(inclination),
+    z: 2 - distance * Math.sin(inclination),
+  });
+  return new GroundAnchorStabilityAction2D({
+    id,
+    head: pointAtDistance(0),
+    bondStart: pointAtDistance(freeLength),
+    bondEnd: pointAtDistance(freeLength + bondLength),
+    designTendonForce,
+    horizontalSpacing: 1,
+    sourceVerificationStatus,
+    units,
+    provenance: { source: "test-fixture" },
   });
 }
 
@@ -306,6 +333,184 @@ test("Spencer satisfies force and moment equilibrium in an independent phi-zero 
   assert.ok(result.equilibrium.maximumLocalShearResidual < 1e-12);
   assert.throws(() => simplifiedBishop(slices), /Spencer/);
   assert.throws(() => ordinaryMethodOfSlices(slices), /Spencer/);
+});
+
+test("Spencer includes signed external point forces in force and moment equilibrium", () => {
+  const radius = 10;
+  const cohesion = 10;
+  const baseLength = 2;
+  const slices = [
+    { id: "a", vertical: 100, alphaDegrees: 20 },
+    { id: "b", vertical: 80, alphaDegrees: 10 },
+  ].map((input, index) => {
+    const alpha = input.alphaDegrees * Math.PI / 180;
+    return {
+      id: input.id,
+      width: 1,
+      baseLength,
+      totalVerticalLoad: input.vertical,
+      horizontalSeismicLoad: 0,
+      baseInclination: alpha,
+      cohesion,
+      frictionAngle: 0,
+      porePressure: 0,
+      stressBasis: "total",
+      baseMomentArm: radius,
+      drivingMoment: input.vertical * Math.sin(alpha) * radius,
+      externalPointLoads: index === 0 ? [{
+        id: "anchor-action",
+        horizontalForceInMovementDirection: -10,
+        verticalDownwardForce: 2,
+        drivingMoment: -80,
+      }] : [],
+    };
+  });
+  const independentDrivingMoment = slices.reduce(
+    (sum, slice) => sum + slice.drivingMoment,
+    0,
+  ) - 80;
+  const independentFactor = slices.reduce(
+    (sum, slice) =>
+      sum + slice.cohesion * slice.baseLength * slice.baseMomentArm,
+    0,
+  ) / independentDrivingMoment;
+  const result = spencerMethod(slices);
+
+  approx(result.factorOfSafety, independentFactor, 1e-12);
+  assert.ok(result.equilibrium.residualNorm < 1e-9);
+  assert.equal(
+    result.sliceContributions[0].externalPointLoads[0].id,
+    "anchor-action",
+  );
+  approx(result.sliceContributions[0].externalHorizontalLoad, -10);
+  approx(result.sliceContributions[0].externalVerticalLoad, 2);
+  approx(result.sliceContributions[0].externalDrivingMoment, -80);
+});
+
+test("ground-anchor stability action mobilizes full, proportional and zero force", () => {
+  const slipSurface = assignedCircle();
+  const full = groundAnchorAction({ id: "full", freeLength: 3, bondLength: 2 });
+  const partial = groundAnchorAction({
+    id: "partial",
+    freeLength: 1,
+    bondLength: 4,
+  });
+  const enclosed = groundAnchorAction({
+    id: "enclosed",
+    freeLength: 0.5,
+    bondLength: 1,
+  });
+  const fullInteraction = full.evaluateForSlipSurface(slipSurface);
+  const partialInteraction = partial.evaluateForSlipSurface(slipSurface);
+  const enclosedInteraction = enclosed.evaluateForSlipSurface(slipSurface);
+
+  assert.equal(fullInteraction.relation, "in-front-of-bond-zone");
+  approx(fullInteraction.mobilizationRatio, 1);
+  assert.equal(partialInteraction.relation, "through-bond-zone");
+  approx(partialInteraction.mobilizationRatio, 0.7492640264297944, 1e-12);
+  assert.equal(enclosedInteraction.relation, "behind-bond-zone");
+  approx(enclosedInteraction.mobilizationRatio, 0);
+  assert.ok(fullInteraction.horizontalForceInMovementDirection < 0);
+  assert.ok(fullInteraction.drivingMoment < 0);
+  assert.equal(
+    full.toJSON().schemaVersion,
+    GROUND_ANCHOR_STABILITY_ACTION_2D_SCHEMA_VERSION,
+  );
+  assert.deepEqual(
+    new GroundAnchorStabilityAction2D(full.toJSON()).toJSON(),
+    full.toJSON(),
+  );
+});
+
+test("ground-anchor stability action converts units and rejects invalid intersections", () => {
+  const converted = new GroundAnchorStabilityAction2D({
+    id: "converted-anchor",
+    head: { x: 8000, z: 2000 },
+    bondStart: { x: 5045.576740963376, z: 1479.055466999209 },
+    bondEnd: { x: 3075.96123493896, z: 1131.7591116653482 },
+    designTendonForce: 100000,
+    horizontalSpacing: 1000,
+    sourceVerificationStatus: "ok",
+    units: { force: "N", length: "mm" },
+    provenance: { source: "unit-conversion-test" },
+  });
+  approx(converted.head.x, 8);
+  approx(converted.designTendonForce, 100);
+  approx(converted.horizontalSpacing, 1);
+  approx(converted.designTendonForcePerUnitWidth, 100);
+
+  const wrongDirection = new CircularSlipSurface2D({
+    ...assignedCircle().toJSON(),
+    movementDirection: "right-to-left",
+  });
+  assert.throws(
+    () => groundAnchorAction().evaluateForSlipSurface(wrongDirection),
+    /does not oppose/,
+  );
+
+  const doubleIntersectionSurface = new CircularSlipSurface2D({
+    id: "double-intersection-circle",
+    center: { x: 0, z: 0 },
+    radius: 10,
+    entryX: -10,
+    exitX: 10,
+    movementDirection: "right-to-left",
+    units,
+  });
+  const doubleCrossingAnchor = new GroundAnchorStabilityAction2D({
+    id: "double-crossing-anchor",
+    head: { x: -11, z: -2 },
+    bondStart: { x: 0, z: -2 },
+    bondEnd: { x: 11, z: -2 },
+    designTendonForce: 100,
+    horizontalSpacing: 1,
+    sourceVerificationStatus: "ok",
+    units,
+    provenance: { source: "double-intersection-test" },
+  });
+  assert.throws(
+    () => doubleCrossingAnchor.evaluateForSlipSurface(
+      doubleIntersectionSurface,
+    ),
+    /more than once/,
+  );
+});
+
+test("ground-anchor stability action is constructed from a verified anchor result", () => {
+  const fixture = groundAnchorAction({ designTendonForce: 120 });
+  const serialized = fixture.toJSON();
+  const sourceResult = {
+    applicationId: "geotechnical-ground-anchors",
+    status: "ok",
+    warnings: [],
+    outputs: {
+      schemaVersion: "ground-anchor-design-result/v1",
+      groundModelId: "ground-model",
+      designSituationId: "anchor-situation",
+      anchor: {
+        id: "result-anchor",
+        horizontalSpacing: 2,
+        units,
+      },
+      couplings: {
+        globalStability: {
+          anchorAxis: {
+            head: serialized.head,
+            bondStart: serialized.bondStart,
+            bondEnd: serialized.bondEnd,
+          },
+          actions: { designTendonForce: 120 },
+        },
+      },
+    },
+  };
+  const action = GroundAnchorStabilityAction2D.fromGroundAnchorResult(
+    sourceResult,
+  );
+
+  assert.equal(action.sourceVerificationStatus, "ok");
+  approx(action.designTendonForcePerUnitWidth, 60);
+  assert.equal(action.provenance.source, "ground-anchor-design-result");
 });
 
 test("assigned dry circular slope returns detailed Bishop and Ordinary results", () => {
@@ -519,6 +724,104 @@ test("Spencer solves a static cohesionless slope and agrees closely with Bishop"
   assert.ok(
     Math.abs(result.outputs.comparison.spencerToBishopRatio - 1) < 0.005,
   );
+});
+
+test("anchored circular slope accounts for full, partial and zero anchor restraint", () => {
+  const fixture = homogeneousFixture({
+    material: drainedMaterial({ frictionAngle: 30, cohesion: 0 }),
+  });
+  const base = analyze(fixture, { method: "spencer" });
+  const full = analyze(fixture, {
+    groundAnchors: [groundAnchorAction({
+      id: "full",
+      freeLength: 3,
+      bondLength: 2,
+    })],
+  });
+  const partial = analyze(fixture, {
+    groundAnchors: [groundAnchorAction({
+      id: "partial",
+      freeLength: 1,
+      bondLength: 4,
+    })],
+  });
+  const enclosed = analyze(fixture, {
+    groundAnchors: [groundAnchorAction({
+      id: "enclosed",
+      freeLength: 0.5,
+      bondLength: 1,
+    })],
+  });
+  const unsupportedMethod = analyze(fixture, {
+    method: "bishop-simplified",
+    groundAnchors: [groundAnchorAction()],
+  });
+  const unverifiedSource = analyze(fixture, {
+    groundAnchors: [groundAnchorAction({
+      sourceVerificationStatus: "not-verified",
+    })],
+  });
+
+  assert.equal(full.status, "ok");
+  assert.equal(full.outputs.method, "spencer");
+  assert.ok(full.outputs.factorOfSafety > partial.outputs.factorOfSafety);
+  assert.ok(partial.outputs.factorOfSafety > base.outputs.factorOfSafety);
+  approx(enclosed.outputs.factorOfSafety, base.outputs.factorOfSafety, 1e-10);
+  assert.equal(
+    partial.outputs.groundAnchors.interactions[0].relation,
+    "through-bond-zone",
+  );
+  assert.equal(
+    full.outputs.comparison.staticSimplifiedMethods,
+    "not-applicable-with-ground-anchors",
+  );
+  assert.equal(unsupportedMethod.status, "not-supported");
+  assert.equal(unverifiedSource.status, "not-verified");
+  assert.doesNotThrow(() => JSON.stringify(partial));
+});
+
+test("anchored critical search reports per-anchor surface-relation coverage", () => {
+  const fixture = homogeneousFixture({
+    material: drainedMaterial({ frictionAngle: 30, cohesion: 0 }),
+  });
+  const result = new CircularSlopeStabilityAnalysis().analyze({
+    groundModel: fixture.groundModel,
+    designSituation: fixture.designSituation,
+    search: {
+      entryX: { minimum: 0, maximum: 1, count: 2 },
+      exitX: { minimum: 9, maximum: 10, count: 2 },
+      sagitta: { minimum: 1.5, maximum: 2.5, count: 3 },
+      refinementIterations: 1,
+      retainCandidates: 3,
+    },
+    movementDirection: "left-to-right",
+    groundAnchors: [groundAnchorAction({
+      id: "coverage-anchor",
+      freeLength: 1,
+      bondLength: 4,
+      designTendonForce: 5,
+    })],
+    sliceCount: 20,
+    units,
+  });
+
+  assert.equal(result.status, "ok");
+  assert.equal(result.outputs.search.groundAnchorCoverage.length, 1);
+  assert.equal(
+    result.outputs.search.groundAnchorCoverage[0].anchorId,
+    "coverage-anchor",
+  );
+  assert.ok(
+    result.outputs.search.groundAnchorCoverage[0].relations.length > 0,
+  );
+  assert.equal(
+    result.outputs.search.groundAnchorVerificationFamilies.status,
+    "not-analyzed",
+  );
+  assert.ok(result.warnings.some((warning) =>
+    warning.includes("behind every supplied anchor level")));
+  assert.ok(result.outputs.search.retainedCandidates.every((candidate) =>
+    Array.isArray(candidate.groundAnchorInteractions)));
 });
 
 test("pseudostatic slope analysis defaults to Spencer and applies kh and kv", () => {

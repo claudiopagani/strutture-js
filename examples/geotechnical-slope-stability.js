@@ -4,6 +4,7 @@ import {
   CircularSlipSurface2D,
   GeotechnicalDesignSituation,
   GroundModel,
+  GroundAnchorStabilityAction2D,
   GroundSection2D,
   PorePressureField2D,
   SoilMaterial,
@@ -144,6 +145,30 @@ const pseudostaticResult = new GeotechnicalSlopeStabilityApplication().run({
   sliceCount: 40,
   units,
 });
+const inclination = 10 * Math.PI / 180;
+const anchorPoint = (distance) => ({
+  x: 8 - distance * Math.cos(inclination),
+  z: 2 - distance * Math.sin(inclination),
+});
+const groundAnchor = new GroundAnchorStabilityAction2D({
+  id: "slope-anchor-row-1",
+  head: anchorPoint(0),
+  bondStart: anchorPoint(1),
+  bondEnd: anchorPoint(5),
+  designTendonForce: 10,
+  horizontalSpacing: 1,
+  sourceVerificationStatus: "ok",
+  units,
+  provenance: { source: "verified-ground-anchor-example" },
+});
+const anchoredResult = new GeotechnicalSlopeStabilityApplication().run({
+  groundModel,
+  designSituation,
+  slipSurface: assignedSurface,
+  groundAnchors: [groundAnchor],
+  sliceCount: 40,
+  units,
+});
 
 console.log(JSON.stringify({
   staticSearch: {
@@ -161,5 +186,12 @@ console.log(JSON.stringify({
     seismicLoading:
       pseudostaticResult.outputs.discretization.metadata.seismicLoading,
     warnings: pseudostaticResult.warnings,
+  },
+  anchoredAssignedSurface: {
+    status: anchoredResult.status,
+    method: anchoredResult.outputs.method,
+    factorOfSafety: anchoredResult.outputs.factorOfSafety,
+    interactions: anchoredResult.outputs.groundAnchors?.interactions,
+    warnings: anchoredResult.warnings,
   },
 }, null, 2));

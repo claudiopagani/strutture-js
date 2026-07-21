@@ -22,6 +22,10 @@ import * as DeepFoundationApi from
   "strutture-js/applications/geotechnical-deep-foundations";
 import * as LateralPileApi from
   "strutture-js/applications/geotechnical-lateral-piles";
+import * as EmbeddedRetainingWallApi from
+  "strutture-js/applications/geotechnical-embedded-retaining-walls";
+import * as GroundAnchorApi from
+  "strutture-js/applications/geotechnical-ground-anchors";
 import * as FemApi from "strutture-js/domain/fem";
 import * as MathApi from "strutture-js/domain/math";
 import * as GeotechnicsApi from "strutture-js/domain/geotechnics";
@@ -97,6 +101,10 @@ test("package root export exposes the main public API", () => {
   assert.equal(typeof PublicApi.LateralPileLoadScenario, "function");
   assert.equal(typeof PublicApi.LateralPileCapacityAnalysis, "function");
   assert.equal(typeof PublicApi.PileTransferLaw, "function");
+  assert.equal(typeof PublicApi.WallSoilReactionLaw, "function");
+  assert.equal(typeof PublicApi.EmbeddedRetainingWallModel, "function");
+  assert.equal(typeof PublicApi.EmbeddedRetainingWallScenario, "function");
+  assert.equal(typeof PublicApi.EmbeddedRetainingWallAnalysis, "function");
   assert.equal(typeof PublicApi.LateralPileResponseScenario, "function");
   assert.equal(
     typeof PublicApi.LateralPileBeamOnSpringsAnalysis,
@@ -108,6 +116,17 @@ test("package root export exposes the main public API", () => {
   );
   assert.equal(
     typeof PublicApi.GeotechnicalLateralPileApplication,
+    "function",
+  );
+  assert.equal(
+    typeof PublicApi.GeotechnicalEmbeddedRetainingWallApplication,
+    "function",
+  );
+  assert.equal(typeof PublicApi.GroundAnchorModel, "function");
+  assert.equal(typeof PublicApi.GroundAnchorDesignScenario, "function");
+  assert.equal(typeof PublicApi.GroundAnchorAnalysis, "function");
+  assert.equal(
+    typeof PublicApi.GeotechnicalGroundAnchorApplication,
     "function",
   );
   assert.equal(
@@ -185,6 +204,14 @@ test("applications subpath export exposes application registry helpers", () => {
   );
   assert.equal(
     typeof ApplicationsApi.GeotechnicalLateralPileApplication,
+    "function",
+  );
+  assert.equal(
+    typeof ApplicationsApi.GeotechnicalEmbeddedRetainingWallApplication,
+    "function",
+  );
+  assert.equal(
+    typeof ApplicationsApi.GeotechnicalGroundAnchorApplication,
     "function",
   );
   assert.equal(
@@ -274,6 +301,37 @@ test("granular ESM subpaths expose applications, solvers and catalogs", () => {
     typeof LateralPileApi.LateralPileBeamOnSpringsAnalysis,
     "function",
   );
+  assert.equal(
+    typeof EmbeddedRetainingWallApi
+      .GeotechnicalEmbeddedRetainingWallApplication,
+    "function",
+  );
+  assert.equal(
+    typeof EmbeddedRetainingWallApi.EmbeddedRetainingWallModel,
+    "function",
+  );
+  assert.equal(
+    typeof EmbeddedRetainingWallApi.EmbeddedRetainingWallScenario,
+    "function",
+  );
+  assert.equal(
+    typeof EmbeddedRetainingWallApi.EmbeddedRetainingWallAnalysis,
+    "function",
+  );
+  assert.equal(
+    typeof EmbeddedRetainingWallApi.WallSoilReactionLaw,
+    "function",
+  );
+  assert.equal(
+    typeof GroundAnchorApi.GeotechnicalGroundAnchorApplication,
+    "function",
+  );
+  assert.equal(typeof GroundAnchorApi.GroundAnchorModel, "function");
+  assert.equal(typeof GroundAnchorApi.GroundAnchorAnalysis, "function");
+  assert.equal(
+    typeof GroundAnchorApi.getGroundAnchorBondCatalogEntry,
+    "function",
+  );
   assert.equal(typeof FemApi.LinearStaticSolver2D, "function");
   assert.equal(typeof FemApi.CyclicMasonryPier2D, "function");
   assert.equal(typeof FemApi.CyclicMasonryPierAnalysis2D, "function");
@@ -288,6 +346,19 @@ test("granular ESM subpaths expose applications, solvers and catalogs", () => {
   assert.equal(typeof GeotechnicsApi.LateralPileLoadScenario, "function");
   assert.equal(typeof GeotechnicsApi.LateralPileCapacityAnalysis, "function");
   assert.equal(typeof GeotechnicsApi.PileTransferLaw, "function");
+  assert.equal(typeof GeotechnicsApi.WallSoilReactionLaw, "function");
+  assert.equal(
+    typeof GeotechnicsApi.EmbeddedRetainingWallModel,
+    "function",
+  );
+  assert.equal(
+    typeof GeotechnicsApi.EmbeddedRetainingWallScenario,
+    "function",
+  );
+  assert.equal(
+    typeof GeotechnicsApi.EmbeddedRetainingWallAnalysis,
+    "function",
+  );
   assert.equal(
     typeof GeotechnicsApi.LateralPileResponseScenario,
     "function",

@@ -62,6 +62,8 @@
     "example:geotechnical-deep-foundation": "node examples/geotechnical-deep-foundation.js",
     "example:geotechnical-lateral-pile": "node examples/geotechnical-lateral-pile.js",
     "example:geotechnical-lateral-pile-py": "node examples/geotechnical-lateral-pile-py.js",
+    "example:geotechnical-embedded-retaining-wall": "node examples/geotechnical-embedded-retaining-wall.js",
+    "example:geotechnical-ground-anchor": "node examples/geotechnical-ground-anchor.js",
     "example:masonry-cyclic": "node examples/cyclic-masonry-pier.js",
     "example:masonry-ntc2018": "node examples/ntc2018-masonry-pier.js",
     "example:rc-sections": "node examples/rc-sections.js",

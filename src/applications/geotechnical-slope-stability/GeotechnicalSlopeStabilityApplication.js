@@ -10,7 +10,7 @@ export class GeotechnicalSlopeStabilityApplication extends StructuralApplication
       id: "geotechnical-slope-stability",
       name: "Geotechnical Slope Stability",
       description:
-        "Static and pseudostatic circular slip-surface analysis with bounded critical-surface search for two-dimensional ground sections.",
+        "Static and pseudostatic circular slip-surface analysis with bounded critical-surface search and FHWA ground-anchor interaction for two-dimensional ground sections.",
       domain: "geotechnics",
       supportedCodes: ["method-neutral"],
       tags: [
@@ -22,6 +22,7 @@ export class GeotechnicalSlopeStabilityApplication extends StructuralApplication
         "ordinary-method-of-slices",
         "pseudostatic",
         "circular-slip-surface",
+        "ground-anchor",
       ],
       metadata: {
         maturity: "implemented-local",
@@ -29,7 +30,8 @@ export class GeotechnicalSlopeStabilityApplication extends StructuralApplication
           "plane-strain analysis with circular slip surfaces only",
           "Simplified Bishop and Ordinary Method of Slices are static-only diagnostics",
           "pseudostatic analysis uses Spencer and predicts neither dynamic response nor permanent displacement",
-          "external water, reinforcement and tension cracks are not implemented",
+          "straight ground anchors are supported with Spencer; other reinforcement and tension cracks are not implemented",
+          "ground-anchor force through a bond zone assumes uniform bond stress and proportional remaining bond length",
           "surface-load inertia is excluded from the pseudostatic action model",
           "critical-surface search is bounded by explicit entry, exit and sagitta ranges",
         ],

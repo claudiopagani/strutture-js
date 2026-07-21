@@ -158,6 +158,22 @@ export const APPLICATION_CATALOG = [
       "Method-neutral static axial capacity of a single vertical pile, with layer-by-layer shaft resistance and distinct compression/tension contracts.",
   },
   {
+    id: "geotechnical-embedded-retaining-walls",
+    name: "Geotechnical Embedded Retaining Walls",
+    domain: "geotechnics",
+    maturity: "implemented-local",
+    primaryFocus:
+      "Staged static and assigned-pseudostatic response of embedded wall strips on nonlinear two-sided soil springs with anchors and struts.",
+  },
+  {
+    id: "geotechnical-ground-anchors",
+    name: "Geotechnical Ground Anchors",
+    domain: "geotechnics",
+    maturity: "implemented-local",
+    primaryFocus:
+      "FHWA-based design of cement-grouted ground anchors including wall-demand conversion, stratified bond resistance, tendon, corrosion, field-test acceptance and a global-stability action contract.",
+  },
+  {
     id: "geotechnical-lateral-piles",
     name: "Geotechnical Lateral Piles",
     domain: "geotechnics",
@@ -195,6 +211,6 @@ export const APPLICATION_CATALOG = [
       domain: "geotechnics",
       maturity: "implemented-local",
       primaryFocus:
-        "Static and pseudostatic circular slip-surface analysis with Spencer, static Bishop/Ordinary diagnostics and bounded critical-surface search.",
+        "Static and pseudostatic circular slip-surface analysis with Spencer, static Bishop/Ordinary diagnostics, bounded search and FHWA ground-anchor mobilization.",
   },
 ];

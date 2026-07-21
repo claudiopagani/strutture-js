@@ -18,7 +18,10 @@ equilibrio limite per pendii in `strutture-js`. Il perimetro operativo è:
 - resistenza non drenata in tensioni totali con `phi_u = 0` e `c_u = su`;
 - terreni eterogenei descritti dalle zone di `GroundSection2D`;
 - pressione interstiziale assegnata mediante `PorePressureField2D`;
-- sovraccarichi verticali uniformi su intervalli della superficie.
+- sovraccarichi verticali uniformi su intervalli della superficie;
+- tiranti attivi cementati rettilinei, importati da un risultato verificato o
+  assegnati mediante un contratto esplicito, con forza piena o proporzionale
+  alla posizione della superficie rispetto al bulbo.
 
 Il workflow non è una verifica normativa e non sceglie coefficienti parziali,
 combinazioni o valori di progetto. Queste scelte devono essere costruite da un
@@ -47,6 +50,13 @@ Per Spencer sono fonti primarie:
 - [USBR Design Standards No. 13, Chapter 4 (2011), Appendix B](https://www.usbr.gov/tsc/techreferences/designstandards-datacollectionguides/finalds-pdfs/DS13-4.pdf),
   che espone la ricorrenza delle forze interstriscia e l'inclusione delle
   azioni esterne.
+
+Per l'interazione con i tiranti la fonte primaria è
+[FHWA GEC 4, *Ground Anchors and Anchored Systems*, sezione 5.8.3.2](https://www.fhwa.dot.gov/engineering/geotech/pubs/if99015.pdf).
+Per pareti con più ordini richiede superfici dietro ciascun ordine e distingue
+la forza intera, quando la superficie passa davanti al bulbo, dalla quota
+proporzionale di forza quando la superficie attraversa il bulbo. Il modello
+implementato adotta l'ipotesi FHWA di tensione di aderenza uniforme.
 
 USACE dichiara che Bishop semplificato soddisfa l'equilibrio verticale delle
 singole strisce e l'equilibrio globale dei momenti, ma non l'equilibrio
@@ -274,6 +284,14 @@ striscia. Il modello rispetta equilibrio delle forze e momento globale, ma non
 ricostruisce una distribuzione indipendente delle quote di applicazione delle
 forze interstriscia.
 
+Spencer accetta inoltre `externalPointLoads` firmati per striscia. Per ogni
+azione conserva componente orizzontale nella direzione di movimento,
+componente verticale positiva verso il basso e momento motore rispetto al
+centro della circonferenza. Il tirante usa questo contratto nel punto in cui il
+suo asse interseca la superficie: la forza non è aggiunta come termine
+empirico al numeratore, ma entra sia nell'equilibrio locale delle forze sia
+nell'equilibrio globale dei momenti.
+
 ## 9. Azione pseudostatica
 
 Il sisma è rappresentato come azione statica equivalente. Per il peso proprio
@@ -318,11 +336,45 @@ basso, applicata alla proiezione orizzontale compresa tra `minimumX` e
 Qi = q * lunghezza(intersezione orizzontale)
 ```
 
-e viene sommata al peso in `Vi`. Carichi inclinati, concentrati, lineari,
-ancoraggi, rinforzi e pressioni su una superficie immersa richiedono un
-contratto di carico più generale e non sono simulati con questo oggetto.
+e viene sommata al peso in `Vi`. Le azioni dei tiranti sono invece carichi
+puntuali inclinati costruiti da `GroundAnchorStabilityAction2D`; gli altri
+carichi concentrati o inclinati, gli altri rinforzi e le pressioni su una
+superficie immersa richiedono contratti distinti e non sono simulati con
+`SlopeSurfaceSurcharge2D`.
 
 Lo schema serializzato è `slope-surface-surcharge-2d/v1`.
+
+### 10.1 Tiranti che intersecano la superficie
+
+`GroundAnchorStabilityAction2D` è il contratto serializzabile
+`ground-anchor-stability-action-2d/v1`. Contiene testata, inizio e fine del
+bulbo, forza di progetto del singolo tirante, interasse orizzontale, stato
+della verifica sorgente e provenienza. Il metodo
+`fromGroundAnchorResult(result)` consuma direttamente il risultato della
+microapp dei tiranti; una sorgente con status diverso da `ok` non può essere
+accreditata e produce `not-verified`.
+
+Indicando con `s` la distanza dell'intersezione dalla testata, `Lf` la
+lunghezza libera, `Lb` la lunghezza del bulbo e `Td` la forza di progetto:
+
+```text
+s <= Lf       : eta = 1
+Lf < s < Lf+Lb: eta = (Lf + Lb - s) / Lb
+s >= Lf+Lb    : eta = 0
+Tmob          = eta Td
+tmob          = Tmob / interasse
+```
+
+Se l'intero tirante resta nella massa mobile, la superficie è dietro il bulbo
+e il contributo è nullo. Una doppia intersezione dell'asse con la stessa
+superficie circolare è `not-supported`, perché il modello FHWA a singolo
+attraversamento non è applicabile. Un tirante che non si oppone alla direzione
+di movimento selezionata viene rifiutato invece di essere accreditato.
+
+La forza di progetto è quella del risultato locale verificato, non la sola
+forza di bloccaggio. La testata, il corrente, la parete e la compatibilità di
+deformazione restano verifiche separate. In presenza di almeno un tirante il
+metodo è obbligatoriamente `spencer`; Bishop e Fellenius non sono calcolati.
 
 ## 11. Analisi assegnata e ricerca critica
 
@@ -349,6 +401,17 @@ non una garanzia matematica di minimo globale. USACE avverte che ricerche con
 un solo punto iniziale possono fermarsi in minimi locali; il consumer deve
 esplorare domini indipendenti e controllare le superfici trattenute.
 
+Con tiranti, ogni candidato conserva la relazione `in-front-of-bond-zone`,
+`through-bond-zone`, `behind-bond-zone` o `no-axis-crossing`. Il campo
+`search.groundAnchorCoverage` raggruppa per tirante il numero di candidati e il
+minimo fattore trovato per ogni relazione.
+`search.groundAnchorVerificationFamilies` controlla inoltre che il dominio
+contenga almeno una superficie dietro ciascun ordine e almeno una superficie
+esterna all'intero sistema. Se una famiglia manca, il suo status è
+`not-analyzed` e viene emesso un warning: le coordinate del dominio restano un
+input esplicito e devono essere impostate indipendentemente dietro ciascun
+ordine, come richiesto dalla fonte FHWA.
+
 ## 12. Contratto del risultato
 
 La microapp restituisce un `CalculationResult`. Quando `status` è `ok`, gli
@@ -364,6 +427,7 @@ methods.spencer
 comparison
 search
 surfaceSurcharges
+groundAnchors
 ```
 
 Il risultato conserva inoltre `warnings`, `assumptions` e `metadata`, inclusi
@@ -390,7 +454,10 @@ Non sono implementati:
 - fessure di trazione asciutte o riempite d'acqua;
 - suzione e resistenza dei terreni insaturi;
 - carichi concentrati o inclinati;
-- rinforzi, chiodature, geosintetici, ancoraggi e opere strutturali;
+- chiodature, geosintetici, pali stabilizzanti, rinforzi diversi dai tiranti
+  rettilinei cementati e opere strutturali;
+- legge non uniforme di trasferimento del carico lungo il bulbo, interazione
+  tridimensionale del gruppo e compatibilità non lineare tirante-terreno;
 - resistenza anisotropa, variabile in modo continuo o dipendente dallo stato;
 - analisi probabilistica e 3D;
 - risposta dinamica, degradazione ciclica e spostamenti permanenti;
@@ -416,10 +483,14 @@ I test automatici coprono:
 - zone stratificate e set di parametri differenti;
 - ricerca deterministica e diagnostica dei candidati;
 - Spencer statico, convergenza e residui di equilibrio;
+- intersezione tirante-superficie, forza piena, proporzionale e nulla;
+- rifiuto di sorgenti non verificate, direzione non resistente e doppia
+  intersezione;
+- ricerca con copertura delle relazioni superficie-bulbo;
 - assemblaggio pseudostatico `kh/kv` e rifiuto dei metodi statici;
 - wrapper applicativo ed export pubblici.
 
-`validation/geotechnicalSlopeStabilityValidationCampaign.js` aggiunge cinque
+`validation/geotechnicalSlopeStabilityValidationCampaign.js` aggiunge sette
 controlli indipendenti:
 
 1. valutazione numerica separata delle equazioni C-12, C-15 e C-16;
@@ -431,6 +502,10 @@ controlli indipendenti:
    in un caso statico con `phi = 0`;
 5. la stessa chiusura con inerzia orizzontale pseudostatica e controllo dei
    residui locali.
+6. intersezione analitica linea-circonferenza e rapporti FHWA di forza piena,
+   proporzionale e nulla;
+7. chiusura analitica di Spencer nel limite `phi = 0` con una forza puntuale
+   resistente e relativo momento.
 
 Il benchmark completo di un pendio pubblicato, incluse geometria e tabelle
 delle strisce, rimane un ampliamento necessario della campagna prima di usare
@@ -442,8 +517,9 @@ Questa microapp non crea elementi FEM, ma prepara contratti riusabili:
 
 - `GroundSection2D` e `PorePressureField2D` restano la sorgente comune di
   geometria e stato idraulico;
-- la superficie critica può essere confrontata con muro, paratia, fondazione o
-  rinforzo inseriti in una futura sezione di analisi;
+- i risultati verificati dei tiranti possono essere consumati direttamente e
+  mobilitati superficie per superficie; muri, paratie, fondazioni e altri
+  rinforzi richiedono ancora i rispettivi contratti;
 - strisce e contributi forniscono un controllo globale indipendente;
 - il FEM continuo potrà riusare materiali, selezione dei parametri e campo
   idraulico, ma non le strisce come elementi;

@@ -15,6 +15,32 @@ function positive(value, label) {
   return number;
 }
 
+function normalizeExternalPointLoads(values, label) {
+  if (values == null) return [];
+  if (!Array.isArray(values)) {
+    throw new Error(`${label} must be an array.`);
+  }
+  return values.map((load, index) => {
+    const loadLabel = `${label}[${index}]`;
+    return {
+      ...structuredClone(load),
+      id: load?.id == null ? `${loadLabel}` : String(load.id),
+      horizontalForceInMovementDirection: finite(
+        load?.horizontalForceInMovementDirection ?? 0,
+        `${loadLabel}.horizontalForceInMovementDirection`,
+      ),
+      verticalDownwardForce: finite(
+        load?.verticalDownwardForce ?? 0,
+        `${loadLabel}.verticalDownwardForce`,
+      ),
+      drivingMoment: finite(
+        load?.drivingMoment ?? 0,
+        `${loadLabel}.drivingMoment`,
+      ),
+    };
+  });
+}
+
 function normalizeSlices(inputSlices) {
   if (!Array.isArray(inputSlices) || inputSlices.length < 2) {
     throw new Error("Spencer analysis requires at least two slices.");
@@ -23,14 +49,32 @@ function normalizeSlices(inputSlices) {
     const label = `slices[${index}]`;
     const width = positive(slice.width, `${label}.width`);
     const baseLength = positive(slice.baseLength, `${label}.baseLength`);
-    const verticalLoad = finite(
+    const baseVerticalLoad = finite(
       slice.totalVerticalLoad ?? slice.weight,
       `${label}.totalVerticalLoad`,
     );
-    const horizontalLoad = finite(
+    const baseHorizontalLoad = finite(
       slice.horizontalSeismicLoad ?? 0,
       `${label}.horizontalSeismicLoad`,
     );
+    const externalPointLoads = normalizeExternalPointLoads(
+      slice.externalPointLoads,
+      `${label}.externalPointLoads`,
+    );
+    const externalVerticalLoad = externalPointLoads.reduce(
+      (sum, load) => sum + load.verticalDownwardForce,
+      0,
+    );
+    const externalHorizontalLoad = externalPointLoads.reduce(
+      (sum, load) => sum + load.horizontalForceInMovementDirection,
+      0,
+    );
+    const externalDrivingMoment = externalPointLoads.reduce(
+      (sum, load) => sum + load.drivingMoment,
+      0,
+    );
+    const verticalLoad = baseVerticalLoad + externalVerticalLoad;
+    const horizontalLoad = baseHorizontalLoad + externalHorizontalLoad;
     const alpha = finite(slice.baseInclination, `${label}.baseInclination`);
     const cohesion = finite(slice.cohesion, `${label}.cohesion`);
     const frictionAngle = finite(
@@ -45,12 +89,13 @@ function normalizeSlices(inputSlices) {
       slice.baseMomentArm,
       `${label}.baseMomentArm`,
     );
-    const drivingMoment = finite(
+    const baseDrivingMoment = finite(
       slice.drivingMoment,
       `${label}.drivingMoment`,
     );
-    if (verticalLoad < 0 || horizontalLoad < 0 || cohesion < 0) {
-      throw new Error(`${label} has a negative load or cohesion.`);
+    const drivingMoment = baseDrivingMoment + externalDrivingMoment;
+    if (cohesion < 0) {
+      throw new Error(`${label} has negative cohesion.`);
     }
     if (
       Math.abs(alpha) >= Math.PI / 2 ||
@@ -66,6 +111,13 @@ function normalizeSlices(inputSlices) {
       ...slice,
       width,
       baseLength,
+      baseVerticalLoad,
+      baseHorizontalLoad,
+      baseDrivingMoment,
+      externalPointLoads,
+      externalVerticalLoad,
+      externalHorizontalLoad,
+      externalDrivingMoment,
       verticalLoad,
       horizontalLoad,
       baseInclination: alpha,
@@ -143,6 +195,14 @@ function evaluateState(slices, factorOfSafety, theta) {
       poreForce,
       drivingTangent,
       baseNormalFromExternalLoads,
+      baseVerticalLoad: slice.baseVerticalLoad,
+      baseHorizontalLoad: slice.baseHorizontalLoad,
+      externalPointLoads: structuredClone(slice.externalPointLoads),
+      externalVerticalLoad: slice.externalVerticalLoad,
+      externalHorizontalLoad: slice.externalHorizontalLoad,
+      externalDrivingMoment: slice.externalDrivingMoment,
+      totalVerticalLoad: slice.verticalLoad,
+      totalHorizontalLoad: slice.horizontalLoad,
       totalBaseNormal,
       effectiveBaseNormal,
       availableResistance,
