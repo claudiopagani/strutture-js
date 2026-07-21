@@ -6,7 +6,8 @@ Motore open source in JavaScript per il calcolo strutturale.
 
 La missione e costruire una unica source of truth per il calcolo strutturale: non una raccolta di script isolati, non un insieme di fogli di calcolo tradotti in codice, ma un nucleo condiviso in cui modelli, ipotesi, formule, unita, test, validazioni e limiti siano dichiarati nello stesso posto e possano essere discussi, migliorati e verificati dalla comunita.
 
-Il progetto e distribuito con licenza MIT.
+Il progetto e distribuito con licenza GNU Lesser General Public License 2.1 o
+successiva (`LGPL-2.1-or-later`).
 
 ## Visione
 
@@ -506,6 +507,21 @@ globale, e mantenuta in
 
 ## Licenza
 
-MIT. Vedi [LICENSE](LICENSE).
+`strutture-js`
+
+Copyright (C) 2026 Claudio Pagani
+
+Questa libreria e software libero; e possibile ridistribuirla e/o modificarla
+secondo i termini della GNU Lesser General Public License pubblicata dalla Free
+Software Foundation, versione 2.1 della licenza oppure, a scelta del
+destinatario, qualsiasi versione successiva.
+
+Questa libreria e distribuita nella speranza che sia utile, ma SENZA ALCUNA
+GARANZIA, senza neppure la garanzia implicita di COMMERCIABILITA o IDONEITA A
+UNO SCOPO PARTICOLARE. Per maggiori dettagli, consultare la GNU Lesser General
+Public License.
+
+Il testo ufficiale e in [LICENSE](LICENSE); la guida applicativa del progetto e
+in [docs/licensing.md](docs/licensing.md).
 
 Il software e fornito "as is", senza garanzia. La trasparenza del codice non elimina la necessita di verifica tecnica, responsabilita professionale e controllo dei risultati.

@@ -1,4 +1,7 @@
-// strutture-js v0.7.0 — bundled ESM
+/*! strutture-js v0.8.0 — bundled ESM
+ * Copyright (C) 2026 Claudio Pagani
+ * SPDX-License-Identifier: LGPL-2.1-or-later
+ */
 var __defProp = Object.defineProperty;
 var __typeError = (msg) => {
   throw TypeError(msg);

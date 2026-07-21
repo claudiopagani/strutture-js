@@ -1,10 +1,10 @@
 {
   "name": "strutture-js",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "type": "module",
   "sideEffects": false,
   "description": "Codebase condivisa OOP per entita di calcolo strutturale in ingegneria civile.",
-  "license": "MIT",
+  "license": "LGPL-2.1-or-later",
   "main": "dist/index.mjs",
   "module": "src/index.js",
   "exports": {
@@ -28,13 +28,16 @@
   "files": [
     "dist",
     "src",
-    "README.md"
+    "README.md",
+    "docs/licensing.md",
+    "scripts/build.js"
   ],
   "scripts": {
     "build": "node scripts/build.js",
     "prepare": "npm run build",
     "test": "node --test tests/run-tests.js",
-    "check": "npm test && npm run validation && npm run check:quality && npm run check:architecture && npm run check:worker-bundle",
+    "check": "npm test && npm run validation && npm run check:licensing && npm run check:quality && npm run check:architecture && npm run check:worker-bundle",
+    "check:licensing": "node scripts/check-package-licensing.js",
     "syntax": "node scripts/check-syntax.js",
     "lint": "eslint src tests scripts examples validation",
     "typecheck": "tsc -p tsconfig.check.json",

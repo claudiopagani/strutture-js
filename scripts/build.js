@@ -10,7 +10,10 @@ await esbuild.build({
     target: "es2019",
     outfile: "dist/index.mjs",
     banner: {
-        js: `// ${pkg.name} v${pkg.version} — bundled ESM`,
+        js: `/*! ${pkg.name} v${pkg.version} — bundled ESM
+ * Copyright (C) 2026 Claudio Pagani
+ * SPDX-License-Identifier: ${pkg.license}
+ */`,
     },
 });
 
