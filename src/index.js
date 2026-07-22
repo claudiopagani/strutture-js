@@ -400,6 +400,19 @@ export {
 } from "./core/results/checkUtils.js";
 export { APPLICATION_CATALOG } from "./config/applicationCatalog.js";
 export {
+  DEFAULT_GLOBAL_FEM_CLASSIFICATION_POLICY,
+  GLOBAL_FEM_CLASSIFICATION_PROPOSAL_VERSION,
+  GLOBAL_FEM_DEMAND_SET_VERSION,
+  GLOBAL_FEM_POSTPROCESSING_PROFILES,
+  GLOBAL_FEM_POSTPROCESSING_PROFILE_VALUES,
+  GLOBAL_FEM_READINESS_ASSESSMENTS,
+  GLOBAL_FEM_READINESS_ASSESSMENT_VALUES,
+  GLOBAL_FEM_READINESS_REPORT_VERSION,
+  GlobalFemPostProcessingApplication,
+  classifyGlobalFemStructuralEntities,
+  evaluateGlobalFemVerificationReadiness,
+  extractGlobalFemDemands,
+  normalizeGlobalFemClassificationPolicy,
   MasonryOutOfPlaneApplication,
   MasonryOutOfPlaneKinematicAnalysis,
   MasonryOutOfPlaneModel,

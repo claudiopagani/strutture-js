@@ -132,6 +132,7 @@ Stato sintetico dei moduli applicativi:
 | Modulo | Stato | Cosa fa oggi |
 | --- | --- | --- |
 | `single-beam-design` | Implementato locale | Analisi FEM 2D e verifiche locali; il percorso c.a. include torsione assegnata, dettaglio, ancoraggi, duttilita e deformazioni a lungo termine. |
+| `global-fem-postprocessing` | Parziale | Valida contratti FEM globali solver-neutral, estrae domande e risposte, propone classificazioni strutturali da confermare e descrive i prerequisiti mancanti; non esegue ancora verifiche normative globali. |
 | `steel-frames` | Parziale | Verifiche di aste in acciaio da risultati FEM e pushover standalone di cerchiature metalliche rettangolari. |
 | `masonry-piers` | Parziale | Verifica verticale, inviluppo bilineare NTC 2018/Circolare 2019, idealizzazione a telaio equivalente e distinto macroelemento fisico ciclico 2D. |
 | `masonry-wall-openings` | Implementato | Verifiche di cerchiature su allineamenti murari, confronto pre/post e contributo laterale della cerchiatura. |
@@ -383,6 +384,8 @@ Documentazione utile:
 - [docs/project-boundaries.md](docs/project-boundaries.md);
 - [docs/public-api-policy.md](docs/public-api-policy.md);
 - [docs/consumer-integration.md](docs/consumer-integration.md);
+- [docs/global-fem-contracts.md](docs/global-fem-contracts.md);
+- [docs/global-fem-postprocessing.md](docs/global-fem-postprocessing.md);
 - [docs/implementation-boundaries.md](docs/implementation-boundaries.md);
 - [docs/geotechnical-ground-model.md](docs/geotechnical-ground-model.md);
 - [docs/geotechnical-earth-pressure-method.md](docs/geotechnical-earth-pressure-method.md);

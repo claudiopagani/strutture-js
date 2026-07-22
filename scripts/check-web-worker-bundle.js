@@ -72,6 +72,8 @@ if (
   smoke.plateCheckCount !== 4 ||
   smoke.globalFemCapabilitySchema !== "strutture-js/fem-capabilities" ||
   smoke.globalFemCapabilityVersion !== 0 ||
+  smoke.globalFemClassificationRole !== "column" ||
+  smoke.globalFemPostprocessorId !== "global-fem-postprocessing" ||
   !Number.isInteger(smoke.fiberCount) ||
   smoke.fiberCount <= 0
 ) {

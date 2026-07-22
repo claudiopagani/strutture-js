@@ -71,6 +71,7 @@ import "./displacementControlNonlinearStaticSolver2D.test.js";
 import "./femCore2D.test.js";
 import "./femBeamValidation.test.js";
 import "./globalFemContracts.test.js";
+import "./globalFemPostprocessing.test.js";
 import "./frameElement2DEulerBernoulli.test.js";
 import "./frameElement2DTimoshenko.test.js";
 import "./frameElement2DTimoshenkoRigidOffsets.test.js";

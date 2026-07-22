@@ -23,12 +23,15 @@ Sono inclusi:
 - risultati nodali, di elemento, di sezione, modali e per piano;
 - mapping esplicito fra mesh e oggetti strutturali;
 - validatori con `errors` e `warnings` strutturati e serializzabili.
+- un postprocessore applicativo separato che può estrarre domande generiche e,
+  quando richiesto, produrre proposte di classificazione da confermare.
 
 Sono esclusi:
 
 - rete, autenticazione, job, persistenza e orchestrazione;
 - payload o identificativi riservati a un provider;
-- deduzione automatica di setti, impalcati, piani o giunti;
+- deduzione semantica nel dominio FEM o promozione automatica di una proposta a
+  mapping confermato;
 - formule di verifica, gerarchia delle resistenze e coefficienti normativi;
 - conversioni implicite fra sistemi di unità.
 
@@ -54,10 +57,15 @@ FemEntityMappingContract ────────────────┘
 future applications / verificatori norms
 ```
 
+Il postprocessore applicativo e i suoi tre profili sono descritti in
+[Global FEM Postprocessing](global-fem-postprocessing.md). Le euristiche non
+modificano questi contratti e non sostituiscono il mapping completo.
+
 `GlobalFemModelContract` non contiene la semantica di una trave, un pilastro o
 un setto. `FemEntityMappingContract` associa invece identificativi strutturali
 stabili agli elementi della mesh. In questo modo la stessa topologia può
-essere usata da applicazioni diverse senza euristiche geometriche.
+essere usata da applicazioni diverse. Un'applicazione può proporre
+associazioni geometriche, ma il dominio non le considera confermate.
 
 ## Contratti pubblici
 
@@ -320,6 +328,12 @@ tutti e cinque i contratti, incluso un `FemEntityMappingContract` valido e
 completo. L'assenza del mapping è quindi ammessa soltanto nel flusso individuale
 ridotto, non è una capability implicita e non indebolisce il validatore
 aggregato destinato alle verifiche strutturali avanzate.
+
+`GlobalFemPostProcessingApplication` non usa
+`validateGlobalFemContractSet` per i profili ridotto e assistito: valida
+singolarmente i quattro contratti tecnici e mantiene separato l'eventuale
+mapping incompleto. Il profilo `confirmed` richiede comunque che il validatore
+del mapping abbia esito positivo.
 
 ## Evoluzione verso v1
 

@@ -1,4 +1,5 @@
 import { ApplicationRegistry } from "../core/applications/ApplicationRegistry.js";
+import { GlobalFemPostProcessingApplication } from "./global-fem-postprocessing/index.js";
 import { MasonryOutOfPlaneApplication } from "./masonry-out-of-plane/index.js";
 import { MasonryPierApplication } from "./masonry-piers/index.js";
 import { MasonryWallOpeningsApplication } from "./masonry-wall-openings/index.js";
@@ -29,6 +30,21 @@ import { TimberBeamApplication } from "./timber-beams/index.js";
 import { XlamOutOfPlanePanelApplication } from "./xlam-panels-out-of-plane/index.js";
 
 export { MasonryOutOfPlaneApplication } from "./masonry-out-of-plane/index.js";
+export {
+  DEFAULT_GLOBAL_FEM_CLASSIFICATION_POLICY,
+  GLOBAL_FEM_CLASSIFICATION_PROPOSAL_VERSION,
+  GLOBAL_FEM_DEMAND_SET_VERSION,
+  GLOBAL_FEM_POSTPROCESSING_PROFILES,
+  GLOBAL_FEM_POSTPROCESSING_PROFILE_VALUES,
+  GLOBAL_FEM_READINESS_ASSESSMENTS,
+  GLOBAL_FEM_READINESS_ASSESSMENT_VALUES,
+  GLOBAL_FEM_READINESS_REPORT_VERSION,
+  GlobalFemPostProcessingApplication,
+  classifyGlobalFemStructuralEntities,
+  evaluateGlobalFemVerificationReadiness,
+  extractGlobalFemDemands,
+  normalizeGlobalFemClassificationPolicy,
+} from "./global-fem-postprocessing/index.js";
 export { MasonryOutOfPlaneKinematicAnalysis } from "./masonry-out-of-plane/index.js";
 export { MasonryOutOfPlaneModel } from "./masonry-out-of-plane/index.js";
 export { MasonryPierApplication } from "./masonry-piers/index.js";
@@ -334,6 +350,7 @@ export { XlamBeamVerification } from "./xlam-beams/index.js";
 export function createDefaultApplicationRegistry() {
   return new ApplicationRegistry([
     new SingleBeamDesignApplication(),
+    new GlobalFemPostProcessingApplication(),
     new SteelFrameApplication(),
     new MasonryRingBeamApplication(),
     new MasonryPierApplication(),

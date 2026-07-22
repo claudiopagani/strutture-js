@@ -7,6 +7,14 @@ export const APPLICATION_CATALOG = [
     primaryFocus: "End-to-end simple beam analysis, verification and reporting.",
   },
   {
+    id: "global-fem-postprocessing",
+    name: "Global FEM Postprocessing",
+    domain: "fem",
+    maturity: "partial",
+    primaryFocus:
+      "Solver-neutral global FEM validation, assisted structural classification, demand extraction and verification-readiness reporting.",
+  },
+  {
     id: "steel-frames",
     name: "Steel Frames",
     domain: "steel",

@@ -47,13 +47,13 @@ function normalizeUnitSystem(units, defaultUnits = DEFAULT_TARGET_UNIT_SYSTEM) {
   if (units == null) {
     return null;
   }
-  const normalized2 = {
+  const normalized3 = {
     force: (_a = units.force) != null ? _a : defaultUnits.force,
     length: (_b = units.length) != null ? _b : defaultUnits.length
   };
-  assertSupportedUnit("force", normalized2.force, FORCE_UNIT_FACTORS);
-  assertSupportedUnit("length", normalized2.length, LENGTH_UNIT_FACTORS);
-  return normalized2;
+  assertSupportedUnit("force", normalized3.force, FORCE_UNIT_FACTORS);
+  assertSupportedUnit("length", normalized3.length, LENGTH_UNIT_FACTORS);
+  return normalized3;
 }
 function createUnitResolver(units, targetUnits = DEFAULT_TARGET_UNIT_SYSTEM) {
   const source = normalizeUnitSystem(units, targetUnits);
@@ -270,11 +270,11 @@ var KNOWLEDGE_LEVEL_ALIASES = Object.freeze({
   lc3: "LC3"
 });
 function normalizeExistingMaterialKnowledgeLevel(knowledgeLevel = "LC1") {
-  const normalized2 = KNOWLEDGE_LEVEL_ALIASES[knowledgeLevel];
-  if (!normalized2) {
+  const normalized3 = KNOWLEDGE_LEVEL_ALIASES[knowledgeLevel];
+  if (!normalized3) {
     throw new Error(`Unsupported existing material knowledge level: ${knowledgeLevel}.`);
   }
-  return normalized2;
+  return normalized3;
 }
 function resolveExistingMaterialState({
   existing = false,
@@ -2093,8 +2093,8 @@ function cloneResponse(response) {
 function solveTwoByTwo(matrix, vector, pivotTolerance) {
   const [[a, b], [c, d]] = matrix;
   const determinant = a * d - b * c;
-  const scale = Math.max(Math.abs(a), Math.abs(b), Math.abs(c), Math.abs(d), 1);
-  if (Math.abs(determinant) <= pivotTolerance * scale ** 2) {
+  const scale2 = Math.max(Math.abs(a), Math.abs(b), Math.abs(c), Math.abs(d), 1);
+  if (Math.abs(determinant) <= pivotTolerance * scale2 ** 2) {
     throw new Error(
       "MasonryFiberInterface2D local Newton iteration encountered a singular interface tangent."
     );
@@ -2743,9 +2743,9 @@ function resolveMasonryTypology(input) {
   if (typeof input !== "string") {
     return null;
   }
-  const normalized2 = input.trim().toLowerCase();
+  const normalized3 = input.trim().toLowerCase();
   return NTC2018_EXISTING_MASONRY_TYPOLOGIES.find(
-    (item) => item.name.toLowerCase() === normalized2
+    (item) => item.name.toLowerCase() === normalized3
   );
 }
 function getTabulatedMechanicalProperties(typology, parameterLevel) {
@@ -2775,9 +2775,9 @@ var applyMechanicalMultipliers = (properties, multipliers) => ({
 var normalizeParameterLevel = ({ parameterLevel, knowledgeLevel }) => {
   var _a;
   if (parameterLevel != null) {
-    const normalized2 = Number(parameterLevel);
-    if (NTC2018_EXISTING_MASONRY_PARAMETER_LEVELS[normalized2]) {
-      return normalized2;
+    const normalized3 = Number(parameterLevel);
+    if (NTC2018_EXISTING_MASONRY_PARAMETER_LEVELS[normalized3]) {
+      return normalized3;
     }
     throw new Error(
       "parameterLevel deve assumere valore 1 oppure 2 per i parametri tabellati di muratura esistente."
@@ -22672,7 +22672,7 @@ function copyVerificationStations(verificationStations) {
 }
 function normalizeStationMode(mode) {
   var _a;
-  const normalized2 = String(mode != null ? mode : "all").trim().toLowerCase();
+  const normalized3 = String(mode != null ? mode : "all").trim().toLowerCase();
   const aliases = {
     automatic: "auto",
     declared: "combined",
@@ -22681,7 +22681,7 @@ function normalizeStationMode(mode) {
     fem: "all",
     samples: "all"
   };
-  return (_a = aliases[normalized2]) != null ? _a : normalized2;
+  return (_a = aliases[normalized3]) != null ? _a : normalized3;
 }
 function rawStationValues(options = {}) {
   var _a, _b, _c;
@@ -23040,7 +23040,7 @@ var BeamSectionActionVerifier = class {
       const selection = selectVerificationSamples(entry, stationSettings);
       warnings.push(...selection.warnings);
       for (const { sample, stationMetadata } of selection.records) {
-        const normalized2 = normalizeActionVerification(
+        const normalized3 = normalizeActionVerification(
           verifySectionActions({
             nEd: sample.n,
             vEd: sample.v,
@@ -23076,11 +23076,11 @@ var BeamSectionActionVerifier = class {
             ...stationMetadata
           }
         );
-        stationResults.push(normalized2);
-        warnings.push(...normalized2.warnings);
-        assumptions.push(...normalized2.assumptions);
+        stationResults.push(normalized3);
+        warnings.push(...normalized3.warnings);
+        assumptions.push(...normalized3.assumptions);
         checks.push(
-          ...normalized2.checks.map((check2) => {
+          ...normalized3.checks.map((check2) => {
             var _a2, _b2;
             return {
               ...check2,
@@ -23143,7 +23143,7 @@ function finiteOrNull2(value) {
 }
 function normalizeAngleUnits(units) {
   var _a;
-  const normalized2 = String(units != null ? units : "rad").trim().toLowerCase();
+  const normalized3 = String(units != null ? units : "rad").trim().toLowerCase();
   const aliases = {
     radians: "rad",
     radian: "rad",
@@ -23152,7 +23152,7 @@ function normalizeAngleUnits(units) {
     degrees: "deg",
     gradi: "deg"
   };
-  return (_a = aliases[normalized2]) != null ? _a : normalized2;
+  return (_a = aliases[normalized3]) != null ? _a : normalized3;
 }
 function angleToRadians2(alpha, units) {
   if (!Number.isFinite(alpha)) {
@@ -23477,7 +23477,7 @@ function calculateSimpleSectionProperties({
     section,
     oppositeShearAreaAxis(shearAreaAxis)
   );
-  const normalized2 = normalizeBeamProperties(
+  const normalized3 = normalizeBeamProperties(
     {
       axialRigidity: elasticModulus * area,
       flexuralRigidity: elasticModulus * inertia,
@@ -23493,7 +23493,7 @@ function calculateSimpleSectionProperties({
     units
   );
   return applySectionRotationToBeamProperties({
-    properties: normalized2,
+    properties: normalized3,
     sectionRotation: context.sectionRotation,
     flexuralRigidityY: elasticModulus * ((_a = section == null ? void 0 : section.inertiaY) != null ? _a : inertia),
     flexuralRigidityZ: Number.isFinite(section == null ? void 0 : section.inertiaZ) ? elasticModulus * section.inertiaZ : Number.isFinite(oppositeInertia) ? elasticModulus * oppositeInertia : null,
@@ -23550,7 +23550,7 @@ function calculateCompositeSectionProperties({
   const flexuralRigidityZ = calculateCompositeFlexuralRigidity(section, material, "inertiaZ");
   const shearRigidityY = calculateCompositeShearRigidity(section, material, "shearAreaY");
   const shearRigidityZ = calculateCompositeShearRigidity(section, material, "shearAreaZ");
-  const normalized2 = normalizeBeamProperties(
+  const normalized3 = normalizeBeamProperties(
     {
       axialRigidity,
       flexuralRigidity,
@@ -23566,7 +23566,7 @@ function calculateCompositeSectionProperties({
     units
   );
   return applySectionRotationToBeamProperties({
-    properties: normalized2,
+    properties: normalized3,
     sectionRotation: context.sectionRotation,
     flexuralRigidityY,
     flexuralRigidityZ,
@@ -23604,7 +23604,7 @@ var ElasticBeamSectionProvider = class {
       provider: "ElasticBeamSectionProvider"
     };
     if (typeof this.propertyResolver === "function") {
-      const normalized2 = normalizeBeamProperties(
+      const normalized3 = normalizeBeamProperties(
         this.propertyResolver({
           section: this.section,
           material: this.material,
@@ -23615,7 +23615,7 @@ var ElasticBeamSectionProvider = class {
         fallbackMetadata
       );
       return applySectionRotationToBeamProperties({
-        properties: normalized2,
+        properties: normalized3,
         sectionRotation: context.sectionRotation
       });
     }
@@ -23625,7 +23625,7 @@ var ElasticBeamSectionProvider = class {
     ]) {
       const method = (_a = this.source) == null ? void 0 : _a[methodName];
       if (typeof method === "function") {
-        const normalized2 = normalizeBeamProperties(
+        const normalized3 = normalizeBeamProperties(
           method.call(this.source, {
             section: this.section,
             material: this.material,
@@ -23638,7 +23638,7 @@ var ElasticBeamSectionProvider = class {
           fallbackMetadata
         );
         return applySectionRotationToBeamProperties({
-          properties: normalized2,
+          properties: normalized3,
           sectionRotation: context.sectionRotation
         });
       }
@@ -23847,13 +23847,13 @@ function cloneVector(vector, size) {
   });
 }
 function matrixScale(matrix) {
-  let scale = 0;
+  let scale2 = 0;
   for (const row of matrix) {
     for (const value of row) {
-      scale = Math.max(scale, Math.abs(value));
+      scale2 = Math.max(scale2, Math.abs(value));
     }
   }
-  return scale;
+  return scale2;
 }
 function computeResidual(matrix, solution, rhs) {
   let infNorm = 0;
@@ -23889,7 +23889,7 @@ function backSubstitute(upperMatrix, rhs) {
 function eliminateAndSolve({
   upperMatrix,
   transformedRhs,
-  scale,
+  scale: scale2,
   singularityTolerance,
   includeDiagnostics = false
 }) {
@@ -23907,7 +23907,7 @@ function eliminateAndSolve({
         pivotMagnitude = candidateMagnitude;
       }
     }
-    if (pivotMagnitude <= singularityTolerance * scale) {
+    if (pivotMagnitude <= singularityTolerance * scale2) {
       throw new Error(
         `DenseLinearSolver detected a singular matrix near pivot ${pivot + 1}.`
       );
@@ -23950,10 +23950,10 @@ function eliminateAndSolve({
   };
 }
 var DenseLUFactorization = class {
-  constructor({ lu, rowPermutation, scale, singularityTolerance }) {
+  constructor({ lu, rowPermutation, scale: scale2, singularityTolerance }) {
     this.lu = lu;
     this.rowPermutation = rowPermutation;
-    this.scale = scale;
+    this.scale = scale2;
     this.singularityTolerance = singularityTolerance;
     this.size = lu.length;
     this.pivots = lu.map((row, index) => row[index]);
@@ -23980,9 +23980,9 @@ var DenseLUFactorization = class {
 function factorizeDenseMatrix(matrix, singularityTolerance) {
   const lu = cloneDenseSquareMatrix(matrix);
   const size = lu.length;
-  const scale = matrixScale(lu);
+  const scale2 = matrixScale(lu);
   const rowPermutation = Array.from({ length: size }, (_, index) => index);
-  if (scale === 0) {
+  if (scale2 === 0) {
     throw new Error("DenseLinearSolver detected a singular matrix with zero stiffness scale.");
   }
   for (let pivot = 0; pivot < size; pivot += 1) {
@@ -23995,7 +23995,7 @@ function factorizeDenseMatrix(matrix, singularityTolerance) {
         pivotMagnitude = candidateMagnitude;
       }
     }
-    if (pivotMagnitude <= singularityTolerance * scale) {
+    if (pivotMagnitude <= singularityTolerance * scale2) {
       throw new Error(
         `DenseLinearSolver detected a singular matrix near pivot ${pivot + 1}.`
       );
@@ -24019,7 +24019,7 @@ function factorizeDenseMatrix(matrix, singularityTolerance) {
   return new DenseLUFactorization({
     lu,
     rowPermutation,
-    scale,
+    scale: scale2,
     singularityTolerance
   });
 }
@@ -24045,14 +24045,14 @@ var DenseLinearSolver = class {
   solve(matrix, rhs) {
     const upperMatrix = cloneDenseSquareMatrix(matrix);
     const transformedRhs = cloneVector(rhs, upperMatrix.length);
-    const scale = matrixScale(upperMatrix);
-    if (scale === 0) {
+    const scale2 = matrixScale(upperMatrix);
+    if (scale2 === 0) {
       throw new Error("DenseLinearSolver detected a singular matrix with zero stiffness scale.");
     }
     return eliminateAndSolve({
       upperMatrix,
       transformedRhs,
-      scale,
+      scale: scale2,
       singularityTolerance: this.singularityTolerance
     }).solution;
   }
@@ -24065,8 +24065,8 @@ var DenseLinearSolver = class {
     const upperMatrix = originalMatrix.map((row) => [...row]);
     const transformedRhs = [...originalRhs];
     const size = upperMatrix.length;
-    const scale = matrixScale(upperMatrix);
-    if (scale === 0) {
+    const scale2 = matrixScale(upperMatrix);
+    if (scale2 === 0) {
       throw new Error("DenseLinearSolver detected a singular matrix with zero stiffness scale.");
     }
     const {
@@ -24077,14 +24077,14 @@ var DenseLinearSolver = class {
     } = eliminateAndSolve({
       upperMatrix,
       transformedRhs,
-      scale,
+      scale: scale2,
       singularityTolerance: this.singularityTolerance,
       includeDiagnostics: true
     });
     const absPivots = pivots.map((value) => Math.abs(value));
     const minAbsPivot = Math.min(...absPivots);
     const maxAbsPivot = Math.max(...absPivots);
-    const pivotScaleRatio = minAbsPivot / scale;
+    const pivotScaleRatio = minAbsPivot / scale2;
     const pivotSpreadRatio = maxAbsPivot === 0 ? Infinity : minAbsPivot / maxAbsPivot;
     const warnings = [];
     if (pivotScaleRatio <= this.nearSingularityTolerance || pivotSpreadRatio <= this.nearSingularityTolerance) {
@@ -24099,7 +24099,7 @@ var DenseLinearSolver = class {
       rowPermutation,
       pivots,
       determinant: determinantSign * pivots.reduce((product, value) => product * value, 1),
-      scale,
+      scale: scale2,
       minAbsPivot,
       maxAbsPivot,
       pivotScaleRatio,
@@ -24682,11 +24682,11 @@ function resolveEqualDofEndpoint(constraint, role, dofRegistry) {
 }
 function resolveEqualDofScale(constraint) {
   var _a, _b;
-  const scale = (_b = (_a = constraint == null ? void 0 : constraint.scale) != null ? _a : constraint == null ? void 0 : constraint.ratio) != null ? _b : 1;
-  if (!Number.isFinite(scale) || Math.abs(scale) <= 0) {
+  const scale2 = (_b = (_a = constraint == null ? void 0 : constraint.scale) != null ? _a : constraint == null ? void 0 : constraint.ratio) != null ? _b : 1;
+  if (!Number.isFinite(scale2) || Math.abs(scale2) <= 0) {
     throw new Error("KinematicConstraintReducer2D equal-DOF scale must be finite and non-zero.");
   }
-  return scale;
+  return scale2;
 }
 function resolveEqualDofOffset(constraint) {
   var _a, _b;
@@ -25131,7 +25131,7 @@ function normalizePresetName(type) {
 }
 function resolveBeamSupportPreset(type) {
   var _a;
-  const normalized2 = normalizePresetName(type);
+  const normalized3 = normalizePresetName(type);
   const aliases = {
     libero: "free",
     libera: "free",
@@ -25141,7 +25141,7 @@ function resolveBeamSupportPreset(type) {
     cerniera: "hinge",
     incastro: "fixed"
   };
-  const presetName = (_a = aliases[normalized2]) != null ? _a : normalized2;
+  const presetName = (_a = aliases[normalized3]) != null ? _a : normalized3;
   const preset = BEAM_SUPPORT_PRESETS[presetName];
   if (!preset) {
     throw new Error(`Unsupported beam support preset: ${type}.`);
@@ -25246,7 +25246,7 @@ function normalizeLoads(loads) {
     var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
     const actionType = resolveActionType(load);
     const id = (_a = load.id) != null ? _a : `${actionType}-${index + 1}`;
-    const normalized2 = {
+    const normalized3 = {
       ...load,
       id,
       actionType,
@@ -25254,11 +25254,11 @@ function normalizeLoads(loads) {
       factor: (_c = load.factor) != null ? _c : 1
     };
     return {
-      ...normalized2,
-      loadCaseId: resolveLoadCaseId(normalized2, index),
-      nature: resolveLoadNature(normalized2),
-      variableCategory: (_j = (_i = (_h = (_e = normalized2.variableCategory) != null ? _e : (_d = normalized2.action) == null ? void 0 : _d.category) != null ? _h : (_g = (_f = normalized2.loadCase) == null ? void 0 : _f.action) == null ? void 0 : _g.category) != null ? _i : normalized2.category) != null ? _j : null,
-      loadDurationClass: resolveLoadDurationClass(normalized2)
+      ...normalized3,
+      loadCaseId: resolveLoadCaseId(normalized3, index),
+      nature: resolveLoadNature(normalized3),
+      variableCategory: (_j = (_i = (_h = (_e = normalized3.variableCategory) != null ? _e : (_d = normalized3.action) == null ? void 0 : _d.category) != null ? _h : (_g = (_f = normalized3.loadCase) == null ? void 0 : _f.action) == null ? void 0 : _g.category) != null ? _i : normalized3.category) != null ? _j : null,
+      loadDurationClass: resolveLoadDurationClass(normalized3)
     };
   });
 }
@@ -25321,11 +25321,11 @@ function normalizeProjection(value) {
     horizontal: "horizontal",
     "global-x": "horizontal"
   };
-  const normalized2 = (_a = aliases[projection]) != null ? _a : projection;
-  if (!["horizontal", "beam-axis"].includes(normalized2)) {
+  const normalized3 = (_a = aliases[projection]) != null ? _a : projection;
+  if (!["horizontal", "beam-axis"].includes(normalized3)) {
     throw new Error(`Unsupported loadProjection: ${value}.`);
   }
-  return normalized2;
+  return normalized3;
 }
 function projectedLineLoadValue(value, load, geometry) {
   const projection = normalizeProjection(load.loadProjection);
@@ -25361,11 +25361,11 @@ function normalizeCombinationFactors(factors) {
 function inferLimitState(combination) {
   var _a, _b, _c, _d;
   const rawValue = (_d = (_c = (_b = (_a = combination.limitState) != null ? _a : combination.combinationType) != null ? _b : combination.type) != null ? _c : combination.id) != null ? _d : "";
-  const normalized2 = String(rawValue).trim().toUpperCase();
-  if (normalized2.includes("ULS") || normalized2.includes("SLU")) {
+  const normalized3 = String(rawValue).trim().toUpperCase();
+  if (normalized3.includes("ULS") || normalized3.includes("SLU")) {
     return "ULS";
   }
-  if (normalized2.includes("SLE") || normalized2.includes("SLS")) {
+  if (normalized3.includes("SLE") || normalized3.includes("SLS")) {
     return "SLE";
   }
   return null;
@@ -25422,7 +25422,7 @@ function loadsForCombination(loads, factors) {
 }
 function normalizeDurationOrder(loadDurationClass) {
   var _a;
-  const normalized2 = String(loadDurationClass != null ? loadDurationClass : "").trim().toLowerCase();
+  const normalized3 = String(loadDurationClass != null ? loadDurationClass : "").trim().toLowerCase();
   const aliases = {
     permanente: "permanent",
     lunga: "long",
@@ -25433,7 +25433,7 @@ function normalizeDurationOrder(loadDurationClass) {
     "breve-durata": "short",
     istantanea: "instantaneous"
   };
-  return (_a = aliases[normalized2]) != null ? _a : normalized2;
+  return (_a = aliases[normalized3]) != null ? _a : normalized3;
 }
 function loadParticipation(load) {
   var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
@@ -27115,12 +27115,12 @@ function scaledLeastSquaresCorrection(solver, matrix, rhs, rowScales, columnScal
   const scaledRhs = rhs.map((value, index) => value / rowScales[index]);
   const transposed = transpose3(scaledMatrix);
   const normalMatrix = multiplyMatrices3(transposed, scaledMatrix);
-  const scale = Math.max(
+  const scale2 = Math.max(
     ...normalMatrix.flat().map((value) => Math.abs(value)),
     1
   );
   for (let index = 0; index < normalMatrix.length; index += 1) {
-    normalMatrix[index][index] += damping * scale;
+    normalMatrix[index][index] += damping * scale2;
   }
   const normalRhs = multiplyMatrixVector4(transposed, scaledRhs);
   const scaledSolution = solver.solve(normalMatrix, normalRhs);
@@ -28054,7 +28054,7 @@ function addDiscretizationStations(stations, geometry, unitResolver, discretizat
 }
 function normalizeVerificationStationMode(mode) {
   var _a;
-  const normalized2 = String(mode != null ? mode : "combined").trim().toLowerCase();
+  const normalized3 = String(mode != null ? mode : "combined").trim().toLowerCase();
   const aliases = {
     automatic: "auto",
     declared: "combined",
@@ -28063,7 +28063,7 @@ function normalizeVerificationStationMode(mode) {
     fem: "all",
     samples: "all"
   };
-  return (_a = aliases[normalized2]) != null ? _a : normalized2;
+  return (_a = aliases[normalized3]) != null ? _a : normalized3;
 }
 function addVerificationStations(stations, geometry, unitResolver, verificationStations = null) {
   var _a, _b, _c, _d, _e, _f;
@@ -28448,11 +28448,11 @@ function resolveElementClass(analysisModel, overrideClass = null) {
   if (overrideClass) {
     return overrideClass;
   }
-  const normalized2 = String(analysisModel != null ? analysisModel : "euler-bernoulli").trim().toLowerCase();
-  if (["euler-bernoulli", "euler", "eb"].includes(normalized2)) {
+  const normalized3 = String(analysisModel != null ? analysisModel : "euler-bernoulli").trim().toLowerCase();
+  if (["euler-bernoulli", "euler", "eb"].includes(normalized3)) {
     return FrameElement2DEulerBernoulli;
   }
-  if (["timoshenko", "timo"].includes(normalized2)) {
+  if (["timoshenko", "timo"].includes(normalized3)) {
     return FrameElement2DTimoshenko;
   }
   throw new Error(`Unsupported beam analysis model: ${analysisModel}.`);
@@ -29006,7 +29006,7 @@ function resolveShearModulus3(material) {
 }
 function normalizeTimberMaterialType(materialType) {
   var _a;
-  const normalized2 = String(materialType != null ? materialType : "").trim().toLowerCase().replaceAll("-", "_");
+  const normalized3 = String(materialType != null ? materialType : "").trim().toLowerCase().replaceAll("-", "_");
   const aliases = {
     solid_timber: "solid_timber",
     solid: "solid_timber",
@@ -29017,7 +29017,7 @@ function normalizeTimberMaterialType(materialType) {
     wood_based_panels: "wood_based_panels",
     panel: "wood_based_panels"
   };
-  return (_a = aliases[normalized2]) != null ? _a : normalized2;
+  return (_a = aliases[normalized3]) != null ? _a : normalized3;
 }
 function resolveKmod({
   context,
@@ -29420,7 +29420,7 @@ function solveBiaxialCompressionContact({
     { x: widthX / 2, y: widthY / 2 },
     { x: -widthX / 2, y: widthY / 2 }
   ];
-  const scale = Math.max(Math.abs(nEd), Math.abs(mxEd) / widthY, Math.abs(myEd) / widthX, 1);
+  const scale2 = Math.max(Math.abs(nEd), Math.abs(mxEd) / widthY, Math.abs(myEd) / widthX, 1);
   let polynomial = { ...initialPolynomial };
   let last = null;
   for (let iteration = 0; iteration <= maxIterations; iteration += 1) {
@@ -29437,7 +29437,7 @@ function solveBiaxialCompressionContact({
       Math.abs(residual.n),
       Math.abs(residual.my) / widthX,
       Math.abs(residual.mx) / widthY
-    ) / scale;
+    ) / scale2;
     last = { iteration, polygon, moments, response, residual, residualNorm: residualNorm2 };
     if (residualNorm2 <= tolerance) break;
     const increment = solve3x3([
@@ -30656,7 +30656,7 @@ var SoilMaterial = class {
     id,
     name,
     soilTypeId = "custom",
-    classification = {},
+    classification: classification2 = {},
     unitWeight,
     parameterSets = [],
     defaultParameterSetId = null,
@@ -30707,7 +30707,7 @@ var SoilMaterial = class {
     this.name = name;
     this.category = "soil";
     this.soilTypeId = soilTypeId;
-    this.classification = structuredClone(classification != null ? classification : {});
+    this.classification = structuredClone(classification2 != null ? classification2 : {});
     this.unitWeight = normalizeUnitWeight(unitWeight, resolver);
     this.parameterSets = normalizedSets;
     this.defaultParameterSetId = resolvedDefault;
@@ -31071,14 +31071,14 @@ var GroundProfile = class _GroundProfile {
     let topElevation = Number(groundSurfaceElevation);
     const elevatedLayers = (layers != null ? layers : []).map((layer2, index) => {
       const thickness = positive3(Number(layer2.thickness), `layers[${index}].thickness`);
-      const normalized2 = {
+      const normalized3 = {
         ...layer2,
         topElevation,
         bottomElevation: topElevation - thickness
       };
-      delete normalized2.thickness;
-      topElevation = normalized2.bottomElevation;
-      return normalized2;
+      delete normalized3.thickness;
+      topElevation = normalized3.bottomElevation;
+      return normalized3;
     });
     return new _GroundProfile({
       ...profile,
@@ -31234,25 +31234,25 @@ function normalizePolygon(points, resolver, label, tolerance) {
   if (!Array.isArray(points) || points.length < 3) {
     throw new Error(`${label} requires at least three points.`);
   }
-  const normalized2 = points.map((point4, index) => normalizePoint2(point4, resolver, `${label}[${index}]`));
-  if (normalized2.length > 3 && samePoint(normalized2[0], normalized2.at(-1), tolerance)) {
-    normalized2.pop();
+  const normalized3 = points.map((point4, index) => normalizePoint2(point4, resolver, `${label}[${index}]`));
+  if (normalized3.length > 3 && samePoint(normalized3[0], normalized3.at(-1), tolerance)) {
+    normalized3.pop();
   }
-  if (normalized2.length < 3) {
+  if (normalized3.length < 3) {
     throw new Error(`${label} requires at least three distinct points.`);
   }
-  for (let index = 0; index < normalized2.length; index += 1) {
-    const next = normalized2[(index + 1) % normalized2.length];
-    if (samePoint(normalized2[index], next, tolerance)) {
+  for (let index = 0; index < normalized3.length; index += 1) {
+    const next = normalized3[(index + 1) % normalized3.length];
+    if (samePoint(normalized3[index], next, tolerance)) {
       throw new Error(`${label} contains consecutive duplicate points.`);
     }
   }
-  assertSimplePolygon(normalized2, label, tolerance);
-  const area = signedPolygonArea(normalized2);
+  assertSimplePolygon(normalized3, label, tolerance);
+  const area = signedPolygonArea(normalized3);
   if (Math.abs(area) <= tolerance ** 2) {
     throw new Error(`${label} must have positive area.`);
   }
-  return area > 0 ? normalized2 : normalized2.reverse();
+  return area > 0 ? normalized3 : normalized3.reverse();
 }
 function polygonBounds(polygon) {
   return {
@@ -32512,12 +32512,12 @@ function positive7(value, label, { allowZero = false } = {}) {
   return number;
 }
 function provenance(value, label) {
-  const normalized2 = structuredClone(value != null ? value : {});
-  if (typeof normalized2.source !== "string" || !normalized2.source.trim()) {
+  const normalized3 = structuredClone(value != null ? value : {});
+  if (typeof normalized3.source !== "string" || !normalized3.source.trim()) {
     throw new Error(`${label}.source is required.`);
   }
-  normalized2.source = normalized2.source.trim();
-  return normalized2;
+  normalized3.source = normalized3.source.trim();
+  return normalized3;
 }
 function optionalStress(value, resolver, label) {
   if (value == null) return null;
@@ -33921,12 +33921,12 @@ function positive8(value, label) {
   return number;
 }
 function normalizeProvenance(value, label) {
-  const normalized2 = structuredClone(value != null ? value : {});
-  if (typeof normalized2.source !== "string" || !normalized2.source.trim()) {
+  const normalized3 = structuredClone(value != null ? value : {});
+  if (typeof normalized3.source !== "string" || !normalized3.source.trim()) {
     throw new Error(`${label}.source is required.`);
   }
-  normalized2.source = normalized2.source.trim();
-  return normalized2;
+  normalized3.source = normalized3.source.trim();
+  return normalized3;
 }
 function normalizeAction2(action, resolver) {
   var _a, _b, _c, _d;
@@ -33967,14 +33967,14 @@ function normalizeBehaviorAssertion(assertion) {
       "behaviorAssertion is required because the Broms branch is restricted to short rigid piles."
     );
   }
-  const classification = assertion.classification;
-  if (!LATERAL_PILE_BEHAVIOR_CLASSIFICATIONS.includes(classification)) {
+  const classification2 = assertion.classification;
+  if (!LATERAL_PILE_BEHAVIOR_CLASSIFICATIONS.includes(classification2)) {
     throw new Error(
-      `Unsupported lateral pile behavior classification: ${classification}.`
+      `Unsupported lateral pile behavior classification: ${classification2}.`
     );
   }
   return {
-    classification,
+    classification: classification2,
     basis: (_a = assertion.basis) != null ? _a : "project-assessment",
     provenance: normalizeProvenance(
       assertion.provenance,
@@ -34857,18 +34857,18 @@ function finite11(value, label) {
   return number;
 }
 function normalizeProvenance2(value) {
-  const normalized2 = structuredClone(value != null ? value : {});
-  if (typeof normalized2.source !== "string" || !normalized2.source.trim()) {
+  const normalized3 = structuredClone(value != null ? value : {});
+  if (typeof normalized3.source !== "string" || !normalized3.source.trim()) {
     throw new Error("PileTransferLaw provenance.source is required.");
   }
-  normalized2.source = normalized2.source.trim();
-  return normalized2;
+  normalized3.source = normalized3.source.trim();
+  return normalized3;
 }
 function normalizePoints(points, resolver) {
   if (!Array.isArray(points) || points.length < 2) {
     throw new Error("PileTransferLaw requires at least two curve points.");
   }
-  const normalized2 = points.map((point4, index) => ({
+  const normalized3 = points.map((point4, index) => ({
     displacement: resolver.length(finite11(
       point4.displacement,
       `points[${index}].displacement`
@@ -34878,21 +34878,21 @@ function normalizePoints(points, resolver) {
       `points[${index}].resistancePerLength`
     ))
   }));
-  const scale = Math.max(
+  const scale2 = Math.max(
     1,
-    ...normalized2.flatMap((point4) => [
+    ...normalized3.flatMap((point4) => [
       Math.abs(point4.displacement),
       Math.abs(point4.resistancePerLength)
     ])
   );
-  const tolerance = 1e-12 * scale;
-  if (Math.abs(normalized2[0].displacement) > tolerance || Math.abs(normalized2[0].resistancePerLength) > tolerance) {
+  const tolerance = 1e-12 * scale2;
+  if (Math.abs(normalized3[0].displacement) > tolerance || Math.abs(normalized3[0].resistancePerLength) > tolerance) {
     throw new Error("PileTransferLaw curve must start at the origin.");
   }
-  normalized2[0] = { displacement: 0, resistancePerLength: 0 };
-  for (let index = 1; index < normalized2.length; index += 1) {
-    const previous = normalized2[index - 1];
-    const current = normalized2[index];
+  normalized3[0] = { displacement: 0, resistancePerLength: 0 };
+  for (let index = 1; index < normalized3.length; index += 1) {
+    const previous = normalized3[index - 1];
+    const current = normalized3[index];
     if (current.displacement <= previous.displacement + tolerance) {
       throw new Error(
         "PileTransferLaw displacements must be positive and strictly increasing."
@@ -34907,7 +34907,7 @@ function normalizePoints(points, resolver) {
       throw new Error("PileTransferLaw resistance must be non-negative.");
     }
   }
-  return normalized2;
+  return normalized3;
 }
 function segmentResponse(points, magnitude, extrapolation) {
   let left = points[0];
@@ -35063,12 +35063,12 @@ function positiveInteger(value, label) {
   return number;
 }
 function normalizeProvenance3(value, label) {
-  const normalized2 = structuredClone(value != null ? value : {});
-  if (typeof normalized2.source !== "string" || !normalized2.source.trim()) {
+  const normalized3 = structuredClone(value != null ? value : {});
+  if (typeof normalized3.source !== "string" || !normalized3.source.trim()) {
     throw new Error(`${label}.source is required.`);
   }
-  normalized2.source = normalized2.source.trim();
-  return normalized2;
+  normalized3.source = normalized3.source.trim();
+  return normalized3;
 }
 function normalizeAction3(action, resolver) {
   var _a, _b, _c, _d, _e, _f;
@@ -36474,12 +36474,12 @@ function positive11(value, label) {
   return number;
 }
 function provenance2(value, label) {
-  const normalized2 = structuredClone(value != null ? value : {});
-  if (typeof normalized2.source !== "string" || !normalized2.source.trim()) {
+  const normalized3 = structuredClone(value != null ? value : {});
+  if (typeof normalized3.source !== "string" || !normalized3.source.trim()) {
     throw new Error(`${label}.source is required.`);
   }
-  normalized2.source = normalized2.source.trim();
-  return normalized2;
+  normalized3.source = normalized3.source.trim();
+  return normalized3;
 }
 function restraint(value, label) {
   var _a, _b;
@@ -36665,12 +36665,12 @@ function positiveInteger2(value, label) {
   return number;
 }
 function provenance3(value, label) {
-  const normalized2 = structuredClone(value != null ? value : {});
-  if (typeof normalized2.source !== "string" || !normalized2.source.trim()) {
+  const normalized3 = structuredClone(value != null ? value : {});
+  if (typeof normalized3.source !== "string" || !normalized3.source.trim()) {
     throw new Error(`${label}.source is required.`);
   }
-  normalized2.source = normalized2.source.trim();
-  return normalized2;
+  normalized3.source = normalized3.source.trim();
+  return normalized3;
 }
 function normalizeLayerCurve2(side, layerId, input, resolver, units) {
   var _a, _b;
@@ -38717,12 +38717,12 @@ function positive13(value, label) {
   return number;
 }
 function provenance4(value, label) {
-  const normalized2 = structuredClone(value != null ? value : {});
-  if (typeof normalized2.source !== "string" || !normalized2.source.trim()) {
+  const normalized3 = structuredClone(value != null ? value : {});
+  if (typeof normalized3.source !== "string" || !normalized3.source.trim()) {
     throw new Error(`${label}.source is required.`);
   }
-  normalized2.source = normalized2.source.trim();
-  return normalized2;
+  normalized3.source = normalized3.source.trim();
+  return normalized3;
 }
 function radians(value, angleUnits) {
   if (angleUnits === "rad") return value;
@@ -38977,12 +38977,12 @@ function nonNegative4(value, label) {
   return number;
 }
 function provenance5(value, label) {
-  const normalized2 = structuredClone(value != null ? value : {});
-  if (typeof normalized2.source !== "string" || !normalized2.source.trim()) {
+  const normalized3 = structuredClone(value != null ? value : {});
+  if (typeof normalized3.source !== "string" || !normalized3.source.trim()) {
     throw new Error(`${label}.source is required.`);
   }
-  normalized2.source = normalized2.source.trim();
-  return normalized2;
+  normalized3.source = normalized3.source.trim();
+  return normalized3;
 }
 function normalizeDemand(input, resolver) {
   var _a, _b;
@@ -38990,7 +38990,7 @@ function normalizeDemand(input, resolver) {
   if (!GROUND_ANCHOR_DEMAND_SOURCES.includes(source)) {
     throw new Error(`Unsupported ground-anchor demand source: ${source}.`);
   }
-  const normalized2 = {
+  const normalized3 = {
     source,
     selection: (_a = input.selection) != null ? _a : "maximum-absolute",
     supportId: input.supportId == null ? null : String(input.supportId),
@@ -39001,13 +39001,13 @@ function normalizeDemand(input, resolver) {
     metadata: structuredClone((_b = input.metadata) != null ? _b : {})
   };
   if (source === "assigned-tendon-load") {
-    normalized2.designLoad = positive14(
+    normalized3.designLoad = positive14(
       resolver.force(finite17(input.designLoad, "demand.designLoad")),
       "demand.designLoad"
     );
   }
   if (source === "assigned-horizontal-line-load") {
-    normalized2.horizontalLineLoad = positive14(
+    normalized3.horizontalLineLoad = positive14(
       resolver.lineLoad(finite17(
         input.horizontalLineLoad,
         "demand.horizontalLineLoad"
@@ -39015,22 +39015,22 @@ function normalizeDemand(input, resolver) {
       "demand.horizontalLineLoad"
     );
   }
-  if (source !== "embedded-retaining-wall-result" && normalized2.provenance == null) {
+  if (source !== "embedded-retaining-wall-result" && normalized3.provenance == null) {
     throw new Error("Assigned ground-anchor demand requires provenance.");
   }
-  if (source === "embedded-retaining-wall-result" && !normalized2.supportId) {
+  if (source === "embedded-retaining-wall-result" && !normalized3.supportId) {
     throw new Error("Embedded-wall demand requires demand.supportId.");
   }
   if (![
     "maximum-absolute",
     "selected-stage"
-  ].includes(normalized2.selection)) {
-    throw new Error(`Unsupported demand.selection: ${normalized2.selection}.`);
+  ].includes(normalized3.selection)) {
+    throw new Error(`Unsupported demand.selection: ${normalized3.selection}.`);
   }
-  if (normalized2.selection === "selected-stage" && !normalized2.stageId) {
+  if (normalized3.selection === "selected-stage" && !normalized3.stageId) {
     throw new Error("selected-stage demand requires demand.stageId.");
   }
-  return normalized2;
+  return normalized3;
 }
 function normalizeFailureSurface(input, resolver, angleUnits) {
   var _a;
@@ -39038,7 +39038,7 @@ function normalizeFailureSurface(input, resolver, angleUnits) {
   if (!GROUND_ANCHOR_FAILURE_SURFACE_MODELS.includes(model)) {
     throw new Error(`Unsupported critical-failure-surface model: ${model}.`);
   }
-  const normalized2 = {
+  const normalized3 = {
     model,
     wallHeight: positive14(
       resolver.length(finite17(
@@ -39054,7 +39054,7 @@ function normalizeFailureSurface(input, resolver, angleUnits) {
     metadata: structuredClone((_a = input.metadata) != null ? _a : {})
   };
   if (model === "assigned-distance") {
-    normalized2.distanceAlongAnchor = positive14(
+    normalized3.distanceAlongAnchor = positive14(
       resolver.length(finite17(
         input.distanceAlongAnchor,
         "criticalFailureSurface.distanceAlongAnchor"
@@ -39066,7 +39066,7 @@ function normalizeFailureSurface(input, resolver, angleUnits) {
     if (!Array.isArray(input.points) || input.points.length < 2) {
       throw new Error("An assigned critical-failure polyline requires points.");
     }
-    normalized2.points = input.points.map((point4, index) => ({
+    normalized3.points = input.points.map((point4, index) => ({
       x: resolver.length(finite17(
         point4.x,
         `criticalFailureSurface.points[${index}].x`
@@ -39086,13 +39086,13 @@ function normalizeFailureSurface(input, resolver, angleUnits) {
     if (phi <= 0 || phi >= Math.PI / 2) {
       throw new Error("Rankine frictionAngle must be between 0 and 90 degrees.");
     }
-    normalized2.frictionAngle = phi;
-    normalized2.excavationBaseElevation = resolver.length(finite17(
+    normalized3.frictionAngle = phi;
+    normalized3.excavationBaseElevation = resolver.length(finite17(
       input.excavationBaseElevation,
       "criticalFailureSurface.excavationBaseElevation"
     ));
   }
-  return normalized2;
+  return normalized3;
 }
 function normalizeBondResistance(input, resolver, label) {
   var _a, _b;
@@ -39119,7 +39119,7 @@ function normalizeBondResistance(input, resolver, label) {
     input.capacityDivisor,
     `${label}.capacityDivisor`
   );
-  const normalized2 = {
+  const normalized3 = {
     model,
     groundClass,
     capacityDivisor,
@@ -39127,7 +39127,7 @@ function normalizeBondResistance(input, resolver, label) {
     metadata: structuredClone((_b = input.metadata) != null ? _b : {})
   };
   if (model === "ultimate-transfer-load") {
-    normalized2.ultimateTransferLoad = positive14(
+    normalized3.ultimateTransferLoad = positive14(
       resolver.lineLoad(finite17(
         input.ultimateTransferLoad,
         `${label}.ultimateTransferLoad`
@@ -39135,7 +39135,7 @@ function normalizeBondResistance(input, resolver, label) {
       `${label}.ultimateTransferLoad`
     );
   } else {
-    normalized2.ultimateBondStress = positive14(
+    normalized3.ultimateBondStress = positive14(
       resolver.stress(finite17(
         input.ultimateBondStress,
         `${label}.ultimateBondStress`
@@ -39143,7 +39143,7 @@ function normalizeBondResistance(input, resolver, label) {
       `${label}.ultimateBondStress`
     );
   }
-  return normalized2;
+  return normalized3;
 }
 function normalizeResistanceMap(input, resolver, label) {
   if (input == null) return {};
@@ -41011,8 +41011,8 @@ function verticalStressAtBase({
   };
 }
 function layerImmediatelyBelow(profile, elevation) {
-  const scale = Math.max(1, Math.abs(elevation));
-  const sample = elevation - 1e-9 * scale;
+  const scale2 = Math.max(1, Math.abs(elevation));
+  const sample = elevation - 1e-9 * scale2;
   return profile.getLayerAtElevation(sample);
 }
 function totalUnitWeightBelowBase({
@@ -44183,12 +44183,12 @@ function uniqueIntersections(intersections, tolerance) {
 }
 function circumcircle(first, second, third) {
   const determinant = 2 * (first.x * (second.z - third.z) + second.x * (third.z - first.z) + third.x * (first.z - second.z));
-  const scale = Math.max(
+  const scale2 = Math.max(
     1,
     Math.hypot(second.x - first.x, second.z - first.z),
     Math.hypot(third.x - first.x, third.z - first.z)
   );
-  if (Math.abs(determinant) <= TOLERANCE9 * scale ** 2) {
+  if (Math.abs(determinant) <= TOLERANCE9 * scale2 ** 2) {
     throw new Error("Slip-surface chord and sagitta define a degenerate circle.");
   }
   const firstSquared = first.x ** 2 + first.z ** 2;
@@ -44424,12 +44424,12 @@ function point2(value, resolver, label) {
   };
 }
 function provenance6(value) {
-  const normalized2 = structuredClone(value != null ? value : {});
-  if (typeof normalized2.source !== "string" || !normalized2.source.trim()) {
+  const normalized3 = structuredClone(value != null ? value : {});
+  if (typeof normalized3.source !== "string" || !normalized3.source.trim()) {
     throw new Error("Ground-anchor stability action provenance.source is required.");
   }
-  normalized2.source = normalized2.source.trim();
-  return normalized2;
+  normalized3.source = normalized3.source.trim();
+  return normalized3;
 }
 function normalizedResult(value) {
   return typeof (value == null ? void 0 : value.toJSON) === "function" ? value.toJSON() : value;
@@ -44500,8 +44500,8 @@ var GroundAnchorStabilityAction2D = class _GroundAnchorStabilityAction2D {
       normalizedBondStart.x - normalizedHead.x - bondStartProjection * unitVector.x,
       normalizedBondStart.z - normalizedHead.z - bondStartProjection * unitVector.z
     );
-    const scale = Math.max(1, totalLength);
-    if (bondStartOffset > TOLERANCE10 * scale || bondStartProjection <= TOLERANCE10 || bondStartProjection >= totalLength - TOLERANCE10) {
+    const scale2 = Math.max(1, totalLength);
+    if (bondStartOffset > TOLERANCE10 * scale2 || bondStartProjection <= TOLERANCE10 || bondStartProjection >= totalLength - TOLERANCE10) {
       throw new Error(
         "head, bondStart and bondEnd must lie in this order on one straight anchor axis."
       );
@@ -45008,10 +45008,10 @@ function materialBoundaryIntersections(section, slipSurface, entryX, exitX) {
 }
 function resolveBaseZone(section, x, bottom, top, tolerance) {
   const height = top - bottom;
-  const scale = Math.max(1, section.bounds.maximumX - section.bounds.minimumX);
+  const scale2 = Math.max(1, section.bounds.maximumX - section.bounds.minimumX);
   const offsets = [
-    Math.min(height * 0.1, scale * 1e-8),
-    Math.min(height * 0.25, scale * 1e-6),
+    Math.min(height * 0.1, scale2 * 1e-8),
+    Math.min(height * 0.25, scale2 * 1e-6),
     height * 0.5
   ].filter((offset) => offset > tolerance);
   for (const offset of offsets) {
@@ -45066,12 +45066,12 @@ var SlopeSliceDiscretizer2D = class {
       );
     }
     const field = groundModel.getPorePressureField(resolvedFieldId);
-    const scale = Math.max(
+    const scale2 = Math.max(
       1,
       section.bounds.maximumX - section.bounds.minimumX,
       slipSurface.radius
     );
-    const tolerance = 1e-10 * scale;
+    const tolerance = 1e-10 * scale2;
     const span = resolveSpan(section, slipSurface, tolerance);
     assertNoExternalWater(
       field,
@@ -45781,11 +45781,11 @@ function solveFromSeed(slices, seed, {
     );
     let accepted = null;
     for (let lineSearch = 0; lineSearch < 14; lineSearch += 1) {
-      const scale = 2 ** -lineSearch;
-      const factor2 = state.factorOfSafety + scale * increment.factor;
+      const scale2 = 2 ** -lineSearch;
+      const factor2 = state.factorOfSafety + scale2 * increment.factor;
       const theta = Math.max(
         -thetaLimit,
-        Math.min(thetaLimit, state.theta + scale * increment.theta)
+        Math.min(thetaLimit, state.theta + scale2 * increment.theta)
       );
       if (factor2 <= 0.01) continue;
       try {
@@ -45977,11 +45977,11 @@ function normalizeGroundAnchors(values, units) {
   });
 }
 function sliceForIntersection(slices, x, movementDirection) {
-  const scale = Math.max(
+  const scale2 = Math.max(
     1,
     ...slices.map((slice) => Math.max(Math.abs(slice.minimumX), Math.abs(slice.maximumX)))
   );
-  const tolerance = 1e-9 * scale;
+  const tolerance = 1e-9 * scale2;
   const matches = slices.filter((slice) => x >= slice.minimumX - tolerance && x <= slice.maximumX + tolerance);
   if (matches.length === 0) {
     throw new Error(
@@ -48601,14 +48601,14 @@ function analyzeConstrainedModulus({
   };
 }
 function sameElasticParameters(left, right) {
-  const scale = Math.max(
+  const scale2 = Math.max(
     left.shearModulus,
     right.shearModulus,
     left.youngModulus,
     right.youngModulus,
     1
   );
-  return Math.abs(left.shearModulus - right.shearModulus) <= 1e-9 * scale && Math.abs(left.youngModulus - right.youngModulus) <= 1e-9 * scale && Math.abs(left.poissonRatio - right.poissonRatio) <= 1e-12;
+  return Math.abs(left.shearModulus - right.shearModulus) <= 1e-9 * scale2 && Math.abs(left.youngModulus - right.youngModulus) <= 1e-9 * scale2 && Math.abs(left.poissonRatio - right.poissonRatio) <= 1e-12;
 }
 function rigidCornerMovements({ foundation, settlement, rotationX, rotationY }) {
   const halfWidth = foundation.geometry.width / 2;
@@ -49172,13 +49172,13 @@ var AxialMember2D = class {
   globalStiffness() {
     const c = this.cosine;
     const s = this.sine;
-    const scale = this.axialRigidity / this.length;
+    const scale2 = this.axialRigidity / this.length;
     return [
       [c * c, c * s, -c * c, -c * s],
       [c * s, s * s, -c * s, -s * s],
       [-c * c, -c * s, c * c, c * s],
       [-c * s, -s * s, c * s, s * s]
-    ].map((row) => row.map((value) => value * scale));
+    ].map((row) => row.map((value) => value * scale2));
   }
   axialResponse(displacementByNode = {}) {
     var _a, _b, _c, _d, _e, _f;
@@ -50183,22 +50183,22 @@ function normalizeSource(source) {
   if (source != null && (typeof source !== "object" || Array.isArray(source))) {
     throw new Error("Punching action source must be an object.");
   }
-  const normalized2 = structuredClone(source != null ? source : { method: "manual" });
-  (_a = normalized2.method) != null ? _a : normalized2.method = "manual";
-  if (!SOURCE_METHODS.has(normalized2.method)) {
-    throw new Error(`Unsupported punching action source method: ${normalized2.method}.`);
+  const normalized3 = structuredClone(source != null ? source : { method: "manual" });
+  (_a = normalized3.method) != null ? _a : normalized3.method = "manual";
+  if (!SOURCE_METHODS.has(normalized3.method)) {
+    throw new Error(`Unsupported punching action source method: ${normalized3.method}.`);
   }
-  return normalized2;
+  return normalized3;
 }
 function optionalNonNegativeForce(value, resolver, label) {
   if (value == null) {
     return null;
   }
-  const normalized2 = resolver.force(finite31(Number(value), label));
-  if (normalized2 < 0) {
+  const normalized3 = resolver.force(finite31(Number(value), label));
+  if (normalized3 < 0) {
     throw new Error(`${label} must be non-negative.`);
   }
-  return normalized2;
+  return normalized3;
 }
 function normalizePerimeterForceMap(input, resolver, label) {
   if (input == null) {
@@ -50355,14 +50355,14 @@ function normalizeDirection(input, fallback, label) {
     y: finite32(Number(source.y), `${label}.y`),
     z: finite32(Number(source.z), `${label}.z`)
   };
-  const norm3 = vectorNorm(vector);
-  if (Math.abs(norm3 - 1) > FRAME_TOLERANCE) {
+  const norm4 = vectorNorm(vector);
+  if (Math.abs(norm4 - 1) > FRAME_TOLERANCE) {
     throw new Error(`${label} must be a unit vector.`);
   }
   return {
-    x: vector.x / norm3,
-    y: vector.y / norm3,
-    z: vector.z / norm3
+    x: vector.x / norm4,
+    y: vector.y / norm4,
+    z: vector.z / norm4
   };
 }
 function normalizeLocalFrame(input, resolver, connectionId) {
@@ -52120,13 +52120,13 @@ function maxAbs3(values) {
 function detectRelevantLocalDofIndices(tangentMatrix, referenceLoadVector, controlVector, residualVector, relativeTolerance = 1e-12) {
   var _a, _b, _c;
   const size = tangentMatrix.length;
-  const scale = Math.max(
+  const scale2 = Math.max(
     maxAbs3(referenceLoadVector),
     maxAbs3(controlVector),
     maxAbs3(residualVector),
     ...tangentMatrix.map((row) => maxAbs3(row))
   );
-  const threshold = Math.max(relativeTolerance * Math.max(scale, 1), 1e-14);
+  const threshold = Math.max(relativeTolerance * Math.max(scale2, 1), 1e-14);
   const indices = [];
   for (let index = 0; index < size; index += 1) {
     const rowNorm = maxAbs3(tangentMatrix[index]);
@@ -52909,13 +52909,13 @@ function validateAxes(axes, path, errors, { tolerance = 1e-8 } = {}) {
   if (validVectors.some((valid2) => !valid2)) return false;
   let valid = true;
   for (const axis of ["x", "y", "z"]) {
-    const norm3 = vectorNorm2(axes[axis]);
-    if (Math.abs(norm3 - 1) > tolerance) {
+    const norm4 = vectorNorm2(axes[axis]);
+    if (Math.abs(norm4 - 1) > tolerance) {
       addError(
         errors,
         "FEM_AXIS_NOT_UNIT",
         `${path}.${axis}`,
-        `${path}.${axis} must be a unit vector; received norm ${norm3}.`
+        `${path}.${axis} must be a unit vector; received norm ${norm4}.`
       );
       valid = false;
     }
@@ -53134,9 +53134,9 @@ function vectorBetween(start, end) {
   };
 }
 function normalized(vector) {
-  const norm3 = vectorNorm2(vector);
-  if (!Number.isFinite(norm3) || norm3 <= 0) return null;
-  return { x: vector.x / norm3, y: vector.y / norm3, z: vector.z / norm3 };
+  const norm4 = vectorNorm2(vector);
+  if (!Number.isFinite(norm4) || norm4 <= 0) return null;
+  return { x: vector.x / norm4, y: vector.y / norm4, z: vector.z / norm4 };
 }
 function dotProduct(left, right) {
   return dot3(left, right);
@@ -55278,7 +55278,7 @@ function cloneSymmetricMatrix(matrix, symmetryTolerance) {
     throw new Error("BandedLinearSolver requires a non-empty matrix.");
   }
   const size = matrix.length;
-  const clone8 = matrix.map((row, rowIndex) => {
+  const clone10 = matrix.map((row, rowIndex) => {
     if (!Array.isArray(row) || row.length !== size) {
       throw new Error("BandedLinearSolver requires a square matrix.");
     }
@@ -55293,17 +55293,17 @@ function cloneSymmetricMatrix(matrix, symmetryTolerance) {
   });
   for (let row = 0; row < size; row += 1) {
     for (let column = 0; column < row; column += 1) {
-      const scale = Math.max(
+      const scale2 = Math.max(
         1,
-        Math.abs(clone8[row][column]),
-        Math.abs(clone8[column][row])
+        Math.abs(clone10[row][column]),
+        Math.abs(clone10[column][row])
       );
-      if (Math.abs(clone8[row][column] - clone8[column][row]) > symmetryTolerance * scale) {
+      if (Math.abs(clone10[row][column] - clone10[column][row]) > symmetryTolerance * scale2) {
         throw new Error("BandedLinearSolver requires a symmetric matrix.");
       }
     }
   }
-  return clone8;
+  return clone10;
 }
 function cloneVector2(vector, size) {
   if (!Array.isArray(vector) || vector.length !== size) {
@@ -55322,7 +55322,7 @@ function cloneVector2(vector, size) {
 }
 function matrixScale2(matrix) {
   return matrix.reduce(
-    (scale, row) => row.reduce((rowScale, value) => Math.max(rowScale, Math.abs(value)), scale),
+    (scale2, row) => row.reduce((rowScale, value) => Math.max(rowScale, Math.abs(value)), scale2),
     0
   );
 }
@@ -55392,9 +55392,9 @@ var BandedLinearSolver = class {
     const source = cloneSymmetricMatrix(matrix, this.symmetryTolerance);
     const size = source.length;
     const bandwidth = (_a = this.bandwidth) != null ? _a : detectMatrixSemiBandwidth(source);
-    const scale = matrixScale2(source);
+    const scale2 = matrixScale2(source);
     const lower = createZeroMatrix(size);
-    if (scale === 0) {
+    if (scale2 === 0) {
       throw new Error(
         "BandedLinearSolver detected a singular matrix with zero stiffness scale."
       );
@@ -55412,7 +55412,7 @@ var BandedLinearSolver = class {
           value -= lower[row][index] * lower[column][index];
         }
         if (row === column) {
-          if (value <= this.singularityTolerance * scale) {
+          if (value <= this.singularityTolerance * scale2) {
             throw new Error(
               `BandedLinearSolver requires a positive-definite matrix near pivot ${row + 1}.`
             );
@@ -56299,6 +56299,13 @@ var APPLICATION_CATALOG = [
     primaryFocus: "End-to-end simple beam analysis, verification and reporting."
   },
   {
+    id: "global-fem-postprocessing",
+    name: "Global FEM Postprocessing",
+    domain: "fem",
+    maturity: "partial",
+    primaryFocus: "Solver-neutral global FEM validation, assisted structural classification, demand extraction and verification-readiness reporting."
+  },
+  {
     id: "steel-frames",
     name: "Steel Frames",
     domain: "steel",
@@ -56489,6 +56496,1663 @@ var APPLICATION_CATALOG = [
   }
 ];
 
+// src/applications/global-fem-postprocessing/classificationPolicy.js
+var GLOBAL_FEM_CLASSIFICATION_PROPOSAL_VERSION = 0;
+var GLOBAL_FEM_POSTPROCESSING_PROFILES = Object.freeze({
+  DEMAND_ONLY: "demand-only",
+  ASSISTED: "assisted",
+  CONFIRMED: "confirmed"
+});
+var GLOBAL_FEM_POSTPROCESSING_PROFILE_VALUES = Object.freeze(
+  Object.values(GLOBAL_FEM_POSTPROCESSING_PROFILES)
+);
+var DEFAULT_GLOBAL_FEM_CLASSIFICATION_POLICY = Object.freeze({
+  line: Object.freeze({
+    verticalToleranceDegrees: 10,
+    horizontalToleranceDegrees: 10,
+    maximumBeamInclinationDegrees: null,
+    groupingAngleToleranceDegrees: 1
+  }),
+  shell: Object.freeze({
+    horizontalPlaneToleranceDegrees: 10,
+    verticalPlaneToleranceDegrees: 10,
+    groupingNormalToleranceDegrees: 1,
+    coplanarityTolerance: null
+  }),
+  storeys: Object.freeze({
+    elevationTolerance: null,
+    relativeElevationTolerance: 1e-8
+  }),
+  joints: Object.freeze({
+    minimumIncidentLineElements: 2
+  })
+});
+function finiteInRange(value, label, minimum2, maximum) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < minimum2 || number > maximum) {
+    throw new Error(`${label} must be finite and between ${minimum2} and ${maximum}.`);
+  }
+  return number;
+}
+function optionalPositive2(value, label) {
+  if (value == null) return null;
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) {
+    throw new Error(`${label} must be null or a positive finite value.`);
+  }
+  return number;
+}
+function normalizeGlobalFemClassificationPolicy(input = {}) {
+  var _a, _b, _c, _d;
+  const line2 = {
+    ...DEFAULT_GLOBAL_FEM_CLASSIFICATION_POLICY.line,
+    ...(_a = input.line) != null ? _a : {}
+  };
+  const shell = {
+    ...DEFAULT_GLOBAL_FEM_CLASSIFICATION_POLICY.shell,
+    ...(_b = input.shell) != null ? _b : {}
+  };
+  const storeys = {
+    ...DEFAULT_GLOBAL_FEM_CLASSIFICATION_POLICY.storeys,
+    ...(_c = input.storeys) != null ? _c : {}
+  };
+  const joints = {
+    ...DEFAULT_GLOBAL_FEM_CLASSIFICATION_POLICY.joints,
+    ...(_d = input.joints) != null ? _d : {}
+  };
+  line2.verticalToleranceDegrees = finiteInRange(
+    line2.verticalToleranceDegrees,
+    "classificationPolicy.line.verticalToleranceDegrees",
+    0,
+    45
+  );
+  line2.horizontalToleranceDegrees = finiteInRange(
+    line2.horizontalToleranceDegrees,
+    "classificationPolicy.line.horizontalToleranceDegrees",
+    0,
+    45
+  );
+  line2.groupingAngleToleranceDegrees = finiteInRange(
+    line2.groupingAngleToleranceDegrees,
+    "classificationPolicy.line.groupingAngleToleranceDegrees",
+    0,
+    45
+  );
+  if (line2.maximumBeamInclinationDegrees != null) {
+    line2.maximumBeamInclinationDegrees = finiteInRange(
+      line2.maximumBeamInclinationDegrees,
+      "classificationPolicy.line.maximumBeamInclinationDegrees",
+      line2.horizontalToleranceDegrees,
+      90 - line2.verticalToleranceDegrees
+    );
+  }
+  shell.horizontalPlaneToleranceDegrees = finiteInRange(
+    shell.horizontalPlaneToleranceDegrees,
+    "classificationPolicy.shell.horizontalPlaneToleranceDegrees",
+    0,
+    45
+  );
+  shell.verticalPlaneToleranceDegrees = finiteInRange(
+    shell.verticalPlaneToleranceDegrees,
+    "classificationPolicy.shell.verticalPlaneToleranceDegrees",
+    0,
+    45
+  );
+  shell.groupingNormalToleranceDegrees = finiteInRange(
+    shell.groupingNormalToleranceDegrees,
+    "classificationPolicy.shell.groupingNormalToleranceDegrees",
+    0,
+    45
+  );
+  shell.coplanarityTolerance = optionalPositive2(
+    shell.coplanarityTolerance,
+    "classificationPolicy.shell.coplanarityTolerance"
+  );
+  storeys.elevationTolerance = optionalPositive2(
+    storeys.elevationTolerance,
+    "classificationPolicy.storeys.elevationTolerance"
+  );
+  storeys.relativeElevationTolerance = finiteInRange(
+    storeys.relativeElevationTolerance,
+    "classificationPolicy.storeys.relativeElevationTolerance",
+    Number.EPSILON,
+    0.01
+  );
+  const incidentCount = Number(joints.minimumIncidentLineElements);
+  if (!Number.isInteger(incidentCount) || incidentCount < 2) {
+    throw new Error(
+      "classificationPolicy.joints.minimumIncidentLineElements must be an integer of at least 2."
+    );
+  }
+  joints.minimumIncidentLineElements = incidentCount;
+  return { line: line2, shell, storeys, joints };
+}
+
+// src/applications/global-fem-postprocessing/GlobalFemDemandExtractor.js
+var GLOBAL_FEM_DEMAND_SET_VERSION = 0;
+var REFERENCE_KEYS = Object.freeze([
+  "procedureId",
+  "loadCaseId",
+  "combinationId",
+  "modeNumber",
+  "step",
+  "time",
+  "envelopeId"
+]);
+function clone2(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+function resultReference(entry) {
+  return Object.fromEntries(
+    REFERENCE_KEYS.filter((key) => entry[key] !== void 0).map((key) => [key, entry[key]])
+  );
+}
+function referenceKey(reference) {
+  return JSON.stringify(REFERENCE_KEYS.map((key) => {
+    var _a;
+    return (_a = reference[key]) != null ? _a : null;
+  }));
+}
+function updateExtreme(envelope, kind, candidate) {
+  if (envelope[kind] == null || kind === "minimum" && candidate.value < envelope[kind].value || kind === "maximum" && candidate.value > envelope[kind].value) {
+    envelope[kind] = candidate;
+  }
+}
+function componentEnvelopes(samples) {
+  var _a;
+  const envelopes = {};
+  for (const sample of samples) {
+    for (const [component, value] of Object.entries((_a = sample.components) != null ? _a : {})) {
+      if (!Number.isFinite(value)) continue;
+      if (!envelopes[component]) {
+        envelopes[component] = { minimum: null, maximum: null };
+      }
+      const candidate = {
+        value,
+        reference: clone2(sample.reference),
+        location: clone2(sample.location)
+      };
+      updateExtreme(envelopes[component], "minimum", candidate);
+      updateExtreme(envelopes[component], "maximum", candidate);
+    }
+  }
+  return envelopes;
+}
+function extractLineElementDemands(model, result9) {
+  var _a, _b;
+  const resultByElement = new Map(model.lineElements.map((element) => [element.id, []]));
+  for (const entry of (_a = result9.results.lineElementActions) != null ? _a : []) {
+    (_b = resultByElement.get(entry.lineElementId)) == null ? void 0 : _b.push(entry);
+  }
+  return model.lineElements.map((element) => {
+    var _a2;
+    const states = ((_a2 = resultByElement.get(element.id)) != null ? _a2 : []).map((entry) => ({
+      reference: resultReference(entry),
+      coordinateSystem: entry.coordinateSystem,
+      stations: clone2(entry.stations)
+    }));
+    const samples = states.flatMap((state) => state.stations.map((station) => ({
+      reference: state.reference,
+      location: {
+        xi: station.xi,
+        position: station.position,
+        side: station.side
+      },
+      components: station.actions
+    })));
+    return {
+      lineElementId: element.id,
+      nodeIds: [...element.nodeIds],
+      sectionId: element.sectionId,
+      materialId: element.materialId,
+      localAxes: clone2(element.localAxes),
+      actionStates: states,
+      componentEnvelopes: componentEnvelopes(samples)
+    };
+  });
+}
+function extractShellElementDemands(model, result9) {
+  var _a, _b;
+  const resultByElement = new Map(model.shellElements.map((element) => [element.id, []]));
+  for (const entry of (_a = result9.results.shellResultants) != null ? _a : []) {
+    (_b = resultByElement.get(entry.shellElementId)) == null ? void 0 : _b.push(entry);
+  }
+  return model.shellElements.map((element) => {
+    var _a2;
+    const states = ((_a2 = resultByElement.get(element.id)) != null ? _a2 : []).map((entry) => ({
+      reference: resultReference(entry),
+      coordinateSystem: entry.coordinateSystem,
+      face: entry.face,
+      location: clone2(entry.location),
+      components: clone2(entry.components)
+    }));
+    return {
+      shellElementId: element.id,
+      nodeIds: [...element.nodeIds],
+      sectionId: element.sectionId,
+      materialId: element.materialId,
+      localAxes: clone2(element.localAxes),
+      resultantStates: states,
+      componentEnvelopes: componentEnvelopes(states.map((state) => ({
+        reference: state.reference,
+        location: { face: state.face, ...state.location },
+        components: state.components
+      })))
+    };
+  });
+}
+function groupDemands(classifications, idKey, demandIndex) {
+  return classifications.map((entity) => ({
+    id: entity.id,
+    classification: clone2(entity.classification),
+    [idKey]: [...entity[idKey]],
+    elementDemands: entity[idKey].map((id) => demandIndex.get(id)).filter(Boolean).map(clone2)
+  }));
+}
+function closestEndStation(actionState, end) {
+  if (actionState.stations.length === 0) return null;
+  const targetXi = end === "start" ? 0 : 1;
+  return actionState.stations.reduce((closest, station) => Math.abs(station.xi - targetXi) < Math.abs(closest.xi - targetXi) ? station : closest);
+}
+function extractJointDemands(joints, lineDemandIndex) {
+  return joints.map((joint) => {
+    var _a;
+    const states = /* @__PURE__ */ new Map();
+    for (const elementEnd of joint.lineElementEnds) {
+      const demand = lineDemandIndex.get(elementEnd.lineElementId);
+      for (const actionState of (_a = demand == null ? void 0 : demand.actionStates) != null ? _a : []) {
+        const key = referenceKey(actionState.reference);
+        if (!states.has(key)) {
+          states.set(key, {
+            reference: clone2(actionState.reference),
+            elementEnds: []
+          });
+        }
+        const station = closestEndStation(actionState, elementEnd.end);
+        const targetXi = elementEnd.end === "start" ? 0 : 1;
+        states.get(key).elementEnds.push({
+          lineElementId: elementEnd.lineElementId,
+          end: elementEnd.end,
+          coordinateSystem: actionState.coordinateSystem,
+          station: clone2(station),
+          atElementEnd: station != null && Math.abs(station.xi - targetXi) <= 1e-8
+        });
+      }
+    }
+    const demandStates = [...states.values()].map((state) => {
+      const present = new Set(state.elementEnds.filter((entry) => entry.atElementEnd).map((entry) => `${entry.lineElementId}:${entry.end}`));
+      const missingElementEnds = joint.lineElementEnds.filter((entry) => !present.has(`${entry.lineElementId}:${entry.end}`));
+      return {
+        ...state,
+        complete: missingElementEnds.length === 0,
+        missingElementEnds: clone2(missingElementEnds)
+      };
+    });
+    return {
+      jointId: joint.id,
+      nodeId: joint.nodeId,
+      classification: clone2(joint.classification),
+      lineElementEnds: clone2(joint.lineElementEnds),
+      demandStates,
+      complete: demandStates.length > 0 && demandStates.every((state) => state.complete)
+    };
+  });
+}
+function extractGlobalFemDemands({ model, analysis, result: result9, classification: classification2 } = {}) {
+  var _a, _b, _c, _d, _e, _f, _g, _h;
+  if (!model || !analysis || !result9 || !classification2) {
+    throw new Error(
+      "Global FEM demand extraction requires model, analysis, result and classification."
+    );
+  }
+  const lineElementDemands = extractLineElementDemands(model, result9);
+  const shellElementDemands = extractShellElementDemands(model, result9);
+  const lineDemandIndex = new Map(lineElementDemands.map((item) => [item.lineElementId, item]));
+  const shellDemandIndex = new Map(shellElementDemands.map((item) => [item.shellElementId, item]));
+  return {
+    schema: "strutture-js/global-fem-demand-set",
+    version: GLOBAL_FEM_DEMAND_SET_VERSION,
+    model: { id: model.id, hash: model.hash },
+    analysis: { id: analysis.id, hash: analysis.hash },
+    resultId: result9.id,
+    units: clone2(result9.units),
+    signConventions: clone2(result9.signConventions),
+    provenance: clone2(result9.provenance),
+    lineElementDemands,
+    shellElementDemands,
+    memberDemands: groupDemands(
+      classification2.members,
+      "lineElementIds",
+      lineDemandIndex
+    ),
+    surfaceDemands: groupDemands(
+      classification2.surfaces,
+      "shellElementIds",
+      shellDemandIndex
+    ),
+    jointDemands: extractJointDemands(classification2.joints, lineDemandIndex),
+    globalResponses: {
+      nodalDisplacements: clone2((_a = result9.results.nodalDisplacements) != null ? _a : []),
+      reactions: clone2((_b = result9.results.reactions) != null ? _b : []),
+      modes: clone2((_c = result9.results.modes) != null ? _c : []),
+      sectionCuts: clone2((_d = result9.results.sectionCuts) != null ? _d : []),
+      storeyResults: clone2((_e = result9.results.storeyResults) != null ? _e : []),
+      equilibriumResiduals: clone2((_f = result9.results.equilibriumResiduals) != null ? _f : []),
+      envelopes: clone2((_g = result9.results.envelopes) != null ? _g : []),
+      qualityIndicators: clone2((_h = result9.qualityIndicators) != null ? _h : {})
+    },
+    metadata: {
+      noCrossElementAxisAggregation: true,
+      normativeVerificationPerformed: false
+    }
+  };
+}
+
+// src/applications/global-fem-postprocessing/GlobalFemStructuralClassifier.js
+var DEGREES = 180 / Math.PI;
+function clone3(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+function clamp8(value, minimum2 = -1, maximum = 1) {
+  return Math.min(maximum, Math.max(minimum2, value));
+}
+function subtract(left, right) {
+  return {
+    x: left.x - right.x,
+    y: left.y - right.y,
+    z: left.z - right.z
+  };
+}
+function dot4(left, right) {
+  return left.x * right.x + left.y * right.y + left.z * right.z;
+}
+function norm3(vector) {
+  return Math.hypot(vector.x, vector.y, vector.z);
+}
+function normalized2(vector) {
+  const magnitude = norm3(vector);
+  if (!Number.isFinite(magnitude) || magnitude <= Number.EPSILON) return null;
+  return {
+    x: vector.x / magnitude,
+    y: vector.y / magnitude,
+    z: vector.z / magnitude
+  };
+}
+function scale(vector, factor2) {
+  return { x: vector.x * factor2, y: vector.y * factor2, z: vector.z * factor2 };
+}
+function add(left, right) {
+  return { x: left.x + right.x, y: left.y + right.y, z: left.z + right.z };
+}
+function averagePoints(points) {
+  if (points.length === 0) return { x: 0, y: 0, z: 0 };
+  return scale(points.reduce((sum, point4) => add(sum, point4), { x: 0, y: 0, z: 0 }), 1 / points.length);
+}
+function angleBetweenDirections(left, right, { unoriented = false } = {}) {
+  const normalizedLeft = normalized2(left);
+  const normalizedRight = normalized2(right);
+  if (!normalizedLeft || !normalizedRight) return null;
+  const cosine = unoriented ? Math.abs(dot4(normalizedLeft, normalizedRight)) : dot4(normalizedLeft, normalizedRight);
+  return Math.acos(clamp8(cosine)) * DEGREES;
+}
+function verticalCoordinate(point4, origin, upward) {
+  return dot4(subtract(point4, origin), upward);
+}
+function classification({ role, status, source, confidence, evidence, requiresConfirmation }) {
+  return {
+    role,
+    status,
+    source,
+    confidence,
+    evidence: [...evidence],
+    requiresConfirmation
+  };
+}
+function confirmedClassification(role, evidence = ["explicit-semantic-mapping"], source = "explicit-mapping") {
+  return classification({
+    role,
+    status: "confirmed",
+    source,
+    confidence: 1,
+    evidence,
+    requiresConfirmation: false
+  });
+}
+function confidenceFromAngle(angle2) {
+  return Number(clamp8(1 - angle2 / 90, 0, 1).toFixed(6));
+}
+function classifyLineDirection(direction, gravityDirection, policy) {
+  const angleFromVertical = angleBetweenDirections(direction, gravityDirection, {
+    unoriented: true
+  });
+  const angleFromHorizontal = 90 - angleFromVertical;
+  const evidence = [
+    `angle-from-vertical:${angleFromVertical.toFixed(6)}deg`,
+    `angle-from-horizontal:${angleFromHorizontal.toFixed(6)}deg`
+  ];
+  if (angleFromVertical <= policy.verticalToleranceDegrees) {
+    return classification({
+      role: "column",
+      status: "proposed",
+      source: "geometric-inference",
+      confidence: confidenceFromAngle(angleFromVertical),
+      evidence: [...evidence, "axis-near-parallel-to-gravity"],
+      requiresConfirmation: true
+    });
+  }
+  if (angleFromHorizontal <= policy.horizontalToleranceDegrees) {
+    return classification({
+      role: "beam",
+      status: "proposed",
+      source: "geometric-inference",
+      confidence: confidenceFromAngle(angleFromHorizontal),
+      evidence: [...evidence, "axis-near-orthogonal-to-gravity"],
+      requiresConfirmation: true
+    });
+  }
+  if (policy.maximumBeamInclinationDegrees != null && angleFromHorizontal <= policy.maximumBeamInclinationDegrees) {
+    return classification({
+      role: "beam",
+      status: "proposed",
+      source: "configured-geometric-inference",
+      confidence: confidenceFromAngle(angleFromHorizontal),
+      evidence: [...evidence, "within-configured-sloped-beam-threshold"],
+      requiresConfirmation: true
+    });
+  }
+  return classification({
+    role: "other",
+    status: "ambiguous",
+    source: "geometric-inference",
+    confidence: 0,
+    evidence: [...evidence, "orientation-does-not-identify-structural-role"],
+    requiresConfirmation: true
+  });
+}
+function classifyShellNormal(normal, gravityDirection, policy) {
+  const angleNormalToVertical = angleBetweenDirections(normal, gravityDirection, {
+    unoriented: true
+  });
+  const evidence = [`normal-angle-from-gravity:${angleNormalToVertical.toFixed(6)}deg`];
+  if (angleNormalToVertical <= policy.horizontalPlaneToleranceDegrees) {
+    return classification({
+      role: "slab",
+      status: "proposed",
+      source: "geometric-inference",
+      confidence: confidenceFromAngle(angleNormalToVertical),
+      evidence: [...evidence, "surface-plane-near-horizontal"],
+      requiresConfirmation: true
+    });
+  }
+  const angleFromVerticalPlane = 90 - angleNormalToVertical;
+  if (angleFromVerticalPlane <= policy.verticalPlaneToleranceDegrees) {
+    return classification({
+      role: "wall",
+      status: "proposed",
+      source: "geometric-inference",
+      confidence: confidenceFromAngle(angleFromVerticalPlane),
+      evidence: [...evidence, "surface-plane-near-vertical"],
+      requiresConfirmation: true
+    });
+  }
+  return classification({
+    role: "generic-shell",
+    status: "proposed",
+    source: "geometric-routing",
+    confidence: 1,
+    evidence: [...evidence, "surface-routed-to-generic-shell-processing"],
+    requiresConfirmation: true
+  });
+}
+function modelCharacteristicLength(model) {
+  if (model.nodes.length === 0) return 1;
+  const values = model.nodes.map((node) => node.coordinates);
+  const minimum2 = {
+    x: Math.min(...values.map((item) => item.x)),
+    y: Math.min(...values.map((item) => item.y)),
+    z: Math.min(...values.map((item) => item.z))
+  };
+  const maximum = {
+    x: Math.max(...values.map((item) => item.x)),
+    y: Math.max(...values.map((item) => item.y)),
+    z: Math.max(...values.map((item) => item.z))
+  };
+  return Math.max(norm3(subtract(maximum, minimum2)), 1);
+}
+function lineGeometry(element, nodeIndex) {
+  const start = nodeIndex.get(element.nodeIds[0]).coordinates;
+  const end = nodeIndex.get(element.nodeIds[1]).coordinates;
+  return { start, end, direction: normalized2(subtract(end, start)) };
+}
+function shellGeometry(element, nodeIndex) {
+  const points = element.nodeIds.map((nodeId) => nodeIndex.get(nodeId).coordinates);
+  return {
+    points,
+    normal: normalized2(element.localAxes.z),
+    centroid: averagePoints(points)
+  };
+}
+function connectedLineComponents(elements, geometries, classificationById, policy) {
+  const byNode = /* @__PURE__ */ new Map();
+  for (const element of elements) {
+    for (const nodeId of element.nodeIds) {
+      if (!byNode.has(nodeId)) byNode.set(nodeId, []);
+      byNode.get(nodeId).push(element);
+    }
+  }
+  const adjacency = new Map(elements.map((element) => [element.id, /* @__PURE__ */ new Set()]));
+  for (const incident of byNode.values()) {
+    if (incident.length !== 2) continue;
+    const [first, second] = incident;
+    const firstClassification = classificationById.get(first.id);
+    const secondClassification = classificationById.get(second.id);
+    const angle2 = angleBetweenDirections(
+      geometries.get(first.id).direction,
+      geometries.get(second.id).direction,
+      { unoriented: true }
+    );
+    if (first.sectionId === second.sectionId && first.materialId === second.materialId && firstClassification.role === secondClassification.role && firstClassification.status === secondClassification.status && angle2 <= policy.groupingAngleToleranceDegrees) {
+      adjacency.get(first.id).add(second.id);
+      adjacency.get(second.id).add(first.id);
+    }
+  }
+  return connectedComponents(elements.map((element) => element.id), adjacency);
+}
+function shellPairIsCompatible(first, second, geometries, nodeIndex, policy, tolerance) {
+  if (first.sectionId !== second.sectionId || first.materialId !== second.materialId) {
+    return false;
+  }
+  const firstGeometry = geometries.get(first.id);
+  const secondGeometry = geometries.get(second.id);
+  const normalAngle = angleBetweenDirections(firstGeometry.normal, secondGeometry.normal);
+  if (normalAngle == null || normalAngle > policy.groupingNormalToleranceDegrees) {
+    return false;
+  }
+  const firstOrigin = nodeIndex.get(first.nodeIds[0]).coordinates;
+  const secondOrigin = nodeIndex.get(second.nodeIds[0]).coordinates;
+  return secondGeometry.points.every((point4) => Math.abs(dot4(subtract(point4, firstOrigin), firstGeometry.normal)) <= tolerance) && firstGeometry.points.every((point4) => Math.abs(dot4(subtract(point4, secondOrigin), secondGeometry.normal)) <= tolerance);
+}
+function connectedShellComponents(elements, geometries, nodeIndex, policy, tolerance) {
+  const edgeOwners = /* @__PURE__ */ new Map();
+  for (const element of elements) {
+    for (let index = 0; index < element.nodeIds.length; index += 1) {
+      const first = element.nodeIds[index];
+      const second = element.nodeIds[(index + 1) % element.nodeIds.length];
+      const key = [first, second].sort().join("|");
+      if (!edgeOwners.has(key)) edgeOwners.set(key, []);
+      edgeOwners.get(key).push(element);
+    }
+  }
+  const adjacency = new Map(elements.map((element) => [element.id, /* @__PURE__ */ new Set()]));
+  for (const owners of edgeOwners.values()) {
+    for (let firstIndex = 0; firstIndex < owners.length; firstIndex += 1) {
+      for (let secondIndex = firstIndex + 1; secondIndex < owners.length; secondIndex += 1) {
+        const first = owners[firstIndex];
+        const second = owners[secondIndex];
+        if (shellPairIsCompatible(first, second, geometries, nodeIndex, policy, tolerance)) {
+          adjacency.get(first.id).add(second.id);
+          adjacency.get(second.id).add(first.id);
+        }
+      }
+    }
+  }
+  return connectedComponents(elements.map((element) => element.id), adjacency);
+}
+function connectedComponents(ids, adjacency) {
+  var _a;
+  const remaining = new Set(ids);
+  const components = [];
+  for (const root of [...ids].sort()) {
+    if (!remaining.has(root)) continue;
+    const stack = [root];
+    const component = [];
+    remaining.delete(root);
+    while (stack.length > 0) {
+      const current = stack.pop();
+      component.push(current);
+      for (const next of (_a = adjacency.get(current)) != null ? _a : []) {
+        if (!remaining.has(next)) continue;
+        remaining.delete(next);
+        stack.push(next);
+      }
+    }
+    components.push(component.sort());
+  }
+  return components;
+}
+function confirmedMembers(mapping, coveredLineElements, validLineElementIds, diagnostics) {
+  var _a, _b, _c;
+  const members = [];
+  for (const member of (_a = mapping == null ? void 0 : mapping.members) != null ? _a : []) {
+    const accepted = [];
+    for (const lineElementId of (_b = member.lineElementIds) != null ? _b : []) {
+      if (!validLineElementIds.has(lineElementId)) {
+        diagnostics.push({
+          code: "FEM_CLASSIFICATION_UNKNOWN_REFERENCE",
+          severity: "error",
+          entityId: lineElementId,
+          message: `Explicit member ${member.id} references unknown line element ${lineElementId}.`
+        });
+      } else if (coveredLineElements.has(lineElementId)) {
+        diagnostics.push({
+          code: "FEM_CLASSIFICATION_EXPLICIT_CONFLICT",
+          severity: "error",
+          entityId: lineElementId,
+          message: `Line element ${lineElementId} has more than one explicit member assignment.`
+        });
+      } else {
+        coveredLineElements.add(lineElementId);
+        accepted.push(lineElementId);
+      }
+    }
+    members.push({
+      id: member.id,
+      lineElementIds: accepted,
+      classification: confirmedClassification(member.role),
+      metadata: clone3((_c = member.metadata) != null ? _c : {})
+    });
+  }
+  return members;
+}
+function confirmedSurfaces(mapping, coveredShellElements, validShellElementIds, diagnostics) {
+  var _a, _b, _c, _d, _e;
+  const surfaces = [];
+  for (const [collection, role] of [[(_a = mapping == null ? void 0 : mapping.walls) != null ? _a : [], "wall"], [(_b = mapping == null ? void 0 : mapping.slabs) != null ? _b : [], "slab"]]) {
+    for (const surface of collection) {
+      const accepted = [];
+      for (const shellElementId of (_c = surface.shellElementIds) != null ? _c : []) {
+        if (!validShellElementIds.has(shellElementId)) {
+          diagnostics.push({
+            code: "FEM_CLASSIFICATION_UNKNOWN_REFERENCE",
+            severity: "error",
+            entityId: shellElementId,
+            message: `Explicit surface ${surface.id} references unknown shell element ${shellElementId}.`
+          });
+        } else if (coveredShellElements.has(shellElementId)) {
+          diagnostics.push({
+            code: "FEM_CLASSIFICATION_EXPLICIT_CONFLICT",
+            severity: "error",
+            entityId: shellElementId,
+            message: `Shell element ${shellElementId} has more than one explicit surface assignment.`
+          });
+        } else {
+          coveredShellElements.add(shellElementId);
+          accepted.push(shellElementId);
+        }
+      }
+      surfaces.push({
+        id: surface.id,
+        shellElementIds: accepted,
+        classification: confirmedClassification(role),
+        storeyIds: role === "wall" ? [...(_d = surface.storeyIds) != null ? _d : []] : [surface.storeyId].filter(Boolean),
+        metadata: clone3((_e = surface.metadata) != null ? _e : {})
+      });
+    }
+  }
+  return surfaces;
+}
+function proposeMembers(model, mapping, nodeIndex, gravityDirection, policy, diagnostics) {
+  const covered = /* @__PURE__ */ new Set();
+  const validIds = new Set(model.lineElements.map((element) => element.id));
+  const members = confirmedMembers(mapping, covered, validIds, diagnostics);
+  const elements = model.lineElements.filter((element) => !covered.has(element.id));
+  const geometries = new Map(elements.map((element) => [element.id, lineGeometry(element, nodeIndex)]));
+  const classificationById = new Map(elements.map((element) => [
+    element.id,
+    classifyLineDirection(geometries.get(element.id).direction, gravityDirection, policy.line)
+  ]));
+  const elementIndex = new Map(elements.map((element) => [element.id, element]));
+  for (const component of connectedLineComponents(elements, geometries, classificationById, policy.line)) {
+    const representative = classificationById.get(component[0]);
+    members.push({
+      id: `proposed-member:${component[0]}`,
+      lineElementIds: component,
+      classification: {
+        ...representative,
+        confidence: Math.min(...component.map((id) => classificationById.get(id).confidence)),
+        evidence: [
+          ...representative.evidence,
+          component.length > 1 ? "connected-collinear-elements-with-common-section-and-material" : "single-line-element"
+        ]
+      },
+      metadata: {
+        sectionIds: [...new Set(component.map((id) => elementIndex.get(id).sectionId))],
+        materialIds: [...new Set(component.map((id) => elementIndex.get(id).materialId))]
+      }
+    });
+  }
+  return members;
+}
+function proposeSurfaces(model, mapping, nodeIndex, gravityDirection, policy, tolerance, diagnostics) {
+  const covered = /* @__PURE__ */ new Set();
+  const validIds = new Set(model.shellElements.map((element) => element.id));
+  const surfaces = confirmedSurfaces(mapping, covered, validIds, diagnostics);
+  const elements = model.shellElements.filter((element) => !covered.has(element.id));
+  const geometries = new Map(elements.map((element) => [element.id, shellGeometry(element, nodeIndex)]));
+  const elementIndex = new Map(elements.map((element) => [element.id, element]));
+  for (const component of connectedShellComponents(
+    elements,
+    geometries,
+    nodeIndex,
+    policy.shell,
+    tolerance
+  )) {
+    const representativeNormal = geometries.get(component[0]).normal;
+    const surfaceClassification = classifyShellNormal(
+      representativeNormal,
+      gravityDirection,
+      policy.shell
+    );
+    const nodeIds = [...new Set(component.flatMap((id) => elementIndex.get(id).nodeIds))];
+    surfaces.push({
+      id: `proposed-surface:${component[0]}`,
+      shellElementIds: component,
+      classification: {
+        ...surfaceClassification,
+        evidence: [
+          ...surfaceClassification.evidence,
+          component.length > 1 ? "connected-coplanar-shell-mesh" : "single-shell-element"
+        ]
+      },
+      centroid: averagePoints(nodeIds.map((nodeId) => nodeIndex.get(nodeId).coordinates)),
+      normal: clone3(representativeNormal),
+      metadata: {
+        sectionIds: [...new Set(component.map((id) => elementIndex.get(id).sectionId))],
+        materialIds: [...new Set(component.map((id) => elementIndex.get(id).materialId))]
+      }
+    });
+  }
+  return surfaces;
+}
+function clusterElevations(values, tolerance) {
+  const clusters = [];
+  for (const value of [...values].sort((left, right) => left - right)) {
+    const last = clusters.at(-1);
+    if (!last || Math.abs(value - last.mean) > tolerance) {
+      clusters.push({ values: [value], mean: value });
+    } else {
+      last.values.push(value);
+      last.mean = last.values.reduce((sum, item) => sum + item, 0) / last.values.length;
+    }
+  }
+  return clusters;
+}
+function proposeDiaphragms(model, nodeIndex, origin, upward, elevationTolerance) {
+  var _a;
+  const diaphragms = model.diaphragms.map((diaphragm) => ({
+    id: diaphragm.id,
+    nodeIds: [...diaphragm.nodeIds],
+    classification: confirmedClassification(
+      "diaphragm",
+      ["explicit-model-diaphragm"],
+      "explicit-model"
+    ),
+    sourceEntityId: diaphragm.id
+  }));
+  const coveredConstraints = /* @__PURE__ */ new Set();
+  for (const constraint of model.constraints) {
+    if (!/(diaphragm|rigid[-_ ]?floor|rigid[-_ ]?plane)/i.test(constraint.type)) continue;
+    const nodeIds = [constraint.masterNodeId, ...(_a = constraint.slaveNodeIds) != null ? _a : []];
+    const elevations = nodeIds.map((nodeId) => {
+      var _a2;
+      return (_a2 = nodeIndex.get(nodeId)) == null ? void 0 : _a2.coordinates;
+    }).filter(Boolean).map((point4) => verticalCoordinate(point4, origin, upward));
+    if (elevations.length < 3 || Math.max(...elevations) - Math.min(...elevations) > elevationTolerance) {
+      continue;
+    }
+    coveredConstraints.add(constraint.id);
+    diaphragms.push({
+      id: `proposed-diaphragm:${constraint.id}`,
+      nodeIds,
+      classification: classification({
+        role: "diaphragm",
+        status: "proposed",
+        source: "constraint-inference",
+        confidence: 1,
+        evidence: ["constraint-type-declares-rigid-plane", "constraint-nodes-are-coplanar"],
+        requiresConfirmation: true
+      }),
+      sourceEntityId: constraint.id
+    });
+  }
+  return { diaphragms, coveredConstraints };
+}
+function proposeStoreys(model, mapping, nodeIndex, surfaces, diaphragms, origin, upward, tolerance) {
+  var _a, _b, _c, _d;
+  const storeys = [];
+  const mappedIds = /* @__PURE__ */ new Set();
+  for (const storey of (_a = mapping == null ? void 0 : mapping.storeys) != null ? _a : []) {
+    mappedIds.add(storey.storeyId);
+    const modelStorey = model.storeys.find((item) => item.id === storey.storeyId);
+    storeys.push({
+      id: storey.id,
+      storeyId: storey.storeyId,
+      elevation: (_b = modelStorey == null ? void 0 : modelStorey.elevation) != null ? _b : null,
+      nodeIds: [...(_c = storey.nodeIds) != null ? _c : []],
+      diaphragmIds: [...(_d = storey.diaphragmIds) != null ? _d : []],
+      classification: confirmedClassification("storey")
+    });
+  }
+  for (const modelStorey of model.storeys) {
+    if (mappedIds.has(modelStorey.id)) continue;
+    storeys.push({
+      id: `proposed-storey:${modelStorey.id}`,
+      storeyId: modelStorey.id,
+      elevation: modelStorey.elevation,
+      nodeIds: model.nodes.filter((node) => Math.abs(
+        verticalCoordinate(node.coordinates, origin, upward) - modelStorey.elevation
+      ) <= tolerance).map((node) => node.id),
+      diaphragmIds: [...modelStorey.diaphragmIds],
+      classification: classification({
+        role: "storey",
+        status: "proposed",
+        source: "model-level-inference",
+        confidence: 1,
+        evidence: ["explicit-model-storey-without-confirmed-semantic-mapping"],
+        requiresConfirmation: true
+      })
+    });
+  }
+  if (model.storeys.length > 0 || storeys.length > 0) return storeys;
+  const candidateElevations = [];
+  for (const diaphragm of diaphragms) {
+    const points = diaphragm.nodeIds.map((nodeId) => {
+      var _a2;
+      return (_a2 = nodeIndex.get(nodeId)) == null ? void 0 : _a2.coordinates;
+    }).filter(Boolean);
+    if (points.length > 0) {
+      candidateElevations.push(verticalCoordinate(averagePoints(points), origin, upward));
+    }
+  }
+  for (const surface of surfaces) {
+    if (surface.classification.role === "slab") {
+      candidateElevations.push(verticalCoordinate(surface.centroid, origin, upward));
+    }
+  }
+  return clusterElevations(candidateElevations, tolerance).map((cluster, index) => {
+    const elevation = cluster.mean;
+    return {
+      id: `proposed-storey:${index + 1}`,
+      storeyId: `proposed-level:${index + 1}`,
+      elevation,
+      nodeIds: model.nodes.filter((node) => Math.abs(verticalCoordinate(node.coordinates, origin, upward) - elevation) <= tolerance).map((node) => node.id),
+      diaphragmIds: diaphragms.filter((diaphragm) => {
+        const points = diaphragm.nodeIds.map((nodeId) => {
+          var _a2;
+          return (_a2 = nodeIndex.get(nodeId)) == null ? void 0 : _a2.coordinates;
+        }).filter(Boolean);
+        return points.length > 0 && Math.abs(
+          verticalCoordinate(averagePoints(points), origin, upward) - elevation
+        ) <= tolerance;
+      }).map((diaphragm) => diaphragm.id),
+      classification: classification({
+        role: "storey",
+        status: "proposed",
+        source: "elevation-clustering",
+        confidence: 1,
+        evidence: ["horizontal-surface-or-diaphragm-elevation-cluster"],
+        requiresConfirmation: true
+      })
+    };
+  });
+}
+function proposeJoints(model, mapping, members, policy) {
+  var _a;
+  const joints = ((_a = mapping == null ? void 0 : mapping.joints) != null ? _a : []).map((joint) => {
+    var _a2;
+    return {
+      id: joint.id,
+      nodeId: joint.nodeId,
+      lineElementEnds: clone3((_a2 = joint.lineElementEnds) != null ? _a2 : []),
+      classification: confirmedClassification("beam-column-joint")
+    };
+  });
+  const mappedNodes = new Set(joints.map((joint) => joint.nodeId));
+  const memberByElement = /* @__PURE__ */ new Map();
+  for (const member of members) {
+    for (const lineElementId of member.lineElementIds) {
+      memberByElement.set(lineElementId, member);
+    }
+  }
+  const incidentByNode = new Map(model.nodes.map((node) => [node.id, []]));
+  for (const element of model.lineElements) {
+    incidentByNode.get(element.nodeIds[0]).push({ element, end: "start" });
+    incidentByNode.get(element.nodeIds[1]).push({ element, end: "end" });
+  }
+  for (const [nodeId, incident] of incidentByNode) {
+    if (mappedNodes.has(nodeId)) continue;
+    if (incident.length < policy.joints.minimumIncidentLineElements) continue;
+    const roles = new Set(incident.map(({ element }) => {
+      var _a2;
+      return (_a2 = memberByElement.get(element.id)) == null ? void 0 : _a2.classification.role;
+    }));
+    if (!roles.has("beam") || !roles.has("column")) continue;
+    const ambiguous = incident.some(({ element }) => {
+      var _a2;
+      return ((_a2 = memberByElement.get(element.id)) == null ? void 0 : _a2.classification.status) === "ambiguous";
+    });
+    joints.push({
+      id: `proposed-joint:${nodeId}`,
+      nodeId,
+      lineElementEnds: incident.map(({ element, end }) => ({
+        lineElementId: element.id,
+        end
+      })),
+      classification: classification({
+        role: "beam-column-joint",
+        status: ambiguous ? "ambiguous" : "proposed",
+        source: "connectivity-and-role-inference",
+        confidence: ambiguous ? 0 : Math.min(...incident.map(({ element }) => memberByElement.get(element.id).classification.confidence)),
+        evidence: ["incident-beam-and-column-candidates-at-common-fem-node"],
+        requiresConfirmation: true
+      })
+    });
+  }
+  return joints;
+}
+function proposalWarnings(proposal) {
+  const all = [
+    ...proposal.members,
+    ...proposal.surfaces,
+    ...proposal.storeys,
+    ...proposal.diaphragms,
+    ...proposal.joints
+  ];
+  const proposed = all.filter((item) => item.classification.status === "proposed").length;
+  const ambiguous = all.filter((item) => item.classification.status === "ambiguous").length;
+  const warnings = [];
+  if (proposed > 0) {
+    warnings.push({
+      code: "FEM_CLASSIFICATION_REQUIRES_CONFIRMATION",
+      message: `${proposed} structural classifications are proposals and cannot authorize final normative verification.`
+    });
+  }
+  if (ambiguous > 0) {
+    warnings.push({
+      code: "FEM_CLASSIFICATION_AMBIGUOUS",
+      message: `${ambiguous} structural classifications are ambiguous and block role-dependent checks.`
+    });
+  }
+  return warnings;
+}
+function classifyGlobalFemStructuralEntities({
+  model,
+  mapping = null,
+  policy: policyInput = {}
+} = {}) {
+  var _a, _b;
+  if (!model || !Array.isArray(model.nodes)) {
+    throw new Error("Global FEM structural classification requires a model contract.");
+  }
+  const policy = normalizeGlobalFemClassificationPolicy(policyInput);
+  const nodeIndex = new Map(model.nodes.map((node) => [node.id, node]));
+  const gravityDirection = normalized2(model.globalCoordinateSystem.gravityDirection);
+  if (!gravityDirection) {
+    throw new Error("Global FEM structural classification requires a non-degenerate gravity direction.");
+  }
+  const upward = scale(gravityDirection, -1);
+  const origin = model.globalCoordinateSystem.origin;
+  const characteristicLength = modelCharacteristicLength(model);
+  const coplanarityTolerance = (_a = policy.shell.coplanarityTolerance) != null ? _a : characteristicLength * policy.storeys.relativeElevationTolerance;
+  const elevationTolerance = (_b = policy.storeys.elevationTolerance) != null ? _b : characteristicLength * policy.storeys.relativeElevationTolerance;
+  const diagnostics = [];
+  const members = proposeMembers(
+    model,
+    mapping,
+    nodeIndex,
+    gravityDirection,
+    policy,
+    diagnostics
+  );
+  const surfaces = proposeSurfaces(
+    model,
+    mapping,
+    nodeIndex,
+    gravityDirection,
+    policy,
+    coplanarityTolerance,
+    diagnostics
+  );
+  const { diaphragms } = proposeDiaphragms(
+    model,
+    nodeIndex,
+    origin,
+    upward,
+    elevationTolerance
+  );
+  const storeys = proposeStoreys(
+    model,
+    mapping,
+    nodeIndex,
+    surfaces,
+    diaphragms,
+    origin,
+    upward,
+    elevationTolerance
+  );
+  const joints = proposeJoints(model, mapping, members, policy);
+  const proposal = {
+    schema: "strutture-js/fem-structural-classification-proposal",
+    version: GLOBAL_FEM_CLASSIFICATION_PROPOSAL_VERSION,
+    modelId: model.id,
+    modelHash: model.hash,
+    policy: {
+      ...clone3(policy),
+      resolved: {
+        characteristicLength,
+        coplanarityTolerance,
+        elevationTolerance,
+        modelLengthUnit: model.units.length
+      }
+    },
+    members,
+    surfaces,
+    storeys,
+    diaphragms,
+    joints,
+    diagnostics,
+    warnings: [],
+    summary: {}
+  };
+  proposal.warnings = proposalWarnings(proposal);
+  proposal.summary = {
+    confirmed: [members, surfaces, storeys, diaphragms, joints].flat().filter((item) => item.classification.status === "confirmed").length,
+    proposed: [members, surfaces, storeys, diaphragms, joints].flat().filter((item) => item.classification.status === "proposed").length,
+    ambiguous: [members, surfaces, storeys, diaphragms, joints].flat().filter((item) => item.classification.status === "ambiguous").length
+  };
+  return proposal;
+}
+
+// src/applications/global-fem-postprocessing/GlobalFemVerificationReadiness.js
+var GLOBAL_FEM_READINESS_REPORT_VERSION = 0;
+var GLOBAL_FEM_READINESS_ASSESSMENTS = Object.freeze({
+  GENERIC_DEMANDS: "generic-demands",
+  SEMANTIC_DEMANDS: "semantic-demands",
+  GLOBAL_DISPLACEMENT_DATA: "global-displacement-data",
+  MODAL_DATA: "modal-data",
+  SECOND_ORDER_DATA: "second-order-data",
+  RC_MEMBER_VERIFICATION: "rc-member-verification",
+  RC_WALL_VERIFICATION: "rc-wall-verification",
+  RC_JOINT_VERIFICATION: "rc-joint-verification",
+  CAPACITY_DESIGN: "capacity-design",
+  COMPLETE_NTC2018_BUILDING_VERIFICATION: "complete-ntc2018-building-verification"
+});
+var GLOBAL_FEM_READINESS_ASSESSMENT_VALUES = Object.freeze(
+  Object.values(GLOBAL_FEM_READINESS_ASSESSMENTS)
+);
+var IMPLEMENTED_ASSESSMENTS = /* @__PURE__ */ new Set([
+  GLOBAL_FEM_READINESS_ASSESSMENTS.GENERIC_DEMANDS,
+  GLOBAL_FEM_READINESS_ASSESSMENTS.SEMANTIC_DEMANDS,
+  GLOBAL_FEM_READINESS_ASSESSMENTS.GLOBAL_DISPLACEMENT_DATA,
+  GLOBAL_FEM_READINESS_ASSESSMENTS.MODAL_DATA,
+  GLOBAL_FEM_READINESS_ASSESSMENTS.SECOND_ORDER_DATA
+]);
+var NORMATIVE_ASSESSMENTS = /* @__PURE__ */ new Set([
+  GLOBAL_FEM_READINESS_ASSESSMENTS.RC_MEMBER_VERIFICATION,
+  GLOBAL_FEM_READINESS_ASSESSMENTS.RC_WALL_VERIFICATION,
+  GLOBAL_FEM_READINESS_ASSESSMENTS.RC_JOINT_VERIFICATION,
+  GLOBAL_FEM_READINESS_ASSESSMENTS.CAPACITY_DESIGN,
+  GLOBAL_FEM_READINESS_ASSESSMENTS.COMPLETE_NTC2018_BUILDING_VERIFICATION
+]);
+function missing(code, path, message) {
+  return { code, path, message };
+}
+function isPresent(value) {
+  return value !== null && value !== void 0 && value !== "";
+}
+function collectionIds(value) {
+  if (Array.isArray(value)) return new Set(value.map((item) => item == null ? void 0 : item.id).filter(Boolean));
+  if (value && typeof value === "object") return new Set(Object.keys(value));
+  return /* @__PURE__ */ new Set();
+}
+function requirePaths(target, definitions) {
+  return definitions.flatMap(([path, value, message]) => isPresent(value) ? [] : [missing("FEM_REQUIRED_INPUT_MISSING", path, message)]);
+}
+function contractMissing(validations, result9) {
+  if (!validations) {
+    return [missing(
+      "FEM_CONTRACT_VALIDATION_MISSING",
+      "$",
+      "Validated FEM capabilities, model, analysis and result are required."
+    )];
+  }
+  const invalid = ["capabilities", "model", "analysis", "result"].flatMap((name) => {
+    var _a;
+    return ((_a = validations[name]) == null ? void 0 : _a.ok) ? [] : [missing(
+      "FEM_CONTRACT_INVALID",
+      `$.${name}`,
+      `${name} contains contract validation errors.`
+    )];
+  });
+  if (result9 && ["failed", "not-supported"].includes(result9.status)) {
+    invalid.push(missing(
+      "FEM_ANALYSIS_NOT_COMPLETED",
+      "$.result.status",
+      `The FEM analysis status is ${result9.status}; completed results are required.`
+    ));
+  }
+  return invalid;
+}
+function mappingState(profile, mappingValidation, classification2) {
+  var _a;
+  if (profile === GLOBAL_FEM_POSTPROCESSING_PROFILES.DEMAND_ONLY) {
+    return { confirmed: false, provisional: false, missing: [] };
+  }
+  if (mappingValidation == null ? void 0 : mappingValidation.ok) {
+    return { confirmed: true, provisional: false, missing: [] };
+  }
+  const ambiguous = classification2.summary.ambiguous;
+  const unsafeMappingErrors = ((_a = mappingValidation == null ? void 0 : mappingValidation.errors) != null ? _a : []).filter((item) => item.code !== "FEM_MAPPING_INCOMPLETE");
+  if (unsafeMappingErrors.length > 0) {
+    return {
+      confirmed: false,
+      provisional: false,
+      missing: unsafeMappingErrors.map((item) => missing(
+        item.code,
+        `$.mapping${item.path === "$" ? "" : item.path.slice(1)}`,
+        item.message
+      ))
+    };
+  }
+  if (profile === GLOBAL_FEM_POSTPROCESSING_PROFILES.ASSISTED && ambiguous === 0) {
+    return {
+      confirmed: false,
+      provisional: true,
+      missing: [missing(
+        "FEM_MAPPING_CONFIRMATION_REQUIRED",
+        "$.mapping",
+        "Assisted classifications must be reviewed and converted to a complete FemEntityMappingContract."
+      )]
+    };
+  }
+  return {
+    confirmed: false,
+    provisional: false,
+    missing: [missing(
+      ambiguous > 0 ? "FEM_CLASSIFICATION_AMBIGUOUS" : "FEM_MAPPING_REQUIRED",
+      "$.mapping",
+      ambiguous > 0 ? "Ambiguous classifications must be resolved before role-dependent processing." : "A valid and complete FemEntityMappingContract is required."
+    )]
+  };
+}
+function resultDataMissing(assessmentId, capabilities, model, analysis, result9) {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i;
+  const results = (_a = result9 == null ? void 0 : result9.results) != null ? _a : {};
+  switch (assessmentId) {
+    case GLOBAL_FEM_READINESS_ASSESSMENTS.GENERIC_DEMANDS: {
+      const canReadLines = model.lineElements.length === 0 || capabilities.results.lineElementActions && ((_c = (_b = results.lineElementActions) == null ? void 0 : _b.length) != null ? _c : 0) > 0;
+      const canReadShells = model.shellElements.length === 0 || capabilities.results.shellResultants && ((_e = (_d = results.shellResultants) == null ? void 0 : _d.length) != null ? _e : 0) > 0;
+      return [
+        ...!canReadLines ? [missing(
+          "FEM_LINE_ACTIONS_UNAVAILABLE",
+          "$.result.results.lineElementActions",
+          "Line elements exist but line-element actions are unavailable."
+        )] : [],
+        ...!canReadShells ? [missing(
+          "FEM_SHELL_RESULTANTS_UNAVAILABLE",
+          "$.result.results.shellResultants",
+          "Shell elements exist but shell resultants are unavailable."
+        )] : []
+      ];
+    }
+    case GLOBAL_FEM_READINESS_ASSESSMENTS.SEMANTIC_DEMANDS:
+      return resultDataMissing(
+        GLOBAL_FEM_READINESS_ASSESSMENTS.GENERIC_DEMANDS,
+        capabilities,
+        model,
+        analysis,
+        result9
+      );
+    case GLOBAL_FEM_READINESS_ASSESSMENTS.GLOBAL_DISPLACEMENT_DATA:
+      return capabilities.results.nodalDisplacements && ((_g = (_f = results.nodalDisplacements) == null ? void 0 : _f.length) != null ? _g : 0) > 0 ? [] : [missing(
+        "FEM_NODAL_DISPLACEMENTS_UNAVAILABLE",
+        "$.result.results.nodalDisplacements",
+        "Nodal displacements were not declared and supplied."
+      )];
+    case GLOBAL_FEM_READINESS_ASSESSMENTS.MODAL_DATA:
+      return capabilities.analyses.modal && capabilities.results.modes && analysis.procedures.some((procedure) => procedure.type === "modal") && ((_i = (_h = results.modes) == null ? void 0 : _h.length) != null ? _i : 0) > 0 ? [] : [missing(
+        "FEM_MODAL_DATA_UNAVAILABLE",
+        "$.result.results.modes",
+        "A modal procedure, modal capability and modal results are required."
+      )];
+    case GLOBAL_FEM_READINESS_ASSESSMENTS.SECOND_ORDER_DATA:
+      return capabilities.analyses.secondOrder && analysis.procedures.some((procedure) => {
+        var _a2;
+        return procedure.type === "second-order-static" || ((_a2 = procedure.secondOrder) == null ? void 0 : _a2.enabled) === true;
+      }) ? [] : [missing(
+        "FEM_SECOND_ORDER_DATA_UNAVAILABLE",
+        "$.analysis.procedures",
+        "Second-order capability and an enabled second-order procedure are required."
+      )];
+    default:
+      return [];
+  }
+}
+function missingMemberDesignData(classification2, designData) {
+  const available = collectionIds(designData == null ? void 0 : designData.members);
+  return classification2.members.filter((member) => ["beam", "column"].includes(member.classification.role)).flatMap((member) => available.has(member.id) ? [] : [missing(
+    "FEM_MEMBER_DESIGN_DATA_MISSING",
+    `$.designData.members.${member.id}`,
+    `Explicit section, materials and reinforcement data are required for member ${member.id}.`
+  )]);
+}
+function missingWallDesignData(classification2, designData) {
+  const available = collectionIds(designData == null ? void 0 : designData.walls);
+  return classification2.surfaces.filter((surface) => surface.classification.role === "wall").flatMap((surface) => available.has(surface.id) ? [] : [missing(
+    "FEM_WALL_DESIGN_DATA_MISSING",
+    `$.designData.walls.${surface.id}`,
+    `Explicit geometry, materials and reinforcement data are required for wall ${surface.id}.`
+  )]);
+}
+function missingSlabDesignData(classification2, designData) {
+  const available = collectionIds(designData == null ? void 0 : designData.slabs);
+  return classification2.surfaces.filter((surface) => surface.classification.role === "slab").flatMap((surface) => available.has(surface.id) ? [] : [missing(
+    "FEM_SLAB_DESIGN_DATA_MISSING",
+    `$.designData.slabs.${surface.id}`,
+    `Explicit geometry, materials and reinforcement data are required for slab ${surface.id}.`
+  )]);
+}
+function missingJointDesignData(classification2, designData) {
+  const available = collectionIds(designData == null ? void 0 : designData.joints);
+  return classification2.joints.flatMap((joint) => available.has(joint.id) ? [] : [missing(
+    "FEM_JOINT_DESIGN_DATA_MISSING",
+    `$.designData.joints.${joint.id}`,
+    `Explicit geometry, reinforcement and confinement data are required for joint ${joint.id}.`
+  )]);
+}
+function projectContextMissing(projectContext, { seismic = false, dissipative = false } = {}) {
+  const base = requirePaths(projectContext, [
+    ["$.projectContext.intendedUse", projectContext == null ? void 0 : projectContext.intendedUse, "Intended use is required."],
+    ["$.projectContext.nominalLife", projectContext == null ? void 0 : projectContext.nominalLife, "Nominal life is required."],
+    ["$.projectContext.useClass", projectContext == null ? void 0 : projectContext.useClass, "Use class is required."]
+  ]);
+  if (seismic) {
+    base.push(...requirePaths(projectContext, [[
+      "$.projectContext.seismicParameters",
+      projectContext == null ? void 0 : projectContext.seismicParameters,
+      "Explicit seismic parameters are required."
+    ]]));
+  }
+  if (dissipative) {
+    base.push(...requirePaths(projectContext, [
+      [
+        "$.projectContext.ductilityClass",
+        projectContext == null ? void 0 : projectContext.ductilityClass,
+        "The ductility class must be explicitly assigned."
+      ],
+      [
+        "$.projectContext.dissipativeBehavior",
+        projectContext == null ? void 0 : projectContext.dissipativeBehavior,
+        "Dissipative or non-dissipative behavior must be explicitly assigned."
+      ]
+    ]));
+  }
+  return base;
+}
+function combinationMissing(analysis, requiredLimitStates) {
+  const available = new Set(analysis.combinations.map((item) => item.limitState));
+  return requiredLimitStates.flatMap((limitState) => available.has(limitState) ? [] : [missing(
+    "FEM_REQUIRED_COMBINATION_MISSING",
+    "$.analysis.combinations",
+    `At least one ${limitState} combination is required.`
+  )]);
+}
+function assessmentMissing({
+  assessmentId,
+  baseMissing,
+  mapping,
+  classification: classification2,
+  capabilities,
+  model,
+  analysis,
+  result: result9,
+  projectContext,
+  designData
+}) {
+  const items = [...baseMissing];
+  if (assessmentId === GLOBAL_FEM_READINESS_ASSESSMENTS.SEMANTIC_DEMANDS) {
+    items.push(...mapping.missing);
+  }
+  items.push(...resultDataMissing(assessmentId, capabilities, model, analysis, result9));
+  if (assessmentId === GLOBAL_FEM_READINESS_ASSESSMENTS.RC_MEMBER_VERIFICATION) {
+    items.push(...resultDataMissing(
+      GLOBAL_FEM_READINESS_ASSESSMENTS.GENERIC_DEMANDS,
+      capabilities,
+      model,
+      analysis,
+      result9
+    ));
+    items.push(...mapping.missing);
+    items.push(...missingMemberDesignData(classification2, designData));
+    items.push(...projectContextMissing(projectContext));
+    items.push(...combinationMissing(analysis, ["ultimate", "serviceability"]));
+  }
+  if (assessmentId === GLOBAL_FEM_READINESS_ASSESSMENTS.RC_WALL_VERIFICATION) {
+    items.push(...resultDataMissing(
+      GLOBAL_FEM_READINESS_ASSESSMENTS.GENERIC_DEMANDS,
+      capabilities,
+      model,
+      analysis,
+      result9
+    ));
+    items.push(...mapping.missing);
+    items.push(...missingWallDesignData(classification2, designData));
+    items.push(...projectContextMissing(projectContext, { seismic: true }));
+    items.push(...combinationMissing(analysis, ["ultimate", "serviceability", "seismic"]));
+  }
+  if (assessmentId === GLOBAL_FEM_READINESS_ASSESSMENTS.RC_JOINT_VERIFICATION) {
+    items.push(...resultDataMissing(
+      GLOBAL_FEM_READINESS_ASSESSMENTS.GENERIC_DEMANDS,
+      capabilities,
+      model,
+      analysis,
+      result9
+    ));
+    items.push(...mapping.missing);
+    items.push(...missingJointDesignData(classification2, designData));
+    items.push(...projectContextMissing(projectContext, { seismic: true, dissipative: true }));
+    items.push(...combinationMissing(analysis, ["ultimate", "seismic"]));
+  }
+  if (assessmentId === GLOBAL_FEM_READINESS_ASSESSMENTS.CAPACITY_DESIGN) {
+    items.push(...resultDataMissing(
+      GLOBAL_FEM_READINESS_ASSESSMENTS.GENERIC_DEMANDS,
+      capabilities,
+      model,
+      analysis,
+      result9
+    ));
+    items.push(...mapping.missing);
+    items.push(...missingMemberDesignData(classification2, designData));
+    items.push(...missingWallDesignData(classification2, designData));
+    items.push(...projectContextMissing(projectContext, { seismic: true, dissipative: true }));
+    items.push(...combinationMissing(analysis, ["seismic"]));
+  }
+  if (assessmentId === GLOBAL_FEM_READINESS_ASSESSMENTS.COMPLETE_NTC2018_BUILDING_VERIFICATION) {
+    items.push(...mapping.missing);
+    items.push(...missingMemberDesignData(classification2, designData));
+    items.push(...missingWallDesignData(classification2, designData));
+    items.push(...missingSlabDesignData(classification2, designData));
+    items.push(...missingJointDesignData(classification2, designData));
+    items.push(...projectContextMissing(projectContext, { seismic: true, dissipative: true }));
+    items.push(...combinationMissing(
+      analysis,
+      ["ultimate", "serviceability", "seismic"]
+    ));
+    items.push(...resultDataMissing(
+      GLOBAL_FEM_READINESS_ASSESSMENTS.GENERIC_DEMANDS,
+      capabilities,
+      model,
+      analysis,
+      result9
+    ));
+    items.push(...resultDataMissing(
+      GLOBAL_FEM_READINESS_ASSESSMENTS.MODAL_DATA,
+      capabilities,
+      model,
+      analysis,
+      result9
+    ));
+    items.push(...resultDataMissing(
+      GLOBAL_FEM_READINESS_ASSESSMENTS.GLOBAL_DISPLACEMENT_DATA,
+      capabilities,
+      model,
+      analysis,
+      result9
+    ));
+  }
+  return items.filter((item, index, array) => array.findIndex((candidate) => candidate.code === item.code && candidate.path === item.path && candidate.message === item.message) === index);
+}
+function resolveAssessmentStatus({ implementationStatus, inputStatus }) {
+  if (inputStatus === "blocked") return "blocked";
+  if (implementationStatus === "not-implemented") return "not-implemented";
+  if (inputStatus === "provisional") return "provisional";
+  return "ready";
+}
+function evaluateGlobalFemVerificationReadiness({
+  profile,
+  validations,
+  mappingValidation = null,
+  classification: classification2,
+  capabilities,
+  model,
+  analysis,
+  result: result9,
+  projectContext = null,
+  designData = null,
+  requestedAssessments = null
+} = {}) {
+  if (!GLOBAL_FEM_POSTPROCESSING_PROFILE_VALUES.includes(profile)) {
+    throw new Error(`Unsupported global FEM postprocessing profile: ${profile}.`);
+  }
+  if (!classification2 || !capabilities || !model || !analysis || !result9) {
+    throw new Error("Global FEM readiness requires validated contracts and classification.");
+  }
+  const requested = requestedAssessments != null ? requestedAssessments : [
+    GLOBAL_FEM_READINESS_ASSESSMENTS.GENERIC_DEMANDS,
+    ...profile === GLOBAL_FEM_POSTPROCESSING_PROFILES.DEMAND_ONLY ? [] : [GLOBAL_FEM_READINESS_ASSESSMENTS.SEMANTIC_DEMANDS]
+  ];
+  const unknown = requested.filter((item) => !GLOBAL_FEM_READINESS_ASSESSMENT_VALUES.includes(item));
+  if (unknown.length > 0) {
+    throw new Error(`Unsupported global FEM readiness assessment: ${unknown.join(", ")}.`);
+  }
+  const baseMissing = contractMissing(validations, result9);
+  const mapping = mappingState(profile, mappingValidation, classification2);
+  const assessments = requested.map((assessmentId) => {
+    const missingInputs = assessmentMissing({
+      assessmentId,
+      baseMissing,
+      mapping,
+      classification: classification2,
+      capabilities,
+      model,
+      analysis,
+      result: result9,
+      projectContext,
+      designData
+    });
+    const implementationStatus = IMPLEMENTED_ASSESSMENTS.has(assessmentId) ? "available" : "not-implemented";
+    const inputStatus = missingInputs.length === 0 ? assessmentId === GLOBAL_FEM_READINESS_ASSESSMENTS.SEMANTIC_DEMANDS && mapping.provisional ? "provisional" : "ready" : assessmentId === GLOBAL_FEM_READINESS_ASSESSMENTS.SEMANTIC_DEMANDS && mapping.provisional && missingInputs.every((item) => item.code === "FEM_MAPPING_CONFIRMATION_REQUIRED") ? "provisional" : "blocked";
+    return {
+      id: assessmentId,
+      normative: NORMATIVE_ASSESSMENTS.has(assessmentId),
+      implementationStatus,
+      inputStatus,
+      status: resolveAssessmentStatus({ implementationStatus, inputStatus }),
+      missingInputs
+    };
+  });
+  return {
+    schema: "strutture-js/global-fem-verification-readiness",
+    version: GLOBAL_FEM_READINESS_REPORT_VERSION,
+    profile,
+    model: { id: model.id, hash: model.hash },
+    analysis: { id: analysis.id, hash: analysis.hash },
+    assessments,
+    readyForRequestedProcessing: assessments.every((item) => ["ready", "provisional"].includes(item.status)),
+    normativeVerificationEligible: assessments.some((item) => item.normative) && assessments.filter((item) => item.normative).every((item) => item.status === "ready") && mapping.confirmed,
+    mapping: {
+      confirmed: mapping.confirmed,
+      provisional: mapping.provisional,
+      ambiguousClassificationCount: classification2.summary.ambiguous
+    }
+  };
+}
+
+// src/applications/global-fem-postprocessing/GlobalFemPostProcessingApplication.js
+function demandOnlyClassification(model) {
+  return {
+    schema: "strutture-js/fem-structural-classification-proposal",
+    version: GLOBAL_FEM_CLASSIFICATION_PROPOSAL_VERSION,
+    modelId: model.id,
+    modelHash: model.hash,
+    policy: null,
+    members: [],
+    surfaces: [],
+    storeys: [],
+    diaphragms: [],
+    joints: [],
+    diagnostics: [],
+    warnings: [],
+    summary: { confirmed: 0, proposed: 0, ambiguous: 0 },
+    metadata: { skippedForDemandOnlyProfile: true }
+  };
+}
+function confirmedOnlyClassification(proposal) {
+  const collections = ["members", "surfaces", "storeys", "diaphragms", "joints"];
+  const confirmed = Object.fromEntries(collections.map((name) => [
+    name,
+    proposal[name].filter((item) => item.classification.status === "confirmed")
+  ]));
+  return {
+    ...proposal,
+    ...confirmed,
+    warnings: [],
+    summary: {
+      confirmed: Object.values(confirmed).flat().length,
+      proposed: 0,
+      ambiguous: 0
+    },
+    metadata: { confirmedEntitiesOnly: true }
+  };
+}
+function validationSummary(validation) {
+  if (!validation) return null;
+  return {
+    ok: validation.ok,
+    errors: validation.errors.map((item) => ({ ...item })),
+    warnings: validation.warnings.map((item) => ({ ...item }))
+  };
+}
+function validateContracts(input) {
+  const capabilities = validateFemCapabilitiesContract(input.capabilities);
+  const model = validateGlobalFemModelContract(input.model);
+  const analysis = validateGlobalFemAnalysisContract(input.analysis, {
+    model: model.ok ? model.value : null,
+    capabilities: capabilities.ok ? capabilities.value : null
+  });
+  const mapping = input.mapping == null ? null : validateFemEntityMappingContract(input.mapping, {
+    model: model.ok ? model.value : null
+  });
+  const result9 = validateGlobalFemResultContract(input.result, {
+    model: model.ok ? model.value : null,
+    analysis: analysis.ok ? analysis.value : null,
+    capabilities: capabilities.ok ? capabilities.value : null,
+    mapping: (mapping == null ? void 0 : mapping.ok) ? mapping.value : null
+  });
+  return { capabilities, model, analysis, mapping, result: result9 };
+}
+function coreContractsAreValid(validations) {
+  return ["capabilities", "model", "analysis", "result"].every((name) => validations[name].ok);
+}
+function collectWarnings(validations, classification2 = null, technicalResult = null) {
+  var _a;
+  return [
+    ...Object.values(validations).filter(Boolean).flatMap((validation) => validation.warnings.map((item) => ({ ...item }))),
+    ...((_a = classification2 == null ? void 0 : classification2.warnings) != null ? _a : []).map((item) => ({ ...item })),
+    ...(technicalResult == null ? void 0 : technicalResult.status) === "partial" ? [{
+      code: "FEM_ANALYSIS_PARTIAL",
+      path: "$.result.status",
+      message: "The FEM result is partial; only assessments whose declared capabilities and data are present can be ready."
+    }] : []
+  ];
+}
+var GlobalFemPostProcessingApplication = class extends StructuralApplication {
+  constructor() {
+    super({
+      id: "global-fem-postprocessing",
+      name: "Global FEM Postprocessing",
+      description: "Solver-neutral validation, assisted structural classification and demand extraction from global FEM contracts.",
+      domain: "fem",
+      supportedCodes: ["method-neutral"],
+      tags: ["fem", "postprocessing", "classification", "demand-extraction", "readiness"],
+      metadata: {
+        maturity: "partial",
+        limitations: [
+          "assisted classifications are proposals and never authorize final normative verification",
+          "reinforcement, ductility, use and seismic project data are never inferred",
+          "global orchestration of reinforced-concrete normative checks is not implemented"
+        ]
+      }
+    });
+  }
+  run(input = {}) {
+    var _a, _b, _c;
+    const profile = (_a = input.profile) != null ? _a : GLOBAL_FEM_POSTPROCESSING_PROFILES.CONFIRMED;
+    if (!GLOBAL_FEM_POSTPROCESSING_PROFILE_VALUES.includes(profile)) {
+      throw new Error(`Unsupported global FEM postprocessing profile: ${profile}.`);
+    }
+    const validations = validateContracts(input);
+    const serializedValidations = Object.fromEntries(
+      Object.entries(validations).map(([name, validation]) => [
+        name,
+        validationSummary(validation)
+      ])
+    );
+    if (!coreContractsAreValid(validations)) {
+      const errors = Object.values(validations).filter(Boolean).flatMap((validation) => validation.errors.map((item) => ({ ...item })));
+      return new CalculationResult({
+        applicationId: this.id,
+        status: RESULT_STATUS.NOT_ANALYZED,
+        summary: "Global FEM postprocessing was not run because one or more core contracts are invalid.",
+        outputs: { profile, validations: serializedValidations },
+        warnings: [...collectWarnings(validations), ...errors],
+        assumptions: [],
+        metadata: { domain: this.domain, normativeVerificationPerformed: false }
+      });
+    }
+    const capabilities = validations.capabilities.value;
+    const model = validations.model.value;
+    const analysis = validations.analysis.value;
+    const result9 = validations.result.value;
+    const mapping = (_c = (_b = validations.mapping) == null ? void 0 : _b.value) != null ? _c : null;
+    const classificationProposal = profile === GLOBAL_FEM_POSTPROCESSING_PROFILES.DEMAND_ONLY ? demandOnlyClassification(model) : classifyGlobalFemStructuralEntities({
+      model,
+      mapping,
+      policy: input.classificationPolicy
+    });
+    const classification2 = profile === GLOBAL_FEM_POSTPROCESSING_PROFILES.CONFIRMED ? confirmedOnlyClassification(classificationProposal) : classificationProposal;
+    const demands = extractGlobalFemDemands({ model, analysis, result: result9, classification: classification2 });
+    const readiness = evaluateGlobalFemVerificationReadiness({
+      profile,
+      validations,
+      mappingValidation: validations.mapping,
+      classification: classification2,
+      capabilities,
+      model,
+      analysis,
+      result: result9,
+      projectContext: input.projectContext,
+      designData: input.designData,
+      requestedAssessments: input.requestedAssessments
+    });
+    const ready = readiness.readyForRequestedProcessing;
+    return new CalculationResult({
+      applicationId: this.id,
+      status: ready ? RESULT_STATUS.OK : RESULT_STATUS.NOT_ANALYZED,
+      summary: ready ? "Global FEM contracts were postprocessed; no normative verification was performed." : "Global FEM contracts were read, but requested processing is incomplete.",
+      outputs: {
+        profile,
+        validations: serializedValidations,
+        classification: classification2,
+        demands,
+        readiness
+      },
+      warnings: collectWarnings(validations, classification2, result9),
+      assumptions: [
+        "Geometric classifications are non-normative proposals until confirmed by an explicit mapping.",
+        "Element actions and shell resultants retain the solver-neutral contract sign conventions and local axes."
+      ],
+      metadata: {
+        domain: this.domain,
+        normativeVerificationPerformed: false,
+        classificationProposalVersion: classification2.version,
+        demandSetVersion: demands.version,
+        readinessReportVersion: readiness.version
+      }
+    });
+  }
+};
+
 // src/applications/masonry-out-of-plane/analysis/MasonryOutOfPlaneKinematicAnalysis.js
 var MasonryOutOfPlaneKinematicAnalysis = class {
   constructor({ code = "NTC2018", metadata = {} } = {}) {
@@ -56589,22 +58253,22 @@ function assertNonNegative7(value, label) {
   }
 }
 function normalizeAxialForceConvention(value = "compression-positive") {
-  const normalized2 = String(value).trim().toLowerCase();
-  if (normalized2 === "compression-positive" || normalized2 === "compression-negative" || normalized2 === "absolute") {
-    return normalized2;
+  const normalized3 = String(value).trim().toLowerCase();
+  if (normalized3 === "compression-positive" || normalized3 === "compression-negative" || normalized3 === "absolute") {
+    return normalized3;
   }
   throw new Error(
     `Unsupported masonry pier axialForceConvention: ${value}.`
   );
 }
 function normalizeReductionTableScheme(value = "hinged") {
-  const normalized2 = String(value).trim().toLowerCase();
-  if (normalized2 !== "hinged") {
+  const normalized3 = String(value).trim().toLowerCase();
+  if (normalized3 !== "hinged") {
     throw new Error(
       `MasonryPierModel supports only the "hinged" reductionTableScheme for Phi reduction factors. Received: ${value}.`
     );
   }
-  return normalized2;
+  return normalized3;
 }
 function normalizePlainMaterial(material) {
   var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
@@ -57057,12 +58721,12 @@ function assertPositive23(value, label) {
 function compression(value) {
   return Number.isFinite(value) ? Math.max(0, value) : 0;
 }
-function unavailable(mechanism, missing, reference) {
+function unavailable(mechanism, missing2, reference) {
   return {
     mechanism,
     available: false,
     capacity: null,
-    missing: [...missing],
+    missing: [...missing2],
     reference
   };
 }
@@ -57119,17 +58783,17 @@ function calculateNTC2018MasonryPierSlidingCapacity({
   assertPositive23(length, "length");
   assertPositive23(thickness, "thickness");
   assertPositive23(shearSpan, "shearSpan");
-  const missing = [];
+  const missing2 = [];
   if (!Number.isFinite(cohesion) || cohesion < 0) {
-    missing.push("cohesion");
+    missing2.push("cohesion");
   }
   if (!Number.isFinite(shearStrengthLimit) || shearStrengthLimit <= 0) {
-    missing.push("shearStrengthLimit");
+    missing2.push("shearStrengthLimit");
   }
-  if (missing.length > 0) {
+  if (missing2.length > 0) {
     return unavailable(
       "bed-joint-sliding",
-      missing,
+      missing2,
       NTC2018_MASONRY_PIER_CAPACITY_REFERENCES.sliding
     );
   }
@@ -57237,21 +58901,21 @@ function calculateNTC2018MasonryPierRegularDiagonalCapacity({
   assertPositive23(length, "length");
   assertPositive23(thickness, "thickness");
   assertPositive23(height, "height");
-  const missing = [];
-  if (!Number.isFinite(cohesion) || cohesion < 0) missing.push("cohesion");
+  const missing2 = [];
+  if (!Number.isFinite(cohesion) || cohesion < 0) missing2.push("cohesion");
   if (!Number.isFinite(interlockingCoefficient) || interlockingCoefficient <= 0) {
-    missing.push("interlockingCoefficient");
+    missing2.push("interlockingCoefficient");
   }
   if (!Number.isFinite(localFrictionCoefficient) || localFrictionCoefficient <= 0) {
-    missing.push("localFrictionCoefficient");
+    missing2.push("localFrictionCoefficient");
   }
   if (!Number.isFinite(blockTensileStrength) || blockTensileStrength <= 0) {
-    missing.push("blockTensileStrength");
+    missing2.push("blockTensileStrength");
   }
-  if (missing.length > 0) {
+  if (missing2.length > 0) {
     return unavailable(
       "diagonal-cracking-regular",
-      missing,
+      missing2,
       NTC2018_MASONRY_PIER_CAPACITY_REFERENCES.regularDiagonal
     );
   }
@@ -57403,11 +59067,11 @@ function calculateNTC2018MasonryPierElasticStiffness({
 
 // src/norms/ntc2018/masonry/evaluateNTC2018MasonryPier.js
 function normalizeTexture(value = "irregular") {
-  const normalized2 = String(value).trim().toLowerCase();
-  if (normalized2 !== "irregular" && normalized2 !== "regular") {
+  const normalized3 = String(value).trim().toLowerCase();
+  if (normalized3 !== "irregular" && normalized3 !== "regular") {
     throw new Error(`Unsupported masonryTexture: ${value}.`);
   }
-  return normalized2;
+  return normalized3;
 }
 function responseAtDisplacement({ displacement, stiffness, resistance, yieldDisplacement, ultimateDisplacement }) {
   if (!Number.isFinite(displacement)) return null;
@@ -57489,11 +59153,11 @@ function evaluateNTC2018MasonryPier({
     height
   });
   const capacities = [flexural, sliding, diagonal];
-  const missing = capacities.filter((capacity) => !capacity.available).map((capacity) => ({
+  const missing2 = capacities.filter((capacity) => !capacity.available).map((capacity) => ({
     mechanism: capacity.mechanism,
     parameters: capacity.missing
   }));
-  const governing = missing.length === 0 ? selectNTC2018MasonryPierGoverningCapacity(capacities) : null;
+  const governing = missing2.length === 0 ? selectNTC2018MasonryPierGoverningCapacity(capacities) : null;
   let stiffness = null;
   const stiffnessMissing = [];
   if (!Number.isFinite(material.elasticModulus) || material.elasticModulus <= 0) {
@@ -57528,7 +59192,7 @@ function evaluateNTC2018MasonryPier({
       curve: [],
       response: null,
       missing: [
-        ...missing,
+        ...missing2,
         ...stiffnessMissing.length > 0 ? [{ mechanism: "elastic-stiffness", parameters: stiffnessMissing }] : []
       ]
     };
@@ -57576,30 +59240,30 @@ function evaluateNTC2018MasonryPier({
 // src/applications/masonry-piers/models/NTC2018MasonryPierModel.js
 var INTERNAL_UNITS23 = Object.freeze({ force: "N", length: "mm" });
 function normalizeScope(value = "existing") {
-  const normalized2 = String(value).trim().toLowerCase();
-  if (normalized2 !== "existing") {
+  const normalized3 = String(value).trim().toLowerCase();
+  if (normalized3 !== "existing") {
     throw new Error(
       `Unsupported NTC 2018 masonry pier scope: ${value}. The autonomous three-mechanism model currently covers existing unreinforced masonry only.`
     );
   }
-  return normalized2;
+  return normalized3;
 }
 function normalizeTexture2(value = "irregular") {
-  const normalized2 = String(value).trim().toLowerCase();
-  if (normalized2 !== "irregular" && normalized2 !== "regular") {
+  const normalized3 = String(value).trim().toLowerCase();
+  if (normalized3 !== "irregular" && normalized3 !== "regular") {
     throw new Error(`Unsupported NTC 2018 masonry texture: ${value}.`);
   }
-  return normalized2;
+  return normalized3;
 }
 function normalizeBoundaryCondition2(value = "cantilever") {
-  const normalized2 = String(value).trim().toLowerCase();
+  const normalized3 = String(value).trim().toLowerCase();
   const aliases = /* @__PURE__ */ new Map([
     ["cantilever", "cantilever"],
     ["free", "cantilever"],
     ["fixed-fixed", "fixed-fixed"],
     ["fixed", "fixed-fixed"]
   ]);
-  const resolved = aliases.get(normalized2);
+  const resolved = aliases.get(normalized3);
   if (!resolved) {
     throw new Error(`Unsupported NTC 2018 pier boundary condition: ${value}.`);
   }
@@ -59093,7 +60757,7 @@ function assertFinite6(value, label) {
   }
 }
 function normalizeBaseCondition(value = DEFAULT_BASE_CONDITION) {
-  const normalized2 = String(value != null ? value : "").trim().toLowerCase();
+  const normalized3 = String(value != null ? value : "").trim().toLowerCase();
   const aliases = /* @__PURE__ */ new Map([
     ["fixed", "fixed-base"],
     ["fixed-base", "fixed-base"],
@@ -59111,7 +60775,7 @@ function normalizeBaseCondition(value = DEFAULT_BASE_CONDITION) {
     ["incernierato-senza-traverso", "pinned-base-without-bottom-beam"],
     ["incernierati-senza-traverso", "pinned-base-without-bottom-beam"]
   ]);
-  const resolved = aliases.get(normalized2);
+  const resolved = aliases.get(normalized3);
   if (!resolved) {
     throw new Error(
       `Unsupported steel ring frame baseCondition: ${value}.`
@@ -59120,7 +60784,7 @@ function normalizeBaseCondition(value = DEFAULT_BASE_CONDITION) {
   return resolved;
 }
 function normalizeControlNode(value = "top-left") {
-  const normalized2 = String(value != null ? value : "").trim().toLowerCase();
+  const normalized3 = String(value != null ? value : "").trim().toLowerCase();
   const aliases = /* @__PURE__ */ new Map([
     ["top-left", "top-left"],
     ["left-top", "top-left"],
@@ -59129,7 +60793,7 @@ function normalizeControlNode(value = "top-left") {
     ["right-top", "top-right"],
     ["architrave-right", "top-right"]
   ]);
-  const resolved = aliases.get(normalized2);
+  const resolved = aliases.get(normalized3);
   if (!resolved) {
     throw new Error(
       `Unsupported steel ring frame control node: ${value}.`
@@ -59222,7 +60886,7 @@ function profileFamily(section) {
   return String((_b = (_a = section == null ? void 0 : section.family) != null ? _a : section == null ? void 0 : section.profileName) != null ? _b : "").trim().toUpperCase();
 }
 function normalizeOrientationAlias(value) {
-  const normalized2 = String(value != null ? value : "").trim().toLowerCase();
+  const normalized3 = String(value != null ? value : "").trim().toLowerCase();
   if ([
     "weak",
     "minor",
@@ -59240,7 +60904,7 @@ function normalizeOrientationAlias(value) {
     "web-up",
     "lato-senza-labbri-up",
     "lato-senza-labbri-verso-alto"
-  ].includes(normalized2)) {
+  ].includes(normalized3)) {
     return "z";
   }
   return "y";
@@ -62116,16 +63780,16 @@ function documentedCombinationFactors({ category, combinationFactors, source }) 
   if (source == null || typeof source !== "object" || typeof source.reference !== "string" || source.reference.trim() === "") {
     throw new Error(`NTC 2018 category ${category} requires combinationFactorsSource.reference.`);
   }
-  const normalized2 = {};
+  const normalized3 = {};
   for (const key of ["psi0", "psi1", "psi2"]) {
     const value = combinationFactors == null ? void 0 : combinationFactors[key];
     if (!Number.isFinite(value) || value < 0 || value > 1) {
       throw new Error(`combinationFactors.${key} must be between 0 and 1.`);
     }
-    normalized2[key] = value;
+    normalized3[key] = value;
   }
   return {
-    factors: normalized2,
+    factors: normalized3,
     description: definition.description,
     source: { ...source }
   };
@@ -62481,7 +64145,7 @@ var NTC2018_TOPOGRAPHIC_AMPLIFICATION_MAXIMA = freezeDefinitions({
     maximumCoefficient: 1.4
   }
 });
-function clone2(value) {
+function clone4(value) {
   return JSON.parse(JSON.stringify(value));
 }
 function finitePositive2(value, label) {
@@ -62554,13 +64218,13 @@ function normalizeSource2(source) {
   };
 }
 function getNTC2018SeismicLimitStateDefinition(limitState) {
-  return clone2(limitStateDefinition(limitState));
+  return clone4(limitStateDefinition(limitState));
 }
 function getNTC2018SubsoilSpectrumCoefficientDefinition(subsoilCategory) {
-  return clone2(subsoilDefinition(subsoilCategory));
+  return clone4(subsoilDefinition(subsoilCategory));
 }
 function getNTC2018TopographicAmplificationDefinition(topographicCategory) {
-  return clone2(topographicDefinition(topographicCategory));
+  return clone4(topographicDefinition(topographicCategory));
 }
 function normalizeNTC2018SiteHazardParameters({
   siteReference,
@@ -63736,8 +65400,8 @@ function summarizeGrid(grid) {
     samplingMethods
   };
 }
-function resultStatus(classification, grid) {
-  if (classification.isReliable && classification.class != null) {
+function resultStatus(classification2, grid) {
+  if (classification2.isReliable && classification2.class != null) {
     return "ok";
   }
   const mode = Object.values(TOPOGRAPHIC_CLASSIFICATION_MODES).find(
@@ -63756,21 +65420,21 @@ function classifyNTC2018Topography({
   if (!TOPOGRAPHIC_PREPROCESSING_MODES[preprocessingMode]) {
     throw new Error(`Unsupported topographic preprocessing mode: ${preprocessingMode}.`);
   }
-  const classification = classifyTopographyMascandola(
+  const classification2 = classifyTopographyMascandola(
     createClassificationModel(grid),
     { preprocessingMode }
   );
-  const status = resultStatus(classification, grid);
+  const status = resultStatus(classification2, grid);
   return new CalculationResult({
     applicationId: "ntc2018-topographic-classification",
     status,
-    summary: status === "ok" ? `Calculated NTC 2018 topographic category ${classification.class}.` : "The supplied terrain grid did not produce a reliable NTC 2018 topographic category.",
+    summary: status === "ok" ? `Calculated NTC 2018 topographic category ${classification2.class}.` : "The supplied terrain grid did not produce a reliable NTC 2018 topographic category.",
     outputs: {
       schemaVersion: "ntc2018-topographic-classification/v1",
       terrainGrid: summarizeGrid(grid),
-      classification
+      classification: classification2
     },
-    warnings: [...classification.warnings],
+    warnings: [...classification2.warnings],
     assumptions: [
       "The supplied elevation grid represents the terrain surrounding the selected site.",
       "The calculation applies the validated Mascandola et al. (2021) raster procedure ported without changes to its numerical thresholds.",
@@ -63850,7 +65514,7 @@ var NTC2018_SNOW_EXPOSURE_CLASSES = freezeDefinitions2({
     value: 1.1
   }
 });
-function clone3(value) {
+function clone5(value) {
   return JSON.parse(JSON.stringify(value));
 }
 function finiteNonNegative2(value, label) {
@@ -63892,10 +65556,10 @@ function exposureClassDefinition(exposureClass) {
   return definition;
 }
 function getNTC2018SnowGroundZoneDefinition(zone) {
-  return clone3(groundZoneDefinition(zone));
+  return clone5(groundZoneDefinition(zone));
 }
 function getNTC2018SnowExposureClassDefinition(exposureClass) {
-  return clone3(exposureClassDefinition(exposureClass));
+  return clone5(exposureClassDefinition(exposureClass));
 }
 function calculateNTC2018GroundSnowLoad({
   zone,
@@ -64283,7 +65947,7 @@ function calculateNTC2018SnowAreaLoad({
     outputs: {
       schemaVersion: "ntc2018-snow-area-load/v1",
       units: { ...INTERNAL_UNITS29 },
-      zone: clone3(groundZoneDefinition(zone)),
+      zone: clone5(groundZoneDefinition(zone)),
       siteAltitude: altitude,
       groundSnowLoad: groundResolution.groundSnowLoad,
       shapeCoefficient: shape,
@@ -64457,7 +66121,7 @@ var SOLAR_INCREMENTS = Object.freeze({
   })
 });
 var NTC2018_SUMMER_SOLAR_TEMPERATURE_INCREMENTS = SOLAR_INCREMENTS;
-function clone4(value) {
+function clone6(value) {
   return JSON.parse(JSON.stringify(value));
 }
 function finiteNumber(value, label) {
@@ -64514,13 +66178,13 @@ function expansionCoefficientDefinition(materialId) {
   return definition;
 }
 function getNTC2018ExternalAirTemperatureZoneDefinition(zone) {
-  return clone4(externalTemperatureZone(zone));
+  return clone6(externalTemperatureZone(zone));
 }
 function getNTC2018SimplifiedBuildingTemperatureChange(buildingType) {
-  return clone4(simplifiedBuildingDefinition(buildingType));
+  return clone6(simplifiedBuildingDefinition(buildingType));
 }
 function getNTC2018ThermalExpansionCoefficientDefinition(materialId) {
-  return clone4(expansionCoefficientDefinition(materialId));
+  return clone6(expansionCoefficientDefinition(materialId));
 }
 function resolveNTC2018ThermalExpansionCoefficient({
   materialId,
@@ -64534,7 +66198,7 @@ function resolveNTC2018ThermalExpansionCoefficient({
       );
     }
     return {
-      ...clone4(definition),
+      ...clone6(definition),
       selectedValue: definition.value,
       selection: "tabulated-fixed"
     };
@@ -64546,7 +66210,7 @@ function resolveNTC2018ThermalExpansionCoefficient({
     );
   }
   return {
-    ...clone4(definition),
+    ...clone6(definition),
     selectedValue: value,
     selection: "explicit-within-tabulated-range"
   };
@@ -64769,7 +66433,7 @@ function resolveThermalCases({
     const definition = simplifiedBuildingDefinition(simplifiedBuildingType);
     return {
       method: "ntc2018-simplified-building-values",
-      definition: clone4(definition),
+      definition: clone6(definition),
       initialTemperature: null,
       cases: [
         {
@@ -65004,7 +66668,7 @@ var NTC2018_WIND_EXPOSURE_CATEGORIES = freezeDefinitions4({
     minimumHeight: 12
   }
 });
-function clone5(value) {
+function clone7(value) {
   return JSON.parse(JSON.stringify(value));
 }
 function finiteNumber2(value, label) {
@@ -65060,10 +66724,10 @@ function exposureCategoryDefinition(exposureCategory) {
   return definition;
 }
 function getNTC2018WindZoneDefinition(zone) {
-  return clone5(windZoneDefinition(zone));
+  return clone7(windZoneDefinition(zone));
 }
 function getNTC2018WindExposureCategoryDefinition(exposureCategory) {
-  return clone5(exposureCategoryDefinition(exposureCategory));
+  return clone7(exposureCategoryDefinition(exposureCategory));
 }
 function zonalBaseWindSpeed(definition, altitude) {
   const altitudeFactor = altitude <= definition.referenceAltitude ? 1 : 1 + definition.altitudeCoefficient * (altitude / definition.referenceAltitude - 1);
@@ -65465,7 +67129,7 @@ function calculateNTC2018WindAreaLoad({
       summary: "The NTC 2018 zonal formula does not determine base wind speed above 1500 m.",
       warning: "Provide a documented local base wind speed not lower than the NTC 2018 value evaluated at 1500 m.",
       outputs: {
-        zone: clone5(windZoneDefinition(zone)),
+        zone: clone7(windZoneDefinition(zone)),
         siteAltitude: altitude,
         minimumBaseWindSpeedAt1500m: minimumBaseWindSpeed
       },
@@ -65504,7 +67168,7 @@ function calculateNTC2018WindAreaLoad({
       summary: "The NTC 2018 nominal exposure formula is limited to heights not exceeding 200 m.",
       warning: "Provide a documented exposure coefficient for the evaluation height.",
       outputs: {
-        zone: clone5(windZoneDefinition(zone)),
+        zone: clone7(windZoneDefinition(zone)),
         siteAltitude: altitude,
         heightAboveGround: evaluationHeight,
         baseWindSpeed: base,
@@ -65525,7 +67189,7 @@ function calculateNTC2018WindAreaLoad({
       summary: "The nominal dynamic coefficient is not applicable to the declared construction.",
       warning: "Provide a dynamic coefficient from a documented analysis or reliable source.",
       outputs: {
-        zone: clone5(windZoneDefinition(zone)),
+        zone: clone7(windZoneDefinition(zone)),
         siteAltitude: altitude,
         constructionHeight: normalizedConstructionHeight,
         dynamicCoefficientReason: dynamicResolution.reason,
@@ -65586,7 +67250,7 @@ function calculateNTC2018WindAreaLoad({
       schemaVersion: "ntc2018-wind-area-load/v1",
       units: { ...INTERNAL_UNITS30 },
       velocityUnit: VELOCITY_UNIT,
-      zone: clone5(windZoneDefinition(zone)),
+      zone: clone7(windZoneDefinition(zone)),
       siteAltitude: altitude,
       heightAboveGround: evaluationHeight,
       constructionHeight: normalizedConstructionHeight,
@@ -65655,7 +67319,7 @@ function deepFreeze(value) {
   }
   return value;
 }
-function clone6(value) {
+function clone8(value) {
   return JSON.parse(JSON.stringify(value));
 }
 function fixed(value, unit, extra = {}) {
@@ -66074,15 +67738,15 @@ function validateCombinationFactors(combinationFactors) {
   if (combinationFactors == null || typeof combinationFactors !== "object") {
     throw new Error("Category K requires documentedCombinationFactors.");
   }
-  const normalized2 = {};
+  const normalized3 = {};
   for (const key of ["psi0", "psi1", "psi2"]) {
     const value = combinationFactors[key];
     if (!Number.isFinite(value) || value < 0 || value > 1) {
       throw new Error(`documentedCombinationFactors.${key} must be between 0 and 1.`);
     }
-    normalized2[key] = value;
+    normalized3[key] = value;
   }
-  return normalized2;
+  return normalized3;
 }
 function resolveCombinationFactors({ definition, inheritedDefinition, documentedCombinationFactors: documentedCombinationFactors2 }) {
   var _a;
@@ -66142,10 +67806,10 @@ function resolveInheritedLoads({ definition, servedDefinitionId, documentedValue
 }
 function listNTC2018ImposedLoadDefinitions({ category = null } = {}) {
   const definitions = category == null ? NTC2018_IMPOSED_LOAD_CATALOG : NTC2018_IMPOSED_LOAD_CATALOG.filter((entry) => entry.category === category);
-  return definitions.map(clone6);
+  return definitions.map(clone8);
 }
 function getNTC2018ImposedLoadDefinition(definitionId) {
-  return clone6(definitionById(definitionId));
+  return clone8(definitionById(definitionId));
 }
 function resolveNTC2018ImposedLoadDefinition({
   definitionId,
@@ -66202,15 +67866,15 @@ function resolveNTC2018ImposedLoadDefinition({
     Qk: values.Qk,
     Hk: values.Hk,
     units: { ...INTERNAL_UNITS31 },
-    loads: clone6(definition.loads),
-    application: clone6(definition.application),
+    loads: clone8(definition.loads),
+    application: clone8(definition.application),
     combinationFactors: resolveCombinationFactors({
       definition,
       inheritedDefinition,
       documentedCombinationFactors: documentedCombinationFactors2
     }),
     resolution,
-    documentation: documentation == null ? null : clone6(documentation),
+    documentation: documentation == null ? null : clone8(documentation),
     notes: [...(_a = definition.notes) != null ? _a : []],
     metadata: {
       normativePreset: "NTC2018",
@@ -66265,7 +67929,7 @@ function calculateNTC2018ImposedLoadAreaReduction({
     units: { ...INTERNAL_UNITS31 },
     cannotCombineWith: "alphaN",
     reference: NTC2018_IMPOSED_LOAD_REFERENCES.areaReduction,
-    documentation: documentation == null ? null : clone6(documentation),
+    documentation: documentation == null ? null : clone8(documentation),
     metadata: {
       sourceUnitSystem: sourceUnits,
       unitSystem: { ...INTERNAL_UNITS31 }
@@ -66920,7 +68584,7 @@ var NTC2018_UNIT_WEIGHT_CATALOG = freezeCatalog([
   unit: "kN/m^3",
   reference: NTC2018_PERMANENT_LOAD_REFERENCES.unitWeights
 })));
-function clone7(value) {
+function clone9(value) {
   return JSON.parse(JSON.stringify(value));
 }
 function finiteNonNegative6(value, label) {
@@ -66944,10 +68608,10 @@ function unitWeightDefinition(materialId) {
 }
 function listNTC2018UnitWeightDefinitions({ category = null } = {}) {
   const definitions = category == null ? NTC2018_UNIT_WEIGHT_CATALOG : NTC2018_UNIT_WEIGHT_CATALOG.filter((entry) => entry.category === category);
-  return definitions.map(clone7);
+  return definitions.map(clone9);
 }
 function getNTC2018UnitWeightDefinition(materialId) {
-  return clone7(unitWeightDefinition(materialId));
+  return clone9(unitWeightDefinition(materialId));
 }
 function resolveNTC2018UnitWeight({ materialId, value = null } = {}) {
   const definition = unitWeightDefinition(materialId);
@@ -66958,7 +68622,7 @@ function resolveNTC2018UnitWeight({ materialId, value = null } = {}) {
       );
     }
     return {
-      ...clone7(definition),
+      ...clone9(definition),
       selectedValue: definition.value,
       selection: "tabulated-fixed"
     };
@@ -66970,7 +68634,7 @@ function resolveNTC2018UnitWeight({ materialId, value = null } = {}) {
     );
   }
   return {
-    ...clone7(definition),
+    ...clone9(definition),
     selectedValue: value,
     selection: "explicit-within-tabulated-range"
   };
@@ -67431,7 +69095,7 @@ function compactId(value) {
 }
 function normalizeType(type) {
   var _a;
-  const normalized2 = String(type != null ? type : "").trim().toUpperCase();
+  const normalized3 = String(type != null ? type : "").trim().toUpperCase();
   const aliases = {
     SLU: "ULS",
     "ULS_STR_GEO": "ULS",
@@ -67446,7 +69110,7 @@ function normalizeType(type) {
     "SLS_QP": "SLE_QUASI_PERMANENT",
     "SLS_QUASI_PERMANENT": "SLE_QUASI_PERMANENT"
   };
-  return (_a = aliases[normalized2]) != null ? _a : normalized2;
+  return (_a = aliases[normalized3]) != null ? _a : normalized3;
 }
 function resolveAction(input) {
   var _a, _b, _c, _d, _e;
@@ -67763,7 +69427,7 @@ function createNTC2018BeamCombinations({
   combinationSet = "A1"
 } = {}) {
   const normalizedTypes = types.map(normalizeType);
-  const normalized2 = normalizeInputActions({
+  const normalized3 = normalizeInputActions({
     loads,
     permanentActions,
     variableActions
@@ -67771,12 +69435,12 @@ function createNTC2018BeamCombinations({
   const combinations = [];
   for (const type of normalizedTypes) {
     if (type === "ULS") {
-      for (const leadingVariableAction of leadingVariableActionsFor(type, normalized2.variableActions)) {
+      for (const leadingVariableAction of leadingVariableActionsFor(type, normalized3.variableActions)) {
         combinations.push(
           createUlsCombination({
             idPrefix,
-            permanentActions: normalized2.permanentActions,
-            variableActions: normalized2.variableActions,
+            permanentActions: normalized3.permanentActions,
+            variableActions: normalized3.variableActions,
             leadingVariableAction,
             combinationSet
           })
@@ -67785,13 +69449,13 @@ function createNTC2018BeamCombinations({
       continue;
     }
     if (["SLE_RARE", "SLE_FREQUENT", "SLE_QUASI_PERMANENT"].includes(type)) {
-      for (const leadingVariableAction of leadingVariableActionsFor(type, normalized2.variableActions)) {
+      for (const leadingVariableAction of leadingVariableActionsFor(type, normalized3.variableActions)) {
         combinations.push(
           createSleCombination({
             idPrefix,
             type,
-            permanentActions: normalized2.permanentActions,
-            variableActions: normalized2.variableActions,
+            permanentActions: normalized3.permanentActions,
+            variableActions: normalized3.variableActions,
             leadingVariableAction
           })
         );
@@ -67822,11 +69486,11 @@ function nonNegative8(value, label) {
   return value;
 }
 function ntc2018JointOverstrengthFactor(ductilityClass2) {
-  const normalized2 = String(ductilityClass2 != null ? ductilityClass2 : "").trim().toUpperCase().replaceAll('"', "").replaceAll("-", "");
-  if (["CDA", "A"].includes(normalized2)) {
+  const normalized3 = String(ductilityClass2 != null ? ductilityClass2 : "").trim().toUpperCase().replaceAll('"', "").replaceAll("-", "");
+  if (["CDA", "A"].includes(normalized3)) {
     return 1.2;
   }
-  if (["CDB", "B"].includes(normalized2)) {
+  if (["CDB", "B"].includes(normalized3)) {
     return 1;
   }
   throw new Error(`Unsupported NTC 2018 ductility class: ${ductilityClass2}.`);
@@ -67850,13 +69514,13 @@ function classifyNTC2018JointConfinement({
 } = {}) {
   const faceKeys = ["positiveX", "negativeX", "positiveZ", "negativeZ"];
   const overlapKeys = ["x", "z"];
-  const missing = [
+  const missing2 = [
     ...faceKeys.filter((key) => !Number.isFinite(faceCoverageRatios[key])),
     ...overlapKeys.filter((key) => !Number.isFinite(oppositeBeamOverlapRatios[key])).map((key) => `overlap-${key}`)
   ];
-  if (missing.length > 0) {
+  if (missing2.length > 0) {
     throw new Error(
-      `Joint confinement classification requires all face and overlap ratios; missing: ${missing.join(", ")}.`
+      `Joint confinement classification requires all face and overlap ratios; missing: ${missing2.join(", ")}.`
     );
   }
   const allFacesCovered = faceKeys.every(
@@ -68895,14 +70559,14 @@ function shearModulus(material) {
 }
 function imperfectionFactorFromCurve(curve) {
   var _a;
-  const normalized2 = String(curve != null ? curve : "").trim().toLowerCase();
+  const normalized3 = String(curve != null ? curve : "").trim().toLowerCase();
   const values = {
     a: 0.21,
     b: 0.34,
     c: 0.49,
     d: 0.76
   };
-  return (_a = values[normalized2]) != null ? _a : null;
+  return (_a = values[normalized3]) != null ? _a : null;
 }
 function defaultLtbCurve(section) {
   var _a, _b, _c, _d;
@@ -69888,8 +71552,8 @@ function classifySteelSection({
     };
   }
   const dimensions = resolveProfileDimensions(section);
-  const missing = Object.entries(dimensions).filter(([key, value]) => key !== "r" && !isFinitePositive7(value)).map(([key]) => key);
-  if (missing.length > 0 || !isFinitePositive7(section == null ? void 0 : section.area) || !isFinitePositive7(section == null ? void 0 : section.inertiaY)) {
+  const missing2 = Object.entries(dimensions).filter(([key, value]) => key !== "r" && !isFinitePositive7(value)).map(([key]) => key);
+  if (missing2.length > 0 || !isFinitePositive7(section == null ? void 0 : section.area) || !isFinitePositive7(section == null ? void 0 : section.inertiaY)) {
     return {
       status: RESULT_STATUS.NOT_SUPPORTED,
       class: 4,
@@ -69898,7 +71562,7 @@ function classifySteelSection({
       profileName: (_c = section == null ? void 0 : section.profileName) != null ? _c : null,
       parts: [],
       warnings: [
-        `Steel section classification requires complete profile geometry; missing ${missing.join(", ") || "area/inertia"}.`
+        `Steel section classification requires complete profile geometry; missing ${missing2.join(", ") || "area/inertia"}.`
       ],
       metadata: {
         method: "ntc2018-en1993-section-classification-mvp",
@@ -69990,10 +71654,10 @@ function firstFinite4(...values) {
   return (_a = values.find((value) => Number.isFinite(value))) != null ? _a : null;
 }
 function normalizeLimitState(value) {
-  const normalized2 = String(value != null ? value : "").trim().toUpperCase();
-  if (normalized2 === "ULS") return "SLU";
-  if (normalized2 === "SLS") return "SLE";
-  return normalized2;
+  const normalized3 = String(value != null ? value : "").trim().toUpperCase();
+  if (normalized3 === "ULS") return "SLU";
+  if (normalized3 === "SLS") return "SLE";
+  return normalized3;
 }
 function entries2(value) {
   return Array.isArray(value) ? value : Object.values(value != null ? value : {});
@@ -71064,7 +72728,7 @@ function createLateralTorsionalBucklingChecks({
   sectionToResultUnits,
   stability = {},
   resistance = {},
-  classification = {}
+  classification: classification2 = {}
 }) {
   var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
   const options = lateralTorsionalBucklingOptions(stability);
@@ -71113,7 +72777,7 @@ function createLateralTorsionalBucklingChecks({
         nEd: nEdSectionUnits,
         mEd: mEdSectionUnits,
         mzEd: mzEdSectionUnits,
-        axialForceConvention: (_h = classification.axialForceConvention) != null ? _h : "absolute"
+        axialForceConvention: (_h = classification2.axialForceConvention) != null ? _h : "absolute"
       });
       const elasticSectionModulus = steelSectionModulus(section, "elastic");
       const plasticSectionModulus = steelSectionModulus(section, "plastic");
@@ -71201,7 +72865,7 @@ function createCompressionBucklingChecks({
   resultToSectionUnits,
   sectionToResultUnits,
   stability = {},
-  classification = {}
+  classification: classification2 = {}
 }) {
   var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n;
   const options = compressionBucklingOptions(stability);
@@ -71224,7 +72888,7 @@ function createCompressionBucklingChecks({
     if (normalizeLimitState2((_a = result9.context) == null ? void 0 : _a.limitState) !== "ULS") {
       continue;
     }
-    const axialForceConvention = (_c = (_b = optionValue(options, ["axialForceConvention"], null)) != null ? _b : classification.axialForceConvention) != null ? _c : "absolute";
+    const axialForceConvention = (_c = (_b = optionValue(options, ["axialForceConvention"], null)) != null ? _b : classification2.axialForceConvention) != null ? _c : "absolute";
     const sample = maxCompressionSample(
       (_e = (_d = result9.internalForces) == null ? void 0 : _d.samples) != null ? _e : [],
       axialForceConvention
@@ -71251,7 +72915,7 @@ function createCompressionBucklingChecks({
       nEd: nEdSectionUnits,
       mEd: mEdSectionUnits,
       mzEd: mzEdSectionUnits,
-      axialForceConvention: (_j = classification.axialForceConvention) != null ? _j : "absolute"
+      axialForceConvention: (_j = classification2.axialForceConvention) != null ? _j : "absolute"
     });
     const bucklingResult = verifySteelCompressionBuckling({
       section,
@@ -71332,7 +72996,7 @@ function ltbReductionForInteraction({
   sectionToResultUnits,
   stability,
   resistance,
-  classification,
+  classification: classification2,
   classificationResult,
   bendingResistanceBasis
 }) {
@@ -71407,7 +73071,7 @@ function createBeamColumnInteractionChecks({
   sectionToResultUnits,
   stability = {},
   resistance = {},
-  classification = {}
+  classification: classification2 = {}
 }) {
   var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E;
   const interactionOptions = beamColumnInteractionOptions(stability);
@@ -71446,7 +73110,7 @@ function createBeamColumnInteractionChecks({
       );
     });
     for (const sample of samples) {
-      const axialForceConvention = (_f = (_e = (_d = optionValue(interactionOptions, ["axialForceConvention"], null)) != null ? _d : optionValue(bucklingOptions, ["axialForceConvention"], null)) != null ? _e : classification.axialForceConvention) != null ? _f : "absolute";
+      const axialForceConvention = (_f = (_e = (_d = optionValue(interactionOptions, ["axialForceConvention"], null)) != null ? _d : optionValue(bucklingOptions, ["axialForceConvention"], null)) != null ? _e : classification2.axialForceConvention) != null ? _f : "absolute";
       const nEdSectionUnits = resultToSectionUnits.force((_g = sample.n) != null ? _g : 0);
       const strongAxisMoment = sampleStrongAxisMoment(sample);
       const weakAxisMoment = (_j = (_i = (_h = sample.principalActions) == null ? void 0 : _h.mZ) != null ? _i : sample.mZ) != null ? _j : 0;
@@ -71459,7 +73123,7 @@ function createBeamColumnInteractionChecks({
         nEd: nEdSectionUnits,
         mEd: mEdSectionUnits,
         mzEd: mzEdSectionUnits,
-        axialForceConvention: (_k = classification.axialForceConvention) != null ? _k : "absolute"
+        axialForceConvention: (_k = classification2.axialForceConvention) != null ? _k : "absolute"
       });
       const elasticSectionModulus = steelSectionModulus(section, "elastic");
       const plasticSectionModulus = steelSectionModulus(section, "plastic");
@@ -71513,7 +73177,7 @@ function createBeamColumnInteractionChecks({
         sectionToResultUnits,
         stability,
         resistance,
-        classification,
+        classification: classification2,
         classificationResult,
         bendingResistanceBasis
       });
@@ -71604,7 +73268,7 @@ function createSteelActionVerifier({
   sectionToResultUnits,
   resultToSectionUnits,
   gammaM0,
-  classification = {},
+  classification: classification2 = {},
   resistance = {}
 }) {
   return {
@@ -71642,7 +73306,7 @@ function createSteelActionVerifier({
         nEd: convertedNEd,
         mEd: convertedMEd,
         mzEd: convertedMZEd,
-        axialForceConvention: (_q = classification.axialForceConvention) != null ? _q : "absolute"
+        axialForceConvention: (_q = classification2.axialForceConvention) != null ? _q : "absolute"
       });
       const bendingResistanceBasis = selectBendingResistanceBasis({
         classificationResult,
@@ -71874,7 +73538,7 @@ var SteelMemberVerification = class {
     code = "NTC2018",
     gammaM0 = null,
     serviceability = {},
-    classification = {},
+    classification: classification2 = {},
     resistance = {},
     stability = {},
     deflectionLimitRatio = null,
@@ -71885,7 +73549,7 @@ var SteelMemberVerification = class {
     this.code = code;
     this.gammaM0 = gammaM0;
     this.serviceability = { ...serviceability };
-    this.classification = { ...classification };
+    this.classification = { ...classification2 };
     this.resistance = { ...resistance };
     this.stability = { ...stability };
     this.verificationStations = verificationStations;
@@ -71899,7 +73563,7 @@ var SteelMemberVerification = class {
     material = null,
     analysisResult = null,
     serviceability = this.serviceability,
-    classification = this.classification,
+    classification: classification2 = this.classification,
     resistance = this.resistance,
     stability = this.stability,
     verificationStations = this.verificationStations,
@@ -72014,7 +73678,7 @@ var SteelMemberVerification = class {
         sectionToResultUnits,
         resultToSectionUnits,
         gammaM0: this.gammaM0,
-        classification,
+        classification: classification2,
         resistance
       }),
       limitStates: "ULS",
@@ -72032,7 +73696,7 @@ var SteelMemberVerification = class {
       sectionToResultUnits,
       stability: resolvedStability,
       resistance,
-      classification
+      classification: classification2
     });
     const compressionBuckling = createCompressionBucklingChecks({
       analysisResult: workingAnalysisResult,
@@ -72041,7 +73705,7 @@ var SteelMemberVerification = class {
       resultToSectionUnits,
       sectionToResultUnits,
       stability: resolvedStability,
-      classification
+      classification: classification2
     });
     const beamColumnInteraction = createBeamColumnInteractionChecks({
       analysisResult: workingAnalysisResult,
@@ -72051,7 +73715,7 @@ var SteelMemberVerification = class {
       sectionToResultUnits,
       stability: resolvedStability,
       resistance,
-      classification
+      classification: classification2
     });
     const class4Detected = actionVerification.checks.some(
       (check2) => {
@@ -73040,7 +74704,7 @@ var SHEAR_CORRECTION_FACTOR = 5 / 6;
 var STEEL_RING_FRAME_USER_UNITS = Object.freeze({ force: "kN", length: "m" });
 var EPS8 = 1e-9;
 function normalizeTopRotation(value = DEFAULT_TOP_ROTATION) {
-  const normalized2 = String(value != null ? value : "").trim().toLowerCase();
+  const normalized3 = String(value != null ? value : "").trim().toLowerCase();
   const aliases = /* @__PURE__ */ new Map([
     ["free", "free"],
     ["libera", "free"],
@@ -73050,7 +74714,7 @@ function normalizeTopRotation(value = DEFAULT_TOP_ROTATION) {
     ["incastrata", "fixed"],
     ["clamped", "fixed"]
   ]);
-  const resolved = aliases.get(normalized2);
+  const resolved = aliases.get(normalized3);
   if (!resolved) {
     throw new Error(`Unsupported pier topRotation option: ${value}.`);
   }
@@ -73770,7 +75434,7 @@ var FEM_UNITS9 = Object.freeze({ force: "kN", length: "m" });
 var SHEAR_CORRECTION_FACTOR2 = 5 / 6;
 var EPS9 = 1e-9;
 function normalizeTopRotation2(value = "free") {
-  const normalized2 = String(value != null ? value : "").trim().toLowerCase();
+  const normalized3 = String(value != null ? value : "").trim().toLowerCase();
   const aliases = /* @__PURE__ */ new Map([
     ["free", "free"],
     ["libera", "free"],
@@ -73780,7 +75444,7 @@ function normalizeTopRotation2(value = "free") {
     ["incastrata", "fixed"],
     ["clamped", "fixed"]
   ]);
-  const resolved = aliases.get(normalized2);
+  const resolved = aliases.get(normalized3);
   if (!resolved) {
     throw new Error(`Unsupported equivalent-frame topRotation option: ${value}.`);
   }
@@ -75258,7 +76922,7 @@ var DEFAULT_MAX_ITERATIONS2 = 60;
 var DEFAULT_YIELD_TOLERANCE2 = 1e-9;
 var EPS11 = 1e-9;
 function normalizeTopRotation3(value = DEFAULT_TOP_ROTATION2) {
-  const normalized2 = String(value != null ? value : "").trim().toLowerCase();
+  const normalized3 = String(value != null ? value : "").trim().toLowerCase();
   const aliases = /* @__PURE__ */ new Map([
     ["free", "free"],
     ["libera", "free"],
@@ -75268,7 +76932,7 @@ function normalizeTopRotation3(value = DEFAULT_TOP_ROTATION2) {
     ["incastrata", "fixed"],
     ["clamped", "fixed"]
   ]);
-  const resolved = aliases.get(normalized2);
+  const resolved = aliases.get(normalized3);
   if (!resolved) {
     throw new Error(`Unsupported masonry pier topRotation option: ${value}.`);
   }
@@ -75694,7 +77358,7 @@ var DEFAULT_YIELD_TOLERANCE3 = 1e-9;
 var DIRECT_MASONRY_MECHANISM_MODEL = "equivalent-frame-hinges-and-shear-plateau";
 var EPS12 = 1e-9;
 function normalizeTopRotation4(value = DEFAULT_TOP_ROTATION3) {
-  const normalized2 = String(value != null ? value : "").trim().toLowerCase();
+  const normalized3 = String(value != null ? value : "").trim().toLowerCase();
   const aliases = /* @__PURE__ */ new Map([
     ["free", "free"],
     ["libera", "free"],
@@ -75704,7 +77368,7 @@ function normalizeTopRotation4(value = DEFAULT_TOP_ROTATION3) {
     ["incastrata", "fixed"],
     ["clamped", "fixed"]
   ]);
-  const resolved = aliases.get(normalized2);
+  const resolved = aliases.get(normalized3);
   if (!resolved) {
     throw new Error(`Unsupported equivalent-frame pushover topRotation option: ${value}.`);
   }
@@ -78439,19 +80103,19 @@ function normalizeNeutralAxisAngle(theta) {
   if (!Number.isFinite(theta)) {
     throw new Error("Neutral-axis theta must be finite.");
   }
-  let normalized2 = theta % TWO_PI;
-  if (normalized2 < 0) {
-    normalized2 += TWO_PI;
+  let normalized3 = theta % TWO_PI;
+  if (normalized3 < 0) {
+    normalized3 += TWO_PI;
   }
-  if (Math.abs(normalized2) <= ANGLE_TOLERANCE || Math.abs(normalized2 - TWO_PI) <= ANGLE_TOLERANCE) {
+  if (Math.abs(normalized3) <= ANGLE_TOLERANCE || Math.abs(normalized3 - TWO_PI) <= ANGLE_TOLERANCE) {
     return 0;
   }
   for (const cardinal of [Math.PI / 2, Math.PI, 3 * Math.PI / 2]) {
-    if (Math.abs(normalized2 - cardinal) <= ANGLE_TOLERANCE) {
+    if (Math.abs(normalized3 - cardinal) <= ANGLE_TOLERANCE) {
       return cardinal;
     }
   }
-  return Number(normalized2.toPrecision(15));
+  return Number(normalized3.toPrecision(15));
 }
 function neutralAxisDirection(theta) {
   const normalizedTheta = normalizeNeutralAxisAngle(theta);
@@ -78623,18 +80287,18 @@ function normalizePostUltimateFractureEnergyDensity(value) {
       "RC post-ultimate fracture energy density must be a non-negative number or an object."
     );
   }
-  const normalized2 = {
+  const normalized3 = {
     concrete: (_a = value.concrete) != null ? _a : 0,
     steel: (_b = value.steel) != null ? _b : 0
   };
-  for (const [material, energyDensity] of Object.entries(normalized2)) {
+  for (const [material, energyDensity] of Object.entries(normalized3)) {
     if (!Number.isFinite(energyDensity) || energyDensity < 0) {
       throw new Error(
         `RC post-ultimate ${material} fracture energy density must be non-negative.`
       );
     }
   }
-  return normalized2;
+  return normalized3;
 }
 function applyPostUltimateResponse({
   stress,
@@ -79249,8 +80913,8 @@ function solveLinearSystem2x2(matrix, rightHandSide) {
   const [[a, b], [c, d]] = matrix;
   const [e, f] = rightHandSide;
   const determinant = a * d - b * c;
-  const scale = Math.max(Math.abs(a * d), Math.abs(b * c), 1);
-  if (!Number.isFinite(determinant) || Math.abs(determinant) <= Number.EPSILON * scale) {
+  const scale2 = Math.max(Math.abs(a * d), Math.abs(b * c), 1);
+  if (!Number.isFinite(determinant) || Math.abs(determinant) <= Number.EPSILON * scale2) {
     throw new Error("Cannot solve singular 2x2 linear system.");
   }
   return [(e * d - b * f) / determinant, (a * f - e * c) / determinant];
@@ -79563,12 +81227,12 @@ function isPointOnSegment(point4, start, end, tolerance = 1e-9) {
   if (Math.abs(cross5) > tolerance) {
     return false;
   }
-  const dot4 = (point4.y - start.y) * (end.y - start.y) + (point4.z - start.z) * (end.z - start.z);
-  if (dot4 < -tolerance) {
+  const dot5 = (point4.y - start.y) * (end.y - start.y) + (point4.z - start.z) * (end.z - start.z);
+  if (dot5 < -tolerance) {
     return false;
   }
   const squaredLength = (end.y - start.y) ** 2 + (end.z - start.z) ** 2;
-  return dot4 <= squaredLength + tolerance;
+  return dot5 <= squaredLength + tolerance;
 }
 function isPointInsidePolygon(point4, polygon) {
   let inside = false;
@@ -82087,11 +83751,11 @@ function parsePositiveInteger(value, fallback) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 function resolveCombinationType(value) {
-  const normalized2 = String(value != null ? value : "rare").trim().toLowerCase();
-  if (["quasipermanent", "quasi-permanent", "quasi_permanent", "qp"].includes(normalized2)) {
+  const normalized3 = String(value != null ? value : "rare").trim().toLowerCase();
+  if (["quasipermanent", "quasi-permanent", "quasi_permanent", "qp"].includes(normalized3)) {
     return "SLE_QUASI_PERMANENT";
   }
-  if (["frequent", "frequente"].includes(normalized2)) {
+  if (["frequent", "frequente"].includes(normalized3)) {
     return "SLE_FREQUENT";
   }
   return "SLE_RARE";
@@ -82376,19 +84040,19 @@ function normalizeActions3(actions, resolver, label) {
       throw new Error(`${label}.${key} is outside the plate-module scope; membrane actions must be zero.`);
     }
   }
-  const normalized2 = {
+  const normalized3 = {
     mxx: resolver.force((_a = source.mxx) != null ? _a : 0),
     myy: resolver.force((_b = source.myy) != null ? _b : 0),
     mxy: resolver.force((_c = source.mxy) != null ? _c : 0),
     qx: resolver.lineLoad((_d = source.qx) != null ? _d : 0),
     qy: resolver.lineLoad((_e = source.qy) != null ? _e : 0)
   };
-  for (const [key, value] of Object.entries(normalized2)) {
+  for (const [key, value] of Object.entries(normalized3)) {
     if (!Number.isFinite(value)) {
       throw new Error(`${label}.${key} must be finite.`);
     }
   }
-  return normalized2;
+  return normalized3;
 }
 function normalizeLayer({ input, face, direction, thickness, resolver }) {
   if (!input) {
@@ -86362,22 +88026,22 @@ function utilizationCheck3(options) {
     strictCapacity: false
   });
 }
-function clamp8(value, min, max) {
+function clamp9(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 function requiredParametersMissing(params, requiredKeys, warnings) {
-  const missing = requiredKeys.filter((key) => !isFinitePositive3(params[key]));
-  for (const key of missing) {
+  const missing2 = requiredKeys.filter((key) => !isFinitePositive3(params[key]));
+  for (const key of missing2) {
     warnings.push(`Required shear parameter ${key} is missing or not positive.`);
   }
-  return missing;
+  return missing2;
 }
 
 // src/applications/reinforced-concrete-sections/checks/shear/cosenzaCircularShear.js
 function verifyCosenzaCircularShear({ vEd, params }) {
   var _a, _b;
   const warnings = [...params.warnings];
-  const missing = requiredParametersMissing(
+  const missing2 = requiredParametersMissing(
     {
       diameter: params.diameter,
       concreteArea: params.concreteArea,
@@ -86388,12 +88052,12 @@ function verifyCosenzaCircularShear({ vEd, params }) {
     warnings
   );
   if (params.shape !== "circular") {
-    missing.push("circularSection");
+    missing2.push("circularSection");
   }
   if (params.mode === "with-transverse-reinforcement" && !params.transverseReinforcement) {
-    missing.push("transverseReinforcement");
+    missing2.push("transverseReinforcement");
   }
-  if (missing.length > 0) {
+  if (missing2.length > 0) {
     return {
       status: RESULT_STATUS.NOT_VERIFIED,
       utilizationRatio: null,
@@ -86409,7 +88073,7 @@ function verifyCosenzaCircularShear({ vEd, params }) {
       },
       metadata: {
         method: COSENZA_METHOD,
-        missingParameters: [...new Set(missing)]
+        missingParameters: [...new Set(missing2)]
       }
     };
   }
@@ -86481,7 +88145,7 @@ function verifyCosenzaCircularShear({ vEd, params }) {
 // src/applications/reinforced-concrete-sections/checks/shear/ntc2018ShearResistance.js
 function computeWithoutTransverseResistance(params) {
   const warnings = [];
-  const missing = requiredParametersMissing(
+  const missing2 = requiredParametersMissing(
     {
       bw: params.bw,
       effectiveDepth: params.effectiveDepth,
@@ -86493,10 +88157,10 @@ function computeWithoutTransverseResistance(params) {
     ["bw", "effectiveDepth", "longitudinalArea", "concreteArea", "fck", "gammaC"],
     warnings
   );
-  if (missing.length > 0) {
+  if (missing2.length > 0) {
     return {
       available: false,
-      missing,
+      missing: missing2,
       warnings
     };
   }
@@ -86640,7 +88304,7 @@ function computeWithTransverseResistance({ params, shear, units, warnings }) {
   let cotTheta = null;
   let thetaSelection = "optimized-intersection";
   if (shear.thetaSelection === "fixed" && Number.isFinite(shear.cotTheta)) {
-    cotTheta = clamp8(shear.cotTheta, cotThetaRange.min, cotThetaRange.max);
+    cotTheta = clamp9(shear.cotTheta, cotThetaRange.min, cotThetaRange.max);
     thetaSelection = "fixed";
   } else if (vRsdMin > vRcdAtMinCot) {
     cotTheta = cotThetaRange.min;
@@ -86650,7 +88314,7 @@ function computeWithTransverseResistance({ params, shear, units, warnings }) {
     thetaSelection = "steel-boundary-max-cot";
   } else {
     const raw = params.bw * alphaC * fcdPrime * params.transverseReinforcement.spacing / (params.transverseReinforcement.area * params.transverseReinforcement.fyd * sinAlpha) - 1;
-    cotTheta = clamp8(
+    cotTheta = clamp9(
       Math.sqrt(Math.max(raw, 0)),
       cotThetaRange.min,
       cotThetaRange.max
@@ -86731,7 +88395,7 @@ function computeWithTransverseResistanceAtCotTheta({
 }
 function verifyWithTransverseReinforcement({ vEd, params, shear, units }) {
   const warnings = [...params.warnings];
-  const missing = requiredParametersMissing(
+  const missing2 = requiredParametersMissing(
     {
       bw: params.bw,
       effectiveDepth: params.effectiveDepth,
@@ -86742,9 +88406,9 @@ function verifyWithTransverseReinforcement({ vEd, params, shear, units }) {
     warnings
   );
   if (!params.transverseReinforcement) {
-    missing.push("transverseReinforcement");
+    missing2.push("transverseReinforcement");
   }
-  if (missing.length > 0) {
+  if (missing2.length > 0) {
     return {
       status: RESULT_STATUS.NOT_VERIFIED,
       utilizationRatio: null,
@@ -86760,7 +88424,7 @@ function verifyWithTransverseReinforcement({ vEd, params, shear, units }) {
       },
       metadata: {
         method: "ntc2018-4.1.2.3.5.2",
-        missingParameters: missing
+        missingParameters: missing2
       }
     };
   }
@@ -89116,7 +90780,7 @@ function positive29(value, label) {
   }
   return value;
 }
-function clamp9(value, lower, upper) {
+function clamp10(value, lower, upper) {
   return Math.min(Math.max(value, lower), upper);
 }
 function calculateEn1992Punching2023WithoutShearReinforcement({
@@ -89145,7 +90809,7 @@ function calculateEn1992Punching2023WithoutShearReinforcement({
   const rawDdg = 16 + dLower * aggregateStrengthFactor;
   const dDg = Math.min(rawDdg, 40);
   const rawKpb = 3.6 * Math.sqrt(1 - b0 / b05);
-  const kpb = clamp9(rawKpb, 1, 2.5);
+  const kpb = clamp10(rawKpb, 1, 2.5);
   const uncappedResistance = 0.6 / resolvedGammaV * kpb * Math.cbrt(100 * rhoL * resolvedFck * dDg / dv);
   const resistanceLimit = 0.5 / resolvedGammaV * Math.sqrt(resolvedFck);
   const tauRdc = Math.min(uncappedResistance, resistanceLimit);
@@ -90904,9 +92568,9 @@ function maxCheck(id, description, provided, allowed, metadata = {}) {
   return utilizationCheck({ id, description, demand: provided, capacity: allowed, metadata });
 }
 function ductilityClass(value) {
-  const normalized2 = String(value != null ? value : "").toUpperCase().replaceAll('"', "").replaceAll("-", "");
-  if (["CDA", "A"].includes(normalized2)) return "CDA";
-  if (["CDB", "B"].includes(normalized2)) return "CDB";
+  const normalized3 = String(value != null ? value : "").toUpperCase().replaceAll('"', "").replaceAll("-", "");
+  if (["CDA", "A"].includes(normalized3)) return "CDA";
+  if (["CDB", "B"].includes(normalized3)) return "CDB";
   throw new Error(`Unsupported NTC 2018 ductility class: ${value}.`);
 }
 var ReinforcedConcreteColumnDetailingVerification = class {
@@ -92489,7 +94153,7 @@ function polygonPerimeter(points = []) {
     return sum + Math.hypot(next.y - point4.y, next.z - point4.z);
   }, 0);
 }
-function clamp10(value, min, max) {
+function clamp11(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 function resolveGeometry2({ section, torsion, resolver, warnings, sources }) {
@@ -92619,7 +94283,7 @@ function resolveCotTheta({ torsion, transverse, longitudinal, geometry, warnings
     const aS = transverse.area / transverse.spacing;
     const compatible = Math.sqrt(aL / aS);
     return {
-      value: clamp10(compatible, COT_THETA_MIN, COT_THETA_MAX),
+      value: clamp11(compatible, COT_THETA_MIN, COT_THETA_MAX),
       source: "pure-torsion-compatible-reinforcement",
       unclamped: compatible
     };
@@ -92630,15 +94294,15 @@ function resolveCotTheta({ torsion, transverse, longitudinal, geometry, warnings
   return null;
 }
 function missingParameters({ geometry, transverse, longitudinal, cotTheta, fcdPrime }) {
-  const missing = [];
-  if (!isFinitePositive3(geometry.effectiveWallThickness)) missing.push("effectiveWallThickness");
-  if (!isFinitePositive3(geometry.medianArea)) missing.push("medianArea");
-  if (!isFinitePositive3(geometry.medianPerimeter)) missing.push("medianPerimeter");
-  if (!transverse) missing.push("transverseReinforcement");
-  if (!longitudinal) missing.push("longitudinalReinforcement");
-  if (!cotTheta) missing.push("cotTheta");
-  if (!isFinitePositive3(fcdPrime)) missing.push("fcdPrime");
-  return missing;
+  const missing2 = [];
+  if (!isFinitePositive3(geometry.effectiveWallThickness)) missing2.push("effectiveWallThickness");
+  if (!isFinitePositive3(geometry.medianArea)) missing2.push("medianArea");
+  if (!isFinitePositive3(geometry.medianPerimeter)) missing2.push("medianPerimeter");
+  if (!transverse) missing2.push("transverseReinforcement");
+  if (!longitudinal) missing2.push("longitudinalReinforcement");
+  if (!cotTheta) missing2.push("cotTheta");
+  if (!isFinitePositive3(fcdPrime)) missing2.push("fcdPrime");
+  return missing2;
 }
 function verifyTorsionActions({
   code,
@@ -92702,14 +94366,14 @@ function verifyTorsionActions({
   });
   const explicitFcdPrime = torsion.fcdPrime;
   const fcdPrime = Number.isFinite(explicitFcdPrime) ? resolver.stress(explicitFcdPrime) : ((_a = torsion.fcdPrimeFactor) != null ? _a : 0.5) * ((_b = concreteMaterial == null ? void 0 : concreteMaterial.fcd) != null ? _b : 0);
-  const missing = missingParameters({
+  const missing2 = missingParameters({
     geometry,
     transverse,
     longitudinal,
     cotTheta,
     fcdPrime
   });
-  if (missing.length > 0) {
+  if (missing2.length > 0) {
     return {
       status: RESULT_STATUS.NOT_VERIFIED,
       utilizationRatio: null,
@@ -92729,7 +94393,7 @@ function verifyTorsionActions({
       metadata: {
         code,
         method: "ntc2018-4.1.2.3.6",
-        missingParameters: missing
+        missingParameters: missing2
       }
     };
   }
@@ -93002,9 +94666,9 @@ function maximumCheck(id, description, provided, allowed, metadata = {}) {
   });
 }
 function normalizeDuctilityClass(value) {
-  const normalized2 = String(value != null ? value : "").toUpperCase().replaceAll('"', "").replaceAll("-", "");
-  if (["CDA", "A"].includes(normalized2)) return "CDA";
-  if (["CDB", "B"].includes(normalized2)) return "CDB";
+  const normalized3 = String(value != null ? value : "").toUpperCase().replaceAll('"', "").replaceAll("-", "");
+  if (["CDA", "A"].includes(normalized3)) return "CDA";
+  if (["CDB", "B"].includes(normalized3)) return "CDB";
   throw new Error(`Unsupported NTC 2018 ductility class: ${value}.`);
 }
 function anchorageChecks({ anchors, fctd, fyk, seismic }) {
@@ -96082,7 +97746,7 @@ function governingCheckFromVerification(verification) {
     return selected;
   }, null);
 }
-function collectWarnings(...sources) {
+function collectWarnings2(...sources) {
   return unique9(
     sources.flatMap((source) => {
       var _a;
@@ -96166,7 +97830,7 @@ var BeamReportBuilder = class {
     );
     const verification = verificationResult ? toPlain3(verificationResult) : null;
     const governingCheck5 = governingCheckFromVerification(verification);
-    const warnings = collectWarnings(
+    const warnings = collectWarnings2(
       analysisResult,
       verification,
       verification ? [] : ["No structural verification result was provided."]
@@ -96258,7 +97922,7 @@ function statusFromVerification(verificationResult) {
   }
   return (_a = verificationResult.status) != null ? _a : RESULT_STATUS.OK;
 }
-function collectWarnings2(...sources) {
+function collectWarnings3(...sources) {
   return [
     ...new Set(
       sources.flatMap((source) => {
@@ -96366,7 +98030,7 @@ var SingleBeamDesignApplication = class extends StructuralApplication {
         verification: verificationJson,
         report
       },
-      warnings: collectWarnings2(verificationJson, report.json),
+      warnings: collectWarnings3(verificationJson, report.json),
       assumptions: collectAssumptions2(verificationJson, report.json),
       metadata: {
         domain: this.domain,
@@ -100044,6 +101708,7 @@ var XlamBeamVerification = class {
 function createDefaultApplicationRegistry() {
   return new ApplicationRegistry([
     new SingleBeamDesignApplication(),
+    new GlobalFemPostProcessingApplication(),
     new SteelFrameApplication(),
     new MasonryRingBeamApplication(),
     new MasonryPierApplication(),
@@ -100271,6 +101936,7 @@ export {
   DEEP_FOUNDATION_ELEMENT_TYPES,
   DEEP_FOUNDATION_GEOMETRY_MODELS,
   DEEP_FOUNDATION_MODEL_SCHEMA_VERSION,
+  DEFAULT_GLOBAL_FEM_CLASSIFICATION_POLICY,
   DEFAULT_SECTION_ROTATION,
   DeepFoundationModel,
   DenseLinearSolver,
@@ -100321,7 +101987,14 @@ export {
   GEOTECHNICAL_LIMIT_STATES,
   GEOTECHNICAL_SEISMIC_MODELS,
   GEOTECHNICAL_TIME_CONDITIONS,
+  GLOBAL_FEM_CLASSIFICATION_PROPOSAL_VERSION,
   GLOBAL_FEM_CONTRACT_VERSION,
+  GLOBAL_FEM_DEMAND_SET_VERSION,
+  GLOBAL_FEM_POSTPROCESSING_PROFILES,
+  GLOBAL_FEM_POSTPROCESSING_PROFILE_VALUES,
+  GLOBAL_FEM_READINESS_ASSESSMENTS,
+  GLOBAL_FEM_READINESS_ASSESSMENT_VALUES,
+  GLOBAL_FEM_READINESS_REPORT_VERSION,
   GLOBAL_FEM_REQUIRED_UNIT_KEYS,
   GROUND_ANCHOR_BOND_CATALOG,
   GROUND_ANCHOR_BOND_CATALOG_IDS,
@@ -100354,6 +102027,7 @@ export {
   GeotechnicalRetainingWallApplication,
   GeotechnicalShallowFoundationApplication,
   GeotechnicalSlopeStabilityApplication,
+  GlobalFemPostProcessingApplication,
   GlulamTimberMaterial,
   GroundAnchorAnalysis,
   GroundAnchorDesignScenario,
@@ -100748,6 +102422,7 @@ export {
   calculateTimberLateralBucklingReduction,
   calculateTimberRectangularCriticalBendingStress,
   characteristicValueFromExistingMean,
+  classifyGlobalFemStructuralEntities,
   classifyNTC2018JointConfinement,
   classifyNTC2018Topography,
   classifySteelSection,
@@ -100806,9 +102481,11 @@ export {
   createXlamBeamSectionProvider,
   createXlamPanelSection,
   cyclicMasonryPierHistoryToCsv,
+  evaluateGlobalFemVerificationReadiness,
   evaluateNTC2018ExistingMasonryWorkflow,
   evaluateNTC2018MasonryPier,
   extractEquivalentFrameMembers,
+  extractGlobalFemDemands,
   getGroundAnchorBondCatalogEntry,
   getItalianHistoricalReinforcementSteelGrade,
   getNTC2018ActionCombinationFactors,
@@ -100862,6 +102539,7 @@ export {
   modifierSelectionsFromState,
   mononobeOkabeActiveEarthPressureCoefficient,
   normalizeExistingMaterialKnowledgeLevel,
+  normalizeGlobalFemClassificationPolicy,
   normalizeNTC2018SiteHazardParameters,
   normalizeSectionRotation,
   normalizeTerrainElevationGrid,

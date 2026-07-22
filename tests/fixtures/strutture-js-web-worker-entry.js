@@ -1,5 +1,6 @@
 import {
   ReinforcedConcreteSection,
+  GlobalFemPostProcessingApplication,
   ReinforcedConcreteSectionApplication,
   ReinforcedConcreteSectionModel,
   ReinforcedConcretePlateApplication,
@@ -7,6 +8,7 @@ import {
   ReinforcementBar,
   RectangularSection,
   createFemCapabilitiesContract,
+  classifyGlobalFemStructuralEntities,
   createNTC2018ConcreteMaterial,
   createNTC2018ReinforcementSteelMaterial,
 } from "strutture-js";
@@ -161,6 +163,32 @@ export function runWorkerSmoke() {
       },
     }),
   });
+  const femClassification = classifyGlobalFemStructuralEntities({
+    model: {
+      id: "worker-classification-model",
+      hash: "sha256:worker-classification-model",
+      units: { length: "m" },
+      globalCoordinateSystem: {
+        origin: { x: 0, y: 0, z: 0 },
+        gravityDirection: { x: 0, y: 0, z: -1 },
+      },
+      nodes: [
+        { id: "N1", coordinates: { x: 0, y: 0, z: 0 } },
+        { id: "N2", coordinates: { x: 0, y: 0, z: 3 } },
+      ],
+      lineElements: [{
+        id: "E1",
+        nodeIds: ["N1", "N2"],
+        sectionId: "S1",
+        materialId: "M1",
+      }],
+      shellElements: [],
+      constraints: [],
+      diaphragms: [],
+      storeys: [],
+    },
+  });
+  const femPostprocessorManifest = new GlobalFemPostProcessingApplication().getManifest();
 
   return {
     applicationId: result.applicationId,
@@ -173,6 +201,8 @@ export function runWorkerSmoke() {
     plateCheckCount: plateResult.checks.length,
     globalFemCapabilitySchema: femCapabilities.schema,
     globalFemCapabilityVersion: femCapabilities.version,
+    globalFemClassificationRole: femClassification.members[0].classification.role,
+    globalFemPostprocessorId: femPostprocessorManifest.id,
   };
 }
 

@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 
 import * as PublicApi from "strutture-js";
 import * as ApplicationsApi from "strutture-js/applications";
+import * as GlobalFemPostprocessingApi from
+  "strutture-js/applications/global-fem-postprocessing";
 import * as MasonryPiersApi from "strutture-js/applications/masonry-piers";
 import * as RcDeflectionApi from "strutture-js/applications/rc-cracked-deflection";
 import * as RcPlatesApi from "strutture-js/applications/reinforced-concrete-plates";
@@ -171,6 +173,9 @@ test("package root export exposes the main public API", () => {
   assert.equal(typeof PublicApi.createFemEntityMappingContract, "function");
   assert.equal(typeof PublicApi.createGlobalFemResultContract, "function");
   assert.equal(typeof PublicApi.validateGlobalFemContractSet, "function");
+  assert.equal(typeof PublicApi.GlobalFemPostProcessingApplication, "function");
+  assert.equal(typeof PublicApi.classifyGlobalFemStructuralEntities, "function");
+  assert.equal(typeof PublicApi.extractGlobalFemDemands, "function");
   assert.equal(typeof PublicApi.NTC2018MasonryPierModel, "function");
   assert.equal(typeof PublicApi.NTC2018MasonryPierAnalysis, "function");
   assert.equal(typeof PublicApi.evaluateNTC2018MasonryPier, "function");
@@ -365,6 +370,15 @@ test("granular ESM subpaths expose applications, solvers and catalogs", () => {
   assert.equal(typeof FemApi.createGlobalFemResultContract, "function");
   assert.equal(typeof FemApi.validateGlobalFemContractSet, "function");
   assert.equal(FemApi.GLOBAL_FEM_CONTRACT_VERSION, 0);
+  assert.equal(typeof ApplicationsApi.GlobalFemPostProcessingApplication, "function");
+  assert.equal(
+    typeof GlobalFemPostprocessingApi.GlobalFemPostProcessingApplication,
+    "function",
+  );
+  assert.equal(
+    typeof GlobalFemPostprocessingApi.evaluateGlobalFemVerificationReadiness,
+    "function",
+  );
   assert.equal(typeof MathApi.BandedLinearSolver, "function");
   assert.equal(typeof MathApi.rayPolygonCapacity, "function");
   assert.equal(typeof GeotechnicsApi.SoilMaterial, "function");
