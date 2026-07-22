@@ -2,7 +2,7 @@ const DEFAULT_ULS_COEFFICIENTS = {
   g1Unfavourable: 1.3,
   g1Favourable: 1.0,
   g2Unfavourable: 1.5,
-  g2Favourable: 0.9,
+  g2Favourable: 0.8,
   qUnfavourable: 1.5,
 };
 

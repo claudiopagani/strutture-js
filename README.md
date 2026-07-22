@@ -197,6 +197,7 @@ migliorare il tree-shaking sono disponibili subpath granulari:
 
 ```js
 import { BandedLinearSolver } from "strutture-js/domain/math";
+import { normalizeTerrainElevationGrid } from "strutture-js/domain/terrain";
 import { GroundProfile } from "strutture-js/domain/geotechnics";
 import { CrackedSectionDeflectionAnalysis } from "strutture-js/applications/rc-cracked-deflection";
 import { listSoilTypes } from "strutture-js/catalogs/soil-types";
@@ -372,6 +373,13 @@ Ogni caso di validazione dovrebbe dichiarare:
 Documentazione utile:
 
 - [docs/beam-validation-campaign.md](docs/beam-validation-campaign.md);
+- [docs/ntc2018-permanent-loads.md](docs/ntc2018-permanent-loads.md);
+- [docs/ntc2018-imposed-loads.md](docs/ntc2018-imposed-loads.md);
+- [docs/ntc2018-seismic-action.md](docs/ntc2018-seismic-action.md);
+- [docs/ntc2018-topographic-classification.md](docs/ntc2018-topographic-classification.md);
+- [docs/ntc2018-snow-load.md](docs/ntc2018-snow-load.md);
+- [docs/ntc2018-thermal-action.md](docs/ntc2018-thermal-action.md);
+- [docs/ntc2018-wind-load.md](docs/ntc2018-wind-load.md);
 - [docs/project-boundaries.md](docs/project-boundaries.md);
 - [docs/public-api-policy.md](docs/public-api-policy.md);
 - [docs/consumer-integration.md](docs/consumer-integration.md);

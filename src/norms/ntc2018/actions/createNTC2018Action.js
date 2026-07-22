@@ -12,10 +12,46 @@ import {
 import {
   NTC2018_ACTION_COMBINATION_FACTORS,
   NTC2018_ACTION_PARTIAL_FACTORS,
+  NTC2018_CASE_BY_CASE_COMBINATION_CATEGORIES,
   NTC2018_DEFAULT_DURATION_CLASS_BY_ACTION,
   NTC2018_LOAD_DURATION_CLASSES,
   NTC2018_TIMBER_KMOD,
 } from "./ntc2018ActionParameters.js";
+
+function documentedCombinationFactors({ category, combinationFactors, source }) {
+  const definition = NTC2018_CASE_BY_CASE_COMBINATION_CATEGORIES[category];
+  if (!definition) {
+    if (combinationFactors != null || source != null) {
+      throw new Error(
+        `Explicit combination factors are only accepted for NTC 2018 categories I and K, not ${category}.`,
+      );
+    }
+    return null;
+  }
+  if (
+    source == null ||
+    typeof source !== "object" ||
+    typeof source.reference !== "string" ||
+    source.reference.trim() === ""
+  ) {
+    throw new Error(`NTC 2018 category ${category} requires combinationFactorsSource.reference.`);
+  }
+
+  const normalized = {};
+  for (const key of ["psi0", "psi1", "psi2"]) {
+    const value = combinationFactors?.[key];
+    if (!Number.isFinite(value) || value < 0 || value > 1) {
+      throw new Error(`combinationFactors.${key} must be between 0 and 1.`);
+    }
+    normalized[key] = value;
+  }
+
+  return {
+    factors: normalized,
+    description: definition.description,
+    source: { ...source },
+  };
+}
 
 function cloneFactors(source) {
   return JSON.parse(JSON.stringify(source));
@@ -151,9 +187,19 @@ export function createNTC2018VariableAction({
   family = "imposed",
   loadCase = null,
   loadDurationClass = null,
+  combinationFactors = null,
+  combinationFactorsSource = null,
   metadata = {},
 }) {
-  const factors = getNTC2018ActionCombinationFactors(category);
+  const documentedFactors = documentedCombinationFactors({
+    category,
+    combinationFactors,
+    source: combinationFactorsSource,
+  });
+  const factors = documentedFactors?.factors ?? getNTC2018ActionCombinationFactors(category);
+  if (documentedFactors && loadDurationClass == null) {
+    throw new Error(`NTC 2018 category ${category} requires an explicit loadDurationClass.`);
+  }
   const durationClass = loadDurationClass ?? getNTC2018LoadDurationClass(category);
   const commonProps = {
     id,
@@ -169,7 +215,8 @@ export function createNTC2018VariableAction({
     metadata: {
       ...metadata,
       normativePreset: "NTC2018",
-      categoryDescription: factors.description,
+      categoryDescription: documentedFactors?.description ?? factors.description,
+      combinationFactorsSource: documentedFactors?.source ?? null,
     },
   };
 

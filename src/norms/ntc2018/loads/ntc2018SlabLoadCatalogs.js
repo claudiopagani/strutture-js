@@ -1,7 +1,17 @@
 import { NTC2018_VARIABLE_ACTION_CATEGORIES } from "./ntc2018LoadParameters.js";
+import { NTC2018_IMPOSED_LOAD_CATALOG } from "./ntc2018ImposedLoads.js";
 import { VariableLoad } from "../../../domain/slabs/VariableLoad.js";
 
-export const NTC2018_SLAB_MATERIAL_WEIGHT_DATABASE = {
+export const SLAB_MATERIAL_WEIGHT_PRESET_METADATA = Object.freeze({
+  status: "legacy-reference-presets",
+  normative: false,
+  unitSystem: Object.freeze({ force: "kN", length: "m" }),
+  warning:
+    "These values are legacy project presets, not NTC 2018 Table 3.1.I values. Verify every selected value against product data, tests or another documented source.",
+  normativeReplacement: "NTC2018_UNIT_WEIGHT_CATALOG",
+});
+
+export const SLAB_MATERIAL_WEIGHT_PRESET_DATABASE = {
   volumeWeights: [
     {
       category: "Concrete and mortars",
@@ -162,7 +172,14 @@ export const NTC2018_SLAB_MATERIAL_WEIGHT_DATABASE = {
   ],
 };
 
-export const NTC2018_SLAB_VARIABLE_ACTIONS_DATABASE = [
+/**
+ * @deprecated Use SLAB_MATERIAL_WEIGHT_PRESET_DATABASE for legacy presets and
+ * NTC2018_UNIT_WEIGHT_CATALOG for values taken from NTC 2018 Table 3.1.I.
+ */
+export const NTC2018_SLAB_MATERIAL_WEIGHT_DATABASE =
+  SLAB_MATERIAL_WEIGHT_PRESET_DATABASE;
+
+const LEGACY_SLAB_VARIABLE_ACTION_DESCRIPTIONS = [
   {
     id: 1,
     category: "A",
@@ -309,8 +326,39 @@ export const NTC2018_SLAB_VARIABLE_ACTIONS_DATABASE = [
   },
 ];
 
-export function listNTC2018SlabWeightCategories(weightType) {
-  const collection = NTC2018_SLAB_MATERIAL_WEIGHT_DATABASE[weightType];
+function legacyQuantityValue(specification) {
+  return specification.mode === "fixed" ? specification.value : null;
+}
+
+export const NTC2018_SLAB_VARIABLE_ACTIONS_DATABASE = Object.freeze(
+  LEGACY_SLAB_VARIABLE_ACTION_DESCRIPTIONS.map((legacyEntry) => {
+    const definition = NTC2018_IMPOSED_LOAD_CATALOG.find(
+      ({ legacySlabActionId }) => legacySlabActionId === legacyEntry.id,
+    );
+
+    if (!definition) {
+      throw new Error(`Missing generic imposed-load definition for legacy slab action ${legacyEntry.id}.`);
+    }
+
+    return Object.freeze({
+      ...legacyEntry,
+      definitionId: definition.id,
+      category: definition.category,
+      subcategory: definition.subcategory,
+      qk: legacyQuantityValue(definition.loads.qk),
+      Qk: legacyQuantityValue(definition.loads.Qk),
+      Hk: legacyQuantityValue(definition.loads.Hk),
+      qkMode: definition.loads.qk.mode,
+      qkMinimum: definition.loads.qk.minimum ?? null,
+      requiresGenericResolution: definition.loads.qk.mode !== "fixed",
+      deprecated: true,
+      replacement: "resolveNTC2018ImposedLoadDefinition",
+    });
+  }),
+);
+
+export function listSlabMaterialWeightPresetCategories(weightType) {
+  const collection = SLAB_MATERIAL_WEIGHT_PRESET_DATABASE[weightType];
 
   if (!collection) {
     throw new Error(`Unsupported slab weight type: ${weightType}.`);
@@ -319,8 +367,8 @@ export function listNTC2018SlabWeightCategories(weightType) {
   return collection.map((group) => group.category);
 }
 
-export function listNTC2018SlabWeightEntries(weightType, category) {
-  const collection = NTC2018_SLAB_MATERIAL_WEIGHT_DATABASE[weightType];
+export function listSlabMaterialWeightPresetEntries(weightType, category) {
+  const collection = SLAB_MATERIAL_WEIGHT_PRESET_DATABASE[weightType];
 
   if (!collection) {
     throw new Error(`Unsupported slab weight type: ${weightType}.`);
@@ -335,12 +383,12 @@ export function listNTC2018SlabWeightEntries(weightType, category) {
   return group.entries.map((entry) => ({ ...entry }));
 }
 
-export function getNTC2018SlabWeightValue({
+export function getSlabMaterialWeightPresetValue({
   weightType,
   category,
   description,
 }) {
-  const entry = listNTC2018SlabWeightEntries(weightType, category)
+  const entry = listSlabMaterialWeightPresetEntries(weightType, category)
     .find((item) => item.description === description);
 
   if (!entry) {
@@ -348,6 +396,21 @@ export function getNTC2018SlabWeightValue({
   }
 
   return entry.value;
+}
+
+/** @deprecated Use listSlabMaterialWeightPresetCategories. */
+export function listNTC2018SlabWeightCategories(weightType) {
+  return listSlabMaterialWeightPresetCategories(weightType);
+}
+
+/** @deprecated Use listSlabMaterialWeightPresetEntries. */
+export function listNTC2018SlabWeightEntries(weightType, category) {
+  return listSlabMaterialWeightPresetEntries(weightType, category);
+}
+
+/** @deprecated Use getSlabMaterialWeightPresetValue. */
+export function getNTC2018SlabWeightValue(input) {
+  return getSlabMaterialWeightPresetValue(input);
 }
 
 export function getNTC2018SlabVariableAction(actionId) {
@@ -364,6 +427,7 @@ export function createNTC2018SlabVariableLoad({
   actionId,
   description,
   qk,
+  documentation = null,
   units = null,
 }) {
   if (units == null) {
@@ -372,14 +436,47 @@ export function createNTC2018SlabVariableLoad({
 
   const action = getNTC2018SlabVariableAction(actionId);
   const factors = NTC2018_VARIABLE_ACTION_CATEGORIES[action.category];
+  const selectedQk = qk ?? action.qk;
 
-  return new VariableLoad({
+  if (selectedQk == null) {
+    throw new Error(
+      `${action.definitionId} has no automatic qk; provide a documented value or use resolveNTC2018ImposedLoadDefinition for the complete qk/Qk/Hk contract.`,
+    );
+  }
+  if (
+    action.requiresGenericResolution &&
+    (
+      documentation == null ||
+      typeof documentation.reference !== "string" ||
+      documentation.reference.trim() === ""
+    )
+  ) {
+    throw new Error(`${action.definitionId} requires documentation.reference for qk.`);
+  }
+
+  const load = new VariableLoad({
     description: description ?? action.shortDescription,
-    value: qk ?? action.qk,
+    value: selectedQk,
     psi0: factors.psi0,
     psi1: factors.psi1,
     psi2: factors.psi2,
     category: action.category,
     units,
   });
+
+  const minimum = action.qkMinimum ?? action.qk;
+  if (minimum != null && load.value < minimum) {
+    throw new Error(
+      `qk for ${action.definitionId} must not be lower than ${minimum} kN/m^2.`,
+    );
+  }
+
+  load.metadata = {
+    ...load.metadata,
+    deprecatedFactory: "createNTC2018SlabVariableLoad",
+    imposedLoadDefinitionId: action.definitionId,
+    documentation: documentation == null ? null : { ...documentation },
+  };
+
+  return load;
 }

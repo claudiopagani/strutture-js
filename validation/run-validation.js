@@ -55,6 +55,18 @@ import {
   formatNTC2018MasonryPierValidationReport,
   runNTC2018MasonryPierValidationCampaign,
 } from "./ntc2018MasonryPierValidationCampaign.js";
+import {
+  formatNTC2018SeismicActionValidationReport,
+  runNTC2018SeismicActionValidationCampaign,
+} from "./ntc2018SeismicActionValidationCampaign.js";
+import {
+  formatNTC2018TopographicClassificationValidationReport,
+  runNTC2018TopographicClassificationValidationCampaign,
+} from "./ntc2018TopographicClassificationValidationCampaign.js";
+import {
+  formatNTC2018ImposedLoadsValidationReport,
+  runNTC2018ImposedLoadsValidationCampaign,
+} from "./ntc2018ImposedLoadsValidationCampaign.js";
 
 const campaign = runBeamValidationCampaign();
 const punchingCampaign = runPunchingValidationCampaign();
@@ -79,6 +91,11 @@ const geotechnicalGroundAnchorCampaign =
   runGeotechnicalGroundAnchorValidationCampaign();
 const cyclicMasonryPierCampaign = runCyclicMasonryPierValidationCampaign();
 const ntc2018MasonryPierCampaign = runNTC2018MasonryPierValidationCampaign();
+const ntc2018SeismicActionCampaign =
+  runNTC2018SeismicActionValidationCampaign();
+const ntc2018TopographicClassificationCampaign =
+  runNTC2018TopographicClassificationValidationCampaign();
+const ntc2018ImposedLoadsCampaign = runNTC2018ImposedLoadsValidationCampaign();
 const wantsJson = process.argv.includes("--json");
 
 if (wantsJson) {
@@ -97,6 +114,9 @@ if (wantsJson) {
     geotechnicalGroundAnchorCampaign,
     cyclicMasonryPierCampaign,
     ntc2018MasonryPierCampaign,
+    ntc2018SeismicActionCampaign,
+    ntc2018TopographicClassificationCampaign,
+    ntc2018ImposedLoadsCampaign,
   }, null, 2));
 } else {
   console.log(formatBeamValidationReport(campaign));
@@ -144,6 +164,18 @@ if (wantsJson) {
   console.log(formatCyclicMasonryPierValidationReport(cyclicMasonryPierCampaign));
   console.log("");
   console.log(formatNTC2018MasonryPierValidationReport(ntc2018MasonryPierCampaign));
+  console.log("");
+  console.log(formatNTC2018SeismicActionValidationReport(
+    ntc2018SeismicActionCampaign,
+  ));
+  console.log("");
+  console.log(formatNTC2018TopographicClassificationValidationReport(
+    ntc2018TopographicClassificationCampaign,
+  ));
+  console.log("");
+  console.log(formatNTC2018ImposedLoadsValidationReport(
+    ntc2018ImposedLoadsCampaign,
+  ));
 }
 
 if (
@@ -160,7 +192,10 @@ if (
   geotechnicalEmbeddedRetainingWallCampaign.status !== "ok" ||
   geotechnicalGroundAnchorCampaign.status !== "ok" ||
   cyclicMasonryPierCampaign.status !== "ok" ||
-  ntc2018MasonryPierCampaign.status !== "ok"
+  ntc2018MasonryPierCampaign.status !== "ok" ||
+  ntc2018SeismicActionCampaign.status !== "ok" ||
+  ntc2018TopographicClassificationCampaign.status !== "ok" ||
+  ntc2018ImposedLoadsCampaign.status !== "ok"
 ) {
   process.exitCode = 1;
 }

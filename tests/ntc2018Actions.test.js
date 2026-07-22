@@ -40,13 +40,14 @@ test("ntc2018 actions expose combination factors, partial factors and duration c
   assert.equal(imposed instanceof ImposedAction, true);
   assert.equal(wind instanceof WindAction, true);
   assert.equal(wind instanceof ClimaticAction, true);
+  assert.equal(wind.family, "wind");
   assert.equal(imposed.getCombinationFactor("psi0"), 0.7);
   assert.equal(imposed.getPartialFactor({ combinationSet: "A1", effect: "unfavourable" }), 1.5);
   assert.equal(permanent.getPartialFactor({ combinationSet: "A1", effect: "unfavourable" }), 1.3);
   assert.equal(wind.loadDurationClass, "instantaneous");
 });
 
-test("traffic-related variable actions use dedicated partial factors", () => {
+test("building traffic categories use the generic variable-action partial factors", () => {
   const traffic = createNTC2018VariableAction({
     id: "ACT-QF",
     category: "F",
@@ -54,7 +55,59 @@ test("traffic-related variable actions use dedicated partial factors", () => {
   });
 
   assert.equal(traffic instanceof TrafficAction, true);
-  assert.equal(traffic.getPartialFactor({ combinationSet: "A1", effect: "unfavourable" }), 1.35);
+  assert.equal(traffic.getPartialFactor({ combinationSet: "A1", effect: "unfavourable" }), 1.5);
+  assert.equal(traffic.getPartialFactor({ combinationSet: "A2", effect: "unfavourable" }), 1.3);
+});
+
+test("A2 variable-action factors follow NTC 2018 Table 2.6.I", () => {
+  for (const family of ["imposed", "traffic", "wind", "snow", "thermal", "climatic"]) {
+    const factors = getNTC2018ActionPartialFactors({
+      nature: "variable",
+      family,
+    });
+    assert.equal(factors.A2.favourable, 0);
+    assert.equal(factors.A2.unfavourable, 1.3);
+  }
+
+  const roadBridgeTraffic = getNTC2018ActionPartialFactors({
+    nature: "variable",
+    family: "roadBridgeTraffic",
+  });
+  assert.equal(roadBridgeTraffic.A1.unfavourable, 1.35);
+  assert.equal(roadBridgeTraffic.A2.unfavourable, 1.15);
+});
+
+test("categories I and K accept only documented case-by-case combination factors", () => {
+  assert.throws(
+    () => createNTC2018VariableAction({
+      id: "ACT-QI",
+      category: "I",
+      loadDurationClass: "short",
+    }),
+    /combinationFactorsSource\.reference/,
+  );
+
+  const action = createNTC2018VariableAction({
+    id: "ACT-QI",
+    category: "I",
+    loadDurationClass: "short",
+    combinationFactors: { psi0: 0.7, psi1: 0.5, psi2: 0.3 },
+    combinationFactorsSource: { reference: "Project load specification LOAD-001" },
+  });
+
+  assert.equal(action instanceof ImposedAction, true);
+  assert.equal(action.getCombinationFactor("psi0"), 0.7);
+  assert.equal(action.metadata.combinationFactorsSource.reference, "Project load specification LOAD-001");
+});
+
+test("G2 favourable partial factors follow NTC 2018 Table 2.6.I", () => {
+  const factors = getNTC2018ActionPartialFactors({
+    nature: "permanent",
+    permanentClass: "G2",
+  });
+
+  assert.equal(factors.A1.favourable, 0.8);
+  assert.equal(factors.A2.favourable, 0.8);
 });
 
 test("load cases propagate actions to loads", () => {

@@ -1,10 +1,10 @@
 import { VariableAction } from "./VariableAction.js";
 
 export class ClimaticAction extends VariableAction {
-  constructor(baseProps) {
+  constructor({ family = "climatic", ...baseProps } = {}) {
     super({
       ...baseProps,
-      family: "climatic",
+      family,
     });
   }
 }

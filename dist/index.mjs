@@ -722,8 +722,8 @@ function assertRatio(value, label) {
     );
   }
 }
-function clamp(value, minimum = 0, maximum = 1) {
-  return Math.max(minimum, Math.min(maximum, value));
+function clamp(value, minimum2 = 0, maximum = 1) {
+  return Math.max(minimum2, Math.min(maximum, value));
 }
 function loadingDirection(increment, fallback = 0) {
   if (Math.abs(increment) <= DIRECTION_TOLERANCE) {
@@ -1185,8 +1185,8 @@ function assertNonNegative2(value, label) {
     throw new Error(`MohrCoulombModel requires a non-negative ${label}.`);
   }
 }
-function clamp2(value, minimum = 0, maximum = 1) {
-  return Math.max(minimum, Math.min(maximum, value));
+function clamp2(value, minimum2 = 0, maximum = 1) {
+  return Math.max(minimum2, Math.min(maximum, value));
 }
 var MohrCoulombModel = class _MohrCoulombModel {
   constructor({
@@ -1288,8 +1288,8 @@ function assertRatio2(value, label) {
     throw new Error(`SlidingStrengthModel requires ${label} between 0 and 1.`);
   }
 }
-function clamp3(value, minimum = 0, maximum = 1) {
-  return Math.max(minimum, Math.min(maximum, value));
+function clamp3(value, minimum2 = 0, maximum = 1) {
+  return Math.max(minimum2, Math.min(maximum, value));
 }
 var SlidingStrengthModel = class _SlidingStrengthModel {
   constructor({
@@ -1396,8 +1396,8 @@ function assertNonNegative4(value, label) {
     throw new Error(`TurnsekSheppardModel requires a non-negative ${label}.`);
   }
 }
-function clamp4(value, minimum = 0, maximum = 1) {
-  return Math.max(minimum, Math.min(maximum, value));
+function clamp4(value, minimum2 = 0, maximum = 1) {
+  return Math.max(minimum2, Math.min(maximum, value));
 }
 var TurnsekSheppardModel = class _TurnsekSheppardModel {
   constructor({
@@ -1542,8 +1542,8 @@ function assertRatio3(value, label) {
     );
   }
 }
-function clamp5(value, minimum = 0, maximum = 1) {
-  return Math.max(minimum, Math.min(maximum, value));
+function clamp5(value, minimum2 = 0, maximum = 1) {
+  return Math.max(minimum2, Math.min(maximum, value));
 }
 function directionOf(increment, fallback = 0) {
   return Math.abs(increment) <= EPS ? fallback : Math.sign(increment);
@@ -3090,6 +3090,243 @@ var NTC2018ExistingMasonryMaterial = class _NTC2018ExistingMasonryMaterial exten
     };
   }
 };
+
+// src/domain/terrain/TerrainElevationGrid.js
+var TERRAIN_ELEVATION_GRID_SCHEMA_VERSION = "terrain-elevation-grid/v1";
+function toFiniteNumber(value) {
+  if (value == null || typeof value === "string" && value.trim() === "") {
+    return null;
+  }
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : null;
+}
+function requirePositiveNumber(value, fieldName) {
+  const numericValue = toFiniteNumber(value);
+  if (numericValue == null || numericValue <= 0) {
+    throw new Error(`${fieldName} must be a finite positive number.`);
+  }
+  return numericValue;
+}
+function resolveGridSize(data, points) {
+  const declaredSize = Number(data == null ? void 0 : data.gridSize);
+  if (Number.isInteger(declaredSize) && declaredSize >= 2) {
+    return declaredSize;
+  }
+  const inferredSize = Math.sqrt(points.length);
+  if (Number.isInteger(inferredSize) && inferredSize >= 2) {
+    return inferredSize;
+  }
+  throw new Error(
+    "gridSize must be an integer greater than one or inferable from a square points array."
+  );
+}
+function toGridIndex(value, fallback) {
+  const numericValue = Number(value);
+  return Number.isInteger(numericValue) ? numericValue : fallback;
+}
+function getPointElevation(point4) {
+  var _a, _b;
+  if ((point4 == null ? void 0 : point4.nodata) === true || (point4 == null ? void 0 : point4.isNoData) === true) {
+    return null;
+  }
+  return toFiniteNumber(
+    (_b = (_a = point4 == null ? void 0 : point4.elevationM) != null ? _a : point4 == null ? void 0 : point4.elevation_m) != null ? _b : point4 == null ? void 0 : point4.elevation
+  );
+}
+function toPointMatrix(points, gridSize) {
+  const matrix = Array.from(
+    { length: gridSize },
+    () => Array(gridSize).fill(null)
+  );
+  points.forEach((point4, index) => {
+    var _a;
+    const fallbackRow = Math.floor(index / gridSize);
+    const fallbackColumn = index % gridSize;
+    const row = toGridIndex(point4 == null ? void 0 : point4.row, fallbackRow);
+    const column = toGridIndex((_a = point4 == null ? void 0 : point4.col) != null ? _a : point4 == null ? void 0 : point4.column, fallbackColumn);
+    if (row >= 0 && row < gridSize && column >= 0 && column < gridSize) {
+      matrix[row][column] = point4;
+    }
+  });
+  return matrix;
+}
+function averageCoordinate(matrix, gridSize, fixedIndex, axis, coordinate) {
+  var _a, _b;
+  const values = [];
+  for (let index = 0; index < gridSize; index += 1) {
+    const row = axis === "row" ? fixedIndex : index;
+    const column = axis === "column" ? fixedIndex : index;
+    const value = toFiniteNumber((_b = (_a = matrix[row]) == null ? void 0 : _a[column]) == null ? void 0 : _b[coordinate]);
+    if (value != null) {
+      values.push(value);
+    }
+  }
+  return values.length ? values.reduce((total, value) => total + value, 0) / values.length : null;
+}
+function shouldFlipRows(matrix, gridSize) {
+  const firstNorthOffset = averageCoordinate(
+    matrix,
+    gridSize,
+    0,
+    "row",
+    "northOffsetM"
+  );
+  const lastNorthOffset = averageCoordinate(
+    matrix,
+    gridSize,
+    gridSize - 1,
+    "row",
+    "northOffsetM"
+  );
+  if (firstNorthOffset != null && lastNorthOffset != null) {
+    return firstNorthOffset < lastNorthOffset;
+  }
+  const firstLatitude = averageCoordinate(matrix, gridSize, 0, "row", "lat");
+  const lastLatitude = averageCoordinate(
+    matrix,
+    gridSize,
+    gridSize - 1,
+    "row",
+    "lat"
+  );
+  return firstLatitude != null && lastLatitude != null ? firstLatitude < lastLatitude : false;
+}
+function shouldFlipColumns(matrix, gridSize) {
+  const firstEastOffset = averageCoordinate(
+    matrix,
+    gridSize,
+    0,
+    "column",
+    "eastOffsetM"
+  );
+  const lastEastOffset = averageCoordinate(
+    matrix,
+    gridSize,
+    gridSize - 1,
+    "column",
+    "eastOffsetM"
+  );
+  if (firstEastOffset != null && lastEastOffset != null) {
+    return firstEastOffset > lastEastOffset;
+  }
+  const firstLongitude = averageCoordinate(
+    matrix,
+    gridSize,
+    0,
+    "column",
+    "lon"
+  );
+  const lastLongitude = averageCoordinate(
+    matrix,
+    gridSize,
+    gridSize - 1,
+    "column",
+    "lon"
+  );
+  return firstLongitude != null && lastLongitude != null ? firstLongitude > lastLongitude : false;
+}
+function cloneSerializableObject(value) {
+  if (value == null) {
+    return null;
+  }
+  if (typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("provenance must be a serializable object when provided.");
+  }
+  return { ...value };
+}
+function normalizeTerrainElevationGrid(data = {}) {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s;
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new Error("A terrain elevation grid object is required.");
+  }
+  if (!Array.isArray(data.points)) {
+    throw new Error("points must be an array.");
+  }
+  const points = data.points;
+  const gridSize = resolveGridSize(data, points);
+  const spacingM = requirePositiveNumber(data.spacingM, "spacingM");
+  const halfIndex = (gridSize - 1) / 2;
+  const sourceMatrix = toPointMatrix(points, gridSize);
+  const flipRows = shouldFlipRows(sourceMatrix, gridSize);
+  const flipColumns = shouldFlipColumns(sourceMatrix, gridSize);
+  const cells = [];
+  for (let row = 0; row < gridSize; row += 1) {
+    for (let column = 0; column < gridSize; column += 1) {
+      const point4 = (_b = (_a = sourceMatrix[row]) == null ? void 0 : _a[column]) != null ? _b : {};
+      const normalizedRow = flipRows ? gridSize - 1 - row : row;
+      const normalizedColumn = flipColumns ? gridSize - 1 - column : column;
+      const elevationM = getPointElevation(point4);
+      const isNoData = point4.nodata === true || point4.isNoData === true || elevationM == null;
+      cells.push({
+        row: normalizedRow,
+        column: normalizedColumn,
+        sourceRow: toGridIndex(point4.row, row),
+        sourceColumn: toGridIndex((_c = point4.col) != null ? _c : point4.column, column),
+        eastOffsetM: (_d = toFiniteNumber(point4.eastOffsetM)) != null ? _d : (normalizedColumn - halfIndex) * spacingM,
+        northOffsetM: (_e = toFiniteNumber(point4.northOffsetM)) != null ? _e : (halfIndex - normalizedRow) * spacingM,
+        latitudeDeg: toFiniteNumber((_f = point4.lat) != null ? _f : point4.latitudeDeg),
+        longitudeDeg: toFiniteNumber((_g = point4.lon) != null ? _g : point4.longitudeDeg),
+        elevationM,
+        isNoData,
+        isInterpolated: point4.isInterpolated === true,
+        isFallback: point4.fallback === true || point4.isFallback === true || String((_h = point4.source) != null ? _h : "").toLowerCase() === "external",
+        source: (_i = point4.source) != null ? _i : null,
+        sourceResolutionM: toFiniteNumber(
+          (_k = (_j = point4.resolution_m) != null ? _j : point4.resolutionM) != null ? _k : point4.sourceResolutionM
+        ),
+        samplingMethod: (_m = (_l = point4.method) != null ? _l : point4.samplingMethod) != null ? _m : null
+      });
+    }
+  }
+  cells.sort(
+    (left, right) => left.row === right.row ? left.column - right.column : left.row - right.row
+  );
+  const eastOffsets = cells.map((cell) => cell.eastOffsetM);
+  const northOffsets = cells.map((cell) => cell.northOffsetM);
+  const extentFromData = toFiniteNumber(data.extentM);
+  const derivedExtentM = spacingM * (gridSize - 1);
+  const extentM = extentFromData && extentFromData > 0 ? extentFromData : derivedExtentM;
+  const radiusFromData = toFiniteNumber(data.radiusM);
+  const radiusM = radiusFromData && radiusFromData > 0 ? radiusFromData : extentM / 2;
+  const missingElevationCount = cells.filter(
+    (cell) => cell.elevationM == null || cell.isNoData
+  ).length;
+  return {
+    schemaVersion: TERRAIN_ELEVATION_GRID_SCHEMA_VERSION,
+    center: {
+      latitudeDeg: toFiniteNumber(
+        (_p = (_n = data.center) == null ? void 0 : _n.latitudeDeg) != null ? _p : (_o = data.center) == null ? void 0 : _o.lat
+      ),
+      longitudeDeg: toFiniteNumber(
+        (_s = (_q = data.center) == null ? void 0 : _q.longitudeDeg) != null ? _s : (_r = data.center) == null ? void 0 : _r.lon
+      )
+    },
+    radiusM,
+    extentM,
+    gridSize,
+    spacingM,
+    orientation: {
+      rowOrder: "north-to-south",
+      columnOrder: "west-to-east"
+    },
+    bounds: {
+      westM: Math.min(...eastOffsets),
+      eastM: Math.max(...eastOffsets),
+      southM: Math.min(...northOffsets),
+      northM: Math.max(...northOffsets)
+    },
+    cells,
+    quality: {
+      expectedPointCount: gridSize * gridSize,
+      receivedPointCount: points.length,
+      missingElevationCount,
+      missingRatio: missingElevationCount / (gridSize * gridSize),
+      fallbackCount: cells.filter((cell) => cell.isFallback).length,
+      interpolatedCount: cells.filter((cell) => cell.isInterpolated).length
+    },
+    provenance: cloneSerializableObject(data.provenance)
+  };
+}
 
 // src/domain/geometry/Node.js
 var Node = class {
@@ -24065,8 +24302,8 @@ function createZeroMatrix(rows, columns = rows) {
   }
   return Array.from({ length: rows }, () => new Array(columns).fill(0));
 }
-function clamp6(value, minimum, maximum) {
-  return Math.max(minimum, Math.min(maximum, value));
+function clamp6(value, minimum2, maximum) {
+  return Math.max(minimum2, Math.min(maximum, value));
 }
 function roundTo(value, decimals = 6) {
   return Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
@@ -29486,16 +29723,16 @@ function integrateFootingPressureStrip({
   }
   const start = Math.min(finite(from, "from"), finite(to, "to"));
   const end = Math.max(from, to);
-  const fixed = finite(fixedCoordinate, "fixedCoordinate");
+  const fixed2 = finite(fixedCoordinate, "fixedCoordinate");
   const downward = finite(uniformDownwardPressure, "uniformDownwardPressure");
   let activeStart = start;
   let activeEnd = end;
   let intercept = contact.pressurePolynomial.intercept;
   let slope = axis === "x" ? contact.pressurePolynomial.gradientX : contact.pressurePolynomial.gradientY;
   if (axis === "x") {
-    intercept += contact.pressurePolynomial.gradientY * fixed;
+    intercept += contact.pressurePolynomial.gradientY * fixed2;
   } else {
-    intercept += contact.pressurePolynomial.gradientX * fixed;
+    intercept += contact.pressurePolynomial.gradientX * fixed2;
   }
   if (contact.contactType !== "full") {
     const pressureStart = intercept + slope * activeStart;
@@ -30290,12 +30527,12 @@ function normalizeOptionalRange(input, resolver, label, quantity) {
     throw new Error(`${label} must contain [minimum, maximum].`);
   }
   const convert = quantity === "stress" ? (value) => resolver.stress(Number(value)) : (value) => Number(value);
-  const minimum = convert(input[0]);
+  const minimum2 = convert(input[0]);
   const maximum = convert(input[1]);
-  if (!Number.isFinite(minimum) || !Number.isFinite(maximum) || minimum < 0 || maximum <= minimum) {
+  if (!Number.isFinite(minimum2) || !Number.isFinite(maximum) || minimum2 < 0 || maximum <= minimum2) {
     throw new Error(`${label} requires 0 <= minimum < maximum.`);
   }
-  return [minimum, maximum];
+  return [minimum2, maximum];
 }
 function normalizeDeformationParameterSet(input, resolver, index) {
   var _a, _b, _c, _d, _e;
@@ -35417,14 +35654,14 @@ function evaluateSystem({
   };
 }
 function fixedDofIndices(mesh, scenario) {
-  const fixed = /* @__PURE__ */ new Set();
+  const fixed2 = /* @__PURE__ */ new Set();
   const head = mesh.nodes[0].index;
   const toe = mesh.nodes.at(-1).index;
-  if (scenario.headCondition.translation === "fixed") fixed.add(2 * head);
-  if (scenario.headCondition.rotation === "fixed") fixed.add(2 * head + 1);
-  if (scenario.tipCondition.translation === "fixed") fixed.add(2 * toe);
-  if (scenario.tipCondition.rotation === "fixed") fixed.add(2 * toe + 1);
-  return [...fixed].sort((left, right) => left - right);
+  if (scenario.headCondition.translation === "fixed") fixed2.add(2 * head);
+  if (scenario.headCondition.rotation === "fixed") fixed2.add(2 * head + 1);
+  if (scenario.tipCondition.translation === "fixed") fixed2.add(2 * toe);
+  if (scenario.tipCondition.rotation === "fixed") fixed2.add(2 * toe + 1);
+  return [...fixed2].sort((left, right) => left - right);
 }
 function externalLoadVector(mesh, scenario) {
   const vector = zeroVector2(2 * mesh.nodes.length);
@@ -35595,8 +35832,8 @@ function solveIncrementally({
 }) {
   var _a;
   const size = 2 * mesh.nodes.length;
-  const fixed = new Set(fixedIndices);
-  const freeIndices = Array.from({ length: size }, (_, index) => index).filter((index) => !fixed.has(index));
+  const fixed2 = new Set(fixedIndices);
+  const freeIndices = Array.from({ length: size }, (_, index) => index).filter((index) => !fixed2.has(index));
   const evaluate = (displacements2) => evaluateSystem({
     displacements: displacements2,
     beamStiffness,
@@ -37710,11 +37947,11 @@ function solveStageTransition({
   linearSolver
 }) {
   var _a;
-  const fixed = new Set(fixedIndices);
+  const fixed2 = new Set(fixedIndices);
   const freeIndices = Array.from(
     { length: initialDisplacements.length },
     (_, index) => index
-  ).filter((index) => !fixed.has(index));
+  ).filter((index) => !fixed2.has(index));
   const evaluate = (displacements2, transitionFactor) => {
     const previous = evaluateConfiguration({
       groundModel,
@@ -37817,14 +38054,14 @@ function solveStageTransition({
   };
 }
 function fixedDofIndices2(mesh, wall) {
-  const fixed = /* @__PURE__ */ new Set();
+  const fixed2 = /* @__PURE__ */ new Set();
   const head = mesh.nodes[0].index;
   const toe = mesh.nodes.at(-1).index;
-  if (wall.headCondition.translation === "fixed") fixed.add(2 * head);
-  if (wall.headCondition.rotation === "fixed") fixed.add(2 * head + 1);
-  if (wall.toeCondition.translation === "fixed") fixed.add(2 * toe);
-  if (wall.toeCondition.rotation === "fixed") fixed.add(2 * toe + 1);
-  return [...fixed].sort((left, right) => left - right);
+  if (wall.headCondition.translation === "fixed") fixed2.add(2 * head);
+  if (wall.headCondition.rotation === "fixed") fixed2.add(2 * head + 1);
+  if (wall.toeCondition.translation === "fixed") fixed2.add(2 * toe);
+  if (wall.toeCondition.rotation === "fixed") fixed2.add(2 * toe + 1);
+  return [...fixed2].sort((left, right) => left - right);
 }
 function sectionSampleDepths(element, startShear, lineLoad) {
   const length = element.length;
@@ -39247,12 +39484,12 @@ function upperBoundCheck({ id, demand, capacity, units, criterion, notes }) {
     notes
   });
 }
-function lowerBoundCheck({ id, actual, minimum, units, criterion, notes }) {
-  const ratio2 = actual > 0 ? minimum / actual : null;
+function lowerBoundCheck({ id, actual, minimum: minimum2, units, criterion, notes }) {
+  const ratio2 = actual > 0 ? minimum2 / actual : null;
   return check({
     id,
-    status: actual + TOLERANCE6 >= minimum ? "ok" : "failed",
-    demand: minimum,
+    status: actual + TOLERANCE6 >= minimum2 ? "ok" : "failed",
+    demand: minimum2,
     capacity: actual,
     utilizationRatio: ratio2,
     units,
@@ -39733,18 +39970,18 @@ function evaluateApparentFreeLength(anchor, scenario, record) {
     throw new Error(`Test ${record.id} testLoad must exceed alignmentLoad.`);
   }
   const apparentFreeLength = anchor.tendon.steelArea * anchor.tendon.elasticModulus * movement / loadIncrement;
-  const minimum = scenario.testing.jackLength + GROUND_ANCHOR_FHWA_CRITERIA.minimumApparentFreeLengthRatio * anchor.freeLength;
+  const minimum2 = scenario.testing.jackLength + GROUND_ANCHOR_FHWA_CRITERIA.minimumApparentFreeLengthRatio * anchor.freeLength;
   return {
     output: {
       apparentFreeLength,
       movementBasis: record.elasticMovementAtTestLoad == null ? "total-movement-for-proof-test" : "elastic-movement",
       loadIncrement,
-      minimum
+      minimum: minimum2
     },
     check: lowerBoundCheck({
       id: `test-${record.id}-apparent-free-length`,
       actual: apparentFreeLength,
-      minimum,
+      minimum: minimum2,
       units: "m",
       criterion: "FHWA GEC 4 equation 49 and section 7.4.5.3"
     })
@@ -40274,8 +40511,8 @@ function positiveOrNull(value, label) {
 function unique2(values) {
   return [...new Set(values.filter(Boolean))];
 }
-function clamp7(value, minimum = 0, maximum = 1) {
-  return Math.min(maximum, Math.max(minimum, value));
+function clamp7(value, minimum2 = 0, maximum = 1) {
+  return Math.min(maximum, Math.max(minimum2, value));
 }
 function normalizeGroundModel6(input, units) {
   var _a;
@@ -44203,8 +44440,8 @@ function pointDistance(first, second) {
 function projectionAlongAxis(pointValue, head, unitVector) {
   return (pointValue.x - head.x) * unitVector.x + (pointValue.z - head.z) * unitVector.z;
 }
-function bounded(value, minimum, maximum) {
-  return Math.max(minimum, Math.min(maximum, value));
+function bounded(value, minimum2, maximum) {
+  return Math.max(minimum2, Math.min(maximum, value));
 }
 function isOnMovingSideOfSurface(pointValue, slipSurface, tolerance) {
   if (slipSurface.entryX != null && (pointValue.x < slipSurface.entryX - tolerance || pointValue.x > slipSurface.exitX + tolerance)) {
@@ -45902,10 +46139,10 @@ function solveSurface({
     solution: solveDiscretization(discretization, method, iteration)
   };
 }
-function integer(value, label, minimum, maximum) {
+function integer(value, label, minimum2, maximum) {
   const number = Number(value);
-  if (!Number.isInteger(number) || number < minimum || number > maximum) {
-    throw new Error(`${label} must be an integer from ${minimum} to ${maximum}.`);
+  if (!Number.isInteger(number) || number < minimum2 || number > maximum) {
+    throw new Error(`${label} must be an integer from ${minimum2} to ${maximum}.`);
   }
   return number;
 }
@@ -45917,13 +46154,13 @@ function finite28(value, label) {
 function normalizeRange(range, resolver, label, isLength = true) {
   var _a;
   const convert = isLength ? resolver.length : (value) => value;
-  const minimum = convert(finite28(range == null ? void 0 : range.minimum, `${label}.minimum`));
+  const minimum2 = convert(finite28(range == null ? void 0 : range.minimum, `${label}.minimum`));
   const maximum = convert(finite28(range == null ? void 0 : range.maximum, `${label}.maximum`));
   const count = integer((_a = range == null ? void 0 : range.count) != null ? _a : 9, `${label}.count`, 2, 51);
-  if (maximum <= minimum) {
+  if (maximum <= minimum2) {
     throw new Error(`${label}.maximum must exceed ${label}.minimum.`);
   }
-  return { minimum, maximum, count };
+  return { minimum: minimum2, maximum, count };
 }
 function valuesInRange(range) {
   return Array.from({ length: range.count }, (_, index) => range.minimum + (range.maximum - range.minimum) * index / (range.count - 1));
@@ -45975,13 +46212,13 @@ function reasonCounts(reasons) {
 }
 function minimumCandidateSummary(candidates) {
   if (candidates.length === 0) return null;
-  const minimum = [...candidates].sort((left, right) => left.factorOfSafety - right.factorOfSafety)[0];
+  const minimum2 = [...candidates].sort((left, right) => left.factorOfSafety - right.factorOfSafety)[0];
   return {
-    factorOfSafety: minimum.factorOfSafety,
-    entryX: minimum.entryX,
-    exitX: minimum.exitX,
-    sagitta: minimum.sagitta,
-    slipSurface: minimum.analysis.slipSurface
+    factorOfSafety: minimum2.factorOfSafety,
+    entryX: minimum2.entryX,
+    exitX: minimum2.exitX,
+    sagitta: minimum2.sagitta,
+    slipSurface: minimum2.analysis.slipSurface
   };
 }
 function searchCriticalSurface({
@@ -49377,10 +49614,10 @@ var TrafficAction = class extends VariableAction {
 
 // src/domain/actions/ClimaticAction.js
 var ClimaticAction = class extends VariableAction {
-  constructor(baseProps) {
+  constructor({ family = "climatic", ...baseProps } = {}) {
     super({
       ...baseProps,
-      family: "climatic"
+      family
     });
   }
 };
@@ -49810,7 +50047,7 @@ var DEFAULT_ULS_COEFFICIENTS = {
   g1Unfavourable: 1.3,
   g1Favourable: 1,
   g2Unfavourable: 1.5,
-  g2Favourable: 0.9,
+  g2Favourable: 0.8,
   qUnfavourable: 1.5
 };
 var NTC2018SlabLoadAnalysis = class {
@@ -52498,7 +52735,7 @@ function cloneSymmetricMatrix(matrix, symmetryTolerance) {
     throw new Error("BandedLinearSolver requires a non-empty matrix.");
   }
   const size = matrix.length;
-  const clone2 = matrix.map((row, rowIndex) => {
+  const clone8 = matrix.map((row, rowIndex) => {
     if (!Array.isArray(row) || row.length !== size) {
       throw new Error("BandedLinearSolver requires a square matrix.");
     }
@@ -52515,15 +52752,15 @@ function cloneSymmetricMatrix(matrix, symmetryTolerance) {
     for (let column = 0; column < row; column += 1) {
       const scale = Math.max(
         1,
-        Math.abs(clone2[row][column]),
-        Math.abs(clone2[column][row])
+        Math.abs(clone8[row][column]),
+        Math.abs(clone8[column][row])
       );
-      if (Math.abs(clone2[row][column] - clone2[column][row]) > symmetryTolerance * scale) {
+      if (Math.abs(clone8[row][column] - clone8[column][row]) > symmetryTolerance * scale) {
         throw new Error("BandedLinearSolver requires a symmetric matrix.");
       }
     }
   }
-  return clone2;
+  return clone8;
 }
 function cloneVector2(vector, size) {
   if (!Array.isArray(vector) || vector.length !== size) {
@@ -59216,6 +59453,10 @@ var NTC2018_ACTION_COMBINATION_FACTORS = {
   ACCIDENTAL: { psi0: 0, psi1: 0, psi2: 0, description: "azione eccezionale" },
   SEISMIC: { psi0: 0, psi1: 0, psi2: 0, description: "azione sismica" }
 };
+var NTC2018_CASE_BY_CASE_COMBINATION_CATEGORIES = Object.freeze({
+  I: { description: "coperture praticabili" },
+  K: { description: "coperture per usi speciali" }
+});
 var NTC2018_ACTION_PARTIAL_FACTORS = {
   permanent: {
     G1: {
@@ -59223,34 +59464,38 @@ var NTC2018_ACTION_PARTIAL_FACTORS = {
       A2: { favourable: 1, unfavourable: 1 }
     },
     G2: {
-      A1: { favourable: 0, unfavourable: 1.5 },
-      A2: { favourable: 0, unfavourable: 1.3 }
+      A1: { favourable: 0.8, unfavourable: 1.5 },
+      A2: { favourable: 0.8, unfavourable: 1.3 }
     }
   },
   variable: {
     imposed: {
       A1: { favourable: 0, unfavourable: 1.5 },
-      A2: { favourable: 0, unfavourable: 1.5 }
+      A2: { favourable: 0, unfavourable: 1.3 }
     },
     traffic: {
+      A1: { favourable: 0, unfavourable: 1.5 },
+      A2: { favourable: 0, unfavourable: 1.3 }
+    },
+    roadBridgeTraffic: {
       A1: { favourable: 0, unfavourable: 1.35 },
-      A2: { favourable: 0, unfavourable: 1.35 }
+      A2: { favourable: 0, unfavourable: 1.15 }
     },
     wind: {
       A1: { favourable: 0, unfavourable: 1.5 },
-      A2: { favourable: 0, unfavourable: 1.5 }
+      A2: { favourable: 0, unfavourable: 1.3 }
     },
     snow: {
       A1: { favourable: 0, unfavourable: 1.5 },
-      A2: { favourable: 0, unfavourable: 1.5 }
+      A2: { favourable: 0, unfavourable: 1.3 }
     },
     thermal: {
       A1: { favourable: 0, unfavourable: 1.5 },
-      A2: { favourable: 0, unfavourable: 1.5 }
+      A2: { favourable: 0, unfavourable: 1.3 }
     },
     climatic: {
       A1: { favourable: 0, unfavourable: 1.5 },
-      A2: { favourable: 0, unfavourable: 1.5 }
+      A2: { favourable: 0, unfavourable: 1.3 }
     }
   },
   accidental: {
@@ -59315,6 +59560,33 @@ var NTC2018_TIMBER_KMOD = {
 };
 
 // src/norms/ntc2018/actions/createNTC2018Action.js
+function documentedCombinationFactors({ category, combinationFactors, source }) {
+  const definition = NTC2018_CASE_BY_CASE_COMBINATION_CATEGORIES[category];
+  if (!definition) {
+    if (combinationFactors != null || source != null) {
+      throw new Error(
+        `Explicit combination factors are only accepted for NTC 2018 categories I and K, not ${category}.`
+      );
+    }
+    return null;
+  }
+  if (source == null || typeof source !== "object" || typeof source.reference !== "string" || source.reference.trim() === "") {
+    throw new Error(`NTC 2018 category ${category} requires combinationFactorsSource.reference.`);
+  }
+  const normalized = {};
+  for (const key of ["psi0", "psi1", "psi2"]) {
+    const value = combinationFactors == null ? void 0 : combinationFactors[key];
+    if (!Number.isFinite(value) || value < 0 || value > 1) {
+      throw new Error(`combinationFactors.${key} must be between 0 and 1.`);
+    }
+    normalized[key] = value;
+  }
+  return {
+    factors: normalized,
+    description: definition.description,
+    source: { ...source }
+  };
+}
 function cloneFactors(source) {
   return JSON.parse(JSON.stringify(source));
 }
@@ -59421,9 +59693,20 @@ function createNTC2018VariableAction({
   family = "imposed",
   loadCase = null,
   loadDurationClass = null,
+  combinationFactors = null,
+  combinationFactorsSource = null,
   metadata = {}
 }) {
-  const factors = getNTC2018ActionCombinationFactors(category);
+  var _a, _b, _c;
+  const documentedFactors = documentedCombinationFactors({
+    category,
+    combinationFactors,
+    source: combinationFactorsSource
+  });
+  const factors = (_a = documentedFactors == null ? void 0 : documentedFactors.factors) != null ? _a : getNTC2018ActionCombinationFactors(category);
+  if (documentedFactors && loadDurationClass == null) {
+    throw new Error(`NTC 2018 category ${category} requires an explicit loadDurationClass.`);
+  }
   const durationClass = loadDurationClass != null ? loadDurationClass : getNTC2018LoadDurationClass(category);
   const commonProps = {
     id,
@@ -59439,7 +59722,8 @@ function createNTC2018VariableAction({
     metadata: {
       ...metadata,
       normativePreset: "NTC2018",
-      categoryDescription: factors.description
+      categoryDescription: (_b = documentedFactors == null ? void 0 : documentedFactors.description) != null ? _b : factors.description,
+      combinationFactorsSource: (_c = documentedFactors == null ? void 0 : documentedFactors.source) != null ? _c : null
     }
   };
   if (family === "traffic") {
@@ -59545,6 +59829,3258 @@ function createNTC2018SeismicAction({
   });
 }
 
+// src/norms/ntc2018/actions/ntc2018SeismicAction.js
+var GRAVITY_METERS_PER_SECOND_SQUARED = 9.81;
+var MAXIMUM_HORIZONTAL_SPECTRUM_PERIOD = 4;
+var AG_UNIT = "g";
+var PERIOD_UNIT = "s";
+var NTC2018_SEISMIC_REFERENCES = Object.freeze({
+  hazardParameters: "D.M. 17/01/2018, NTC 2018, section 3.2; D.M. 14/01/2008, Annexes A and B",
+  limitStates: "D.M. 17/01/2018, NTC 2018, section 3.2.1, Table 3.2.I",
+  horizontalSpectrum: "D.M. 17/01/2018, NTC 2018, section 3.2.3.2.1, equations [3.2.2]-[3.2.7]",
+  subsoilAmplification: "D.M. 17/01/2018, NTC 2018, section 3.2.3.2.1, Table 3.2.IV",
+  topographicAmplification: "D.M. 17/01/2018, NTC 2018, section 3.2.3.2.1, Table 3.2.V"
+});
+function freezeDefinitions(definitions) {
+  return Object.freeze(Object.fromEntries(
+    Object.entries(definitions).map(([id, definition]) => [
+      id,
+      Object.freeze({ id, ...definition })
+    ])
+  ));
+}
+var NTC2018_SEISMIC_LIMIT_STATES = freezeDefinitions({
+  SLO: {
+    description: "Operational limit state",
+    nominalExceedanceProbabilityInReferencePeriod: 0.81
+  },
+  SLD: {
+    description: "Damage limitation state",
+    nominalExceedanceProbabilityInReferencePeriod: 0.63
+  },
+  SLV: {
+    description: "Life-safety limit state",
+    nominalExceedanceProbabilityInReferencePeriod: 0.1
+  },
+  SLC: {
+    description: "Collapse-prevention limit state",
+    nominalExceedanceProbabilityInReferencePeriod: 0.05
+  }
+});
+var NTC2018_SITE_HAZARD_SOURCE_KINDS = Object.freeze([
+  "manual-entry",
+  "external-service",
+  "documented-study"
+]);
+var NTC2018_SUBSOIL_SPECTRUM_COEFFICIENTS = freezeDefinitions({
+  A: {
+    ssKind: "fixed",
+    ssValue: 1,
+    ccMultiplier: 1,
+    ccExponent: 0
+  },
+  B: {
+    ssKind: "bounded-linear",
+    ssMinimum: 1,
+    ssMaximum: 1.2,
+    ssIntercept: 1.4,
+    ssScale: 0.4,
+    ccMultiplier: 1.1,
+    ccExponent: -0.2
+  },
+  C: {
+    ssKind: "bounded-linear",
+    ssMinimum: 1,
+    ssMaximum: 1.5,
+    ssIntercept: 1.7,
+    ssScale: 0.6,
+    ccMultiplier: 1.05,
+    ccExponent: -0.33
+  },
+  D: {
+    ssKind: "bounded-linear",
+    ssMinimum: 0.9,
+    ssMaximum: 1.8,
+    ssIntercept: 2.4,
+    ssScale: 1.5,
+    ccMultiplier: 1.25,
+    ccExponent: -0.5
+  },
+  E: {
+    ssKind: "bounded-linear",
+    ssMinimum: 1,
+    ssMaximum: 1.6,
+    ssIntercept: 2,
+    ssScale: 1.1,
+    ccMultiplier: 1.15,
+    ccExponent: -0.4
+  }
+});
+var NTC2018_TOPOGRAPHIC_AMPLIFICATION_MAXIMA = freezeDefinitions({
+  T1: {
+    description: "Flat surface, isolated slopes and reliefs with mean inclination <= 15 degrees",
+    referenceLocation: "not-applicable",
+    maximumCoefficient: 1
+  },
+  T2: {
+    description: "Slope with mean inclination greater than 15 degrees",
+    referenceLocation: "slope-summit",
+    maximumCoefficient: 1.2
+  },
+  T3: {
+    description: "Relief with narrow crest and mean inclination between 15 and 30 degrees",
+    referenceLocation: "relief-crest",
+    maximumCoefficient: 1.2
+  },
+  T4: {
+    description: "Relief with narrow crest and mean inclination greater than 30 degrees",
+    referenceLocation: "relief-crest",
+    maximumCoefficient: 1.4
+  }
+});
+function clone2(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+function finitePositive2(value, label) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${label} must be a finite positive number.`);
+  }
+  return value;
+}
+function finiteNonNegative(value, label) {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`${label} must be a finite non-negative number.`);
+  }
+  return value;
+}
+function nonEmptyString(value, label) {
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new Error(`${label} must be a non-empty string.`);
+  }
+  return value.trim();
+}
+function optionalNonEmptyString(value, label) {
+  return value == null ? null : nonEmptyString(value, label);
+}
+function limitStateDefinition(limitState) {
+  const definition = NTC2018_SEISMIC_LIMIT_STATES[limitState];
+  if (!definition) {
+    throw new Error(`Unsupported NTC 2018 seismic limit state: ${limitState}.`);
+  }
+  return definition;
+}
+function subsoilDefinition(subsoilCategory) {
+  const definition = NTC2018_SUBSOIL_SPECTRUM_COEFFICIENTS[subsoilCategory];
+  if (!definition) {
+    throw new Error(
+      `Unsupported NTC 2018 simplified-spectrum subsoil category: ${subsoilCategory}.`
+    );
+  }
+  return definition;
+}
+function topographicDefinition(topographicCategory) {
+  const definition = NTC2018_TOPOGRAPHIC_AMPLIFICATION_MAXIMA[topographicCategory];
+  if (!definition) {
+    throw new Error(`Unsupported NTC 2018 topographic category: ${topographicCategory}.`);
+  }
+  return definition;
+}
+function normalizeSource2(source) {
+  if (source == null || typeof source !== "object" || Array.isArray(source)) {
+    throw new Error("hazardParameters.source must be an object.");
+  }
+  if (!NTC2018_SITE_HAZARD_SOURCE_KINDS.includes(source.kind)) {
+    throw new Error(
+      `hazardParameters.source.kind must be one of: ${NTC2018_SITE_HAZARD_SOURCE_KINDS.join(", ")}.`
+    );
+  }
+  return {
+    kind: source.kind,
+    reference: nonEmptyString(
+      source.reference,
+      "hazardParameters.source.reference"
+    ),
+    datasetVersion: optionalNonEmptyString(
+      source.datasetVersion,
+      "hazardParameters.source.datasetVersion"
+    ),
+    resultId: optionalNonEmptyString(
+      source.resultId,
+      "hazardParameters.source.resultId"
+    )
+  };
+}
+function getNTC2018SeismicLimitStateDefinition(limitState) {
+  return clone2(limitStateDefinition(limitState));
+}
+function getNTC2018SubsoilSpectrumCoefficientDefinition(subsoilCategory) {
+  return clone2(subsoilDefinition(subsoilCategory));
+}
+function getNTC2018TopographicAmplificationDefinition(topographicCategory) {
+  return clone2(topographicDefinition(topographicCategory));
+}
+function normalizeNTC2018SiteHazardParameters({
+  siteReference,
+  limitState,
+  returnPeriodYears,
+  ag,
+  agUnit = null,
+  f0,
+  tcStar,
+  tcStarUnit = null,
+  source
+} = {}) {
+  const definition = limitStateDefinition(limitState);
+  if (agUnit !== AG_UNIT) {
+    throw new Error(`hazardParameters.agUnit must be '${AG_UNIT}'.`);
+  }
+  if (tcStarUnit !== PERIOD_UNIT) {
+    throw new Error(`hazardParameters.tcStarUnit must be '${PERIOD_UNIT}'.`);
+  }
+  const normalizedAg = finitePositive2(ag, "hazardParameters.ag");
+  const normalizedF0 = finitePositive2(f0, "hazardParameters.f0");
+  if (normalizedF0 < 2.2) {
+    throw new Error("hazardParameters.f0 must not be lower than the NTC 2018 minimum of 2.2.");
+  }
+  return {
+    schemaVersion: "ntc2018-site-hazard-parameters/v1",
+    siteReference: nonEmptyString(
+      siteReference,
+      "hazardParameters.siteReference"
+    ),
+    limitState,
+    limitStateDescription: definition.description,
+    nominalExceedanceProbabilityInReferencePeriod: definition.nominalExceedanceProbabilityInReferencePeriod,
+    returnPeriodYears: finitePositive2(
+      returnPeriodYears,
+      "hazardParameters.returnPeriodYears"
+    ),
+    ag: normalizedAg,
+    agUnit: AG_UNIT,
+    agOverG: normalizedAg,
+    agMetersPerSecondSquared: normalizedAg * GRAVITY_METERS_PER_SECOND_SQUARED,
+    f0: normalizedF0,
+    tcStar: finitePositive2(tcStar, "hazardParameters.tcStar"),
+    tcStarUnit: PERIOD_UNIT,
+    source: normalizeSource2(source),
+    reference: NTC2018_SEISMIC_REFERENCES.hazardParameters
+  };
+}
+function calculateNTC2018StratigraphicSpectrumCoefficients({
+  subsoilCategory,
+  agOverG,
+  f0,
+  tcStar
+} = {}) {
+  const definition = subsoilDefinition(subsoilCategory);
+  const accelerationRatio = finitePositive2(agOverG, "agOverG");
+  const maximumAmplification = finitePositive2(f0, "f0");
+  if (maximumAmplification < 2.2) {
+    throw new Error("f0 must not be lower than the NTC 2018 minimum of 2.2.");
+  }
+  const referencePeriod = finitePositive2(tcStar, "tcStar");
+  if (definition.ssKind === "fixed") {
+    return {
+      subsoilCategory,
+      ss: definition.ssValue,
+      ssUnbounded: definition.ssValue,
+      ssLimitApplied: "fixed",
+      cc: 1,
+      formulas: {
+        ss: "SS = 1",
+        cc: "CC = 1"
+      },
+      reference: NTC2018_SEISMIC_REFERENCES.subsoilAmplification
+    };
+  }
+  const ssUnbounded = definition.ssIntercept - definition.ssScale * maximumAmplification * accelerationRatio;
+  const ss = Math.min(
+    Math.max(ssUnbounded, definition.ssMinimum),
+    definition.ssMaximum
+  );
+  const ssLimitApplied = ss === definition.ssMinimum ? "minimum" : ss === definition.ssMaximum ? "maximum" : "none";
+  const cc = definition.ccMultiplier * referencePeriod ** definition.ccExponent;
+  return {
+    subsoilCategory,
+    ss,
+    ssUnbounded,
+    ssLimitApplied,
+    cc,
+    formulas: {
+      ss: "SS = clamp(ssIntercept - ssScale * F0 * ag/g, ssMinimum, ssMaximum)",
+      cc: "CC = ccMultiplier * TCstar^ccExponent"
+    },
+    operands: {
+      agOverG: accelerationRatio,
+      f0: maximumAmplification,
+      tcStar: referencePeriod,
+      ssMinimum: definition.ssMinimum,
+      ssMaximum: definition.ssMaximum,
+      ssIntercept: definition.ssIntercept,
+      ssScale: definition.ssScale,
+      ccMultiplier: definition.ccMultiplier,
+      ccExponent: definition.ccExponent
+    },
+    reference: NTC2018_SEISMIC_REFERENCES.subsoilAmplification
+  };
+}
+function resolveNTC2018TopographicAmplification({
+  topographicCategory,
+  atReferenceLocation = null,
+  coefficient = null,
+  coefficientSource = null
+} = {}) {
+  const definition = topographicDefinition(topographicCategory);
+  const hasExplicitCoefficient = coefficient != null;
+  if (topographicCategory === "T1") {
+    if (atReferenceLocation != null || hasExplicitCoefficient || coefficientSource != null) {
+      throw new Error(
+        "atReferenceLocation, coefficient and coefficientSource must be omitted for topographic category T1."
+      );
+    }
+    return {
+      topographicCategory,
+      value: 1,
+      selection: "ntc2018-tabulated",
+      location: definition.referenceLocation,
+      sourceReference: null,
+      reference: NTC2018_SEISMIC_REFERENCES.topographicAmplification
+    };
+  }
+  if (atReferenceLocation === true === hasExplicitCoefficient) {
+    throw new Error(
+      "For topographic categories T2-T4 provide exactly one of atReferenceLocation=true or an explicit coefficient."
+    );
+  }
+  if (atReferenceLocation != null && atReferenceLocation !== true) {
+    throw new Error("atReferenceLocation must be true when provided.");
+  }
+  if (atReferenceLocation === true) {
+    if (coefficientSource != null) {
+      throw new Error(
+        "coefficientSource must be omitted when the tabulated maximum coefficient is used."
+      );
+    }
+    return {
+      topographicCategory,
+      value: definition.maximumCoefficient,
+      selection: "ntc2018-tabulated-maximum-at-reference-location",
+      location: definition.referenceLocation,
+      sourceReference: null,
+      reference: NTC2018_SEISMIC_REFERENCES.topographicAmplification
+    };
+  }
+  const explicitCoefficient = finitePositive2(coefficient, "coefficient");
+  if (explicitCoefficient < 1 || explicitCoefficient > definition.maximumCoefficient) {
+    throw new Error(
+      `coefficient for ${topographicCategory} must be between 1 and ${definition.maximumCoefficient}.`
+    );
+  }
+  return {
+    topographicCategory,
+    value: explicitCoefficient,
+    selection: "documented-explicit-within-tabulated-range",
+    location: "between-base-and-reference-location",
+    sourceReference: nonEmptyString(coefficientSource, "coefficientSource"),
+    reference: NTC2018_SEISMIC_REFERENCES.topographicAmplification
+  };
+}
+function calculateNTC2018HorizontalSpectrumParameters({
+  agOverG,
+  f0,
+  tcStar,
+  subsoilCategory,
+  topographicCategory,
+  topographicAtReferenceLocation = null,
+  topographicCoefficient = null,
+  topographicCoefficientSource = null,
+  viscousDampingPercent = 5
+} = {}) {
+  const accelerationRatio = finitePositive2(agOverG, "agOverG");
+  const maximumAmplification = finitePositive2(f0, "f0");
+  const referencePeriod = finitePositive2(tcStar, "tcStar");
+  const damping = finiteNonNegative(
+    viscousDampingPercent,
+    "viscousDampingPercent"
+  );
+  const stratigraphic = calculateNTC2018StratigraphicSpectrumCoefficients({
+    subsoilCategory,
+    agOverG: accelerationRatio,
+    f0: maximumAmplification,
+    tcStar: referencePeriod
+  });
+  const topographic = resolveNTC2018TopographicAmplification({
+    topographicCategory,
+    atReferenceLocation: topographicAtReferenceLocation,
+    coefficient: topographicCoefficient,
+    coefficientSource: topographicCoefficientSource
+  });
+  const dampingUnbounded = Math.sqrt(10 / (5 + damping));
+  const eta = Math.max(dampingUnbounded, 0.55);
+  const tc = stratigraphic.cc * referencePeriod;
+  const tb = tc / 3;
+  const td = 4 * accelerationRatio + 1.6;
+  return {
+    agOverG: accelerationRatio,
+    f0: maximumAmplification,
+    tcStar: referencePeriod,
+    ss: stratigraphic.ss,
+    st: topographic.value,
+    s: stratigraphic.ss * topographic.value,
+    cc: stratigraphic.cc,
+    eta,
+    dampingUnbounded,
+    viscousDampingPercent: damping,
+    tb,
+    tc,
+    td,
+    periodUnit: PERIOD_UNIT,
+    formulas: {
+      s: "S = SS * ST",
+      eta: "eta = max(sqrt(10 / (5 + xi)), 0.55)",
+      tc: "TC = CC * TCstar",
+      tb: "TB = TC / 3",
+      td: "TD = 4 * ag/g + 1.6"
+    },
+    stratigraphic,
+    topographic,
+    reference: NTC2018_SEISMIC_REFERENCES.horizontalSpectrum
+  };
+}
+function normalizePeriods(periods) {
+  if (!Array.isArray(periods) || periods.length === 0) {
+    throw new Error("periods must be a non-empty array.");
+  }
+  return periods.map((period, index) => finiteNonNegative(
+    period,
+    `periods[${index}]`
+  ));
+}
+function calculateHorizontalElasticSpectrumPoint(period, parameters) {
+  const { agOverG, f0, s, eta, tb, tc, td } = parameters;
+  let value;
+  let branch;
+  if (period < tb) {
+    value = agOverG * s * eta * f0 * (period / tb + 1 / (eta * f0) * (1 - period / tb));
+    branch = "rising-acceleration";
+  } else if (period < tc) {
+    value = agOverG * s * eta * f0;
+    branch = "constant-acceleration";
+  } else if (period < td) {
+    value = agOverG * s * eta * f0 * (tc / period);
+    branch = "constant-velocity";
+  } else {
+    value = agOverG * s * eta * f0 * (tc * td / period ** 2);
+    branch = "constant-displacement";
+  }
+  return {
+    period,
+    periodUnit: PERIOD_UNIT,
+    value,
+    accelerationUnit: AG_UNIT,
+    metersPerSecondSquared: value * GRAVITY_METERS_PER_SECOND_SQUARED,
+    branch
+  };
+}
+function calculateNTC2018HorizontalElasticSpectrum({
+  actionId = "NTC2018-SEISMIC-HORIZONTAL",
+  hazardParameters,
+  subsoilCategory,
+  topographicCategory,
+  topographicAtReferenceLocation = null,
+  topographicCoefficient = null,
+  topographicCoefficientSource = null,
+  viscousDampingPercent = 5,
+  periods
+} = {}) {
+  const normalizedActionId = nonEmptyString(actionId, "actionId");
+  const hazard = normalizeNTC2018SiteHazardParameters(hazardParameters);
+  const normalizedPeriods = normalizePeriods(periods);
+  const spectrumParameters = calculateNTC2018HorizontalSpectrumParameters({
+    agOverG: hazard.agOverG,
+    f0: hazard.f0,
+    tcStar: hazard.tcStar,
+    subsoilCategory,
+    topographicCategory,
+    topographicAtReferenceLocation,
+    topographicCoefficient,
+    topographicCoefficientSource,
+    viscousDampingPercent
+  });
+  const unsupportedPeriods = normalizedPeriods.filter(
+    (period) => period > MAXIMUM_HORIZONTAL_SPECTRUM_PERIOD
+  );
+  const commonOutputs = {
+    schemaVersion: "ntc2018-horizontal-elastic-spectrum/v1",
+    hazardParameters: hazard,
+    spectrumParameters
+  };
+  const metadata = {
+    method: "ntc2018-horizontal-elastic-acceleration-spectrum",
+    normativePreset: "NTC2018",
+    references: { ...NTC2018_SEISMIC_REFERENCES },
+    accelerationUnit: AG_UNIT,
+    periodUnit: PERIOD_UNIT
+  };
+  if (unsupportedPeriods.length > 0) {
+    return new CalculationResult({
+      applicationId: "ntc2018-horizontal-elastic-spectrum",
+      status: "not-supported",
+      summary: "The requested periods exceed the NTC 2018 applicability limit for this spectrum.",
+      outputs: {
+        ...commonOutputs,
+        maximumSupportedPeriod: MAXIMUM_HORIZONTAL_SPECTRUM_PERIOD,
+        unsupportedPeriods
+      },
+      warnings: [
+        "For fundamental periods above 4.0 s, NTC 2018 requires dedicated analyses or ground-motion time histories."
+      ],
+      assumptions: [
+        "The caller supplied the site hazard parameters; no geographic lookup or interpolation was performed."
+      ],
+      metadata
+    });
+  }
+  const points = normalizedPeriods.map(
+    (period) => calculateHorizontalElasticSpectrumPoint(
+      period,
+      spectrumParameters
+    )
+  );
+  const action = createNTC2018SeismicAction({
+    id: normalizedActionId,
+    name: `NTC 2018 horizontal seismic action - ${hazard.limitState}`,
+    metadata: {
+      component: "horizontal",
+      limitState: hazard.limitState,
+      returnPeriodYears: hazard.returnPeriodYears,
+      siteReference: hazard.siteReference,
+      hazardSource: { ...hazard.source },
+      spectrumSchemaVersion: "ntc2018-horizontal-elastic-spectrum/v1",
+      reference: NTC2018_SEISMIC_REFERENCES.horizontalSpectrum
+    }
+  });
+  return new CalculationResult({
+    applicationId: "ntc2018-horizontal-elastic-spectrum",
+    status: "ok",
+    summary: "Calculated the NTC 2018 horizontal elastic acceleration spectrum.",
+    outputs: {
+      ...commonOutputs,
+      spectrum: {
+        component: "horizontal",
+        quantity: "elastic-spectral-acceleration",
+        accelerationUnit: AG_UNIT,
+        periodUnit: PERIOD_UNIT,
+        maximumSupportedPeriod: MAXIMUM_HORIZONTAL_SPECTRUM_PERIOD,
+        points
+      },
+      action: action.toJSON()
+    },
+    warnings: [
+      "The workflow does not determine ag, F0 or TCstar from coordinates and does not interpolate the national hazard grid.",
+      "Only the horizontal elastic acceleration spectrum is generated; vertical, displacement, design and time-history representations are excluded."
+    ],
+    assumptions: [
+      "The supplied subsoil category is applicable to the simplified NTC 2018 approach.",
+      `The equivalent viscous damping ratio is ${spectrumParameters.viscousDampingPercent} percent.`,
+      spectrumParameters.topographic.selection.startsWith("ntc2018-tabulated") ? "The NTC 2018 tabulated topographic coefficient applies to the declared location." : "The documented topographic coefficient was supplied by the caller."
+    ],
+    metadata
+  });
+}
+
+// src/norms/ntc2018/actions/topographicClassification.constants.js
+var RAW_CELL_SIZE_M = 10;
+var WORKING_CELL_SIZE_M = 40;
+var TPI_RADIUS_ARTICLE_M = 500;
+var TPI_THRESHOLD_M = 5;
+var SLOPE_THRESHOLD_DEG = 15;
+var H30_THRESHOLD_M = 30;
+var H60_THRESHOLD_M = 60;
+var H_WINDOW_CELLS_40M = 5;
+var SMOOTHING_WINDOW_CELLS = 3;
+var RIDGE_MIN_CONNECTED_CELLS = 5;
+var RIDGE_DILATION_CELLS_40M = 3;
+var RIDGE_DILATION_M = 120;
+var TOPOGRAPHIC_AMPLIFICATION_FACTORS = {
+  T1: 1,
+  T2: 1.2,
+  T3: 1.2,
+  T4: 1.4
+};
+var TOPOGRAPHIC_CLASSIFICATION_MODES = {
+  "full-article": {
+    mode: "full-article",
+    radiusM: 500,
+    gridSize: 101,
+    label: "Articolo",
+    description: "procedura principale conforme alla scala TPI 500 m",
+    isArticleCompliantScale: true
+  },
+  "quick-250": {
+    mode: "quick-250",
+    radiusM: 250,
+    gridSize: 51,
+    label: "Multiscala",
+    description: "stima multiscala, non pienamente conforme all'articolo",
+    isArticleCompliantScale: false
+  }
+};
+var DEFAULT_TOPOGRAPHIC_PREPROCESSING_MODE = "article-40m-smoothed";
+var TOPOGRAPHIC_PREPROCESSING_MODES = {
+  "article-40m-smoothed": {
+    mode: "article-40m-smoothed",
+    label: "Articolo",
+    description: "resampling 40 m e smoothing 3x3",
+    workingCellSizeM: WORKING_CELL_SIZE_M,
+    smoothingWindowCells: SMOOTHING_WINDOW_CELLS,
+    hWindowCells: H_WINDOW_CELLS_40M,
+    ridgeDilationCells: RIDGE_DILATION_CELLS_40M,
+    ridgeDilationM: RIDGE_DILATION_M,
+    ridgeMinConnectedCells: RIDGE_MIN_CONNECTED_CELLS,
+    isArticleCompliantPreprocessing: true
+  }
+};
+
+// src/norms/ntc2018/actions/topographicClassification.js
+var ALLOWED_GRID_SIZES = [51, 101];
+var MIN_TPI_COVERAGE_RATIO = 0.75;
+var MAX_MISSING_RATIO_FOR_RELIABLE_CLASSIFICATION = 0.05;
+var REQUIRED_SMOOTHING_VALID_CELLS = 7;
+function createMatrix(rows, cols, value = null) {
+  return Array.from({ length: rows }, () => Array(cols).fill(value));
+}
+function getModeForGridSize(gridSize) {
+  var _a;
+  return (_a = Object.values(TOPOGRAPHIC_CLASSIFICATION_MODES).find(
+    (mode) => mode.gridSize === gridSize
+  )) != null ? _a : null;
+}
+function getPreprocessingMode(modeName) {
+  var _a;
+  return (_a = TOPOGRAPHIC_PREPROCESSING_MODES[modeName]) != null ? _a : TOPOGRAPHIC_PREPROCESSING_MODES[DEFAULT_TOPOGRAPHIC_PREPROCESSING_MODE];
+}
+function formatMissingRatio(ratio2) {
+  return `${(ratio2 * 100).toLocaleString("it-IT", {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 0
+  })}%`;
+}
+function addWarning(warnings, warning) {
+  if (warning && !warnings.includes(warning)) {
+    warnings.push(warning);
+  }
+}
+function getCell(model, row, col) {
+  var _a, _b;
+  return (_b = (_a = model == null ? void 0 : model.cellMap) == null ? void 0 : _a.get(`${row}:${col}`)) != null ? _b : null;
+}
+function validateModel(model) {
+  const warnings = [];
+  const gridSize = Number(model == null ? void 0 : model.gridSize);
+  const spacingM = Number(model == null ? void 0 : model.spacingM);
+  const expectedPointCount = gridSize * gridSize;
+  const rawCells = Array.isArray(model == null ? void 0 : model.cells) ? model.cells : [];
+  const missingCount = rawCells.filter(
+    (cell) => (cell == null ? void 0 : cell.rawElevation) == null || (cell == null ? void 0 : cell.isNoData) === true
+  ).length;
+  const interpolatedCount = rawCells.filter((cell) => cell == null ? void 0 : cell.isInterpolated).length;
+  const missingRatio = expectedPointCount > 0 ? missingCount / expectedPointCount : 1;
+  let canClassify = true;
+  if (!ALLOWED_GRID_SIZES.includes(gridSize)) {
+    addWarning(
+      warnings,
+      "La procedura Mascandola et al. richiede una griglia 21x21, 51x51 o 101x101."
+    );
+    canClassify = false;
+  }
+  if (spacingM !== RAW_CELL_SIZE_M) {
+    addWarning(warnings, "La procedura richiede una griglia DEM con passo 10 m.");
+    canClassify = false;
+  }
+  if (!Array.isArray(rawCells) || rawCells.length !== expectedPointCount) {
+    addWarning(warnings, "La griglia altimetrica non e quadrata o non e completa.");
+    canClassify = false;
+  }
+  if (missingCount > 0 || interpolatedCount > 0) {
+    addWarning(warnings, "La griglia altimetrica contiene celle mancanti/interpolate.");
+  }
+  if (missingRatio > MAX_MISSING_RATIO_FOR_RELIABLE_CLASSIFICATION) {
+    addWarning(
+      warnings,
+      `Quote mancanti superiori al 5% (${formatMissingRatio(
+        missingRatio
+      )}); classificazione non affidabile.`
+    );
+    canClassify = false;
+  }
+  return {
+    canClassify,
+    warnings,
+    gridSize,
+    spacingM,
+    missingCount,
+    missingRatio
+  };
+}
+function buildRawElevationMatrix(model) {
+  const matrix = createMatrix(model.gridSize, model.gridSize);
+  for (let row = 0; row < model.gridSize; row += 1) {
+    for (let col = 0; col < model.gridSize; col += 1) {
+      const cell = getCell(model, row, col);
+      matrix[row][col] = (cell == null ? void 0 : cell.isNoData) === true || (cell == null ? void 0 : cell.rawElevation) == null ? null : Number(cell.rawElevation);
+    }
+  }
+  return matrix;
+}
+function interpolateRawElevation(model, matrix, x, y) {
+  var _a, _b, _c, _d;
+  const xMin = Number.isFinite(model.xMin) ? model.xMin : -model.halfExtentM;
+  const yMax = Number.isFinite(model.yMax) ? model.yMax : model.halfExtentM;
+  const colFloat = (x - xMin) / model.spacingM;
+  const rowFloat = (yMax - y) / model.spacingM;
+  if (colFloat < 0 || rowFloat < 0 || colFloat > model.gridSize - 1 || rowFloat > model.gridSize - 1) {
+    return null;
+  }
+  const col0 = Math.floor(colFloat);
+  const row0 = Math.floor(rowFloat);
+  const col1 = Math.min(col0 + 1, model.gridSize - 1);
+  const row1 = Math.min(row0 + 1, model.gridSize - 1);
+  const tx = colFloat - col0;
+  const ty = rowFloat - row0;
+  const topLeft = (_a = matrix[row0]) == null ? void 0 : _a[col0];
+  const topRight = (_b = matrix[row0]) == null ? void 0 : _b[col1];
+  const bottomLeft = (_c = matrix[row1]) == null ? void 0 : _c[col0];
+  const bottomRight = (_d = matrix[row1]) == null ? void 0 : _d[col1];
+  if (topLeft == null || topRight == null || bottomLeft == null || bottomRight == null) {
+    return null;
+  }
+  const top = topLeft + (topRight - topLeft) * tx;
+  const bottom = bottomLeft + (bottomRight - bottomLeft) * tx;
+  return top + (bottom - top) * ty;
+}
+function buildWorkingGrid(model, rawMatrix, cellSizeM = WORKING_CELL_SIZE_M) {
+  const halfExtentM = Number.isFinite(model.radiusM) ? model.radiusM : model.halfExtentM;
+  const maxCoordinate = Math.floor(halfExtentM / cellSizeM) * cellSizeM;
+  const size = Math.floor(maxCoordinate * 2 / cellSizeM) + 1;
+  const elevations = createMatrix(size, size);
+  const coordinates = createMatrix(size, size);
+  for (let row = 0; row < size; row += 1) {
+    const y = maxCoordinate - row * cellSizeM;
+    for (let col = 0; col < size; col += 1) {
+      const x = -maxCoordinate + col * cellSizeM;
+      coordinates[row][col] = { x, y };
+      elevations[row][col] = interpolateRawElevation(model, rawMatrix, x, y);
+    }
+  }
+  return {
+    elevations,
+    coordinates,
+    size,
+    maxCoordinate,
+    cellSizeM
+  };
+}
+function smoothWorkingGrid(elevations, windowCells = SMOOTHING_WINDOW_CELLS) {
+  var _a, _b, _c;
+  const rows = elevations.length;
+  const cols = (_b = (_a = elevations[0]) == null ? void 0 : _a.length) != null ? _b : 0;
+  if (windowCells <= 1) {
+    return {
+      elevations: elevations.map((row) => [...row]),
+      reliable: elevations.map((row) => row.map((value) => value != null))
+    };
+  }
+  const smoothed = createMatrix(rows, cols);
+  const reliable = createMatrix(rows, cols, false);
+  const halfWindow = Math.floor(windowCells / 2);
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      let total = 0;
+      let count = 0;
+      for (let dr = -halfWindow; dr <= halfWindow; dr += 1) {
+        for (let dc = -halfWindow; dc <= halfWindow; dc += 1) {
+          const value = (_c = elevations[row + dr]) == null ? void 0 : _c[col + dc];
+          if (value != null) {
+            total += value;
+            count += 1;
+          }
+        }
+      }
+      if (count >= REQUIRED_SMOOTHING_VALID_CELLS) {
+        smoothed[row][col] = total / count;
+        reliable[row][col] = true;
+      }
+    }
+  }
+  return {
+    elevations: smoothed,
+    reliable
+  };
+}
+function computeSlopeAnalysisMap(dem, cellSizeM = WORKING_CELL_SIZE_M) {
+  var _a, _b;
+  const rows = dem.length;
+  const cols = (_b = (_a = dem[0]) == null ? void 0 : _a.length) != null ? _b : 0;
+  const slopes = createMatrix(rows, cols);
+  const directions = createMatrix(rows, cols);
+  const ratios2 = createMatrix(rows, cols);
+  const neighborOffsets = [
+    { dr: -1, dc: -1 },
+    { dr: -1, dc: 0 },
+    { dr: -1, dc: 1 },
+    { dr: 0, dc: -1 },
+    { dr: 0, dc: 1 },
+    { dr: 1, dc: -1 },
+    { dr: 1, dc: 0 },
+    { dr: 1, dc: 1 }
+  ];
+  for (let row = 1; row < rows - 1; row += 1) {
+    for (let col = 1; col < cols - 1; col += 1) {
+      const centerElevation = dem[row][col];
+      if (centerElevation == null) {
+        continue;
+      }
+      let maxNeighbor = null;
+      neighborOffsets.forEach(({ dr, dc }) => {
+        var _a2;
+        const neighborElevation = (_a2 = dem[row + dr]) == null ? void 0 : _a2[col + dc];
+        if (neighborElevation == null) {
+          return;
+        }
+        const distanceM = Math.hypot(dr * cellSizeM, dc * cellSizeM);
+        const elevationDeltaM = neighborElevation - centerElevation;
+        const absoluteRatio = Math.abs(elevationDeltaM) / distanceM;
+        if (!maxNeighbor || absoluteRatio > maxNeighbor.ratio) {
+          const xOffsetM = dc * cellSizeM;
+          const yOffsetM = -dr * cellSizeM;
+          const uphillSign = elevationDeltaM >= 0 ? 1 : -1;
+          maxNeighbor = {
+            ratio: absoluteRatio,
+            direction: {
+              x: xOffsetM * uphillSign / distanceM,
+              y: yOffsetM * uphillSign / distanceM
+            },
+            neighborOffset: {
+              row: dr,
+              col: dc,
+              x: xOffsetM,
+              y: yOffsetM
+            },
+            elevationDeltaM,
+            distanceM
+          };
+        }
+      });
+      if (!maxNeighbor) {
+        continue;
+      }
+      const slopeRad = Math.atan(maxNeighbor.ratio);
+      slopes[row][col] = slopeRad * 180 / Math.PI;
+      ratios2[row][col] = maxNeighbor.ratio;
+      directions[row][col] = maxNeighbor;
+    }
+  }
+  return {
+    slopes,
+    ratios: ratios2,
+    directions
+  };
+}
+function getTheoreticalCircleOffsets(radiusM, cellSizeM) {
+  const maxOffset = Math.floor(radiusM / cellSizeM);
+  const offsets = [];
+  for (let dr = -maxOffset; dr <= maxOffset; dr += 1) {
+    for (let dc = -maxOffset; dc <= maxOffset; dc += 1) {
+      const distance = Math.hypot(dr * cellSizeM, dc * cellSizeM);
+      if (distance <= radiusM) {
+        offsets.push({ dr, dc });
+      }
+    }
+  }
+  return offsets;
+}
+function computeTpiMap(dem40Smooth, cellSizeM = WORKING_CELL_SIZE_M, radiusM = TPI_RADIUS_ARTICLE_M) {
+  var _a, _b;
+  const rows = dem40Smooth.length;
+  const cols = (_b = (_a = dem40Smooth[0]) == null ? void 0 : _a.length) != null ? _b : 0;
+  const tpi = createMatrix(rows, cols);
+  const coverage = createMatrix(rows, cols, 0);
+  const offsets = getTheoreticalCircleOffsets(radiusM, cellSizeM);
+  const expectedCount = offsets.length;
+  const coverageWarnings = [];
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      const centerElevation = dem40Smooth[row][col];
+      if (centerElevation == null) {
+        continue;
+      }
+      let total = 0;
+      let availableCount = 0;
+      offsets.forEach(({ dr, dc }) => {
+        var _a2;
+        const value = (_a2 = dem40Smooth[row + dr]) == null ? void 0 : _a2[col + dc];
+        if (value != null) {
+          total += value;
+          availableCount += 1;
+        }
+      });
+      const coverageRatio = expectedCount > 0 ? availableCount / expectedCount : 0;
+      coverage[row][col] = coverageRatio;
+      if (coverageRatio < MIN_TPI_COVERAGE_RATIO || availableCount === 0) {
+        coverageWarnings.push({ row, col, coverageRatio });
+        continue;
+      }
+      tpi[row][col] = centerElevation - total / availableCount;
+    }
+  }
+  return {
+    tpi,
+    coverage,
+    coverageWarnings
+  };
+}
+function computeElevationRangeMap(dem, windowCells = H_WINDOW_CELLS_40M) {
+  var _a, _b, _c;
+  const rows = dem.length;
+  const cols = (_b = (_a = dem[0]) == null ? void 0 : _a.length) != null ? _b : 0;
+  const ranges = createMatrix(rows, cols);
+  const h30 = createMatrix(rows, cols, null);
+  const h60 = createMatrix(rows, cols, null);
+  const halfWindow = Math.floor(windowCells / 2);
+  for (let row = halfWindow; row < rows - halfWindow; row += 1) {
+    for (let col = halfWindow; col < cols - halfWindow; col += 1) {
+      const values = [];
+      for (let dr = -halfWindow; dr <= halfWindow; dr += 1) {
+        for (let dc = -halfWindow; dc <= halfWindow; dc += 1) {
+          const value = (_c = dem[row + dr]) == null ? void 0 : _c[col + dc];
+          if (value != null) {
+            values.push(value);
+          }
+        }
+      }
+      if (values.length !== windowCells * windowCells) {
+        continue;
+      }
+      const localRange = Math.max(...values) - Math.min(...values);
+      ranges[row][col] = localRange;
+      h30[row][col] = localRange >= H30_THRESHOLD_M;
+      h60[row][col] = localRange >= H60_THRESHOLD_M;
+    }
+  }
+  return {
+    ranges,
+    h30,
+    h60
+  };
+}
+function buildRidgeZone(tpiMap) {
+  return tpiMap.map(
+    (row) => row.map((value) => value != null && value > TPI_THRESHOLD_M)
+  );
+}
+function countBinaryNeighbors(matrix, row, col) {
+  var _a, _b, _c, _d, _e, _f, _g, _h;
+  const neighbors = [
+    ((_a = matrix[row - 1]) == null ? void 0 : _a[col]) ? 1 : 0,
+    ((_b = matrix[row - 1]) == null ? void 0 : _b[col + 1]) ? 1 : 0,
+    ((_c = matrix[row]) == null ? void 0 : _c[col + 1]) ? 1 : 0,
+    ((_d = matrix[row + 1]) == null ? void 0 : _d[col + 1]) ? 1 : 0,
+    ((_e = matrix[row + 1]) == null ? void 0 : _e[col]) ? 1 : 0,
+    ((_f = matrix[row + 1]) == null ? void 0 : _f[col - 1]) ? 1 : 0,
+    ((_g = matrix[row]) == null ? void 0 : _g[col - 1]) ? 1 : 0,
+    ((_h = matrix[row - 1]) == null ? void 0 : _h[col - 1]) ? 1 : 0
+  ];
+  const count = neighbors.reduce((total, value) => total + value, 0);
+  let transitions = 0;
+  for (let index = 0; index < neighbors.length; index += 1) {
+    const current = neighbors[index];
+    const next = neighbors[(index + 1) % neighbors.length];
+    if (current === 0 && next === 1) {
+      transitions += 1;
+    }
+  }
+  return {
+    neighbors,
+    count,
+    transitions
+  };
+}
+function zhangSuenThinning(binaryMatrix) {
+  var _a, _b;
+  const rows = binaryMatrix.length;
+  const cols = (_b = (_a = binaryMatrix[0]) == null ? void 0 : _a.length) != null ? _b : 0;
+  const output = binaryMatrix.map((row) => row.map(Boolean));
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const step of [0, 1]) {
+      const toRemove = [];
+      for (let row = 1; row < rows - 1; row += 1) {
+        for (let col = 1; col < cols - 1; col += 1) {
+          if (!output[row][col]) {
+            continue;
+          }
+          const { neighbors, count, transitions } = countBinaryNeighbors(
+            output,
+            row,
+            col
+          );
+          const [p2, p3, p4, p5, p6, p7, p8] = neighbors;
+          if (count < 2 || count > 6 || transitions !== 1) {
+            continue;
+          }
+          const shouldRemove = step === 0 ? p2 * p4 * p6 === 0 && p4 * p6 * p8 === 0 : p2 * p4 * p8 === 0 && p2 * p6 * p8 === 0;
+          if (shouldRemove) {
+            toRemove.push({ row, col });
+          }
+        }
+      }
+      if (toRemove.length) {
+        changed = true;
+        toRemove.forEach(({ row, col }) => {
+          output[row][col] = false;
+        });
+      }
+    }
+  }
+  return output;
+}
+function intersectRidgeWithH30(ridgeLine, h30Map) {
+  return ridgeLine.map(
+    (row, rowIndex) => row.map((value, colIndex) => {
+      var _a;
+      return value && ((_a = h30Map[rowIndex]) == null ? void 0 : _a[colIndex]) === true;
+    })
+  );
+}
+function filterSmallComponents(binaryMatrix, minCells) {
+  var _a, _b;
+  const rows = binaryMatrix.length;
+  const cols = (_b = (_a = binaryMatrix[0]) == null ? void 0 : _a.length) != null ? _b : 0;
+  const output = createMatrix(rows, cols, false);
+  const visited = createMatrix(rows, cols, false);
+  const directions = [
+    [-1, -1],
+    [-1, 0],
+    [-1, 1],
+    [0, -1],
+    [0, 1],
+    [1, -1],
+    [1, 0],
+    [1, 1]
+  ];
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      if (!binaryMatrix[row][col] || visited[row][col]) {
+        continue;
+      }
+      const stack = [{ row, col }];
+      const component = [];
+      visited[row][col] = true;
+      while (stack.length) {
+        const item = stack.pop();
+        component.push(item);
+        directions.forEach(([dr, dc]) => {
+          const nextRow = item.row + dr;
+          const nextCol = item.col + dc;
+          if (nextRow >= 0 && nextRow < rows && nextCol >= 0 && nextCol < cols && binaryMatrix[nextRow][nextCol] && !visited[nextRow][nextCol]) {
+            visited[nextRow][nextCol] = true;
+            stack.push({ row: nextRow, col: nextCol });
+          }
+        });
+      }
+      if (component.length >= minCells) {
+        component.forEach((item) => {
+          output[item.row][item.col] = true;
+        });
+      }
+    }
+  }
+  return output;
+}
+function dilateChebyshev(binaryMatrix, radiusCells) {
+  var _a, _b;
+  const rows = binaryMatrix.length;
+  const cols = (_b = (_a = binaryMatrix[0]) == null ? void 0 : _a.length) != null ? _b : 0;
+  const output = createMatrix(rows, cols, false);
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      if (!binaryMatrix[row][col]) {
+        continue;
+      }
+      for (let dr = -radiusCells; dr <= radiusCells; dr += 1) {
+        for (let dc = -radiusCells; dc <= radiusCells; dc += 1) {
+          const nextRow = row + dr;
+          const nextCol = col + dc;
+          if (nextRow >= 0 && nextRow < rows && nextCol >= 0 && nextCol < cols) {
+            output[nextRow][nextCol] = true;
+          }
+        }
+      }
+    }
+  }
+  return output;
+}
+function buildRidgeMap(tpiMap, h30Map, {
+  minConnectedCells = RIDGE_MIN_CONNECTED_CELLS,
+  dilationCells = RIDGE_DILATION_CELLS_40M
+} = {}) {
+  const ridgeZone = buildRidgeZone(tpiMap);
+  const ridgeLine = zhangSuenThinning(ridgeZone);
+  const candidateRidge = intersectRidgeWithH30(ridgeLine, h30Map);
+  const filteredRidge = filterSmallComponents(
+    candidateRidge,
+    minConnectedCells
+  );
+  const ridgeMap = dilateChebyshev(filteredRidge, dilationCells);
+  return {
+    ridgeZone,
+    ridgeLine,
+    candidateRidge,
+    filteredRidge,
+    ridgeMap
+  };
+}
+function addThresholdWarnings(warnings, result9) {
+  if (Number.isFinite(result9.slopeDeg) && Math.abs(result9.slopeDeg - SLOPE_THRESHOLD_DEG) < 2) {
+    addWarning(
+      warnings,
+      "Pendenza prossima alla soglia 15\xB0: classificazione T1/T2 sensibile alla risoluzione del DEM."
+    );
+  }
+  if (Number.isFinite(result9.tpiCenterM) && Math.abs(result9.tpiCenterM - TPI_THRESHOLD_M) < 2) {
+    addWarning(
+      warnings,
+      "TPI prossimo alla soglia 5 m: individuazione della cresta sensibile alla scala."
+    );
+  }
+  if (Number.isFinite(result9.localElevationRangeM) && Math.abs(result9.localElevationRangeM - H30_THRESHOLD_M) < 5) {
+    addWarning(warnings, "Dislivello locale prossimo alla soglia H30.");
+  }
+  if (Number.isFinite(result9.localElevationRangeM) && Math.abs(result9.localElevationRangeM - H60_THRESHOLD_M) < 5) {
+    addWarning(
+      warnings,
+      "Dislivello locale prossimo alla soglia H60: distinzione T3/T4 sensibile."
+    );
+  }
+}
+function buildEmptyResult(model, mode, preprocessingMode, warnings) {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i;
+  const diagnostics = {
+    gridSize: Number(model == null ? void 0 : model.gridSize) || null,
+    rawCellSizeM: RAW_CELL_SIZE_M,
+    workingCellSizeM: (_a = preprocessingMode == null ? void 0 : preprocessingMode.workingCellSizeM) != null ? _a : WORKING_CELL_SIZE_M,
+    smoothingWindowCells: (_b = preprocessingMode == null ? void 0 : preprocessingMode.smoothingWindowCells) != null ? _b : null,
+    slopeMethod: "max-neighbor-3x3",
+    tpiRadiusM: (_c = mode == null ? void 0 : mode.radiusM) != null ? _c : null,
+    tpiThresholdM: TPI_THRESHOLD_M,
+    hWindowCells40m: H_WINDOW_CELLS_40M,
+    hWindowCells: (_d = preprocessingMode == null ? void 0 : preprocessingMode.hWindowCells) != null ? _d : H_WINDOW_CELLS_40M,
+    ridgeDilationCells: (_e = preprocessingMode == null ? void 0 : preprocessingMode.ridgeDilationCells) != null ? _e : RIDGE_DILATION_CELLS_40M,
+    ridgeDilationM: (_f = preprocessingMode == null ? void 0 : preprocessingMode.ridgeDilationM) != null ? _f : RIDGE_DILATION_M
+  };
+  return {
+    class: null,
+    category: null,
+    amplificationFactorST: null,
+    slopeDeg: null,
+    slopePercent: null,
+    slopeDirection: null,
+    slopeMethod: "max-neighbor-3x3",
+    tpiCenterM: null,
+    isRidge: false,
+    h30Center: null,
+    h60Center: null,
+    localElevationRangeM: null,
+    ridgeAtCenter: false,
+    mode: (_g = mode == null ? void 0 : mode.mode) != null ? _g : null,
+    preprocessingMode: (_h = preprocessingMode == null ? void 0 : preprocessingMode.mode) != null ? _h : null,
+    preprocessingLabel: (_i = preprocessingMode == null ? void 0 : preprocessingMode.label) != null ? _i : null,
+    isArticleCompliantScale: (mode == null ? void 0 : mode.isArticleCompliantScale) === true,
+    isArticleCompliantPreprocessing: (preprocessingMode == null ? void 0 : preprocessingMode.isArticleCompliantPreprocessing) === true,
+    isArticleCompliant: (mode == null ? void 0 : mode.isArticleCompliantScale) === true && (preprocessingMode == null ? void 0 : preprocessingMode.isArticleCompliantPreprocessing) === true,
+    isReliable: false,
+    warnings,
+    diagnostics
+  };
+}
+function classifyTopographyMascandola(model, options = {}) {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r;
+  const validation = validateModel(model);
+  const mode = getModeForGridSize(validation.gridSize);
+  const preprocessingMode = getPreprocessingMode(options.preprocessingMode);
+  const warnings = [...validation.warnings];
+  if (mode && !mode.isArticleCompliantScale) {
+    addWarning(
+      warnings,
+      "La classificazione usa una scala ridotta rispetto all'articolo, che adotta TPI con raggio 500 m. Il risultato e diagnostico."
+    );
+  }
+  if (!validation.canClassify || !mode) {
+    return buildEmptyResult(model, mode, preprocessingMode, warnings);
+  }
+  const rawMatrix = buildRawElevationMatrix(model);
+  const workingGrid = buildWorkingGrid(
+    model,
+    rawMatrix,
+    preprocessingMode.workingCellSizeM
+  );
+  const processed = smoothWorkingGrid(
+    workingGrid.elevations,
+    preprocessingMode.smoothingWindowCells
+  );
+  const slopeAnalysis = computeSlopeAnalysisMap(
+    processed.elevations,
+    preprocessingMode.workingCellSizeM
+  );
+  const tpi = computeTpiMap(
+    processed.elevations,
+    preprocessingMode.workingCellSizeM,
+    mode.radiusM
+  );
+  const elevationRanges = computeElevationRangeMap(
+    processed.elevations,
+    preprocessingMode.hWindowCells
+  );
+  const ridgeMaps = buildRidgeMap(tpi.tpi, elevationRanges.h30, {
+    minConnectedCells: preprocessingMode.ridgeMinConnectedCells,
+    dilationCells: preprocessingMode.ridgeDilationCells
+  });
+  const centerIndex = Math.floor(workingGrid.size / 2);
+  const centerSlopeDeg = (_b = (_a = slopeAnalysis.slopes[centerIndex]) == null ? void 0 : _a[centerIndex]) != null ? _b : null;
+  const centerSlopeRatio = (_d = (_c = slopeAnalysis.ratios[centerIndex]) == null ? void 0 : _c[centerIndex]) != null ? _d : null;
+  const centerSlopeDirection = (_f = (_e = slopeAnalysis.directions[centerIndex]) == null ? void 0 : _e[centerIndex]) != null ? _f : null;
+  const tpiCenterM = (_h = (_g = tpi.tpi[centerIndex]) == null ? void 0 : _g[centerIndex]) != null ? _h : null;
+  const h30Center = (_j = (_i = elevationRanges.h30[centerIndex]) == null ? void 0 : _i[centerIndex]) != null ? _j : null;
+  const h60Center = (_l = (_k = elevationRanges.h60[centerIndex]) == null ? void 0 : _k[centerIndex]) != null ? _l : null;
+  const localElevationRangeM = (_n = (_m = elevationRanges.ranges[centerIndex]) == null ? void 0 : _m[centerIndex]) != null ? _n : null;
+  const isRidge = ((_o = ridgeMaps.ridgeZone[centerIndex]) == null ? void 0 : _o[centerIndex]) === true;
+  const ridgeAtCenter = ((_p = ridgeMaps.ridgeMap[centerIndex]) == null ? void 0 : _p[centerIndex]) === true;
+  const isOnRidge = isRidge && h30Center === true;
+  let topographicClass = null;
+  let canClassifyCenter = Number.isFinite(centerSlopeDeg);
+  if (tpiCenterM == null) {
+    addWarning(warnings, "Copertura TPI insufficiente in corrispondenza del punto.");
+    canClassifyCenter = false;
+  }
+  if (isOnRidge && h60Center == null) {
+    addWarning(warnings, "Dislivello H60 non valutabile in corrispondenza del punto.");
+    canClassifyCenter = false;
+  }
+  if (canClassifyCenter) {
+    if (!isOnRidge) {
+      topographicClass = centerSlopeDeg < SLOPE_THRESHOLD_DEG ? "T1" : "T2";
+    } else {
+      topographicClass = h60Center === true ? "T4" : "T3";
+    }
+  }
+  const result9 = {
+    class: topographicClass,
+    category: topographicClass,
+    amplificationFactorST: topographicClass == null ? null : TOPOGRAPHIC_AMPLIFICATION_FACTORS[topographicClass],
+    slopeDeg: centerSlopeDeg,
+    slopePercent: Number.isFinite(centerSlopeRatio) ? centerSlopeRatio * 100 : null,
+    slopeDirection: centerSlopeDirection,
+    slopeMethod: "max-neighbor-3x3",
+    tpiCenterM,
+    isRidge,
+    h30Center,
+    h60Center,
+    localElevationRangeM,
+    ridgeAtCenter,
+    mode: mode.mode,
+    preprocessingMode: preprocessingMode.mode,
+    preprocessingLabel: preprocessingMode.label,
+    isArticleCompliantScale: mode.isArticleCompliantScale,
+    isArticleCompliantPreprocessing: preprocessingMode.isArticleCompliantPreprocessing,
+    isArticleCompliant: mode.isArticleCompliantScale && preprocessingMode.isArticleCompliantPreprocessing,
+    isReliable: topographicClass != null && validation.canClassify,
+    warnings,
+    diagnostics: {
+      gridSize: validation.gridSize,
+      rawCellSizeM: RAW_CELL_SIZE_M,
+      workingCellSizeM: preprocessingMode.workingCellSizeM,
+      smoothingWindowCells: preprocessingMode.smoothingWindowCells,
+      slopeMethod: "max-neighbor-3x3",
+      tpiRadiusM: mode.radiusM,
+      tpiThresholdM: TPI_THRESHOLD_M,
+      hWindowCells40m: H_WINDOW_CELLS_40M,
+      hWindowCells: preprocessingMode.hWindowCells,
+      ridgeDilationCells: preprocessingMode.ridgeDilationCells,
+      ridgeDilationM: preprocessingMode.ridgeDilationM
+    },
+    debug: {
+      workingGridSize: workingGrid.size,
+      tpiCoverageCenter: (_r = (_q = tpi.coverage[centerIndex]) == null ? void 0 : _q[centerIndex]) != null ? _r : null,
+      preprocessingDescription: preprocessingMode.description
+    }
+  };
+  addThresholdWarnings(warnings, result9);
+  if (["T3", "T4"].includes(topographicClass)) {
+    addWarning(
+      warnings,
+      "La classificazione automatica individua una possibile amplificazione topografica; verificare la morfologia con profili topografici locali, soprattutto in configurazioni 3D complesse."
+    );
+  }
+  return result9;
+}
+
+// src/norms/ntc2018/actions/ntc2018TopographicClassification.js
+var NTC2018_TOPOGRAPHIC_CLASSIFICATION_REFERENCES = Object.freeze({
+  ntc2018: "D.M. 17 gennaio 2018, NTC 2018, \xA73.2.2, Table 3.2.III and Table 3.2.V",
+  method: "Mascandola, Luzi, Felicetta, Pacor (2021), Soil Dynamics and Earthquake Engineering 148, 106848, DOI 10.1016/j.soildyn.2021.106848",
+  terrainModel: "Tarquini et al. (2023), TINITALY v1.1, DOI 10.13127/tinitaly/1.1"
+});
+var NTC2018_TOPOGRAPHIC_CLASSIFICATION_METHOD = Object.freeze({
+  id: "mascandola-et-al-2021",
+  rawCellSizeM: 10,
+  workingCellSizeM: 40,
+  fullScaleRadiusM: 500,
+  supportedGridSizes: Object.freeze([51, 101]),
+  defaultPreprocessingMode: DEFAULT_TOPOGRAPHIC_PREPROCESSING_MODE,
+  amplificationFactors: Object.freeze({ ...TOPOGRAPHIC_AMPLIFICATION_FACTORS }),
+  references: NTC2018_TOPOGRAPHIC_CLASSIFICATION_REFERENCES
+});
+function createClassificationModel(grid) {
+  const cells = grid.cells.map((cell) => ({
+    row: cell.row,
+    col: cell.column,
+    x: cell.eastOffsetM,
+    y: cell.northOffsetM,
+    rawElevation: cell.elevationM,
+    isNoData: cell.isNoData,
+    isInterpolated: cell.isInterpolated
+  }));
+  return {
+    radiusM: grid.radiusM,
+    halfExtentM: grid.extentM / 2,
+    gridSize: grid.gridSize,
+    spacingM: grid.spacingM,
+    xMin: grid.bounds.westM,
+    xMax: grid.bounds.eastM,
+    yMin: grid.bounds.southM,
+    yMax: grid.bounds.northM,
+    cells,
+    cellMap: new Map(
+      cells.map((cell) => [`${cell.row}:${cell.col}`, cell])
+    )
+  };
+}
+function summarizeGrid(grid) {
+  const datasetSources = Array.from(new Set(
+    grid.cells.map((cell) => cell.source).filter(Boolean)
+  ));
+  const sourceResolutionsM = Array.from(new Set(
+    grid.cells.map((cell) => cell.sourceResolutionM).filter(Number.isFinite)
+  ));
+  const samplingMethods = Array.from(new Set(
+    grid.cells.map((cell) => cell.samplingMethod).filter(Boolean)
+  ));
+  return {
+    schemaVersion: grid.schemaVersion,
+    center: { ...grid.center },
+    radiusM: grid.radiusM,
+    extentM: grid.extentM,
+    gridSize: grid.gridSize,
+    spacingM: grid.spacingM,
+    orientation: { ...grid.orientation },
+    bounds: { ...grid.bounds },
+    quality: { ...grid.quality },
+    provenance: grid.provenance == null ? null : { ...grid.provenance },
+    datasetSources,
+    sourceResolutionsM,
+    samplingMethods
+  };
+}
+function resultStatus(classification, grid) {
+  if (classification.isReliable && classification.class != null) {
+    return "ok";
+  }
+  const mode = Object.values(TOPOGRAPHIC_CLASSIFICATION_MODES).find(
+    (candidate) => candidate.gridSize === grid.gridSize
+  );
+  if (!mode || grid.spacingM !== NTC2018_TOPOGRAPHIC_CLASSIFICATION_METHOD.rawCellSizeM) {
+    return "not-supported";
+  }
+  return "not-verified";
+}
+function classifyNTC2018Topography({
+  terrainGrid,
+  preprocessingMode = DEFAULT_TOPOGRAPHIC_PREPROCESSING_MODE
+} = {}) {
+  const grid = normalizeTerrainElevationGrid(terrainGrid);
+  if (!TOPOGRAPHIC_PREPROCESSING_MODES[preprocessingMode]) {
+    throw new Error(`Unsupported topographic preprocessing mode: ${preprocessingMode}.`);
+  }
+  const classification = classifyTopographyMascandola(
+    createClassificationModel(grid),
+    { preprocessingMode }
+  );
+  const status = resultStatus(classification, grid);
+  return new CalculationResult({
+    applicationId: "ntc2018-topographic-classification",
+    status,
+    summary: status === "ok" ? `Calculated NTC 2018 topographic category ${classification.class}.` : "The supplied terrain grid did not produce a reliable NTC 2018 topographic category.",
+    outputs: {
+      schemaVersion: "ntc2018-topographic-classification/v1",
+      terrainGrid: summarizeGrid(grid),
+      classification
+    },
+    warnings: [...classification.warnings],
+    assumptions: [
+      "The supplied elevation grid represents the terrain surrounding the selected site.",
+      "The calculation applies the validated Mascandola et al. (2021) raster procedure ported without changes to its numerical thresholds.",
+      "The returned amplificationFactorST is the category value used by the source procedure; site-position requirements remain governed by NTC 2018 Table 3.2.V."
+    ],
+    metadata: {
+      method: NTC2018_TOPOGRAPHIC_CLASSIFICATION_METHOD.id,
+      normativePreset: "NTC2018",
+      references: { ...NTC2018_TOPOGRAPHIC_CLASSIFICATION_REFERENCES },
+      inputSchemaVersion: grid.schemaVersion,
+      outputSchemaVersion: "ntc2018-topographic-classification/v1",
+      networkAccessPerformed: false
+    }
+  });
+}
+
+// src/norms/ntc2018/actions/ntc2018SnowLoad.js
+var INTERNAL_UNITS29 = Object.freeze({ force: "kN", length: "m" });
+var MAXIMUM_TABULATED_ALTITUDE = 1500;
+var NTC2018_SNOW_REFERENCES = Object.freeze({
+  roofLoad: "D.M. 17/01/2018, NTC 2018, section 3.4.1, equation [3.4.1]",
+  groundLoad: "D.M. 17/01/2018, NTC 2018, section 3.4.2, equations [3.4.2]-[3.4.5]",
+  shapeCoefficient: "D.M. 17/01/2018, NTC 2018, section 3.4.3, Table 3.4.II",
+  exposureCoefficient: "D.M. 17/01/2018, NTC 2018, section 3.4.4, Table 3.4.I",
+  thermalCoefficient: "D.M. 17/01/2018, NTC 2018, section 3.4.5",
+  combinationFactors: "D.M. 17/01/2018, NTC 2018, section 2.5.2, Table 2.5.I"
+});
+function freezeDefinitions2(definitions) {
+  return Object.freeze(Object.fromEntries(
+    Object.entries(definitions).map(([id, definition]) => [
+      id,
+      Object.freeze({ id, ...definition })
+    ])
+  ));
+}
+var NTC2018_SNOW_GROUND_ZONES = freezeDefinitions2({
+  I_ALPINE: {
+    description: "Zona I - Alpina",
+    lowAltitudeLoad: 1.5,
+    highAltitudeCoefficient: 1.39,
+    altitudeScale: 728,
+    equation: "[3.4.2]"
+  },
+  I_MEDITERRANEAN: {
+    description: "Zona I - Mediterranea",
+    lowAltitudeLoad: 1.5,
+    highAltitudeCoefficient: 1.35,
+    altitudeScale: 602,
+    equation: "[3.4.3]"
+  },
+  II: {
+    description: "Zona II",
+    lowAltitudeLoad: 1,
+    highAltitudeCoefficient: 0.85,
+    altitudeScale: 481,
+    equation: "[3.4.4]"
+  },
+  III: {
+    description: "Zona III",
+    lowAltitudeLoad: 0.6,
+    highAltitudeCoefficient: 0.51,
+    altitudeScale: 481,
+    equation: "[3.4.5]"
+  }
+});
+var NTC2018_SNOW_EXPOSURE_CLASSES = freezeDefinitions2({
+  WIND_SWEPT: {
+    description: "Area battuta dai venti",
+    value: 0.9
+  },
+  NORMAL: {
+    description: "Esposizione normale",
+    value: 1
+  },
+  SHELTERED: {
+    description: "Area riparata",
+    value: 1.1
+  }
+});
+function clone3(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+function finiteNonNegative2(value, label) {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`${label} must be a finite non-negative number.`);
+  }
+  return value;
+}
+function finitePositive3(value, label) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${label} must be a finite positive number.`);
+  }
+  return value;
+}
+function nonEmptyString2(value, label) {
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new Error(`${label} must be a non-empty string.`);
+  }
+  return value.trim();
+}
+function booleanValue(value, label) {
+  if (typeof value !== "boolean") {
+    throw new Error(`${label} must be a boolean.`);
+  }
+  return value;
+}
+function groundZoneDefinition(zone) {
+  const definition = NTC2018_SNOW_GROUND_ZONES[zone];
+  if (!definition) {
+    throw new Error(`Unsupported NTC 2018 snow ground zone: ${zone}.`);
+  }
+  return definition;
+}
+function exposureClassDefinition(exposureClass) {
+  const definition = NTC2018_SNOW_EXPOSURE_CLASSES[exposureClass];
+  if (!definition) {
+    throw new Error(`Unsupported NTC 2018 snow exposure class: ${exposureClass}.`);
+  }
+  return definition;
+}
+function getNTC2018SnowGroundZoneDefinition(zone) {
+  return clone3(groundZoneDefinition(zone));
+}
+function getNTC2018SnowExposureClassDefinition(exposureClass) {
+  return clone3(exposureClassDefinition(exposureClass));
+}
+function calculateNTC2018GroundSnowLoad({
+  zone,
+  siteAltitude,
+  units = null
+} = {}) {
+  const sourceUnits = assertExplicitUnitSystem(units, "calculateNTC2018GroundSnowLoad");
+  const resolver = createUnitResolver(sourceUnits, INTERNAL_UNITS29);
+  const altitude = finiteNonNegative2(resolver.length(siteAltitude), "siteAltitude");
+  if (altitude > MAXIMUM_TABULATED_ALTITUDE) {
+    throw new RangeError(
+      "The NTC 2018 zonal ground-snow formula is not applicable above 1500 m; documented local climate and exposure data are required."
+    );
+  }
+  const definition = groundZoneDefinition(zone);
+  const lowAltitude = altitude <= 200;
+  const value = lowAltitude ? definition.lowAltitudeLoad : definition.highAltitudeCoefficient * (1 + (altitude / definition.altitudeScale) ** 2);
+  return {
+    zone,
+    zoneDescription: definition.description,
+    siteAltitude: altitude,
+    value,
+    quantity: "area-load",
+    formula: lowAltitude ? "qsk = lowAltitudeLoad" : "qsk = coefficient * [1 + (siteAltitude / altitudeScale)^2]",
+    operands: {
+      lowAltitudeLoad: definition.lowAltitudeLoad,
+      coefficient: definition.highAltitudeCoefficient,
+      altitudeScale: definition.altitudeScale,
+      siteAltitude: altitude
+    },
+    equation: definition.equation,
+    units: { ...INTERNAL_UNITS29 },
+    reference: NTC2018_SNOW_REFERENCES.groundLoad,
+    metadata: {
+      source: "ntc2018-zonal-minimum",
+      sourceUnitSystem: sourceUnits,
+      unitSystem: { ...INTERNAL_UNITS29 }
+    }
+  };
+}
+function calculateNTC2018PitchedRoofShapeCoefficient({
+  roofAngleDegrees,
+  slidingPrevented = false
+} = {}) {
+  const angle2 = finiteNonNegative2(roofAngleDegrees, "roofAngleDegrees");
+  if (angle2 > 90) {
+    throw new Error("roofAngleDegrees must not exceed 90 degrees.");
+  }
+  const hasSlidingObstruction = booleanValue(slidingPrevented, "slidingPrevented");
+  let nominalValue;
+  let formula;
+  if (angle2 <= 30) {
+    nominalValue = 0.8;
+    formula = "mu1 = 0.8";
+  } else if (angle2 < 60) {
+    nominalValue = 0.8 * (60 - angle2) / 30;
+    formula = "mu1 = 0.8 * (60 - roofAngleDegrees) / 30";
+  } else {
+    nominalValue = 0;
+    formula = "mu1 = 0";
+  }
+  const minimumValue = hasSlidingObstruction ? 0.8 : 0;
+  const value = Math.max(nominalValue, minimumValue);
+  return {
+    roofAngleDegrees: angle2,
+    slidingPrevented: hasSlidingObstruction,
+    nominalValue,
+    minimumValue,
+    minimumApplied: value > nominalValue,
+    value,
+    formula: hasSlidingObstruction ? `max(${formula.replace("mu1 = ", "")}, 0.8)` : formula,
+    reference: NTC2018_SNOW_REFERENCES.shapeCoefficient
+  };
+}
+function calculateNTC2018RoofSnowLoad({
+  groundSnowLoad,
+  shapeCoefficient,
+  exposureCoefficient,
+  thermalCoefficient = 1,
+  units = null
+} = {}) {
+  const sourceUnits = assertExplicitUnitSystem(units, "calculateNTC2018RoofSnowLoad");
+  const resolver = createUnitResolver(sourceUnits, INTERNAL_UNITS29);
+  const qsk = finiteNonNegative2(resolver.areaLoad(groundSnowLoad), "groundSnowLoad");
+  const mu = finiteNonNegative2(shapeCoefficient, "shapeCoefficient");
+  const ce = finitePositive3(exposureCoefficient, "exposureCoefficient");
+  const ct = finitePositive3(thermalCoefficient, "thermalCoefficient");
+  return {
+    value: qsk * mu * ce * ct,
+    quantity: "area-load",
+    formula: "qs = shapeCoefficient * groundSnowLoad * exposureCoefficient * thermalCoefficient",
+    operands: {
+      groundSnowLoad: qsk,
+      shapeCoefficient: mu,
+      exposureCoefficient: ce,
+      thermalCoefficient: ct
+    },
+    applicationDirection: "vertical",
+    referenceSurface: "horizontal-projection",
+    units: { ...INTERNAL_UNITS29 },
+    reference: NTC2018_SNOW_REFERENCES.roofLoad,
+    metadata: {
+      sourceUnitSystem: sourceUnits,
+      unitSystem: { ...INTERNAL_UNITS29 }
+    }
+  };
+}
+function resolveGroundSnowLoad({
+  zone,
+  siteAltitude,
+  groundSnowLoad,
+  groundSnowLoadSource,
+  resolver,
+  sourceUnits
+}) {
+  const maximumFormulaAltitude = Math.min(siteAltitude, MAXIMUM_TABULATED_ALTITUDE);
+  const minimum2 = calculateNTC2018GroundSnowLoad({
+    zone,
+    siteAltitude: maximumFormulaAltitude,
+    units: INTERNAL_UNITS29
+  });
+  if (groundSnowLoad == null) {
+    if (siteAltitude > MAXIMUM_TABULATED_ALTITUDE) {
+      return {
+        supported: false,
+        minimum: minimum2
+      };
+    }
+    return {
+      supported: true,
+      groundSnowLoad: minimum2
+    };
+  }
+  const value = finiteNonNegative2(
+    resolver.areaLoad(groundSnowLoad),
+    "groundSnowLoad"
+  );
+  const source = nonEmptyString2(groundSnowLoadSource, "groundSnowLoadSource");
+  if (value < minimum2.value) {
+    throw new Error(
+      `groundSnowLoad must not be lower than the NTC 2018 minimum ${minimum2.value} kN/m^2.`
+    );
+  }
+  return {
+    supported: true,
+    groundSnowLoad: {
+      zone,
+      zoneDescription: groundZoneDefinition(zone).description,
+      siteAltitude,
+      value,
+      quantity: "area-load",
+      formula: "qsk = documented explicit value",
+      operands: {
+        documentedValue: value,
+        ntc2018Minimum: minimum2.value,
+        minimumEvaluationAltitude: maximumFormulaAltitude
+      },
+      units: { ...INTERNAL_UNITS29 },
+      reference: NTC2018_SNOW_REFERENCES.groundLoad,
+      metadata: {
+        source: "documented-explicit-value",
+        sourceReference: source,
+        sourceUnitSystem: sourceUnits,
+        unitSystem: { ...INTERNAL_UNITS29 }
+      }
+    }
+  };
+}
+function resolveShapeCoefficient({
+  roofAngleDegrees,
+  slidingPrevented,
+  shapeCoefficient,
+  shapeCoefficientSource
+}) {
+  const hasAngle = roofAngleDegrees != null;
+  const hasExplicitValue = shapeCoefficient != null;
+  if (hasAngle === hasExplicitValue) {
+    throw new Error(
+      "Provide exactly one of roofAngleDegrees or shapeCoefficient."
+    );
+  }
+  if (hasAngle) {
+    return {
+      ...calculateNTC2018PitchedRoofShapeCoefficient({
+        roofAngleDegrees,
+        slidingPrevented
+      }),
+      source: "ntc2018-nominal-pitched-roof"
+    };
+  }
+  return {
+    value: finiteNonNegative2(shapeCoefficient, "shapeCoefficient"),
+    source: "documented-explicit-value",
+    sourceReference: nonEmptyString2(
+      shapeCoefficientSource,
+      "shapeCoefficientSource"
+    ),
+    reference: NTC2018_SNOW_REFERENCES.shapeCoefficient
+  };
+}
+function resolveExposureCoefficient({
+  exposureClass,
+  exposureCoefficient,
+  exposureCoefficientSource
+}) {
+  const hasClass = exposureClass != null;
+  const hasExplicitValue = exposureCoefficient != null;
+  if (hasClass === hasExplicitValue) {
+    throw new Error(
+      "Provide exactly one of exposureClass or exposureCoefficient."
+    );
+  }
+  if (hasClass) {
+    const definition = exposureClassDefinition(exposureClass);
+    return {
+      exposureClass,
+      description: definition.description,
+      value: definition.value,
+      source: "ntc2018-exposure-class",
+      reference: NTC2018_SNOW_REFERENCES.exposureCoefficient
+    };
+  }
+  return {
+    exposureClass: null,
+    value: finitePositive3(exposureCoefficient, "exposureCoefficient"),
+    source: "documented-explicit-value",
+    sourceReference: nonEmptyString2(
+      exposureCoefficientSource,
+      "exposureCoefficientSource"
+    ),
+    reference: NTC2018_SNOW_REFERENCES.exposureCoefficient
+  };
+}
+function resolveThermalCoefficient({
+  thermalCoefficient,
+  thermalCoefficientSource
+}) {
+  const defaultApplied = thermalCoefficient == null;
+  const value = finitePositive3(thermalCoefficient != null ? thermalCoefficient : 1, "thermalCoefficient");
+  if (value !== 1) {
+    nonEmptyString2(thermalCoefficientSource, "thermalCoefficientSource");
+  }
+  return {
+    value,
+    defaultApplied,
+    source: value === 1 ? "ntc2018-default" : "documented-specific-study",
+    sourceReference: value === 1 ? null : thermalCoefficientSource.trim(),
+    reference: NTC2018_SNOW_REFERENCES.thermalCoefficient
+  };
+}
+function notSupportedHighAltitudeResult({ zone, siteAltitude, sourceUnits, minimum: minimum2 }) {
+  return new CalculationResult({
+    applicationId: "ntc2018-snow-area-load",
+    status: "not-supported",
+    summary: "The NTC 2018 zonal formula does not determine ground snow load above 1500 m.",
+    outputs: {
+      schemaVersion: "ntc2018-snow-area-load/v1",
+      units: { ...INTERNAL_UNITS29 },
+      zone,
+      siteAltitude,
+      minimumGroundSnowLoadAt1500m: minimum2
+    },
+    warnings: [
+      "Provide a documented local ground snow load not lower than the NTC 2018 value evaluated at 1500 m."
+    ],
+    assumptions: [],
+    metadata: {
+      method: "ntc2018-snow-area-load",
+      normativePreset: "NTC2018",
+      references: { ...NTC2018_SNOW_REFERENCES },
+      unitSystem: { ...INTERNAL_UNITS29 },
+      sourceUnitSystem: sourceUnits
+    }
+  });
+}
+function calculateNTC2018SnowAreaLoad({
+  id = "NTC2018-SNOW-LOAD",
+  actionId = "NTC2018-SNOW",
+  name = "NTC 2018 roof snow load",
+  zone,
+  siteAltitude,
+  groundSnowLoad = null,
+  groundSnowLoadSource = null,
+  roofAngleDegrees = null,
+  slidingPrevented = false,
+  shapeCoefficient = null,
+  shapeCoefficientSource = null,
+  exposureClass = null,
+  exposureCoefficient = null,
+  exposureCoefficientSource = null,
+  thermalCoefficient = null,
+  thermalCoefficientSource = null,
+  units = null
+} = {}) {
+  const loadId = nonEmptyString2(id, "id");
+  const normalizedActionId = nonEmptyString2(actionId, "actionId");
+  const sourceUnits = assertExplicitUnitSystem(units, "calculateNTC2018SnowAreaLoad");
+  const resolver = createUnitResolver(sourceUnits, INTERNAL_UNITS29);
+  const altitude = finiteNonNegative2(resolver.length(siteAltitude), "siteAltitude");
+  groundZoneDefinition(zone);
+  const groundResolution = resolveGroundSnowLoad({
+    zone,
+    siteAltitude: altitude,
+    groundSnowLoad,
+    groundSnowLoadSource,
+    resolver,
+    sourceUnits
+  });
+  if (!groundResolution.supported) {
+    return notSupportedHighAltitudeResult({
+      zone,
+      siteAltitude: altitude,
+      sourceUnits,
+      minimum: groundResolution.minimum
+    });
+  }
+  const shape = resolveShapeCoefficient({
+    roofAngleDegrees,
+    slidingPrevented,
+    shapeCoefficient,
+    shapeCoefficientSource
+  });
+  const exposure = resolveExposureCoefficient({
+    exposureClass,
+    exposureCoefficient,
+    exposureCoefficientSource
+  });
+  const thermal = resolveThermalCoefficient({
+    thermalCoefficient,
+    thermalCoefficientSource
+  });
+  const roofSnowLoad = calculateNTC2018RoofSnowLoad({
+    groundSnowLoad: groundResolution.groundSnowLoad.value,
+    shapeCoefficient: shape.value,
+    exposureCoefficient: exposure.value,
+    thermalCoefficient: thermal.value,
+    units: INTERNAL_UNITS29
+  });
+  const highAltitude = altitude > 1e3;
+  const action = createNTC2018SnowAction({
+    id: normalizedActionId,
+    name,
+    highAltitude,
+    metadata: {
+      siteAltitude: altitude,
+      reference: NTC2018_SNOW_REFERENCES.combinationFactors
+    }
+  });
+  const load = new AreaLoad({
+    id: loadId,
+    name,
+    type: "snow-area",
+    direction: "vertical",
+    referenceSystem: "site",
+    intensity: roofSnowLoad.value,
+    action,
+    units: INTERNAL_UNITS29,
+    metadata: {
+      applicationDirection: roofSnowLoad.applicationDirection,
+      referenceSurface: roofSnowLoad.referenceSurface,
+      formula: roofSnowLoad.formula,
+      operands: roofSnowLoad.operands,
+      groundSnowLoadSource: groundResolution.groundSnowLoad.metadata.source,
+      shapeCoefficientSource: shape.source,
+      exposureCoefficientSource: exposure.source,
+      thermalCoefficientSource: thermal.source,
+      sourceUnitSystem: sourceUnits
+    }
+  });
+  const warnings = [];
+  if (roofAngleDegrees != null) {
+    warnings.push(
+      "The nominal mu1 value represents one roof surface; alternative two-pitch patterns and local accumulations are not generated."
+    );
+  }
+  if (shapeCoefficient != null) {
+    warnings.push(
+      "The explicit shape coefficient is preserved as documented input; the library does not reconstruct its roof load pattern."
+    );
+  }
+  return new CalculationResult({
+    applicationId: "ntc2018-snow-area-load",
+    status: "ok",
+    summary: "Calculated the NTC 2018 characteristic snow area load on the roof.",
+    outputs: {
+      schemaVersion: "ntc2018-snow-area-load/v1",
+      units: { ...INTERNAL_UNITS29 },
+      zone: clone3(groundZoneDefinition(zone)),
+      siteAltitude: altitude,
+      groundSnowLoad: groundResolution.groundSnowLoad,
+      shapeCoefficient: shape,
+      exposureCoefficient: exposure,
+      thermalCoefficient: thermal,
+      roofSnowLoad,
+      action: action.toJSON(),
+      load: load.toJSON()
+    },
+    warnings,
+    assumptions: [
+      "The snow action is vertical and referred to the horizontal projection of the roof.",
+      "The site snow zone is an explicit caller decision; no geographic lookup is performed.",
+      ...thermal.defaultApplied ? ["The thermal coefficient Ct is 1 because no documented specific study was supplied."] : []
+    ],
+    metadata: {
+      method: "ntc2018-snow-area-load",
+      normativePreset: "NTC2018",
+      references: { ...NTC2018_SNOW_REFERENCES },
+      unitSystem: { ...INTERNAL_UNITS29 },
+      sourceUnitSystem: sourceUnits
+    }
+  });
+}
+
+// src/norms/ntc2018/actions/ntc2018ThermalAction.js
+var INTERNAL_LENGTH_UNITS = Object.freeze({ force: "kN", length: "m" });
+var TEMPERATURE_UNIT = "degC";
+var DEFAULT_INTERNAL_AIR_TEMPERATURE = 20;
+var DEFAULT_INITIAL_TEMPERATURE = 15;
+var NTC2018_THERMAL_REFERENCES = Object.freeze({
+  externalAir: "D.M. 17/01/2018, NTC 2018, section 3.5.2, equations [3.5.1]-[3.5.8]",
+  internalAir: "D.M. 17/01/2018, NTC 2018, section 3.5.3",
+  elementDistribution: "D.M. 17/01/2018, NTC 2018, section 3.5.4, Table 3.5.I",
+  simplifiedBuildings: "D.M. 17/01/2018, NTC 2018, section 3.5.5, Table 3.5.II",
+  expansionCoefficients: "D.M. 17/01/2018, NTC 2018, section 3.5.7, Table 3.5.III",
+  combinationFactors: "D.M. 17/01/2018, NTC 2018, section 2.5.2, Table 2.5.I"
+});
+function freezeDefinitions3(definitions) {
+  return Object.freeze(Object.fromEntries(
+    Object.entries(definitions).map(([id, definition]) => [
+      id,
+      Object.freeze({ id, ...definition })
+    ])
+  ));
+}
+var NTC2018_EXTERNAL_AIR_TEMPERATURE_ZONES = freezeDefinitions3({
+  I: {
+    description: "Zona I",
+    minimumIntercept: -15,
+    minimumAltitudeGradient: -4,
+    maximumIntercept: 42,
+    maximumAltitudeGradient: -6,
+    minimumEquation: "[3.5.1]",
+    maximumEquation: "[3.5.2]"
+  },
+  II: {
+    description: "Zona II",
+    minimumIntercept: -8,
+    minimumAltitudeGradient: -6,
+    maximumIntercept: 42,
+    maximumAltitudeGradient: -2,
+    minimumEquation: "[3.5.3]",
+    maximumEquation: "[3.5.4]"
+  },
+  III: {
+    description: "Zona III",
+    minimumIntercept: -8,
+    minimumAltitudeGradient: -7,
+    maximumIntercept: 42,
+    maximumAltitudeGradient: -0.3,
+    minimumEquation: "[3.5.5]",
+    maximumEquation: "[3.5.6]"
+  },
+  IV: {
+    description: "Zona IV",
+    minimumIntercept: -2,
+    minimumAltitudeGradient: -9,
+    maximumIntercept: 42,
+    maximumAltitudeGradient: -2,
+    minimumEquation: "[3.5.7]",
+    maximumEquation: "[3.5.8]"
+  }
+});
+var NTC2018_SIMPLIFIED_BUILDING_TEMPERATURE_CHANGES = freezeDefinitions3({
+  EXPOSED_REINFORCED_CONCRETE: {
+    description: "Strutture in c.a. e c.a.p. esposte",
+    magnitude: 15
+  },
+  PROTECTED_REINFORCED_CONCRETE: {
+    description: "Strutture in c.a. e c.a.p. protette",
+    magnitude: 10
+  },
+  EXPOSED_STEEL: {
+    description: "Strutture in acciaio esposte",
+    magnitude: 25
+  },
+  PROTECTED_STEEL: {
+    description: "Strutture in acciaio protette",
+    magnitude: 15
+  }
+});
+var NTC2018_THERMAL_EXPANSION_COEFFICIENTS = Object.freeze([
+  {
+    id: "aluminium",
+    description: "Alluminio",
+    kind: "fixed",
+    value: 24e-6
+  },
+  {
+    id: "structural-steel",
+    description: "Acciaio da carpenteria",
+    kind: "fixed",
+    value: 12e-6
+  },
+  {
+    id: "structural-concrete",
+    description: "Calcestruzzo strutturale",
+    kind: "fixed",
+    value: 1e-5
+  },
+  {
+    id: "steel-concrete-composite",
+    description: "Strutture miste acciaio-calcestruzzo",
+    kind: "fixed",
+    value: 12e-6
+  },
+  {
+    id: "lightweight-concrete",
+    description: "Calcestruzzo alleggerito",
+    kind: "fixed",
+    value: 7e-6
+  },
+  {
+    id: "masonry",
+    description: "Muratura",
+    kind: "range",
+    min: 6e-6,
+    max: 1e-5
+  },
+  {
+    id: "timber-parallel-to-grain",
+    description: "Legno parallelo alle fibre",
+    kind: "fixed",
+    value: 5e-6
+  },
+  {
+    id: "timber-perpendicular-to-grain",
+    description: "Legno ortogonale alle fibre",
+    kind: "range",
+    min: 3e-5,
+    max: 7e-5
+  }
+].map((entry) => Object.freeze({
+  ...entry,
+  unit: "1/degC",
+  reference: NTC2018_THERMAL_REFERENCES.expansionCoefficients
+})));
+var SOLAR_INCREMENTS = Object.freeze({
+  REFLECTIVE: Object.freeze({
+    NORTH_EAST: 0,
+    SOUTH_WEST_OR_HORIZONTAL: 18
+  }),
+  LIGHT: Object.freeze({
+    NORTH_EAST: 2,
+    SOUTH_WEST_OR_HORIZONTAL: 30
+  }),
+  DARK: Object.freeze({
+    NORTH_EAST: 4,
+    SOUTH_WEST_OR_HORIZONTAL: 42
+  })
+});
+var NTC2018_SUMMER_SOLAR_TEMPERATURE_INCREMENTS = SOLAR_INCREMENTS;
+function clone4(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+function finiteNumber(value, label) {
+  if (!Number.isFinite(value)) {
+    throw new Error(`${label} must be a finite number.`);
+  }
+  return value;
+}
+function finiteNonNegative3(value, label) {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`${label} must be a finite non-negative number.`);
+  }
+  return value;
+}
+function finitePositive4(value, label) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${label} must be a finite positive number.`);
+  }
+  return value;
+}
+function nonEmptyString3(value, label) {
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new Error(`${label} must be a non-empty string.`);
+  }
+  return value.trim();
+}
+function assertTemperatureUnit(temperatureUnit) {
+  if (temperatureUnit !== TEMPERATURE_UNIT) {
+    throw new Error(`temperatureUnit must be '${TEMPERATURE_UNIT}'.`);
+  }
+  return temperatureUnit;
+}
+function externalTemperatureZone(zone) {
+  const definition = NTC2018_EXTERNAL_AIR_TEMPERATURE_ZONES[zone];
+  if (!definition) {
+    throw new Error(`Unsupported NTC 2018 external-air temperature zone: ${zone}.`);
+  }
+  return definition;
+}
+function simplifiedBuildingDefinition(buildingType) {
+  const definition = NTC2018_SIMPLIFIED_BUILDING_TEMPERATURE_CHANGES[buildingType];
+  if (!definition) {
+    throw new Error(`Unsupported NTC 2018 simplified thermal building type: ${buildingType}.`);
+  }
+  return definition;
+}
+function expansionCoefficientDefinition(materialId) {
+  const definition = NTC2018_THERMAL_EXPANSION_COEFFICIENTS.find(
+    ({ id }) => id === materialId
+  );
+  if (!definition) {
+    throw new Error(`Unsupported NTC 2018 thermal-expansion material: ${materialId}.`);
+  }
+  return definition;
+}
+function getNTC2018ExternalAirTemperatureZoneDefinition(zone) {
+  return clone4(externalTemperatureZone(zone));
+}
+function getNTC2018SimplifiedBuildingTemperatureChange(buildingType) {
+  return clone4(simplifiedBuildingDefinition(buildingType));
+}
+function getNTC2018ThermalExpansionCoefficientDefinition(materialId) {
+  return clone4(expansionCoefficientDefinition(materialId));
+}
+function resolveNTC2018ThermalExpansionCoefficient({
+  materialId,
+  value = null
+} = {}) {
+  const definition = expansionCoefficientDefinition(materialId);
+  if (definition.kind === "fixed") {
+    if (value != null) {
+      throw new Error(
+        `${materialId} has the fixed NTC 2018 thermal-expansion coefficient ${definition.value} 1/degC; omit value.`
+      );
+    }
+    return {
+      ...clone4(definition),
+      selectedValue: definition.value,
+      selection: "tabulated-fixed"
+    };
+  }
+  finitePositive4(value, "value");
+  if (value < definition.min || value > definition.max) {
+    throw new Error(
+      `value for ${materialId} must be between ${definition.min} and ${definition.max} 1/degC.`
+    );
+  }
+  return {
+    ...clone4(definition),
+    selectedValue: value,
+    selection: "explicit-within-tabulated-range"
+  };
+}
+function calculateNTC2018ExternalAirTemperatures({
+  zone,
+  siteAltitude,
+  temperatureUnit = null,
+  units = null
+} = {}) {
+  assertTemperatureUnit(temperatureUnit);
+  const sourceUnits = assertExplicitUnitSystem(
+    units,
+    "calculateNTC2018ExternalAirTemperatures"
+  );
+  const resolver = createUnitResolver(sourceUnits, INTERNAL_LENGTH_UNITS);
+  const altitude = finiteNonNegative3(resolver.length(siteAltitude), "siteAltitude");
+  const definition = externalTemperatureZone(zone);
+  const altitudeInKilometres = altitude / 1e3;
+  const minimum2 = definition.minimumIntercept + definition.minimumAltitudeGradient * altitudeInKilometres;
+  const maximum = definition.maximumIntercept + definition.maximumAltitudeGradient * altitudeInKilometres;
+  return {
+    zone,
+    zoneDescription: definition.description,
+    siteAltitude: altitude,
+    minimum: minimum2,
+    maximum,
+    temperatureUnit: TEMPERATURE_UNIT,
+    returnPeriodYears: 50,
+    formulas: {
+      minimum: "Tmin = minimumIntercept + minimumAltitudeGradient * siteAltitude / 1000",
+      maximum: "Tmax = maximumIntercept + maximumAltitudeGradient * siteAltitude / 1000"
+    },
+    operands: {
+      minimumIntercept: definition.minimumIntercept,
+      minimumAltitudeGradient: definition.minimumAltitudeGradient,
+      maximumIntercept: definition.maximumIntercept,
+      maximumAltitudeGradient: definition.maximumAltitudeGradient
+    },
+    equations: {
+      minimum: definition.minimumEquation,
+      maximum: definition.maximumEquation
+    },
+    reference: NTC2018_THERMAL_REFERENCES.externalAir,
+    metadata: {
+      source: "ntc2018-zonal-values",
+      sourceUnitSystem: sourceUnits,
+      lengthUnitSystem: { ...INTERNAL_LENGTH_UNITS }
+    }
+  };
+}
+function resolveNTC2018InternalAirTemperature({
+  value = null,
+  source = null,
+  temperatureUnit = null
+} = {}) {
+  assertTemperatureUnit(temperatureUnit);
+  if (value == null) {
+    if (source != null) {
+      throw new Error("source must be omitted when the NTC 2018 default internal-air temperature is used.");
+    }
+    return {
+      value: DEFAULT_INTERNAL_AIR_TEMPERATURE,
+      temperatureUnit: TEMPERATURE_UNIT,
+      source: "ntc2018-default",
+      sourceReference: null,
+      reference: NTC2018_THERMAL_REFERENCES.internalAir
+    };
+  }
+  return {
+    value: finiteNumber(value, "value"),
+    temperatureUnit: TEMPERATURE_UNIT,
+    source: "documented-explicit-value",
+    sourceReference: nonEmptyString3(source, "source"),
+    reference: NTC2018_THERMAL_REFERENCES.internalAir
+  };
+}
+function resolveNTC2018InitialTemperature({
+  value = null,
+  source = null,
+  temperatureUnit = null
+} = {}) {
+  assertTemperatureUnit(temperatureUnit);
+  if (value == null) {
+    if (source != null) {
+      throw new Error("source must be omitted when the NTC 2018 default initial temperature is used.");
+    }
+    return {
+      value: DEFAULT_INITIAL_TEMPERATURE,
+      temperatureUnit: TEMPERATURE_UNIT,
+      source: "ntc2018-default",
+      sourceReference: null,
+      reference: NTC2018_THERMAL_REFERENCES.elementDistribution
+    };
+  }
+  return {
+    value: finiteNumber(value, "value"),
+    temperatureUnit: TEMPERATURE_UNIT,
+    source: "documented-explicit-value",
+    sourceReference: nonEmptyString3(source, "source"),
+    reference: NTC2018_THERMAL_REFERENCES.elementDistribution
+  };
+}
+function getNTC2018SolarTemperatureIncrement({
+  season,
+  surfaceNature,
+  orientation: orientation2
+} = {}) {
+  if (!["SUMMER", "WINTER"].includes(season)) {
+    throw new Error("season must be SUMMER or WINTER.");
+  }
+  const byOrientation = SOLAR_INCREMENTS[surfaceNature];
+  if (!byOrientation) {
+    throw new Error(`Unsupported surfaceNature: ${surfaceNature}.`);
+  }
+  if (!Object.hasOwn(byOrientation, orientation2)) {
+    throw new Error(`Unsupported orientation: ${orientation2}.`);
+  }
+  return {
+    season,
+    surfaceNature,
+    orientation: orientation2,
+    value: season === "WINTER" ? 0 : byOrientation[orientation2],
+    temperatureUnit: TEMPERATURE_UNIT,
+    reference: NTC2018_THERMAL_REFERENCES.elementDistribution
+  };
+}
+function calculateNTC2018MeanElementTemperature({
+  externalSurfaceTemperature,
+  internalSurfaceTemperature,
+  temperatureUnit = null
+} = {}) {
+  assertTemperatureUnit(temperatureUnit);
+  const external = finiteNumber(
+    externalSurfaceTemperature,
+    "externalSurfaceTemperature"
+  );
+  const internal = finiteNumber(
+    internalSurfaceTemperature,
+    "internalSurfaceTemperature"
+  );
+  return {
+    value: (external + internal) / 2,
+    temperatureUnit: TEMPERATURE_UNIT,
+    formula: "meanTemperature = (externalSurfaceTemperature + internalSurfaceTemperature) / 2",
+    operands: {
+      externalSurfaceTemperature: external,
+      internalSurfaceTemperature: internal
+    },
+    reference: NTC2018_THERMAL_REFERENCES.elementDistribution
+  };
+}
+function calculateNTC2018UniformTemperatureChange({
+  meanTemperature,
+  initialTemperature = DEFAULT_INITIAL_TEMPERATURE,
+  temperatureUnit = null
+} = {}) {
+  assertTemperatureUnit(temperatureUnit);
+  const mean = finiteNumber(meanTemperature, "meanTemperature");
+  const initial = finiteNumber(initialTemperature, "initialTemperature");
+  return {
+    value: mean - initial,
+    temperatureUnit: TEMPERATURE_UNIT,
+    formula: "uniformTemperatureChange = meanTemperature - initialTemperature",
+    operands: {
+      meanTemperature: mean,
+      initialTemperature: initial
+    },
+    reference: NTC2018_THERMAL_REFERENCES.elementDistribution
+  };
+}
+function calculateNTC2018FreeThermalStrain({
+  thermalExpansionCoefficient,
+  temperatureChange,
+  temperatureUnit = null
+} = {}) {
+  assertTemperatureUnit(temperatureUnit);
+  const coefficient = finitePositive4(
+    thermalExpansionCoefficient,
+    "thermalExpansionCoefficient"
+  );
+  const deltaTemperature = finiteNumber(temperatureChange, "temperatureChange");
+  return {
+    value: coefficient * deltaTemperature,
+    quantity: "strain",
+    formula: "freeThermalStrain = thermalExpansionCoefficient * temperatureChange",
+    operands: {
+      thermalExpansionCoefficient: coefficient,
+      temperatureChange: deltaTemperature
+    },
+    units: {
+      thermalExpansionCoefficient: "1/degC",
+      temperature: TEMPERATURE_UNIT,
+      strain: "dimensionless"
+    },
+    reference: NTC2018_THERMAL_REFERENCES.expansionCoefficients
+  };
+}
+function resolveThermalCases({
+  simplifiedBuildingType,
+  summerMeanTemperature,
+  winterMeanTemperature,
+  temperatureStateSource,
+  initialTemperature,
+  initialTemperatureSource
+}) {
+  const hasSimplifiedType = simplifiedBuildingType != null;
+  const hasExplicitTemperature = summerMeanTemperature != null || winterMeanTemperature != null;
+  if (hasSimplifiedType === hasExplicitTemperature) {
+    throw new Error(
+      "Provide exactly one of simplifiedBuildingType or explicit summerMeanTemperature and winterMeanTemperature."
+    );
+  }
+  if (hasSimplifiedType) {
+    if (temperatureStateSource != null || initialTemperature != null || initialTemperatureSource != null) {
+      throw new Error(
+        "temperatureStateSource, initialTemperature and initialTemperatureSource must be omitted with simplifiedBuildingType because Table 3.5.II provides temperature changes directly."
+      );
+    }
+    const definition = simplifiedBuildingDefinition(simplifiedBuildingType);
+    return {
+      method: "ntc2018-simplified-building-values",
+      definition: clone4(definition),
+      initialTemperature: null,
+      cases: [
+        {
+          id: "summer",
+          temperatureChange: definition.magnitude
+        },
+        {
+          id: "winter",
+          temperatureChange: -definition.magnitude
+        }
+      ],
+      sourceReference: null,
+      reference: NTC2018_THERMAL_REFERENCES.simplifiedBuildings
+    };
+  }
+  if (summerMeanTemperature == null || winterMeanTemperature == null) {
+    throw new Error(
+      "summerMeanTemperature and winterMeanTemperature must both be provided in explicit-temperature mode."
+    );
+  }
+  const summer = finiteNumber(summerMeanTemperature, "summerMeanTemperature");
+  const winter = finiteNumber(winterMeanTemperature, "winterMeanTemperature");
+  if (summer < winter) {
+    throw new Error("summerMeanTemperature must not be lower than winterMeanTemperature.");
+  }
+  const sourceReference = nonEmptyString3(
+    temperatureStateSource,
+    "temperatureStateSource"
+  );
+  const initial = resolveNTC2018InitialTemperature({
+    value: initialTemperature,
+    source: initialTemperatureSource,
+    temperatureUnit: TEMPERATURE_UNIT
+  });
+  return {
+    method: "documented-mean-element-temperatures",
+    definition: null,
+    initialTemperature: initial,
+    cases: [
+      {
+        id: "summer",
+        meanTemperature: summer,
+        temperatureChange: summer - initial.value
+      },
+      {
+        id: "winter",
+        meanTemperature: winter,
+        temperatureChange: winter - initial.value
+      }
+    ],
+    sourceReference,
+    reference: NTC2018_THERMAL_REFERENCES.elementDistribution
+  };
+}
+function calculateNTC2018BuildingThermalActions({
+  summerActionId = "NTC2018-THERMAL-SUMMER",
+  winterActionId = "NTC2018-THERMAL-WINTER",
+  simplifiedBuildingType = null,
+  summerMeanTemperature = null,
+  winterMeanTemperature = null,
+  temperatureStateSource = null,
+  initialTemperature = null,
+  initialTemperatureSource = null,
+  temperatureUnit = null
+} = {}) {
+  const summerId = nonEmptyString3(summerActionId, "summerActionId");
+  const winterId = nonEmptyString3(winterActionId, "winterActionId");
+  if (summerId === winterId) {
+    throw new Error("summerActionId and winterActionId must be different.");
+  }
+  assertTemperatureUnit(temperatureUnit);
+  const state = resolveThermalCases({
+    simplifiedBuildingType,
+    summerMeanTemperature,
+    winterMeanTemperature,
+    temperatureStateSource,
+    initialTemperature,
+    initialTemperatureSource
+  });
+  const actionIds = {
+    summer: summerId,
+    winter: winterId
+  };
+  const actions = state.cases.map((thermalCase) => createNTC2018ThermalAction({
+    id: actionIds[thermalCase.id],
+    name: `NTC 2018 thermal action - ${thermalCase.id}`,
+    metadata: {
+      thermalCase: thermalCase.id,
+      temperatureChange: thermalCase.temperatureChange,
+      temperatureUnit: TEMPERATURE_UNIT,
+      sourceMethod: state.method,
+      sourceReference: state.sourceReference,
+      reference: state.reference
+    }
+  }));
+  return new CalculationResult({
+    applicationId: "ntc2018-building-thermal-actions",
+    status: "ok",
+    summary: "Created the NTC 2018 uniform building thermal-action cases.",
+    outputs: {
+      schemaVersion: "ntc2018-building-thermal-actions/v1",
+      temperatureUnit: TEMPERATURE_UNIT,
+      method: state.method,
+      simplifiedBuildingDefinition: state.definition,
+      initialTemperature: state.initialTemperature,
+      cases: state.cases,
+      actions: actions.map((action) => action.toJSON())
+    },
+    warnings: [
+      "Only the uniform temperature component is represented; linear and nonlinear temperature gradients are not generated.",
+      "Temperature changes are not converted into forces or stresses because restraint and structural stiffness are outside this action contract."
+    ],
+    assumptions: state.method === "ntc2018-simplified-building-values" ? [
+      "The simplified Table 3.5.II values apply because temperature is not fundamental to structural safety or functional efficiency."
+    ] : [
+      "Summer and winter mean element temperatures are documented caller inputs.",
+      ...state.initialTemperature.source === "ntc2018-default" ? ["The initial temperature T0 is 15 degC because no more precise value was supplied."] : []
+    ],
+    metadata: {
+      method: "ntc2018-building-thermal-actions",
+      normativePreset: "NTC2018",
+      references: { ...NTC2018_THERMAL_REFERENCES },
+      temperatureUnit: TEMPERATURE_UNIT
+    }
+  });
+}
+
+// src/norms/ntc2018/actions/ntc2018WindLoad.js
+var INTERNAL_UNITS30 = Object.freeze({ force: "kN", length: "m" });
+var VELOCITY_UNIT = "m/s";
+var AIR_DENSITY_KG_PER_CUBIC_METRE = 1.25;
+var MAXIMUM_ZONAL_ALTITUDE = 1500;
+var MAXIMUM_EXPOSURE_HEIGHT = 200;
+var NTC2018_WIND_REFERENCES = Object.freeze({
+  baseSpeed: "D.M. 17/01/2018, NTC 2018, section 3.3.1, equations [3.3.1] and [3.3.1.b], Table 3.3.I",
+  referenceSpeed: "D.M. 17/01/2018, NTC 2018, section 3.3.2, equations [3.3.2] and [3.3.3]",
+  pressure: "D.M. 17/01/2018, NTC 2018, section 3.3.4, equation [3.3.4]",
+  kineticPressure: "D.M. 17/01/2018, NTC 2018, section 3.3.6, equation [3.3.6]",
+  exposure: "D.M. 17/01/2018, NTC 2018, section 3.3.7, equation [3.3.7], Table 3.3.II",
+  aerodynamicCoefficients: "D.M. 17/01/2018, NTC 2018, section 3.3.8",
+  dynamicCoefficient: "D.M. 17/01/2018, NTC 2018, section 3.3.9",
+  combinationFactors: "D.M. 17/01/2018, NTC 2018, section 2.5.2, Table 2.5.I"
+});
+function freezeDefinitions4(definitions) {
+  return Object.freeze(Object.fromEntries(
+    Object.entries(definitions).map(([id, definition]) => [
+      id,
+      Object.freeze({ id, ...definition })
+    ])
+  ));
+}
+var NTC2018_WIND_ZONES = freezeDefinitions4({
+  ZONE_1: {
+    description: "Zona 1",
+    baseSeaLevelSpeed: 25,
+    referenceAltitude: 1e3,
+    altitudeCoefficient: 0.4
+  },
+  ZONE_2: {
+    description: "Zona 2",
+    baseSeaLevelSpeed: 25,
+    referenceAltitude: 750,
+    altitudeCoefficient: 0.45
+  },
+  ZONE_3: {
+    description: "Zona 3",
+    baseSeaLevelSpeed: 27,
+    referenceAltitude: 500,
+    altitudeCoefficient: 0.37
+  },
+  ZONE_4: {
+    description: "Zona 4",
+    baseSeaLevelSpeed: 28,
+    referenceAltitude: 500,
+    altitudeCoefficient: 0.36
+  },
+  ZONE_5: {
+    description: "Zona 5",
+    baseSeaLevelSpeed: 28,
+    referenceAltitude: 750,
+    altitudeCoefficient: 0.4
+  },
+  ZONE_6: {
+    description: "Zona 6",
+    baseSeaLevelSpeed: 28,
+    referenceAltitude: 500,
+    altitudeCoefficient: 0.36
+  },
+  ZONE_7: {
+    description: "Zona 7",
+    baseSeaLevelSpeed: 28,
+    referenceAltitude: 1e3,
+    altitudeCoefficient: 0.54
+  },
+  ZONE_8: {
+    description: "Zona 8",
+    baseSeaLevelSpeed: 30,
+    referenceAltitude: 1500,
+    altitudeCoefficient: 0.5
+  },
+  ZONE_9: {
+    description: "Zona 9",
+    baseSeaLevelSpeed: 31,
+    referenceAltitude: 500,
+    altitudeCoefficient: 0.32
+  }
+});
+var NTC2018_WIND_EXPOSURE_CATEGORIES = freezeDefinitions4({
+  I: {
+    roughnessFactor: 0.17,
+    roughnessLength: 0.01,
+    minimumHeight: 2
+  },
+  II: {
+    roughnessFactor: 0.19,
+    roughnessLength: 0.05,
+    minimumHeight: 4
+  },
+  III: {
+    roughnessFactor: 0.2,
+    roughnessLength: 0.1,
+    minimumHeight: 5
+  },
+  IV: {
+    roughnessFactor: 0.22,
+    roughnessLength: 0.3,
+    minimumHeight: 8
+  },
+  V: {
+    roughnessFactor: 0.23,
+    roughnessLength: 0.7,
+    minimumHeight: 12
+  }
+});
+function clone5(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+function finiteNumber2(value, label) {
+  if (!Number.isFinite(value)) {
+    throw new Error(`${label} must be a finite number.`);
+  }
+  return value;
+}
+function finiteNonNegative4(value, label) {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`${label} must be a finite non-negative number.`);
+  }
+  return value;
+}
+function finitePositive5(value, label) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${label} must be a finite positive number.`);
+  }
+  return value;
+}
+function nonEmptyString4(value, label) {
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new Error(`${label} must be a non-empty string.`);
+  }
+  return value.trim();
+}
+function optionalBoolean(value, label) {
+  if (value != null && typeof value !== "boolean") {
+    throw new Error(`${label} must be a boolean when provided.`);
+  }
+  return value;
+}
+function assertVelocityUnit(value, label = "velocityUnit") {
+  if (value !== VELOCITY_UNIT) {
+    throw new Error(`${label} must be '${VELOCITY_UNIT}'.`);
+  }
+  return value;
+}
+function windZoneDefinition(zone) {
+  const definition = NTC2018_WIND_ZONES[zone];
+  if (!definition) {
+    throw new Error(`Unsupported NTC 2018 wind zone: ${zone}.`);
+  }
+  return definition;
+}
+function exposureCategoryDefinition(exposureCategory) {
+  const definition = NTC2018_WIND_EXPOSURE_CATEGORIES[exposureCategory];
+  if (!definition) {
+    throw new Error(
+      `Unsupported NTC 2018 wind exposure category: ${exposureCategory}.`
+    );
+  }
+  return definition;
+}
+function getNTC2018WindZoneDefinition(zone) {
+  return clone5(windZoneDefinition(zone));
+}
+function getNTC2018WindExposureCategoryDefinition(exposureCategory) {
+  return clone5(exposureCategoryDefinition(exposureCategory));
+}
+function zonalBaseWindSpeed(definition, altitude) {
+  const altitudeFactor = altitude <= definition.referenceAltitude ? 1 : 1 + definition.altitudeCoefficient * (altitude / definition.referenceAltitude - 1);
+  return {
+    altitudeFactor,
+    value: definition.baseSeaLevelSpeed * altitudeFactor
+  };
+}
+function calculateNTC2018BaseWindSpeed({
+  zone,
+  siteAltitude,
+  baseWindSpeed = null,
+  baseWindSpeedUnit = null,
+  baseWindSpeedSource = null,
+  units = null
+} = {}) {
+  const sourceUnits = assertExplicitUnitSystem(units, "calculateNTC2018BaseWindSpeed");
+  const resolver = createUnitResolver(sourceUnits, INTERNAL_UNITS30);
+  const altitude = finiteNonNegative4(resolver.length(siteAltitude), "siteAltitude");
+  const definition = windZoneDefinition(zone);
+  const minimumAltitude = Math.min(altitude, MAXIMUM_ZONAL_ALTITUDE);
+  const minimum2 = zonalBaseWindSpeed(definition, minimumAltitude);
+  if (baseWindSpeed == null) {
+    if (altitude > MAXIMUM_ZONAL_ALTITUDE) {
+      throw new RangeError(
+        "The NTC 2018 zonal base-wind formula is not applicable above 1500 m; documented local climate and exposure data are required."
+      );
+    }
+    return {
+      zone,
+      zoneDescription: definition.description,
+      siteAltitude: altitude,
+      value: minimum2.value,
+      velocityUnit: VELOCITY_UNIT,
+      formula: altitude <= definition.referenceAltitude ? "vb = vb0" : "vb = vb0 * {1 + ks * [(siteAltitude / a0) - 1]}",
+      operands: {
+        baseSeaLevelSpeed: definition.baseSeaLevelSpeed,
+        altitudeFactor: minimum2.altitudeFactor,
+        referenceAltitude: definition.referenceAltitude,
+        altitudeCoefficient: definition.altitudeCoefficient,
+        siteAltitude: altitude
+      },
+      reference: NTC2018_WIND_REFERENCES.baseSpeed,
+      metadata: {
+        source: "ntc2018-zonal-minimum",
+        sourceUnitSystem: sourceUnits
+      }
+    };
+  }
+  assertVelocityUnit(baseWindSpeedUnit, "baseWindSpeedUnit");
+  const documentedValue = finitePositive5(baseWindSpeed, "baseWindSpeed");
+  const sourceReference = nonEmptyString4(baseWindSpeedSource, "baseWindSpeedSource");
+  if (documentedValue < minimum2.value) {
+    throw new Error(
+      `baseWindSpeed must not be lower than the NTC 2018 minimum ${minimum2.value} m/s.`
+    );
+  }
+  return {
+    zone,
+    zoneDescription: definition.description,
+    siteAltitude: altitude,
+    value: documentedValue,
+    velocityUnit: VELOCITY_UNIT,
+    formula: "vb = documented explicit value",
+    operands: {
+      documentedValue,
+      ntc2018Minimum: minimum2.value,
+      minimumEvaluationAltitude: minimumAltitude
+    },
+    reference: NTC2018_WIND_REFERENCES.baseSpeed,
+    metadata: {
+      source: "documented-explicit-value",
+      sourceReference,
+      sourceUnitSystem: sourceUnits
+    }
+  };
+}
+function calculateNTC2018WindReturnCoefficient({
+  returnPeriodYears = 50
+} = {}) {
+  const period = finitePositive5(returnPeriodYears, "returnPeriodYears");
+  if (period < 5) {
+    throw new Error("returnPeriodYears must be at least 5 years.");
+  }
+  const value = period === 50 ? 1 : 0.75 * Math.sqrt(
+    1 - 0.2 * Math.log(-Math.log(1 - 1 / period))
+  );
+  return {
+    returnPeriodYears: period,
+    value,
+    formula: period === 50 ? "cr = 1 for TR = 50 years" : "cr = 0.75 * sqrt{1 - 0.2 * ln[-ln(1 - 1 / TR)]}",
+    reference: NTC2018_WIND_REFERENCES.referenceSpeed
+  };
+}
+function calculateNTC2018ReferenceWindSpeed({
+  baseWindSpeed,
+  returnPeriodYears = 50,
+  velocityUnit = null
+} = {}) {
+  assertVelocityUnit(velocityUnit);
+  const baseSpeed = finitePositive5(baseWindSpeed, "baseWindSpeed");
+  const returnCoefficient = calculateNTC2018WindReturnCoefficient({
+    returnPeriodYears
+  });
+  return {
+    value: baseSpeed * returnCoefficient.value,
+    velocityUnit: VELOCITY_UNIT,
+    formula: "vr = vb * cr",
+    operands: {
+      baseWindSpeed: baseSpeed,
+      returnCoefficient: returnCoefficient.value,
+      returnPeriodYears: returnCoefficient.returnPeriodYears
+    },
+    reference: NTC2018_WIND_REFERENCES.referenceSpeed
+  };
+}
+function calculateNTC2018ReferenceWindPressure({
+  referenceWindSpeed,
+  velocityUnit = null
+} = {}) {
+  assertVelocityUnit(velocityUnit);
+  const speed = finitePositive5(referenceWindSpeed, "referenceWindSpeed");
+  const pressureInNewtonsPerSquareMetre = 0.5 * AIR_DENSITY_KG_PER_CUBIC_METRE * speed ** 2;
+  return {
+    value: pressureInNewtonsPerSquareMetre / 1e3,
+    quantity: "area-load",
+    formula: "qr = 0.5 * airDensity * referenceWindSpeed^2",
+    operands: {
+      referenceWindSpeed: speed,
+      velocityUnit: VELOCITY_UNIT,
+      airDensity: AIR_DENSITY_KG_PER_CUBIC_METRE,
+      airDensityUnit: "kg/m^3"
+    },
+    units: { ...INTERNAL_UNITS30 },
+    reference: NTC2018_WIND_REFERENCES.kineticPressure
+  };
+}
+function calculateNTC2018WindExposureCoefficient({
+  exposureCategory,
+  heightAboveGround,
+  topographyCoefficient = 1,
+  units = null
+} = {}) {
+  const sourceUnits = assertExplicitUnitSystem(
+    units,
+    "calculateNTC2018WindExposureCoefficient"
+  );
+  const resolver = createUnitResolver(sourceUnits, INTERNAL_UNITS30);
+  const height = finiteNonNegative4(
+    resolver.length(heightAboveGround),
+    "heightAboveGround"
+  );
+  if (height > MAXIMUM_EXPOSURE_HEIGHT) {
+    throw new RangeError(
+      "The NTC 2018 nominal exposure formula is limited to heights not exceeding 200 m."
+    );
+  }
+  const definition = exposureCategoryDefinition(exposureCategory);
+  const ct = finitePositive5(topographyCoefficient, "topographyCoefficient");
+  const effectiveHeight = Math.max(height, definition.minimumHeight);
+  const logarithmicTerm = Math.log(effectiveHeight / definition.roughnessLength);
+  const value = definition.roughnessFactor ** 2 * ct * logarithmicTerm * (7 + ct * logarithmicTerm);
+  return {
+    exposureCategory,
+    heightAboveGround: height,
+    effectiveHeight,
+    minimumHeightApplied: effectiveHeight !== height,
+    value,
+    formula: "ce = kr^2 * ct * ln(z / z0) * [7 + ct * ln(z / z0)]",
+    operands: {
+      roughnessFactor: definition.roughnessFactor,
+      roughnessLength: definition.roughnessLength,
+      minimumHeight: definition.minimumHeight,
+      topographyCoefficient: ct,
+      logarithmicTerm
+    },
+    reference: NTC2018_WIND_REFERENCES.exposure,
+    metadata: {
+      sourceUnitSystem: sourceUnits,
+      unitSystem: { ...INTERNAL_UNITS30 }
+    }
+  };
+}
+function calculateNTC2018WindPressure({
+  referenceWindPressure,
+  exposureCoefficient,
+  pressureCoefficient,
+  dynamicCoefficient,
+  units = null
+} = {}) {
+  const sourceUnits = assertExplicitUnitSystem(units, "calculateNTC2018WindPressure");
+  const resolver = createUnitResolver(sourceUnits, INTERNAL_UNITS30);
+  const qr = finiteNonNegative4(
+    resolver.areaLoad(referenceWindPressure),
+    "referenceWindPressure"
+  );
+  const ce = finitePositive5(exposureCoefficient, "exposureCoefficient");
+  const cp = finiteNumber2(pressureCoefficient, "pressureCoefficient");
+  const cd = finitePositive5(dynamicCoefficient, "dynamicCoefficient");
+  return {
+    value: qr * ce * cp * cd,
+    quantity: "area-load",
+    formula: "p = referenceWindPressure * exposureCoefficient * pressureCoefficient * dynamicCoefficient",
+    operands: {
+      referenceWindPressure: qr,
+      exposureCoefficient: ce,
+      pressureCoefficient: cp,
+      dynamicCoefficient: cd
+    },
+    applicationDirection: "surface-normal",
+    signConvention: "positive-pressure-negative-suction",
+    units: { ...INTERNAL_UNITS30 },
+    reference: NTC2018_WIND_REFERENCES.pressure,
+    metadata: {
+      sourceUnitSystem: sourceUnits,
+      unitSystem: { ...INTERNAL_UNITS30 }
+    }
+  };
+}
+function resolveExposure({
+  exposureCategory,
+  exposureCoefficient,
+  exposureCoefficientSource,
+  heightAboveGround,
+  topographyCoefficient,
+  topographyCoefficientSource,
+  sourceUnits
+}) {
+  const hasCategory = exposureCategory != null;
+  const hasExplicitValue = exposureCoefficient != null;
+  if (hasCategory === hasExplicitValue) {
+    throw new Error(
+      "Provide exactly one of exposureCategory or exposureCoefficient."
+    );
+  }
+  if (hasExplicitValue) {
+    if (topographyCoefficient != null || topographyCoefficientSource != null) {
+      throw new Error(
+        "topographyCoefficient must be omitted when exposureCoefficient is provided explicitly."
+      );
+    }
+    return {
+      supported: true,
+      exposure: {
+        exposureCategory: null,
+        heightAboveGround,
+        value: finitePositive5(exposureCoefficient, "exposureCoefficient"),
+        source: "documented-explicit-value",
+        sourceReference: nonEmptyString4(
+          exposureCoefficientSource,
+          "exposureCoefficientSource"
+        ),
+        reference: NTC2018_WIND_REFERENCES.exposure
+      }
+    };
+  }
+  exposureCategoryDefinition(exposureCategory);
+  if (heightAboveGround > MAXIMUM_EXPOSURE_HEIGHT) {
+    return {
+      supported: false,
+      reason: "exposure-height-above-200m"
+    };
+  }
+  const ct = finitePositive5(topographyCoefficient != null ? topographyCoefficient : 1, "topographyCoefficient");
+  if (ct !== 1) {
+    nonEmptyString4(topographyCoefficientSource, "topographyCoefficientSource");
+  }
+  const exposure = calculateNTC2018WindExposureCoefficient({
+    exposureCategory,
+    heightAboveGround,
+    topographyCoefficient: ct,
+    units: INTERNAL_UNITS30
+  });
+  return {
+    supported: true,
+    exposure: {
+      ...exposure,
+      source: "ntc2018-exposure-category",
+      topographyCoefficientSource: ct === 1 ? "ntc2018-general-value" : topographyCoefficientSource.trim(),
+      metadata: {
+        ...exposure.metadata,
+        sourceUnitSystem: sourceUnits
+      }
+    }
+  };
+}
+function resolveDynamicCoefficient({
+  dynamicCoefficient,
+  dynamicCoefficientSource,
+  regularConstruction,
+  constructionHeight
+}) {
+  optionalBoolean(regularConstruction, "regularConstruction");
+  if (dynamicCoefficient != null) {
+    return {
+      supported: true,
+      dynamic: {
+        value: finitePositive5(dynamicCoefficient, "dynamicCoefficient"),
+        source: "documented-explicit-value",
+        sourceReference: nonEmptyString4(
+          dynamicCoefficientSource,
+          "dynamicCoefficientSource"
+        ),
+        reference: NTC2018_WIND_REFERENCES.dynamicCoefficient
+      }
+    };
+  }
+  if (regularConstruction !== true || constructionHeight > 80) {
+    return {
+      supported: false,
+      reason: regularConstruction !== true ? "construction-not-declared-regular" : "construction-height-above-80m"
+    };
+  }
+  return {
+    supported: true,
+    dynamic: {
+      value: 1,
+      source: "ntc2018-conservative-regular-construction-value",
+      sourceReference: null,
+      reference: NTC2018_WIND_REFERENCES.dynamicCoefficient
+    }
+  };
+}
+function notSupportedWindResult({
+  summary,
+  warning,
+  outputs,
+  sourceUnits
+}) {
+  return new CalculationResult({
+    applicationId: "ntc2018-wind-area-load",
+    status: "not-supported",
+    summary,
+    outputs: {
+      schemaVersion: "ntc2018-wind-area-load/v1",
+      units: { ...INTERNAL_UNITS30 },
+      velocityUnit: VELOCITY_UNIT,
+      ...outputs
+    },
+    warnings: [warning],
+    assumptions: [],
+    metadata: {
+      method: "ntc2018-wind-area-load",
+      normativePreset: "NTC2018",
+      references: { ...NTC2018_WIND_REFERENCES },
+      unitSystem: { ...INTERNAL_UNITS30 },
+      sourceUnitSystem: sourceUnits
+    }
+  });
+}
+function calculateNTC2018WindAreaLoad({
+  id = "NTC2018-WIND-LOAD",
+  actionId = "NTC2018-WIND",
+  name = "NTC 2018 wind pressure",
+  zone,
+  siteAltitude,
+  baseWindSpeed = null,
+  baseWindSpeedUnit = null,
+  baseWindSpeedSource = null,
+  returnPeriodYears = 50,
+  exposureCategory = null,
+  heightAboveGround,
+  exposureCoefficient = null,
+  exposureCoefficientSource = null,
+  topographyCoefficient = null,
+  topographyCoefficientSource = null,
+  pressureCoefficient,
+  pressureCoefficientSource,
+  constructionHeight,
+  regularConstruction = null,
+  dynamicCoefficient = null,
+  dynamicCoefficientSource = null,
+  units = null
+} = {}) {
+  const loadId = nonEmptyString4(id, "id");
+  const normalizedActionId = nonEmptyString4(actionId, "actionId");
+  const sourceUnits = assertExplicitUnitSystem(units, "calculateNTC2018WindAreaLoad");
+  const resolver = createUnitResolver(sourceUnits, INTERNAL_UNITS30);
+  const altitude = finiteNonNegative4(resolver.length(siteAltitude), "siteAltitude");
+  const evaluationHeight = finiteNonNegative4(
+    resolver.length(heightAboveGround),
+    "heightAboveGround"
+  );
+  const normalizedConstructionHeight = finitePositive5(
+    resolver.length(constructionHeight),
+    "constructionHeight"
+  );
+  if (evaluationHeight > normalizedConstructionHeight) {
+    throw new Error("heightAboveGround must not exceed constructionHeight.");
+  }
+  windZoneDefinition(zone);
+  if (altitude > MAXIMUM_ZONAL_ALTITUDE && baseWindSpeed == null) {
+    const minimumBaseWindSpeed = calculateNTC2018BaseWindSpeed({
+      zone,
+      siteAltitude: MAXIMUM_ZONAL_ALTITUDE,
+      units: INTERNAL_UNITS30
+    });
+    return notSupportedWindResult({
+      summary: "The NTC 2018 zonal formula does not determine base wind speed above 1500 m.",
+      warning: "Provide a documented local base wind speed not lower than the NTC 2018 value evaluated at 1500 m.",
+      outputs: {
+        zone: clone5(windZoneDefinition(zone)),
+        siteAltitude: altitude,
+        minimumBaseWindSpeedAt1500m: minimumBaseWindSpeed
+      },
+      sourceUnits
+    });
+  }
+  const base = calculateNTC2018BaseWindSpeed({
+    zone,
+    siteAltitude: altitude,
+    baseWindSpeed,
+    baseWindSpeedUnit,
+    baseWindSpeedSource,
+    units: INTERNAL_UNITS30
+  });
+  base.metadata.sourceUnitSystem = sourceUnits;
+  const referenceSpeed = calculateNTC2018ReferenceWindSpeed({
+    baseWindSpeed: base.value,
+    returnPeriodYears,
+    velocityUnit: VELOCITY_UNIT
+  });
+  const referencePressure = calculateNTC2018ReferenceWindPressure({
+    referenceWindSpeed: referenceSpeed.value,
+    velocityUnit: VELOCITY_UNIT
+  });
+  const exposureResolution = resolveExposure({
+    exposureCategory,
+    exposureCoefficient,
+    exposureCoefficientSource,
+    heightAboveGround: evaluationHeight,
+    topographyCoefficient,
+    topographyCoefficientSource,
+    sourceUnits
+  });
+  if (!exposureResolution.supported) {
+    return notSupportedWindResult({
+      summary: "The NTC 2018 nominal exposure formula is limited to heights not exceeding 200 m.",
+      warning: "Provide a documented exposure coefficient for the evaluation height.",
+      outputs: {
+        zone: clone5(windZoneDefinition(zone)),
+        siteAltitude: altitude,
+        heightAboveGround: evaluationHeight,
+        baseWindSpeed: base,
+        referenceWindSpeed: referenceSpeed,
+        referenceWindPressure: referencePressure
+      },
+      sourceUnits
+    });
+  }
+  const dynamicResolution = resolveDynamicCoefficient({
+    dynamicCoefficient,
+    dynamicCoefficientSource,
+    regularConstruction,
+    constructionHeight: normalizedConstructionHeight
+  });
+  if (!dynamicResolution.supported) {
+    return notSupportedWindResult({
+      summary: "The nominal dynamic coefficient is not applicable to the declared construction.",
+      warning: "Provide a dynamic coefficient from a documented analysis or reliable source.",
+      outputs: {
+        zone: clone5(windZoneDefinition(zone)),
+        siteAltitude: altitude,
+        constructionHeight: normalizedConstructionHeight,
+        dynamicCoefficientReason: dynamicResolution.reason,
+        baseWindSpeed: base,
+        referenceWindSpeed: referenceSpeed,
+        referenceWindPressure: referencePressure,
+        exposureCoefficient: exposureResolution.exposure
+      },
+      sourceUnits
+    });
+  }
+  const cp = finiteNumber2(pressureCoefficient, "pressureCoefficient");
+  const cpSource = nonEmptyString4(
+    pressureCoefficientSource,
+    "pressureCoefficientSource"
+  );
+  const windPressure = calculateNTC2018WindPressure({
+    referenceWindPressure: referencePressure.value,
+    exposureCoefficient: exposureResolution.exposure.value,
+    pressureCoefficient: cp,
+    dynamicCoefficient: dynamicResolution.dynamic.value,
+    units: INTERNAL_UNITS30
+  });
+  const action = createNTC2018WindAction({
+    id: normalizedActionId,
+    name,
+    metadata: {
+      siteAltitude: altitude,
+      returnPeriodYears: referenceSpeed.operands.returnPeriodYears,
+      reference: NTC2018_WIND_REFERENCES.combinationFactors
+    }
+  });
+  const load = new AreaLoad({
+    id: loadId,
+    name,
+    type: "wind-area",
+    direction: "surface-normal",
+    referenceSystem: "local",
+    intensity: windPressure.value,
+    action,
+    units: INTERNAL_UNITS30,
+    metadata: {
+      signConvention: windPressure.signConvention,
+      formula: windPressure.formula,
+      operands: windPressure.operands,
+      baseWindSpeedSource: base.metadata.source,
+      exposureCoefficientSource: exposureResolution.exposure.source,
+      pressureCoefficientSource: cpSource,
+      dynamicCoefficientSource: dynamicResolution.dynamic.source,
+      sourceUnitSystem: sourceUnits
+    }
+  });
+  return new CalculationResult({
+    applicationId: "ntc2018-wind-area-load",
+    status: "ok",
+    summary: "Calculated the NTC 2018 static-equivalent wind pressure on a surface.",
+    outputs: {
+      schemaVersion: "ntc2018-wind-area-load/v1",
+      units: { ...INTERNAL_UNITS30 },
+      velocityUnit: VELOCITY_UNIT,
+      zone: clone5(windZoneDefinition(zone)),
+      siteAltitude: altitude,
+      heightAboveGround: evaluationHeight,
+      constructionHeight: normalizedConstructionHeight,
+      baseWindSpeed: base,
+      referenceWindSpeed: referenceSpeed,
+      referenceWindPressure: referencePressure,
+      exposureCoefficient: exposureResolution.exposure,
+      pressureCoefficient: {
+        value: cp,
+        source: "documented-explicit-value",
+        sourceReference: cpSource,
+        reference: NTC2018_WIND_REFERENCES.aerodynamicCoefficients
+      },
+      dynamicCoefficient: dynamicResolution.dynamic,
+      windPressure,
+      action: action.toJSON(),
+      load: load.toJSON()
+    },
+    warnings: [
+      "The pressure coefficient is accepted as documented input; geometry-dependent aerodynamic derivation is not performed."
+    ],
+    assumptions: [
+      "Wind is treated as a static-equivalent action normal to the selected surface.",
+      "The site wind zone and exposure category are explicit caller decisions; no geographic lookup is performed.",
+      ...topographyCoefficient == null && exposureCoefficient == null ? ["The topography coefficient ct is 1 according to the NTC 2018 general value."] : [],
+      ...dynamicCoefficient == null ? ["The dynamic coefficient cd is 1 for the declared regular construction not exceeding 80 m."] : []
+    ],
+    metadata: {
+      method: "ntc2018-wind-area-load",
+      normativePreset: "NTC2018",
+      references: { ...NTC2018_WIND_REFERENCES },
+      unitSystem: { ...INTERNAL_UNITS30 },
+      sourceUnitSystem: sourceUnits
+    }
+  });
+}
+
 // src/norms/ntc2018/loads/ntc2018LoadParameters.js
 var NTC2018_VARIABLE_ACTION_CATEGORIES = NTC2018_ACTION_COMBINATION_FACTORS;
 var NTC2018_ULS_PARTIAL_FACTORS = {
@@ -59556,8 +63092,676 @@ var NTC2018_ULS_PARTIAL_FACTORS = {
   Q_FAVOURABLE: NTC2018_ACTION_PARTIAL_FACTORS.variable.imposed.A1.favourable
 };
 
+// src/norms/ntc2018/loads/ntc2018ImposedLoads.js
+var INTERNAL_UNITS31 = Object.freeze({ force: "kN", length: "m" });
+var LOAD_SYMBOLS = Object.freeze(["qk", "Qk", "Hk"]);
+var AREA_REDUCTION_CATEGORIES = /* @__PURE__ */ new Set(["A", "B", "C", "D", "H", "I"]);
+var MULTI_STOREY_REDUCTION_CATEGORIES = /* @__PURE__ */ new Set(["A", "B", "C", "D"]);
+var NTC2018_IMPOSED_LOAD_REFERENCES = Object.freeze({
+  characteristicLoads: "D.M. 17/01/2018, NTC 2018, section 3.1.4, Table 3.1.II",
+  areaReduction: "D.M. 17/01/2018, NTC 2018, section 3.1.4.1, equation 3.1.1",
+  multiStoreyReduction: "D.M. 17/01/2018, NTC 2018, section 3.1.4.1, equation 3.1.2",
+  concentratedApplication: "D.M. 17/01/2018, NTC 2018, section 3.1.4.2",
+  horizontalApplication: "D.M. 17/01/2018, NTC 2018, section 3.1.4.3",
+  combinationFactors: "D.M. 17/01/2018, NTC 2018, section 2.5.2, Table 2.5.I"
+});
+function deepFreeze(value) {
+  if (value && typeof value === "object" && !Object.isFrozen(value)) {
+    Object.freeze(value);
+    Object.values(value).forEach(deepFreeze);
+  }
+  return value;
+}
+function clone6(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+function fixed(value, unit, extra = {}) {
+  return { mode: "fixed", value, unit, ...extra };
+}
+function minimum(minimumValue, unit, extra = {}) {
+  return { mode: "minimum", minimum: minimumValue, unit, ...extra };
+}
+function caseByCase(unit, extra = {}) {
+  return { mode: "case-by-case", unit, ...extra };
+}
+function inherited(unit, extra = {}) {
+  return { mode: "served-category", unit, ...extra };
+}
+var DEFAULT_CONCENTRATED_APPLICATION = Object.freeze({
+  verification: "local-distinct",
+  simultaneousWithGlobalDistributedLoad: false,
+  count: 1,
+  footprint: { shape: "square", sideM: 0.05 }
+});
+var VEHICLE_HORIZONTAL_LIMITATION = "Hk applies only to parapets or partitions in pedestrian zones; vehicle actions on barriers require case-by-case evaluation.";
+function completeDefinition(definition) {
+  var _a, _b, _c, _d;
+  const concentrated = (_b = (_a = definition.application) == null ? void 0 : _a.Qk) != null ? _b : {};
+  return {
+    ...definition,
+    application: {
+      qk: {
+        verification: "global-or-effective-distribution",
+        ...(_c = definition.application) == null ? void 0 : _c.qk
+      },
+      Qk: {
+        ...DEFAULT_CONCENTRATED_APPLICATION,
+        ...concentrated,
+        footprint: {
+          ...DEFAULT_CONCENTRATED_APPLICATION.footprint,
+          ...concentrated.footprint
+        }
+      },
+      Hk: {
+        verification: "local-distinct",
+        simultaneousWithGlobalLoads: false,
+        wallApplicationElevationM: 1.2,
+        parapetApplication: "top-edge",
+        ...(_d = definition.application) == null ? void 0 : _d.Hk
+      }
+    },
+    reference: NTC2018_IMPOSED_LOAD_REFERENCES.characteristicLoads
+  };
+}
+var NTC2018_IMPOSED_LOAD_CATALOG = deepFreeze([
+  completeDefinition({
+    id: "A-residential",
+    legacySlabActionId: 1,
+    category: "A",
+    subcategory: "A",
+    description: "Aree per attivita domestiche e residenziali",
+    loads: {
+      qk: fixed(2, "kN/m^2"),
+      Qk: fixed(2, "kN"),
+      Hk: fixed(1, "kN/m")
+    }
+  }),
+  completeDefinition({
+    id: "A-stairs-balconies",
+    legacySlabActionId: 2,
+    category: "A",
+    subcategory: "A",
+    description: "Scale comuni, balconi e ballatoi di ambienti residenziali",
+    loads: {
+      qk: fixed(4, "kN/m^2"),
+      Qk: fixed(4, "kN"),
+      Hk: fixed(2, "kN/m")
+    }
+  }),
+  completeDefinition({
+    id: "B1-private-offices",
+    legacySlabActionId: 3,
+    category: "B",
+    subcategory: "B1",
+    description: "Uffici non aperti al pubblico",
+    loads: {
+      qk: fixed(2, "kN/m^2"),
+      Qk: fixed(2, "kN"),
+      Hk: fixed(1, "kN/m")
+    }
+  }),
+  completeDefinition({
+    id: "B2-public-offices",
+    legacySlabActionId: 4,
+    category: "B",
+    subcategory: "B2",
+    description: "Uffici aperti al pubblico",
+    loads: {
+      qk: fixed(3, "kN/m^2"),
+      Qk: fixed(2, "kN"),
+      Hk: fixed(1, "kN/m")
+    }
+  }),
+  completeDefinition({
+    id: "B-stairs-balconies",
+    legacySlabActionId: 5,
+    category: "B",
+    subcategory: "B",
+    description: "Scale comuni, balconi e ballatoi di uffici",
+    loads: {
+      qk: fixed(4, "kN/m^2"),
+      Qk: fixed(4, "kN"),
+      Hk: fixed(2, "kN/m")
+    }
+  }),
+  completeDefinition({
+    id: "C1-table-areas",
+    legacySlabActionId: 6,
+    category: "C",
+    subcategory: "C1",
+    description: "Aree con tavoli",
+    loads: {
+      qk: fixed(3, "kN/m^2"),
+      Qk: fixed(3, "kN"),
+      Hk: fixed(1, "kN/m")
+    }
+  }),
+  completeDefinition({
+    id: "C2-fixed-seats",
+    legacySlabActionId: 7,
+    category: "C",
+    subcategory: "C2",
+    description: "Aree con posti a sedere fissi",
+    loads: {
+      qk: fixed(4, "kN/m^2"),
+      Qk: fixed(4, "kN"),
+      Hk: fixed(2, "kN/m")
+    }
+  }),
+  completeDefinition({
+    id: "C3-unobstructed-areas",
+    legacySlabActionId: 8,
+    category: "C",
+    subcategory: "C3",
+    description: "Ambienti privi di ostacoli al movimento delle persone",
+    loads: {
+      qk: fixed(5, "kN/m^2"),
+      Qk: fixed(5, "kN"),
+      Hk: fixed(3, "kN/m")
+    }
+  }),
+  completeDefinition({
+    id: "C4-physical-activities",
+    legacySlabActionId: 9,
+    category: "C",
+    subcategory: "C4",
+    description: "Aree con possibile svolgimento di attivita fisiche",
+    loads: {
+      qk: fixed(5, "kN/m^2"),
+      Qk: fixed(5, "kN"),
+      Hk: fixed(3, "kN/m")
+    }
+  }),
+  completeDefinition({
+    id: "C5-large-crowds",
+    legacySlabActionId: 10,
+    category: "C",
+    subcategory: "C5",
+    description: "Aree suscettibili di grandi affollamenti",
+    loads: {
+      qk: fixed(5, "kN/m^2"),
+      Qk: fixed(5, "kN"),
+      Hk: fixed(3, "kN/m")
+    }
+  }),
+  completeDefinition({
+    id: "C-stairs-balconies",
+    legacySlabActionId: 11,
+    category: "C",
+    subcategory: "C",
+    description: "Scale comuni, balconi e ballatoi di ambienti di categoria C",
+    servedCategoryIds: [
+      "C1-table-areas",
+      "C2-fixed-seats",
+      "C3-unobstructed-areas",
+      "C4-physical-activities",
+      "C5-large-crowds"
+    ],
+    loads: {
+      qk: inherited("kN/m^2", { minimum: 4 }),
+      Qk: inherited("kN", { minimum: 4 }),
+      Hk: inherited("kN/m", { minimum: 2 })
+    }
+  }),
+  completeDefinition({
+    id: "D1-shops",
+    legacySlabActionId: 12,
+    category: "D",
+    subcategory: "D1",
+    description: "Negozi",
+    loads: {
+      qk: fixed(4, "kN/m^2"),
+      Qk: fixed(4, "kN"),
+      Hk: fixed(2, "kN/m")
+    }
+  }),
+  completeDefinition({
+    id: "D2-shopping-centres",
+    legacySlabActionId: 13,
+    category: "D",
+    subcategory: "D2",
+    description: "Centri commerciali, mercati e grandi magazzini",
+    loads: {
+      qk: fixed(5, "kN/m^2"),
+      Qk: fixed(5, "kN"),
+      Hk: fixed(2, "kN/m")
+    }
+  }),
+  completeDefinition({
+    id: "D-stairs-balconies",
+    category: "D",
+    subcategory: "D",
+    description: "Scale comuni, balconi e ballatoi di ambienti commerciali",
+    servedCategoryIds: ["D1-shops", "D2-shopping-centres"],
+    loads: {
+      qk: inherited("kN/m^2"),
+      Qk: inherited("kN"),
+      Hk: inherited("kN/m")
+    }
+  }),
+  completeDefinition({
+    id: "E1-storage",
+    legacySlabActionId: 14,
+    category: "E",
+    subcategory: "E1",
+    description: "Aree per accumulo di merci e relative aree di accesso",
+    loads: {
+      qk: minimum(6, "kN/m^2"),
+      Qk: fixed(7, "kN"),
+      Hk: fixed(1, "kN/m")
+    },
+    notes: [
+      "Hk does not include horizontal actions exerted by stored materials."
+    ]
+  }),
+  completeDefinition({
+    id: "E2-industrial",
+    legacySlabActionId: 15,
+    category: "E",
+    subcategory: "E2",
+    description: "Ambienti ad uso industriale",
+    loads: {
+      qk: caseByCase("kN/m^2"),
+      Qk: caseByCase("kN"),
+      Hk: caseByCase("kN/m")
+    }
+  }),
+  completeDefinition({
+    id: "F-light-vehicles",
+    legacySlabActionId: 16,
+    category: "F",
+    subcategory: "F",
+    description: "Traffico e parcheggio di veicoli con peso a pieno carico fino a 30 kN",
+    loads: {
+      qk: fixed(2.5, "kN/m^2"),
+      Qk: fixed(10, "kN", { count: 2 }),
+      Hk: fixed(1, "kN/m")
+    },
+    application: {
+      Qk: {
+        count: 2,
+        footprint: { shape: "square", sideM: 0.1 },
+        centreSpacingM: 1.8
+      },
+      Hk: { limitation: VEHICLE_HORIZONTAL_LIMITATION }
+    }
+  }),
+  completeDefinition({
+    id: "G-medium-vehicles",
+    legacySlabActionId: 17,
+    category: "G",
+    subcategory: "G",
+    description: "Traffico e parcheggio di veicoli con peso a pieno carico fra 30 kN e 160 kN",
+    loads: {
+      qk: minimum(5, "kN/m^2"),
+      Qk: minimum(50, "kN", { count: 2 }),
+      Hk: minimum(1, "kN/m")
+    },
+    application: {
+      Qk: {
+        count: 2,
+        footprint: { shape: "square", sideM: 0.2 },
+        centreSpacingM: 1.8
+      },
+      Hk: { limitation: VEHICLE_HORIZONTAL_LIMITATION }
+    }
+  }),
+  completeDefinition({
+    id: "H-maintenance-roofs",
+    legacySlabActionId: 18,
+    category: "H",
+    subcategory: "H",
+    description: "Coperture accessibili per sola manutenzione e riparazione",
+    loads: {
+      qk: fixed(0.5, "kN/m^2"),
+      Qk: fixed(1.2, "kN"),
+      Hk: fixed(1, "kN/m")
+    }
+  }),
+  completeDefinition({
+    id: "I-occupied-roofs",
+    category: "I",
+    subcategory: "I",
+    description: "Coperture praticabili di ambienti appartenenti alle categorie A-D",
+    servedCategoryIds: [
+      "A-residential",
+      "A-stairs-balconies",
+      "B1-private-offices",
+      "B2-public-offices",
+      "B-stairs-balconies",
+      "C1-table-areas",
+      "C2-fixed-seats",
+      "C3-unobstructed-areas",
+      "C4-physical-activities",
+      "C5-large-crowds",
+      "D1-shops",
+      "D2-shopping-centres"
+    ],
+    loads: {
+      qk: inherited("kN/m^2"),
+      Qk: inherited("kN"),
+      Hk: inherited("kN/m")
+    },
+    combinationFactorsMode: "case-by-case"
+  }),
+  completeDefinition({
+    id: "K-special-roofs",
+    category: "K",
+    subcategory: "K",
+    description: "Coperture per usi speciali, inclusi impianti ed eliporti",
+    loads: {
+      qk: caseByCase("kN/m^2"),
+      Qk: caseByCase("kN"),
+      Hk: caseByCase("kN/m")
+    },
+    combinationFactorsMode: "case-by-case"
+  })
+]);
+function definitionById(definitionId) {
+  const definition = NTC2018_IMPOSED_LOAD_CATALOG.find(({ id }) => id === definitionId);
+  if (!definition) {
+    throw new Error(`Unsupported NTC 2018 imposed-load definition: ${definitionId}.`);
+  }
+  return definition;
+}
+function finiteNonNegative5(value, label) {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`${label} must be a finite non-negative number.`);
+  }
+  return value;
+}
+function requireDocumentation(documentation) {
+  if (documentation == null || typeof documentation !== "object" || typeof documentation.reference !== "string" || documentation.reference.trim() === "") {
+    throw new Error(
+      "documented or case-by-case imposed loads require documentation.reference."
+    );
+  }
+}
+function convertDocumentedValue(symbol, value, resolver) {
+  switch (symbol) {
+    case "qk":
+      return resolver.areaLoad(value);
+    case "Qk":
+      return resolver.force(value);
+    case "Hk":
+      return resolver.lineLoad(value);
+    default:
+      throw new Error(`Unsupported imposed-load symbol: ${symbol}.`);
+  }
+}
+function resolveDirectLoad({ symbol, specification, documentedValue, resolver }) {
+  const hasDocumentedValue = documentedValue != null;
+  const converted = hasDocumentedValue ? finiteNonNegative5(
+    convertDocumentedValue(symbol, documentedValue, resolver),
+    `documentedValues.${symbol}`
+  ) : null;
+  if (specification.mode === "fixed") {
+    if (converted != null && converted < specification.value) {
+      throw new Error(
+        `documentedValues.${symbol} must not be lower than the tabulated value ${specification.value} ${specification.unit}.`
+      );
+    }
+    return {
+      value: converted != null ? converted : specification.value,
+      selection: converted == null ? "tabulated" : "documented-not-lower-than-tabulated"
+    };
+  }
+  if (specification.mode === "minimum") {
+    if (converted == null) {
+      throw new Error(
+        `${symbol} for this definition must be documented and not lower than ${specification.minimum} ${specification.unit}.`
+      );
+    }
+    if (converted < specification.minimum) {
+      throw new Error(
+        `documentedValues.${symbol} must not be lower than ${specification.minimum} ${specification.unit}.`
+      );
+    }
+    return { value: converted, selection: "documented-not-lower-than-minimum" };
+  }
+  if (specification.mode === "case-by-case") {
+    if (converted == null) {
+      throw new Error(`${symbol} for this definition must be documented case by case.`);
+    }
+    return { value: converted, selection: "documented-case-by-case" };
+  }
+  throw new Error(`Unsupported direct imposed-load mode: ${specification.mode}.`);
+}
+function validateCombinationFactors(combinationFactors) {
+  if (combinationFactors == null || typeof combinationFactors !== "object") {
+    throw new Error("Category K requires documentedCombinationFactors.");
+  }
+  const normalized = {};
+  for (const key of ["psi0", "psi1", "psi2"]) {
+    const value = combinationFactors[key];
+    if (!Number.isFinite(value) || value < 0 || value > 1) {
+      throw new Error(`documentedCombinationFactors.${key} must be between 0 and 1.`);
+    }
+    normalized[key] = value;
+  }
+  return normalized;
+}
+function resolveCombinationFactors({ definition, inheritedDefinition, documentedCombinationFactors: documentedCombinationFactors2 }) {
+  var _a;
+  if (definition.combinationFactorsMode === "case-by-case") {
+    return validateCombinationFactors(documentedCombinationFactors2);
+  }
+  const combinationCategory = (_a = inheritedDefinition == null ? void 0 : inheritedDefinition.category) != null ? _a : definition.category;
+  const factors = NTC2018_ACTION_COMBINATION_FACTORS[combinationCategory];
+  if (!factors) {
+    throw new Error(
+      `No automatic NTC 2018 combination factors are available for category ${combinationCategory}.`
+    );
+  }
+  return {
+    psi0: factors.psi0,
+    psi1: factors.psi1,
+    psi2: factors.psi2
+  };
+}
+function resolveInheritedLoads({ definition, servedDefinitionId, documentedValues, resolver }) {
+  var _a, _b, _c;
+  if (!((_a = definition.servedCategoryIds) == null ? void 0 : _a.includes(servedDefinitionId))) {
+    throw new Error(
+      `${definition.id} requires servedDefinitionId among: ${definition.servedCategoryIds.join(", ")}.`
+    );
+  }
+  const servedDefinition = definitionById(servedDefinitionId);
+  const resolvedLoads = {};
+  const resolution = {};
+  for (const symbol of LOAD_SYMBOLS) {
+    const inheritedSpecification = definition.loads[symbol];
+    const servedSpecification = servedDefinition.loads[symbol];
+    if (servedSpecification.mode !== "fixed") {
+      throw new Error(`${servedDefinitionId}.${symbol} is not a directly inheritable tabulated value.`);
+    }
+    const inheritedMinimum = (_b = inheritedSpecification.minimum) != null ? _b : 0;
+    const baseValue = Math.max(servedSpecification.value, inheritedMinimum);
+    const documentedValue = documentedValues[symbol];
+    const converted = documentedValue == null ? null : finiteNonNegative5(
+      convertDocumentedValue(symbol, documentedValue, resolver),
+      `documentedValues.${symbol}`
+    );
+    if (converted != null && converted < baseValue) {
+      throw new Error(
+        `documentedValues.${symbol} must not be lower than the inherited value ${baseValue} ${inheritedSpecification.unit}.`
+      );
+    }
+    resolvedLoads[symbol] = converted != null ? converted : baseValue;
+    resolution[symbol] = {
+      selection: converted == null ? "served-category" : "documented-not-lower-than-served-category",
+      sourceDefinitionId: servedDefinitionId,
+      inheritedValue: servedSpecification.value,
+      appliedMinimum: (_c = inheritedSpecification.minimum) != null ? _c : null
+    };
+  }
+  return { servedDefinition, resolvedLoads, resolution };
+}
+function listNTC2018ImposedLoadDefinitions({ category = null } = {}) {
+  const definitions = category == null ? NTC2018_IMPOSED_LOAD_CATALOG : NTC2018_IMPOSED_LOAD_CATALOG.filter((entry) => entry.category === category);
+  return definitions.map(clone6);
+}
+function getNTC2018ImposedLoadDefinition(definitionId) {
+  return clone6(definitionById(definitionId));
+}
+function resolveNTC2018ImposedLoadDefinition({
+  definitionId,
+  servedDefinitionId = null,
+  documentedValues = {},
+  documentedCombinationFactors: documentedCombinationFactors2 = null,
+  documentation = null,
+  units = null
+} = {}) {
+  var _a, _b;
+  const sourceUnits = assertExplicitUnitSystem(units, "resolveNTC2018ImposedLoadDefinition");
+  const resolver = createUnitResolver(sourceUnits, INTERNAL_UNITS31);
+  const definition = definitionById(definitionId);
+  const hasDocumentedValues = LOAD_SYMBOLS.some((symbol) => documentedValues[symbol] != null);
+  const requiresDocumentation = Object.values(definition.loads).some(({ mode }) => mode === "minimum" || mode === "case-by-case");
+  if (requiresDocumentation || hasDocumentedValues || documentedCombinationFactors2 != null) {
+    requireDocumentation(documentation);
+  }
+  let inheritedDefinition = null;
+  let values;
+  let resolution;
+  if (Object.values(definition.loads).some(({ mode }) => mode === "served-category")) {
+    const inherited2 = resolveInheritedLoads({
+      definition,
+      servedDefinitionId,
+      documentedValues,
+      resolver
+    });
+    inheritedDefinition = inherited2.servedDefinition;
+    values = inherited2.resolvedLoads;
+    resolution = inherited2.resolution;
+  } else {
+    values = {};
+    resolution = {};
+    for (const symbol of LOAD_SYMBOLS) {
+      const item = resolveDirectLoad({
+        symbol,
+        specification: definition.loads[symbol],
+        documentedValue: documentedValues[symbol],
+        resolver
+      });
+      values[symbol] = item.value;
+      resolution[symbol] = { selection: item.selection };
+    }
+  }
+  return {
+    schemaVersion: "ntc2018-imposed-load-definition/v1",
+    status: "ok",
+    definitionId: definition.id,
+    category: definition.category,
+    subcategory: definition.subcategory,
+    description: definition.description,
+    qk: values.qk,
+    Qk: values.Qk,
+    Hk: values.Hk,
+    units: { ...INTERNAL_UNITS31 },
+    loads: clone6(definition.loads),
+    application: clone6(definition.application),
+    combinationFactors: resolveCombinationFactors({
+      definition,
+      inheritedDefinition,
+      documentedCombinationFactors: documentedCombinationFactors2
+    }),
+    resolution,
+    documentation: documentation == null ? null : clone6(documentation),
+    notes: [...(_a = definition.notes) != null ? _a : []],
+    metadata: {
+      normativePreset: "NTC2018",
+      references: { ...NTC2018_IMPOSED_LOAD_REFERENCES },
+      unitSystem: { ...INTERNAL_UNITS31 },
+      sourceUnitSystem: sourceUnits,
+      servedDefinitionId: (_b = inheritedDefinition == null ? void 0 : inheritedDefinition.id) != null ? _b : null
+    }
+  };
+}
+function combinationFactorForReduction({ category, psi0, documentation }) {
+  if (category === "I") {
+    if (!Number.isFinite(psi0) || psi0 < 0 || psi0 > 1) {
+      throw new Error("Category I area reduction requires a documented psi0 between 0 and 1.");
+    }
+    requireDocumentation(documentation);
+    return psi0;
+  }
+  if (psi0 != null) {
+    throw new Error("psi0 is derived from NTC 2018 Table 2.5.I; omit the explicit value.");
+  }
+  return NTC2018_ACTION_COMBINATION_FACTORS[category].psi0;
+}
+function calculateNTC2018ImposedLoadAreaReduction({
+  category,
+  influenceArea,
+  psi0 = null,
+  documentation = null,
+  units = null
+} = {}) {
+  if (!AREA_REDUCTION_CATEGORIES.has(category)) {
+    throw new Error("Area reduction is only applicable to NTC 2018 categories A, B, C, D, H and I.");
+  }
+  const sourceUnits = assertExplicitUnitSystem(units, "calculateNTC2018ImposedLoadAreaReduction");
+  const resolver = createUnitResolver(sourceUnits, INTERNAL_UNITS31);
+  const area = resolver.area(influenceArea);
+  if (!Number.isFinite(area) || area <= 0) {
+    throw new Error("influenceArea must be a finite positive area.");
+  }
+  const resolvedPsi0 = combinationFactorForReduction({ category, psi0, documentation });
+  const rawFactor = 5 / 7 * resolvedPsi0 + 10 / area;
+  const categoryMinimum = ["C", "D"].includes(category) ? 0.6 : null;
+  const alphaA = Math.max(categoryMinimum != null ? categoryMinimum : 0, Math.min(1, rawFactor));
+  return {
+    status: "ok",
+    alphaA,
+    category,
+    influenceArea: area,
+    psi0: resolvedPsi0,
+    formula: "alphaA = min(1, 5/7 * psi0 + 10/A), with alphaA >= 0.6 for C and D",
+    categoryMinimum,
+    units: { ...INTERNAL_UNITS31 },
+    cannotCombineWith: "alphaN",
+    reference: NTC2018_IMPOSED_LOAD_REFERENCES.areaReduction,
+    documentation: documentation == null ? null : clone6(documentation),
+    metadata: {
+      sourceUnitSystem: sourceUnits,
+      unitSystem: { ...INTERNAL_UNITS31 }
+    }
+  };
+}
+function calculateNTC2018ImposedLoadMultiStoreyReduction({
+  category,
+  loadedStoreys
+} = {}) {
+  if (!MULTI_STOREY_REDUCTION_CATEGORIES.has(category)) {
+    throw new Error("Multi-storey reduction is only applicable to NTC 2018 categories A, B, C and D.");
+  }
+  if (!Number.isInteger(loadedStoreys) || loadedStoreys <= 2) {
+    throw new Error("loadedStoreys must be an integer greater than 2.");
+  }
+  const psi0 = NTC2018_ACTION_COMBINATION_FACTORS[category].psi0;
+  const alphaN = (2 + (loadedStoreys - 2) * psi0) / loadedStoreys;
+  return {
+    status: "ok",
+    alphaN,
+    category,
+    loadedStoreys,
+    psi0,
+    formula: "alphaN = (2 + (n - 2) * psi0) / n",
+    cannotCombineWith: "alphaA",
+    reference: NTC2018_IMPOSED_LOAD_REFERENCES.multiStoreyReduction
+  };
+}
+
 // src/norms/ntc2018/loads/ntc2018SlabLoadCatalogs.js
-var NTC2018_SLAB_MATERIAL_WEIGHT_DATABASE = {
+var SLAB_MATERIAL_WEIGHT_PRESET_METADATA = Object.freeze({
+  status: "legacy-reference-presets",
+  normative: false,
+  unitSystem: Object.freeze({ force: "kN", length: "m" }),
+  warning: "These values are legacy project presets, not NTC 2018 Table 3.1.I values. Verify every selected value against product data, tests or another documented source.",
+  normativeReplacement: "NTC2018_UNIT_WEIGHT_CATALOG"
+});
+var SLAB_MATERIAL_WEIGHT_PRESET_DATABASE = {
   volumeWeights: [
     {
       category: "Concrete and mortars",
@@ -59717,7 +63921,8 @@ var NTC2018_SLAB_MATERIAL_WEIGHT_DATABASE = {
     }
   ]
 };
-var NTC2018_SLAB_VARIABLE_ACTIONS_DATABASE = [
+var NTC2018_SLAB_MATERIAL_WEIGHT_DATABASE = SLAB_MATERIAL_WEIGHT_PRESET_DATABASE;
+var LEGACY_SLAB_VARIABLE_ACTION_DESCRIPTIONS = [
   {
     id: 1,
     category: "A",
@@ -59863,15 +64068,43 @@ var NTC2018_SLAB_VARIABLE_ACTIONS_DATABASE = [
     qk: 0.5
   }
 ];
-function listNTC2018SlabWeightCategories(weightType) {
-  const collection = NTC2018_SLAB_MATERIAL_WEIGHT_DATABASE[weightType];
+function legacyQuantityValue(specification) {
+  return specification.mode === "fixed" ? specification.value : null;
+}
+var NTC2018_SLAB_VARIABLE_ACTIONS_DATABASE = Object.freeze(
+  LEGACY_SLAB_VARIABLE_ACTION_DESCRIPTIONS.map((legacyEntry) => {
+    var _a;
+    const definition = NTC2018_IMPOSED_LOAD_CATALOG.find(
+      ({ legacySlabActionId }) => legacySlabActionId === legacyEntry.id
+    );
+    if (!definition) {
+      throw new Error(`Missing generic imposed-load definition for legacy slab action ${legacyEntry.id}.`);
+    }
+    return Object.freeze({
+      ...legacyEntry,
+      definitionId: definition.id,
+      category: definition.category,
+      subcategory: definition.subcategory,
+      qk: legacyQuantityValue(definition.loads.qk),
+      Qk: legacyQuantityValue(definition.loads.Qk),
+      Hk: legacyQuantityValue(definition.loads.Hk),
+      qkMode: definition.loads.qk.mode,
+      qkMinimum: (_a = definition.loads.qk.minimum) != null ? _a : null,
+      requiresGenericResolution: definition.loads.qk.mode !== "fixed",
+      deprecated: true,
+      replacement: "resolveNTC2018ImposedLoadDefinition"
+    });
+  })
+);
+function listSlabMaterialWeightPresetCategories(weightType) {
+  const collection = SLAB_MATERIAL_WEIGHT_PRESET_DATABASE[weightType];
   if (!collection) {
     throw new Error(`Unsupported slab weight type: ${weightType}.`);
   }
   return collection.map((group) => group.category);
 }
-function listNTC2018SlabWeightEntries(weightType, category) {
-  const collection = NTC2018_SLAB_MATERIAL_WEIGHT_DATABASE[weightType];
+function listSlabMaterialWeightPresetEntries(weightType, category) {
+  const collection = SLAB_MATERIAL_WEIGHT_PRESET_DATABASE[weightType];
   if (!collection) {
     throw new Error(`Unsupported slab weight type: ${weightType}.`);
   }
@@ -59881,16 +64114,25 @@ function listNTC2018SlabWeightEntries(weightType, category) {
   }
   return group.entries.map((entry) => ({ ...entry }));
 }
-function getNTC2018SlabWeightValue({
+function getSlabMaterialWeightPresetValue({
   weightType,
   category,
   description
 }) {
-  const entry = listNTC2018SlabWeightEntries(weightType, category).find((item) => item.description === description);
+  const entry = listSlabMaterialWeightPresetEntries(weightType, category).find((item) => item.description === description);
   if (!entry) {
     throw new Error(`Unsupported slab weight entry '${description}' for category '${category}'.`);
   }
   return entry.value;
+}
+function listNTC2018SlabWeightCategories(weightType) {
+  return listSlabMaterialWeightPresetCategories(weightType);
+}
+function listNTC2018SlabWeightEntries(weightType, category) {
+  return listSlabMaterialWeightPresetEntries(weightType, category);
+}
+function getNTC2018SlabWeightValue(input) {
+  return getSlabMaterialWeightPresetValue(input);
 }
 function getNTC2018SlabVariableAction(actionId) {
   const action = NTC2018_SLAB_VARIABLE_ACTIONS_DATABASE.find((entry) => entry.id === actionId);
@@ -59903,21 +64145,595 @@ function createNTC2018SlabVariableLoad({
   actionId,
   description,
   qk,
+  documentation = null,
   units = null
 }) {
+  var _a;
   if (units == null) {
     throw new Error("createNTC2018SlabVariableLoad requires explicit units: { force, length }.");
   }
   const action = getNTC2018SlabVariableAction(actionId);
   const factors = NTC2018_VARIABLE_ACTION_CATEGORIES[action.category];
-  return new VariableLoad({
+  const selectedQk = qk != null ? qk : action.qk;
+  if (selectedQk == null) {
+    throw new Error(
+      `${action.definitionId} has no automatic qk; provide a documented value or use resolveNTC2018ImposedLoadDefinition for the complete qk/Qk/Hk contract.`
+    );
+  }
+  if (action.requiresGenericResolution && (documentation == null || typeof documentation.reference !== "string" || documentation.reference.trim() === "")) {
+    throw new Error(`${action.definitionId} requires documentation.reference for qk.`);
+  }
+  const load = new VariableLoad({
     description: description != null ? description : action.shortDescription,
-    value: qk != null ? qk : action.qk,
+    value: selectedQk,
     psi0: factors.psi0,
     psi1: factors.psi1,
     psi2: factors.psi2,
     category: action.category,
     units
+  });
+  const minimum2 = (_a = action.qkMinimum) != null ? _a : action.qk;
+  if (minimum2 != null && load.value < minimum2) {
+    throw new Error(
+      `qk for ${action.definitionId} must not be lower than ${minimum2} kN/m^2.`
+    );
+  }
+  load.metadata = {
+    ...load.metadata,
+    deprecatedFactory: "createNTC2018SlabVariableLoad",
+    imposedLoadDefinitionId: action.definitionId,
+    documentation: documentation == null ? null : { ...documentation }
+  };
+  return load;
+}
+
+// src/norms/ntc2018/loads/ntc2018PermanentLoads.js
+var INTERNAL_UNITS32 = Object.freeze({ force: "kN", length: "m" });
+var PERMANENT_CLASSES = /* @__PURE__ */ new Set(["G1", "G2"]);
+var EFFECTS = /* @__PURE__ */ new Set(["favourable", "unfavourable"]);
+var NTC2018_PERMANENT_LOAD_REFERENCES = Object.freeze({
+  unitWeights: "D.M. 17/01/2018, NTC 2018, section 3.1.2, Table 3.1.I",
+  equivalentPartitions: "D.M. 17/01/2018, NTC 2018, section 3.1.3",
+  partialFactors: "D.M. 17/01/2018, NTC 2018, section 2.6.1, Table 2.6.I"
+});
+function freezeCatalog(entries3) {
+  return Object.freeze(entries3.map((entry) => Object.freeze({ ...entry })));
+}
+var NTC2018_UNIT_WEIGHT_CATALOG = freezeCatalog([
+  {
+    id: "plain-concrete",
+    category: "concrete",
+    description: "Calcestruzzo ordinario non armato",
+    kind: "fixed",
+    value: 24
+  },
+  {
+    id: "reinforced-or-prestressed-concrete",
+    category: "concrete",
+    description: "Calcestruzzo armato e precompresso",
+    kind: "fixed",
+    value: 25
+  },
+  {
+    id: "lightweight-concrete",
+    category: "concrete",
+    description: "Calcestruzzo leggero",
+    kind: "range",
+    min: 14,
+    max: 20
+  },
+  {
+    id: "heavyweight-concrete",
+    category: "concrete",
+    description: "Calcestruzzo pesante",
+    kind: "range",
+    min: 28,
+    max: 50
+  },
+  {
+    id: "lime-mortar",
+    category: "mortars-and-bulk-materials",
+    description: "Malta di calce",
+    kind: "fixed",
+    value: 18
+  },
+  {
+    id: "cement-mortar",
+    category: "mortars-and-bulk-materials",
+    description: "Malta di cemento",
+    kind: "fixed",
+    value: 21
+  },
+  {
+    id: "powdered-lime",
+    category: "mortars-and-bulk-materials",
+    description: "Calce in polvere",
+    kind: "fixed",
+    value: 10
+  },
+  {
+    id: "powdered-cement",
+    category: "mortars-and-bulk-materials",
+    description: "Cemento in polvere",
+    kind: "fixed",
+    value: 14
+  },
+  {
+    id: "sand",
+    category: "mortars-and-bulk-materials",
+    description: "Sabbia",
+    kind: "fixed",
+    value: 17
+  },
+  {
+    id: "steel",
+    category: "metals",
+    description: "Acciaio",
+    kind: "fixed",
+    value: 78.5
+  },
+  {
+    id: "cast-iron",
+    category: "metals",
+    description: "Ghisa",
+    kind: "fixed",
+    value: 72.5
+  },
+  {
+    id: "aluminium",
+    category: "metals",
+    description: "Alluminio",
+    kind: "fixed",
+    value: 27
+  },
+  {
+    id: "volcanic-tuff",
+    category: "natural-stone",
+    description: "Tufo vulcanico",
+    kind: "fixed",
+    value: 17
+  },
+  {
+    id: "compact-limestone",
+    category: "natural-stone",
+    description: "Calcare compatto",
+    kind: "fixed",
+    value: 26
+  },
+  {
+    id: "soft-limestone",
+    category: "natural-stone",
+    description: "Calcare tenero",
+    kind: "fixed",
+    value: 22
+  },
+  {
+    id: "gypsum",
+    category: "natural-stone",
+    description: "Gesso",
+    kind: "fixed",
+    value: 13
+  },
+  {
+    id: "granite",
+    category: "natural-stone",
+    description: "Granito",
+    kind: "fixed",
+    value: 27
+  },
+  {
+    id: "solid-brick",
+    category: "masonry",
+    description: "Mattoni pieni",
+    kind: "fixed",
+    value: 18
+  },
+  {
+    id: "softwood-or-poplar",
+    category: "timber",
+    description: "Legname di conifera e pioppo",
+    kind: "range",
+    min: 4,
+    max: 6
+  },
+  {
+    id: "hardwood-excluding-poplar",
+    category: "timber",
+    description: "Legname di latifoglia, escluso il pioppo",
+    kind: "range",
+    min: 6,
+    max: 8
+  },
+  {
+    id: "fresh-water",
+    category: "liquids-and-other",
+    description: "Acqua dolce",
+    kind: "fixed",
+    value: 9.81
+  },
+  {
+    id: "sea-water",
+    category: "liquids-and-other",
+    description: "Acqua di mare",
+    kind: "fixed",
+    value: 10.1
+  },
+  {
+    id: "paper",
+    category: "liquids-and-other",
+    description: "Carta",
+    kind: "fixed",
+    value: 10
+  },
+  {
+    id: "glass",
+    category: "liquids-and-other",
+    description: "Vetro",
+    kind: "fixed",
+    value: 25
+  }
+].map((entry) => ({
+  ...entry,
+  unit: "kN/m^3",
+  reference: NTC2018_PERMANENT_LOAD_REFERENCES.unitWeights
+})));
+function clone7(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+function finiteNonNegative6(value, label) {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`${label} must be a finite non-negative number.`);
+  }
+  return value;
+}
+function finitePositive6(value, label) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${label} must be a finite positive number.`);
+  }
+  return value;
+}
+function unitWeightDefinition(materialId) {
+  const definition = NTC2018_UNIT_WEIGHT_CATALOG.find(({ id }) => id === materialId);
+  if (!definition) {
+    throw new Error(`Unsupported NTC 2018 unit-weight material: ${materialId}.`);
+  }
+  return definition;
+}
+function listNTC2018UnitWeightDefinitions({ category = null } = {}) {
+  const definitions = category == null ? NTC2018_UNIT_WEIGHT_CATALOG : NTC2018_UNIT_WEIGHT_CATALOG.filter((entry) => entry.category === category);
+  return definitions.map(clone7);
+}
+function getNTC2018UnitWeightDefinition(materialId) {
+  return clone7(unitWeightDefinition(materialId));
+}
+function resolveNTC2018UnitWeight({ materialId, value = null } = {}) {
+  const definition = unitWeightDefinition(materialId);
+  if (definition.kind === "fixed") {
+    if (value != null) {
+      throw new Error(
+        `${materialId} has the fixed NTC 2018 unit weight ${definition.value} kN/m^3; omit value.`
+      );
+    }
+    return {
+      ...clone7(definition),
+      selectedValue: definition.value,
+      selection: "tabulated-fixed"
+    };
+  }
+  finitePositive6(value, "value");
+  if (value < definition.min || value > definition.max) {
+    throw new Error(
+      `value for ${materialId} must be between ${definition.min} and ${definition.max} kN/m^3.`
+    );
+  }
+  return {
+    ...clone7(definition),
+    selectedValue: value,
+    selection: "explicit-within-tabulated-range"
+  };
+}
+function normalizedCalculation({ units, model, operands, formula, value, reference }) {
+  return {
+    model,
+    operands,
+    formula,
+    value,
+    quantity: model === "solid-volume" ? "force" : "area-load",
+    units: { ...INTERNAL_UNITS32 },
+    reference,
+    metadata: {
+      sourceUnitSystem: { ...units },
+      unitSystem: { ...INTERNAL_UNITS32 }
+    }
+  };
+}
+function calculateNTC2018AreaSelfWeight({
+  unitWeight,
+  thickness,
+  units = null
+} = {}) {
+  const sourceUnits = assertExplicitUnitSystem(units, "calculateNTC2018AreaSelfWeight");
+  const resolver = createUnitResolver(sourceUnits, INTERNAL_UNITS32);
+  const normalizedUnitWeight = finiteNonNegative6(
+    resolver.volumeLoad(unitWeight),
+    "unitWeight"
+  );
+  const normalizedThickness = finiteNonNegative6(
+    resolver.length(thickness),
+    "thickness"
+  );
+  return normalizedCalculation({
+    units: sourceUnits,
+    model: "layer",
+    operands: {
+      unitWeight: normalizedUnitWeight,
+      thickness: normalizedThickness
+    },
+    formula: "areaLoad = unitWeight * thickness",
+    value: normalizedUnitWeight * normalizedThickness,
+    reference: NTC2018_PERMANENT_LOAD_REFERENCES.unitWeights
+  });
+}
+function calculateNTC2018LineSelfWeight({
+  unitWeight,
+  crossSectionArea,
+  units = null
+} = {}) {
+  const sourceUnits = assertExplicitUnitSystem(units, "calculateNTC2018LineSelfWeight");
+  const resolver = createUnitResolver(sourceUnits, INTERNAL_UNITS32);
+  const normalizedUnitWeight = finiteNonNegative6(
+    resolver.volumeLoad(unitWeight),
+    "unitWeight"
+  );
+  const normalizedArea = finiteNonNegative6(
+    resolver.area(crossSectionArea),
+    "crossSectionArea"
+  );
+  return {
+    model: "prismatic-line",
+    operands: {
+      unitWeight: normalizedUnitWeight,
+      crossSectionArea: normalizedArea
+    },
+    formula: "lineLoad = unitWeight * crossSectionArea",
+    value: normalizedUnitWeight * normalizedArea,
+    quantity: "line-load",
+    units: { ...INTERNAL_UNITS32 },
+    reference: NTC2018_PERMANENT_LOAD_REFERENCES.unitWeights,
+    metadata: {
+      sourceUnitSystem: sourceUnits,
+      unitSystem: { ...INTERNAL_UNITS32 }
+    }
+  };
+}
+function calculateNTC2018SelfWeight({
+  unitWeight,
+  volume,
+  units = null
+} = {}) {
+  const sourceUnits = assertExplicitUnitSystem(units, "calculateNTC2018SelfWeight");
+  const resolver = createUnitResolver(sourceUnits, INTERNAL_UNITS32);
+  const normalizedUnitWeight = finiteNonNegative6(
+    resolver.volumeLoad(unitWeight),
+    "unitWeight"
+  );
+  const normalizedVolume = finiteNonNegative6(resolver.volume(volume), "volume");
+  return normalizedCalculation({
+    units: sourceUnits,
+    model: "solid-volume",
+    operands: {
+      unitWeight: normalizedUnitWeight,
+      volume: normalizedVolume
+    },
+    formula: "selfWeight = unitWeight * volume",
+    value: normalizedUnitWeight * normalizedVolume,
+    reference: NTC2018_PERMANENT_LOAD_REFERENCES.unitWeights
+  });
+}
+function calculateNTC2018EquivalentPartitionAreaLoad({
+  partitionLineLoad,
+  units = null
+} = {}) {
+  var _a;
+  const sourceUnits = assertExplicitUnitSystem(
+    units,
+    "calculateNTC2018EquivalentPartitionAreaLoad"
+  );
+  const resolver = createUnitResolver(sourceUnits, INTERNAL_UNITS32);
+  const normalizedLineLoad = finitePositive6(
+    resolver.lineLoad(partitionLineLoad),
+    "partitionLineLoad"
+  );
+  const steps = [
+    { maximumLineLoad: 1, areaLoad: 0.4 },
+    { maximumLineLoad: 2, areaLoad: 0.8 },
+    { maximumLineLoad: 3, areaLoad: 1.2 },
+    { maximumLineLoad: 4, areaLoad: 1.6 },
+    { maximumLineLoad: 5, areaLoad: 2 }
+  ];
+  const selected = steps.find(({ maximumLineLoad }) => normalizedLineLoad <= maximumLineLoad);
+  return {
+    partitionLineLoad: normalizedLineLoad,
+    equivalentUniformLoadApplicable: selected != null,
+    areaLoad: (_a = selected == null ? void 0 : selected.areaLoad) != null ? _a : null,
+    requiresActualPositioning: selected == null,
+    units: { ...INTERNAL_UNITS32 },
+    reference: NTC2018_PERMANENT_LOAD_REFERENCES.equivalentPartitions,
+    metadata: {
+      sourceUnitSystem: sourceUnits,
+      unitSystem: { ...INTERNAL_UNITS32 }
+    }
+  };
+}
+function normalizePermanentAreaItem(item, resolver) {
+  var _a, _b;
+  if (item == null || typeof item !== "object") {
+    throw new Error("Each permanent-load item must be an object.");
+  }
+  if (typeof item.id !== "string" || item.id.trim() === "") {
+    throw new Error("Each permanent-load item requires a stable non-empty string id.");
+  }
+  if (!PERMANENT_CLASSES.has(item.permanentClass)) {
+    throw new Error(`${item.id}.permanentClass must be G1 or G2.`);
+  }
+  const effect = (_a = item.effect) != null ? _a : "unfavourable";
+  if (!EFFECTS.has(effect)) {
+    throw new Error(`${item.id}.effect must be favourable or unfavourable.`);
+  }
+  let operands;
+  let value;
+  let formula;
+  switch (item.model) {
+    case "layer": {
+      operands = {
+        unitWeight: finiteNonNegative6(resolver.volumeLoad(item.unitWeight), `${item.id}.unitWeight`),
+        thickness: finiteNonNegative6(resolver.length(item.thickness), `${item.id}.thickness`)
+      };
+      formula = "areaLoad = unitWeight * thickness";
+      value = operands.unitWeight * operands.thickness;
+      break;
+    }
+    case "surface": {
+      operands = {
+        areaLoad: finiteNonNegative6(resolver.areaLoad(item.areaLoad), `${item.id}.areaLoad`)
+      };
+      formula = "areaLoad = assignedAreaLoad";
+      value = operands.areaLoad;
+      break;
+    }
+    case "repeated-line": {
+      operands = {
+        lineLoad: finiteNonNegative6(resolver.lineLoad(item.lineLoad), `${item.id}.lineLoad`),
+        spacing: finitePositive6(resolver.length(item.spacing), `${item.id}.spacing`)
+      };
+      formula = "areaLoad = lineLoad / spacing";
+      value = operands.lineLoad / operands.spacing;
+      break;
+    }
+    case "repeated-section": {
+      operands = {
+        unitWeight: finiteNonNegative6(resolver.volumeLoad(item.unitWeight), `${item.id}.unitWeight`),
+        crossSectionArea: finiteNonNegative6(
+          resolver.area(item.crossSectionArea),
+          `${item.id}.crossSectionArea`
+        ),
+        spacing: finitePositive6(resolver.length(item.spacing), `${item.id}.spacing`)
+      };
+      formula = "areaLoad = unitWeight * crossSectionArea / spacing";
+      value = operands.unitWeight * operands.crossSectionArea / operands.spacing;
+      break;
+    }
+    case "distributed-wall": {
+      operands = {
+        unitWeight: finiteNonNegative6(resolver.volumeLoad(item.unitWeight), `${item.id}.unitWeight`),
+        height: finiteNonNegative6(resolver.length(item.height), `${item.id}.height`),
+        thickness: finiteNonNegative6(resolver.length(item.thickness), `${item.id}.thickness`),
+        spacing: finitePositive6(resolver.length(item.spacing), `${item.id}.spacing`)
+      };
+      formula = "areaLoad = unitWeight * height * thickness / spacing";
+      value = operands.unitWeight * operands.height * operands.thickness / operands.spacing;
+      break;
+    }
+    default:
+      throw new Error(`Unsupported permanent-load model for ${item.id}: ${item.model}.`);
+  }
+  return {
+    id: item.id,
+    description: (_b = item.description) != null ? _b : item.id,
+    model: item.model,
+    permanentClass: item.permanentClass,
+    effect,
+    operands,
+    formula,
+    value,
+    quantity: "area-load",
+    units: { ...INTERNAL_UNITS32 }
+  };
+}
+function createTotals(items) {
+  const byClassAndEffect = {
+    G1: { favourable: 0, unfavourable: 0 },
+    G2: { favourable: 0, unfavourable: 0 }
+  };
+  for (const item of items) {
+    byClassAndEffect[item.permanentClass][item.effect] += item.value;
+  }
+  const G1 = byClassAndEffect.G1.favourable + byClassAndEffect.G1.unfavourable;
+  const G2 = byClassAndEffect.G2.favourable + byClassAndEffect.G2.unfavourable;
+  return {
+    G1,
+    G2,
+    total: G1 + G2,
+    byClassAndEffect
+  };
+}
+function calculateNTC2018PermanentAreaLoads({
+  units = null,
+  items = []
+} = {}) {
+  const sourceUnits = assertExplicitUnitSystem(units, "calculateNTC2018PermanentAreaLoads");
+  if (!Array.isArray(items)) {
+    throw new Error("items must be an array.");
+  }
+  const resolver = createUnitResolver(sourceUnits, INTERNAL_UNITS32);
+  const normalizedItems = items.map((item) => normalizePermanentAreaItem(item, resolver));
+  const ids = normalizedItems.map(({ id }) => id);
+  if (new Set(ids).size !== ids.length) {
+    throw new Error("Permanent-load item ids must be unique.");
+  }
+  const classActions = Object.fromEntries(
+    [...PERMANENT_CLASSES].filter((permanentClass) => normalizedItems.some((item) => item.permanentClass === permanentClass)).map((permanentClass) => [
+      permanentClass,
+      createNTC2018PermanentAction({
+        id: `NTC2018-${permanentClass}`,
+        name: `NTC 2018 ${permanentClass}`,
+        permanentClass,
+        metadata: {
+          reference: NTC2018_PERMANENT_LOAD_REFERENCES.partialFactors
+        }
+      })
+    ])
+  );
+  const loads = normalizedItems.map((item) => new AreaLoad({
+    id: item.id,
+    name: item.description,
+    type: "permanent-area",
+    intensity: item.value,
+    action: classActions[item.permanentClass],
+    units: INTERNAL_UNITS32,
+    metadata: {
+      permanentClass: item.permanentClass,
+      effect: item.effect,
+      model: item.model,
+      operands: item.operands,
+      formula: item.formula,
+      sourceUnitSystem: sourceUnits
+    }
+  }));
+  return new CalculationResult({
+    applicationId: "ntc2018-permanent-area-loads",
+    status: "ok",
+    summary: `Calculated ${normalizedItems.length} NTC 2018 permanent area-load item(s).`,
+    outputs: {
+      schemaVersion: "ntc2018-permanent-area-loads/v1",
+      units: { ...INTERNAL_UNITS32 },
+      items: normalizedItems,
+      actions: Object.values(classActions).map((action) => action.toJSON()),
+      loads: loads.map((load) => load.toJSON()),
+      totals: createTotals(normalizedItems)
+    },
+    assumptions: [
+      "Input values are non-negative characteristic magnitudes.",
+      "Load direction and geometric application remain the consumer's responsibility.",
+      "The permanent class G1 or G2 and the favourable or unfavourable effect are explicit caller decisions."
+    ],
+    metadata: {
+      method: "ntc2018-permanent-area-loads",
+      normativePreset: "NTC2018",
+      references: { ...NTC2018_PERMANENT_LOAD_REFERENCES },
+      unitSystem: { ...INTERNAL_UNITS32 },
+      sourceUnitSystem: sourceUnits
+    }
   });
 }
 
@@ -60170,7 +64986,7 @@ function resolvePartialFactor(action, {
   void family;
   return effect === "favourable" ? 0 : NTC2018_ULS_PARTIAL_FACTORS.Q_UNFAVOURABLE;
 }
-function resolveCombinationFactors(action, category) {
+function resolveCombinationFactors2(action, category) {
   if (typeof (action == null ? void 0 : action.getCombinationFactor) === "function") {
     return {
       psi0: action.getCombinationFactor("psi0"),
@@ -60226,7 +65042,7 @@ function normalizeVariableEntry(input) {
     nature: "variable",
     leadingEligible: (_k = (_j = (_i = input == null ? void 0 : input.leadingEligible) != null ? _i : (_h = input == null ? void 0 : input.load) == null ? void 0 : _h.leadingEligible) != null ? _j : action == null ? void 0 : action.leadingEligible) != null ? _k : true,
     loadDurationClass: resolveLoadDurationClass2(input, action),
-    combinationFactors: resolveCombinationFactors(action, category),
+    combinationFactors: resolveCombinationFactors2(action, category),
     metadata: {
       ...input == null ? void 0 : input.metadata,
       ...(_l = input == null ? void 0 : input.load) == null ? void 0 : _l.metadata
@@ -60636,7 +65452,7 @@ var NTC2018_BEAM_COLUMN_JOINT_TENSION_METHODS = Object.freeze([
 
 // src/norms/ntc2018/geotechnics/ntc2018RetainingWallSeismic.js
 var NTC2018_RETAINING_WALL_REFERENCE = "D.M. 17/01/2018, NTC 2018, section 7.11.6.2.1";
-function finiteNonNegative(value, label) {
+function finiteNonNegative7(value, label) {
   if (!Number.isFinite(value) || value < 0) {
     throw new Error(`${label} must be non-negative.`);
   }
@@ -60647,11 +65463,11 @@ function calculateNTC2018RetainingWallSeismicCoefficients({
   maximumSiteAccelerationRatio,
   betaM
 } = {}) {
-  const accelerationRatio = finiteNonNegative(
+  const accelerationRatio = finiteNonNegative7(
     Number(maximumSiteAccelerationRatio),
     "maximumSiteAccelerationRatio"
   );
-  const reduction = finiteNonNegative(Number(betaM), "betaM");
+  const reduction = finiteNonNegative7(Number(betaM), "betaM");
   if (reduction > 1) {
     throw new Error("betaM must not exceed 1.");
   }
@@ -61153,7 +65969,7 @@ function verifySteelBeamColumnInteractionMyMz({
 }
 
 // src/applications/steel-frames/checks/SteelCompressionBuckling.js
-var INTERNAL_UNITS29 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS33 = Object.freeze({ force: "N", length: "mm" });
 var I_H_FAMILIES2 = /* @__PURE__ */ new Set(["IPE", "HEA", "HEB", "HEM"]);
 var CLOSED_HOLLOW_FAMILIES = /* @__PURE__ */ new Set(["CHS", "SHS", "RHS"]);
 var SOLID_DOUBLY_SYMMETRIC_FAMILIES = /* @__PURE__ */ new Set(["ROUND", "FLAT"]);
@@ -61175,8 +65991,8 @@ function normalizedFamily2(section) {
 function sectionResolver(section) {
   var _a, _b;
   return createUnitResolver(
-    (_b = (_a = section == null ? void 0 : section.metadata) == null ? void 0 : _a.unitSystem) != null ? _b : INTERNAL_UNITS29,
-    INTERNAL_UNITS29
+    (_b = (_a = section == null ? void 0 : section.metadata) == null ? void 0 : _a.unitSystem) != null ? _b : INTERNAL_UNITS33,
+    INTERNAL_UNITS33
   );
 }
 function resolveSectionLength(section, ...keys) {
@@ -61471,7 +66287,7 @@ function verifySteelCompressionBuckling({
 }
 
 // src/applications/steel-frames/checks/SteelLateralTorsionalBuckling.js
-var INTERNAL_UNITS30 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS34 = Object.freeze({ force: "N", length: "mm" });
 var I_H_FAMILIES3 = /* @__PURE__ */ new Set(["IPE", "HEA", "HEB", "HEM"]);
 var AUTOMATIC_MCR_FAMILIES = /* @__PURE__ */ new Set([...I_H_FAMILIES3, "RHS"]);
 var LTB_NOT_SUSCEPTIBLE_FAMILIES = /* @__PURE__ */ new Set(["CHS", "SHS", "ROUND"]);
@@ -61485,8 +66301,8 @@ function normalizedFamily3(section) {
 function sectionResolver2(section) {
   var _a, _b;
   return createUnitResolver(
-    (_b = (_a = section == null ? void 0 : section.metadata) == null ? void 0 : _a.unitSystem) != null ? _b : INTERNAL_UNITS30,
-    INTERNAL_UNITS30
+    (_b = (_a = section == null ? void 0 : section.metadata) == null ? void 0 : _a.unitSystem) != null ? _b : INTERNAL_UNITS34,
+    INTERNAL_UNITS34
   );
 }
 function resolveCatalogInertia(section, key, fallback) {
@@ -61499,7 +66315,7 @@ function resolveCatalogInertia(section, key, fallback) {
   if (Number.isFinite(rawValue) && ((_c = section == null ? void 0 : section.metadata) == null ? void 0 : _c.catalogUnitSystem)) {
     return createUnitResolver(
       section.metadata.catalogUnitSystem,
-      INTERNAL_UNITS30
+      INTERNAL_UNITS34
     ).inertia(rawValue);
   }
   return fallback;
@@ -61517,7 +66333,7 @@ function resolveWarpingConstant(section) {
   if (Number.isFinite(rawValue) && ((_c = section == null ? void 0 : section.metadata) == null ? void 0 : _c.catalogUnitSystem)) {
     return createUnitResolver(
       section.metadata.catalogUnitSystem,
-      INTERNAL_UNITS30
+      INTERNAL_UNITS34
     ).convert(rawValue, { lengthExponent: 6 });
   }
   return null;
@@ -61866,7 +66682,7 @@ function verifySteelLateralTorsionalBuckling({
 }
 
 // src/applications/steel-frames/checks/SteelSectionClassification.js
-var INTERNAL_UNITS31 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS35 = Object.freeze({ force: "N", length: "mm" });
 var I_H_FAMILIES4 = /* @__PURE__ */ new Set(["IPE", "HEA", "HEB", "HEM"]);
 var RECTANGULAR_HOLLOW_FAMILIES = /* @__PURE__ */ new Set(["SHS", "RHS"]);
 var CIRCULAR_HOLLOW_FAMILIES = /* @__PURE__ */ new Set(["CHS"]);
@@ -61902,8 +66718,8 @@ function normalizedFamily4(section) {
 function sectionResolver3(section) {
   var _a, _b;
   return createUnitResolver(
-    (_b = (_a = section == null ? void 0 : section.metadata) == null ? void 0 : _a.unitSystem) != null ? _b : INTERNAL_UNITS31,
-    INTERNAL_UNITS31
+    (_b = (_a = section == null ? void 0 : section.metadata) == null ? void 0 : _a.unitSystem) != null ? _b : INTERNAL_UNITS35,
+    INTERNAL_UNITS35
   );
 }
 function resolveProfileDimensions(section) {
@@ -71156,7 +75972,7 @@ function resolveConcreteStrainExtremes({ section, strainField }) {
     ...point4,
     strain: strainAtPoint(strainField, point4)
   }));
-  const minimum = strainedPoints.reduce(
+  const minimum2 = strainedPoints.reduce(
     (current, point4) => current == null || point4.strain < current.strain ? point4 : current,
     null
   );
@@ -71165,11 +75981,11 @@ function resolveConcreteStrainExtremes({ section, strainField }) {
     null
   );
   return {
-    minimum,
+    minimum: minimum2,
     maximum,
     compression: {
-      ...minimum,
-      demand: Math.max(0, -((_a = minimum == null ? void 0 : minimum.strain) != null ? _a : 0))
+      ...minimum2,
+      demand: Math.max(0, -((_a = minimum2 == null ? void 0 : minimum2.strain) != null ? _a : 0))
     },
     tension: {
       ...maximum,
@@ -74979,7 +79795,7 @@ var createScaServiceDeflectionAnalysisResult = createServiceDeflectionAnalysisRe
 var runScaRcDeflectionAnalysis = runRcServiceDeflectionAnalysis;
 
 // src/applications/reinforced-concrete-plates/ReinforcedConcretePlateModel.js
-var INTERNAL_UNITS32 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS36 = Object.freeze({ force: "N", length: "mm" });
 var UNIT_WIDTH = 1e3;
 var DIRECTIONS2 = Object.freeze(["x", "y"]);
 var FACES = Object.freeze(["top", "bottom"]);
@@ -75142,7 +79958,7 @@ var ReinforcedConcretePlateModel = class {
       throw new Error("A reinforced concrete plate model id is required.");
     }
     assertExplicitUnitSystem(units, "ReinforcedConcretePlateModel");
-    const resolver = createUnitResolver(units, INTERNAL_UNITS32);
+    const resolver = createUnitResolver(units, INTERNAL_UNITS36);
     const thickness = positive27(
       resolver.length(Number(geometry.thickness)),
       "geometry.thickness"
@@ -75210,7 +80026,7 @@ var ReinforcedConcretePlateModel = class {
       positive27(deflection.spanY, "analysis.deflection.spanY");
     }
     this.id = id;
-    this.units = INTERNAL_UNITS32;
+    this.units = INTERNAL_UNITS36;
     this.materials = { ...materials };
     this.geometry = { thickness, unitWidth };
     this.reinforcement = normalizedReinforcement;
@@ -75227,7 +80043,7 @@ var ReinforcedConcretePlateModel = class {
     };
     this.metadata = {
       ...metadata,
-      unitSystem: INTERNAL_UNITS32,
+      unitSystem: INTERNAL_UNITS36,
       sourceUnitSystem: resolver.sourceUnitSystem
     };
   }
@@ -75472,15 +80288,15 @@ function resolvePostUltimateOptions({
 
 // src/applications/reinforced-concrete-sections/analysis/moment-curvature/MomentCurvatureSampling.js
 var EVENT_CURVATURE_TOLERANCE = 1e-13;
-function createLinearSamples({ minimum, maximum, count }) {
-  if (!Number.isFinite(minimum) || !Number.isFinite(maximum) || minimum > maximum) {
+function createLinearSamples({ minimum: minimum2, maximum, count }) {
+  if (!Number.isFinite(minimum2) || !Number.isFinite(maximum) || minimum2 > maximum) {
     throw new Error("RCMomentCurvatureAnalyzer requires a valid sample interval.");
   }
   if (!Number.isInteger(count) || count < 2) {
     throw new Error("RCMomentCurvatureAnalyzer requires at least two samples.");
   }
-  const step = (maximum - minimum) / (count - 1);
-  return Array.from({ length: count }, (_, index) => minimum + step * index);
+  const step = (maximum - minimum2) / (count - 1);
+  return Array.from({ length: count }, (_, index) => minimum2 + step * index);
 }
 function createCurvatureValues({ curvatureMax, pointCount }) {
   if (!Number.isFinite(curvatureMax) || curvatureMax <= 0) {
@@ -77506,13 +82322,13 @@ function createDepthSamples(height, { minDepthFactor = 1e-4, maxDepthFactor = 5,
   }
   return samples;
 }
-function createDepthSamplesInRange({ minimum, maximum, steps = 80 }) {
-  if (!Number.isFinite(minimum) || !Number.isFinite(maximum) || minimum >= maximum) {
+function createDepthSamplesInRange({ minimum: minimum2, maximum, steps = 80 }) {
+  if (!Number.isFinite(minimum2) || !Number.isFinite(maximum) || minimum2 >= maximum) {
     throw new Error("A valid neutral-axis depth range is required.");
   }
-  const ratio2 = (maximum / minimum) ** (1 / (steps - 1));
+  const ratio2 = (maximum / minimum2) ** (1 / (steps - 1));
   const samples = [];
-  let current = minimum;
+  let current = minimum2;
   for (let index = 0; index < steps; index += 1) {
     samples.push(index === steps - 1 ? maximum : current);
     current *= ratio2;
@@ -78443,15 +83259,15 @@ function estimateAxialCapacity({ section, concreteLaw, steelLaw } = {}) {
     maximumCompression: -compressionCapacity
   };
 }
-function createAxialForceValues({ minimum, maximum, pointCount }) {
-  if (!Number.isFinite(minimum) || !Number.isFinite(maximum) || minimum >= maximum) {
+function createAxialForceValues({ minimum: minimum2, maximum, pointCount }) {
+  if (!Number.isFinite(minimum2) || !Number.isFinite(maximum) || minimum2 >= maximum) {
     throw new Error("RCUniaxialDomainBuilder requires a valid axial-force interval.");
   }
   if (!Number.isInteger(pointCount) || pointCount < 2) {
     throw new Error("RCUniaxialDomainBuilder requires at least two axial-force points.");
   }
-  const step = (maximum - minimum) / (pointCount - 1);
-  return Array.from({ length: pointCount }, (_, index) => minimum + step * index);
+  const step = (maximum - minimum2) / (pointCount - 1);
+  return Array.from({ length: pointCount }, (_, index) => minimum2 + step * index);
 }
 function uniqueSorted4(values) {
   return [...new Set(values)].filter((value) => Number.isFinite(value)).sort((first, second) => first - second);
@@ -78790,7 +83606,7 @@ var ReinforcedConcreteSectionVerification = class {
 };
 
 // src/applications/reinforced-concrete-plates/sections/createPlateStripSection.js
-var INTERNAL_UNITS33 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS37 = Object.freeze({ force: "N", length: "mm" });
 function equivalentBarForLayer({ layer: layer2, width, material, idPrefix }) {
   const grade = ["B450A", "B450C"].includes(material == null ? void 0 : material.grade) ? material.grade : "B450C";
   return new ReinforcementBar({
@@ -78802,7 +83618,7 @@ function equivalentBarForLayer({ layer: layer2, width, material, idPrefix }) {
     material,
     y: layer2.axis,
     z: width / 2,
-    units: INTERNAL_UNITS33,
+    units: INTERNAL_UNITS37,
     metadata: {
       face: layer2.face,
       direction: layer2.direction,
@@ -78824,7 +83640,7 @@ function createPlateStripSection({ model, direction } = {}) {
     name: `${direction.toUpperCase()} plate strip concrete`,
     width,
     height: model.geometry.thickness,
-    units: INTERNAL_UNITS33
+    units: INTERNAL_UNITS37
   });
   const groups = [];
   const reinforcementBars2 = [];
@@ -78861,7 +83677,7 @@ function createPlateStripSection({ model, direction } = {}) {
     concreteMaterial: model.materials.concreteMaterial,
     reinforcementMaterial: model.materials.reinforcementMaterial,
     referenceModularRatio: (_b = (_a = model.analysis.serviceability) == null ? void 0 : _a.modularRatio) != null ? _b : 15,
-    units: INTERNAL_UNITS33,
+    units: INTERNAL_UNITS37,
     metadata: {
       direction,
       plateModelId: model.id,
@@ -78914,7 +83730,7 @@ function uniqueStrings2(values) {
 }
 
 // src/applications/reinforced-concrete-plates/checks/verifyPlateBending.js
-var INTERNAL_UNITS34 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS38 = Object.freeze({ force: "N", length: "mm" });
 var METHOD = "wood-armer-equivalent-strip-rc-uls-uniaxial-fiber-solver";
 function plateStripMesh(model) {
   var _a, _b;
@@ -78942,7 +83758,7 @@ function verifyPlateBending({ model, transformedState } = {}) {
       mesh: plateStripMesh(model),
       solver: model.analysis.solver,
       actions: { nEd: 0, mEd },
-      units: INTERNAL_UNITS34
+      units: INTERNAL_UNITS38
     });
     const sectionResult = new ReinforcedConcreteSectionVerification().verify(sectionModel);
     const baseCheck = (_a = sectionResult.checks[0]) != null ? _a : {
@@ -80168,7 +84984,7 @@ var ReinforcedConcreteShearVerification = class {
 };
 
 // src/applications/reinforced-concrete-plates/checks/verifyPlateShear.js
-var INTERNAL_UNITS35 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS39 = Object.freeze({ force: "N", length: "mm" });
 var METHOD_WITHOUT = "ntc2018-4.1.2.3.5.1-wood-armer-strip";
 var METHOD_WITH = "ntc2018-4.1.2.3.5.2-wood-armer-strip-s-links";
 var MOMENT_TOLERANCE2 = 1e-9;
@@ -80224,7 +85040,7 @@ function verifyFace({ model, transformedState, direction, face, section }) {
       tensionFace: face,
       transverseReinforcement
     },
-    units: INTERNAL_UNITS35
+    units: INTERNAL_UNITS39
   });
 }
 function verifyPlateShear({ model, transformedState } = {}) {
@@ -82022,7 +86838,7 @@ function calculateEn1992PunchingBetaE2023({
 }
 
 // src/norms/en1992/punching/geometry/generateEn1992PunchingPerimeters.js
-var INTERNAL_UNITS36 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS40 = Object.freeze({ force: "N", length: "mm" });
 var GEOMETRY_TOLERANCE = 1e-6;
 function line(start, end) {
   return { type: "line", start, end };
@@ -82086,9 +86902,9 @@ function conservativeBoundaryClearance(connection) {
   if (!pointInRing(center, boundary)) {
     return -Infinity;
   }
-  const centerDistance = boundary.reduce((minimum, point4, index) => {
+  const centerDistance = boundary.reduce((minimum2, point4, index) => {
     const next = boundary[(index + 1) % boundary.length];
-    return Math.min(minimum, pointSegmentDistance(center, point4, next));
+    return Math.min(minimum2, pointSegmentDistance(center, point4, next));
   }, Infinity);
   const boundingRadius = footprint.shape === "circle" ? footprint.diameter / 2 : Math.hypot(footprint.sizeX / 2, footprint.sizeY / 2);
   return centerDistance - boundingRadius;
@@ -82113,7 +86929,7 @@ function createPerimeter({
     role,
     position,
     offset,
-    units: INTERNAL_UNITS36,
+    units: INTERNAL_UNITS40,
     components: [{ closed, segments }],
     source: {
       method: "generated",
@@ -82915,16 +87731,16 @@ function createLimitCheck({ id, stateId, location, value, limit, units, referenc
     reference
   };
 }
-function createMinimumCheck({ id, stateId, location, value, minimum, units, reference }) {
+function createMinimumCheck({ id, stateId, location, value, minimum: minimum2, units, reference }) {
   return {
     id,
     stateId,
     type: "punching-reinforcement-detailing",
     location,
-    demand: minimum,
+    demand: minimum2,
     capacity: value,
-    utilizationRatio: minimum / value,
-    ok: value >= minimum,
+    utilizationRatio: minimum2 / value,
+    ok: value >= minimum2,
     units,
     reference
   };
@@ -83379,7 +88195,7 @@ var ReinforcedConcretePunchingApplication = class extends StructuralApplication 
 };
 
 // src/applications/reinforced-concrete-columns/ReinforcedConcreteColumnModel.js
-var INTERNAL_UNITS37 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS41 = Object.freeze({ force: "N", length: "mm" });
 function positiveLength(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be a positive length.`);
@@ -83466,7 +88282,7 @@ var ReinforcedConcreteColumnModel = class {
       throw new Error("ReinforcedConcreteColumnModel requires a section.");
     }
     assertExplicitUnitSystem(units, "ReinforcedConcreteColumnModel");
-    const resolver = createUnitResolver(units, INTERNAL_UNITS37);
+    const resolver = createUnitResolver(units, INTERNAL_UNITS41);
     const resolvedLength = positiveLength(
       resolver.length(length),
       "ReinforcedConcreteColumnModel length"
@@ -83522,10 +88338,10 @@ var ReinforcedConcreteColumnModel = class {
     this.detailing = convertDetailing(detailing, resolver);
     this.mesh = { ...mesh };
     this.solver = { ...solver };
-    this.units = INTERNAL_UNITS37;
+    this.units = INTERNAL_UNITS41;
     this.metadata = {
       ...metadata,
-      unitSystem: INTERNAL_UNITS37,
+      unitSystem: INTERNAL_UNITS41,
       sourceUnitSystem: resolver.sourceUnitSystem
     };
   }
@@ -83736,7 +88552,7 @@ var ReinforcedConcreteColumnDetailingVerification = class {
 };
 
 // src/applications/reinforced-concrete-columns/ReinforcedConcreteColumnVerification.js
-var INTERNAL_UNITS38 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS42 = Object.freeze({ force: "N", length: "mm" });
 var EPS14 = 1e-9;
 function concreteSectionFrom2(section) {
   var _a;
@@ -83975,7 +88791,7 @@ var ReinforcedConcreteColumnVerification = class {
         mxEd: axisMx.designMoment,
         myEd: axisMy.designMoment
       },
-      units: INTERNAL_UNITS38,
+      units: INTERNAL_UNITS42,
       metadata: {
         sourceColumnId: model.id
       }
@@ -84033,7 +88849,7 @@ var ReinforcedConcreteColumnVerification = class {
           concreteMaterial: model.concreteMaterial,
           reinforcementMaterial: model.reinforcementMaterial,
           shear,
-          units: INTERNAL_UNITS38
+          units: INTERNAL_UNITS42
         });
         result9.checks = result9.checks.map((check2) => {
           var _a3, _b3, _c3;
@@ -84155,7 +88971,7 @@ var ReinforcedConcreteColumnApplication = class extends StructuralApplication {
 };
 
 // src/applications/reinforced-concrete-isolated-footings/ReinforcedConcreteIsolatedFootingModel.js
-var INTERNAL_UNITS39 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS43 = Object.freeze({ force: "N", length: "mm" });
 function positive32(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be positive.`);
@@ -84222,7 +89038,7 @@ var ReinforcedConcreteIsolatedFootingModel = class {
       throw new Error("A reinforced-concrete isolated footing id is required.");
     }
     assertExplicitUnitSystem(units, "ReinforcedConcreteIsolatedFootingModel");
-    const resolver = createUnitResolver(units, INTERNAL_UNITS39);
+    const resolver = createUnitResolver(units, INTERNAL_UNITS43);
     const widthX = positive32(
       resolver.length(Number(geometry.widthX)),
       "geometry.widthX"
@@ -84352,10 +89168,10 @@ var ReinforcedConcreteIsolatedFootingModel = class {
     };
     this.mesh = { targetFiberCount: 50, ...mesh };
     this.solver = { tolerance: 1e-6, maxIterations: 100, ...solver };
-    this.units = INTERNAL_UNITS39;
+    this.units = INTERNAL_UNITS43;
     this.metadata = {
       ...metadata,
-      unitSystem: INTERNAL_UNITS39,
+      unitSystem: INTERNAL_UNITS43,
       sourceUnitSystem: resolver.sourceUnitSystem
     };
   }
@@ -84384,7 +89200,7 @@ var ReinforcedConcreteIsolatedFootingModel = class {
 };
 
 // src/applications/reinforced-concrete-isolated-footings/ReinforcedConcreteIsolatedFootingVerification.js
-var INTERNAL_UNITS40 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS44 = Object.freeze({ force: "N", length: "mm" });
 var UNIT_WIDTH2 = 1e3;
 var PUNCHING_2004 = "EN1992_1_1_2004_A1_2014";
 function totalVerticalForce(model) {
@@ -84402,7 +89218,7 @@ function createFootingStrip({ model, direction }) {
     id: `${model.id}-${direction}-footing-strip-concrete`,
     width: UNIT_WIDTH2,
     height: model.geometry.thickness,
-    units: INTERNAL_UNITS40
+    units: INTERNAL_UNITS44
   });
   const reinforcementBar = new ReinforcementBar({
     id: `bottom-${direction}-equivalent-layer`,
@@ -84411,7 +89227,7 @@ function createFootingStrip({ model, direction }) {
     material: model.materials.reinforcementMaterial,
     y: layer2.axisFromBottom,
     z: UNIT_WIDTH2 / 2,
-    units: INTERNAL_UNITS40,
+    units: INTERNAL_UNITS44,
     metadata: {
       equivalentDistributedArea: true,
       direction,
@@ -84425,7 +89241,7 @@ function createFootingStrip({ model, direction }) {
     reinforcementBars: [reinforcementBar],
     concreteMaterial: model.materials.concreteMaterial,
     reinforcementMaterial: model.materials.reinforcementMaterial,
-    units: INTERNAL_UNITS40,
+    units: INTERNAL_UNITS44,
     metadata: {
       direction,
       unitWidth: UNIT_WIDTH2,
@@ -84508,7 +89324,7 @@ function verifyDirection({ model, contact, direction }) {
     mesh: model.mesh,
     solver: model.solver,
     actions: { nEd: 0, mEd },
-    units: INTERNAL_UNITS40
+    units: INTERNAL_UNITS44
   });
   const bendingResult = new ReinforcedConcreteSectionVerification().verify(
     sectionModel
@@ -84540,7 +89356,7 @@ function verifyDirection({ model, contact, direction }) {
       longitudinalReinforcementArea: strip.layer.areaPerMeter,
       tensionFace: "bottom"
     },
-    units: INTERNAL_UNITS40
+    units: INTERNAL_UNITS44
   });
   const sourceShearCheck = (_b = shearResult.checks[0]) != null ? _b : {};
   const shearCheck = {
@@ -84674,7 +89490,7 @@ function verifyPunchingForFooting({ model, contact, directions }) {
   );
   const connection = new PunchingConnectionModel({
     id: `${model.id}-footing-punching`,
-    units: INTERNAL_UNITS40,
+    units: INTERNAL_UNITS44,
     slab: {
       thickness: model.geometry.thickness,
       boundary: [
@@ -84722,7 +89538,7 @@ function verifyPunchingForFooting({ model, contact, directions }) {
     connectionId: connection.id,
     localFrameId: connection.localFrame.id,
     combinationType: "ULS",
-    units: INTERNAL_UNITS40,
+    units: INTERNAL_UNITS44,
     components: {
       fz: model.actions.columnVerticalForce,
       mx: model.actions.momentX,
@@ -85114,7 +89930,7 @@ var ReinforcedConcreteIsolatedFootingApplication = class extends StructuralAppli
 };
 
 // src/applications/reinforced-concrete-sections/checks/ReinforcedConcreteTorsionVerification.js
-var INTERNAL_UNITS41 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS45 = Object.freeze({ force: "N", length: "mm" });
 var COT_THETA_MIN = 1;
 var COT_THETA_MAX = 2.5;
 function concreteSectionFrom3(section) {
@@ -85295,7 +90111,7 @@ function verifyTorsionActions({
   units
 }) {
   var _a, _b, _c, _d, _e, _f, _g;
-  const resolver = createUnitResolver(units, INTERNAL_UNITS41);
+  const resolver = createUnitResolver(units, INTERNAL_UNITS45);
   const convertedTEd = Math.abs(resolver.moment(tEd != null ? tEd : 0));
   const convertedVEd = Math.abs(resolver.force(vEd != null ? vEd : 0));
   const convertedNEd = resolver.force(nEd != null ? nEd : 0);
@@ -85420,12 +90236,12 @@ function verifyTorsionActions({
         shear: shearInput,
         nEd: convertedNEd,
         mEd: convertedMEd,
-        units: INTERNAL_UNITS41
+        units: INTERNAL_UNITS45
       });
       shearAtCotTheta = computeWithTransverseResistanceAtCotTheta({
         params: shearParams,
         shear: shearInput,
-        units: INTERNAL_UNITS41,
+        units: INTERNAL_UNITS45,
         cotTheta: cot
       });
       warnings.push(...(_c = shearAtCotTheta.warnings) != null ? _c : []);
@@ -85536,7 +90352,7 @@ var ReinforcedConcreteTorsionVerification = class {
     reinforcementMaterial = ((_b) => (_b = context.reinforcementMaterial) != null ? _b : section == null ? void 0 : section.reinforcementMaterial)(),
     torsion = ((_c) => (_c = context.torsion) != null ? _c : this.torsion)(),
     shear = ((_d) => (_d = context.shear) != null ? _d : this.shear)(),
-    units = ((_h) => (_h = ((_g) => (_g = ((_e) => (_e = context.units) != null ? _e : torsion == null ? void 0 : torsion.units)()) != null ? _g : ((_f) => (_f = section == null ? void 0 : section.metadata) == null ? void 0 : _f.unitSystem)())()) != null ? _h : INTERNAL_UNITS41)()
+    units = ((_h) => (_h = ((_g) => (_g = ((_e) => (_e = context.units) != null ? _e : torsion == null ? void 0 : torsion.units)()) != null ? _g : ((_f) => (_f = section == null ? void 0 : section.metadata) == null ? void 0 : _f.unitSystem)())()) != null ? _h : INTERNAL_UNITS45)()
   } = {}) {
     if (!section || !concreteMaterial) {
       return {
@@ -86656,7 +91472,7 @@ var ReinforcedConcreteFoundationBeamApplication = class extends StructuralApplic
 };
 
 // src/applications/reinforced-concrete-beam-column-joints/ReinforcedConcreteBeamColumnJointModel.js
-var INTERNAL_UNITS42 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS46 = Object.freeze({ force: "N", length: "mm" });
 function positive34(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be positive.`);
@@ -86726,7 +91542,7 @@ var ReinforcedConcreteBeamColumnJointModel = class {
       throw new Error("A reinforced-concrete beam-column joint id is required.");
     }
     assertExplicitUnitSystem(units, "ReinforcedConcreteBeamColumnJointModel");
-    const resolver = createUnitResolver(units, INTERNAL_UNITS42);
+    const resolver = createUnitResolver(units, INTERNAL_UNITS46);
     const concreteMaterial = materials.concreteMaterial;
     const reinforcementMaterial = materials.reinforcementMaterial;
     const transverseReinforcementMaterial = (_a = materials.transverseReinforcementMaterial) != null ? _a : reinforcementMaterial;
@@ -86894,10 +91710,10 @@ var ReinforcedConcreteBeamColumnJointModel = class {
         "eccentricity.reinforcementArea"
       )
     };
-    this.units = INTERNAL_UNITS42;
+    this.units = INTERNAL_UNITS46;
     this.metadata = {
       ...metadata,
-      unitSystem: INTERNAL_UNITS42,
+      unitSystem: INTERNAL_UNITS46,
       sourceUnitSystem: resolver.sourceUnitSystem
     };
   }
@@ -87404,7 +92220,7 @@ var ReinforcedConcreteBeamColumnJointApplication = class extends StructuralAppli
 };
 
 // src/applications/reinforced-concrete-strut-and-tie/ReinforcedConcreteStrutAndTieModel.js
-var INTERNAL_UNITS43 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS47 = Object.freeze({ force: "N", length: "mm" });
 var STRENGTH_MODELS = /* @__PURE__ */ new Set([
   "uncracked-uniaxial",
   "transverse-tension"
@@ -87455,7 +92271,7 @@ var ReinforcedConcreteStrutAndTieModel = class {
       throw new Error("A reinforced-concrete strut-and-tie model id is required.");
     }
     assertExplicitUnitSystem(units, "ReinforcedConcreteStrutAndTieModel");
-    const resolver = createUnitResolver(units, INTERNAL_UNITS43);
+    const resolver = createUnitResolver(units, INTERNAL_UNITS47);
     const concreteMaterial = materials.concreteMaterial;
     const reinforcementMaterial = materials.reinforcementMaterial;
     if (!concreteMaterial || !reinforcementMaterial) {
@@ -87518,7 +92334,7 @@ var ReinforcedConcreteStrutAndTieModel = class {
       members: normalizedMembers,
       loads: normalizedLoads,
       supports: normalizedSupports,
-      units: INTERNAL_UNITS43,
+      units: INTERNAL_UNITS47,
       metadata
     });
     const nodeIds = new Set(this.domainModel.nodes.map((node) => node.id));
@@ -87604,10 +92420,10 @@ var ReinforcedConcreteStrutAndTieModel = class {
     this.id = id;
     this.members = normalizedMembers.map((member) => ({ ...member }));
     this.materials = { concreteMaterial, reinforcementMaterial };
-    this.units = INTERNAL_UNITS43;
+    this.units = INTERNAL_UNITS47;
     this.metadata = {
       ...metadata,
-      unitSystem: INTERNAL_UNITS43,
+      unitSystem: INTERNAL_UNITS47,
       sourceUnitSystem: resolver.sourceUnitSystem
     };
   }
@@ -90245,7 +95061,7 @@ function createTimberConcreteCompositeBeamSectionProvider(options = {}) {
 }
 
 // src/applications/timber-concrete-composite-beams/models/TimberConcreteCompositeBeamModel.js
-var INTERNAL_UNITS44 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS48 = Object.freeze({ force: "N", length: "mm" });
 var TimberConcreteCompositeBeamModel = class {
   constructor({
     id,
@@ -90333,7 +95149,7 @@ var TimberConcreteCompositeBeamModel = class {
           centroidY: this.timberCentroidY(),
           modularRatio: 1,
           role: "timber",
-          units: INTERNAL_UNITS44
+          units: INTERNAL_UNITS48
         }),
         new CompositeSectionComponent({
           name: "Concrete slab",
@@ -90342,10 +95158,10 @@ var TimberConcreteCompositeBeamModel = class {
           centroidY: this.slabCentroidY(),
           modularRatio,
           role: "slab",
-          units: INTERNAL_UNITS44
+          units: INTERNAL_UNITS48
         })
       ],
-      units: INTERNAL_UNITS44,
+      units: INTERNAL_UNITS48,
       metadata: {
         ...this.metadata,
         modularRatio
@@ -92766,7 +97582,7 @@ function listItalianHistoricalReinforcementSteelGrades() {
 }
 
 // src/norms/italian-historical/materials/createItalianHistoricalMaterial.js
-var INTERNAL_UNITS45 = Object.freeze({ force: "N", length: "mm" });
+var INTERNAL_UNITS49 = Object.freeze({ force: "N", length: "mm" });
 var HISTORICAL_REINFORCEMENT_ELONGATION_CHARACTERISTIC = 0.075;
 var round11 = (value, decimals = 2) => Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
 function assertCatalogEntry2(catalog, key, message) {
@@ -92793,7 +97609,7 @@ function createItalianHistoricalReinforcementSteelMaterial({
 }) {
   var _a, _b;
   assertExplicitUnitSystem(units, "createItalianHistoricalReinforcementSteelMaterial");
-  const unitResolver = createUnitResolver(units, INTERNAL_UNITS45);
+  const unitResolver = createUnitResolver(units, INTERNAL_UNITS49);
   const preset = assertCatalogEntry2(
     ITALIAN_HISTORICAL_REINFORCEMENT_STEEL_GRADES,
     grade,
@@ -92824,7 +97640,7 @@ function createItalianHistoricalReinforcementSteelMaterial({
     existing: existingState.existing,
     knowledgeLevel: (_a = existingState.knowledgeLevel) != null ? _a : knowledgeLevel,
     confidenceFactor: existingState.confidenceFactor,
-    units: INTERNAL_UNITS45,
+    units: INTERNAL_UNITS49,
     metadata: {
       ...metadata,
       normativePreset: "ITALIAN_HISTORICAL_REINFORCEMENT",
@@ -93064,6 +97880,7 @@ export {
   NTC2018_ACTION_PARTIAL_FACTORS,
   NTC2018_BEAM_COLUMN_JOINT_TENSION_METHODS,
   NTC2018_BEAM_COLUMN_JOINT_TYPES,
+  NTC2018_CASE_BY_CASE_COMBINATION_CATEGORIES,
   NTC2018_CONCRETE_CLASSES,
   NTC2018_DEFAULT_DURATION_CLASS_BY_ACTION,
   NTC2018_EXISTING_MASONRY_KNOWLEDGE_LEVELS,
@@ -93071,21 +97888,43 @@ export {
   NTC2018_EXISTING_MASONRY_PARAMETER_LEVELS,
   NTC2018_EXISTING_MASONRY_TYPOLOGIES,
   NTC2018_EXISTING_MATERIAL_KNOWLEDGE_LEVELS,
+  NTC2018_EXTERNAL_AIR_TEMPERATURE_ZONES,
   NTC2018_GLULAM_TIMBER_STRENGTH_CLASSES,
+  NTC2018_IMPOSED_LOAD_CATALOG,
+  NTC2018_IMPOSED_LOAD_REFERENCES,
   NTC2018_LOAD_DURATION_CLASSES,
   NTC2018_MASONRY_PIER_CAPACITY_REFERENCES,
   NTC2018_MASONRY_PIER_DEFORMATION_REFERENCES,
   NTC2018_MASONRY_PIER_STIFFNESS_REFERENCE,
+  NTC2018_PERMANENT_LOAD_REFERENCES,
   NTC2018_REINFORCEMENT_STEEL_GRADES,
   NTC2018_RETAINING_WALL_SEISMIC_REFERENCE,
+  NTC2018_SEISMIC_LIMIT_STATES,
+  NTC2018_SEISMIC_REFERENCES,
+  NTC2018_SIMPLIFIED_BUILDING_TEMPERATURE_CHANGES,
+  NTC2018_SITE_HAZARD_SOURCE_KINDS,
   NTC2018_SLAB_MATERIAL_WEIGHT_DATABASE,
   NTC2018_SLAB_VARIABLE_ACTIONS_DATABASE,
+  NTC2018_SNOW_EXPOSURE_CLASSES,
+  NTC2018_SNOW_GROUND_ZONES,
+  NTC2018_SNOW_REFERENCES,
   NTC2018_SOLID_TIMBER_STRENGTH_CLASSES,
   NTC2018_STRUCTURAL_STEEL_GRADES,
+  NTC2018_SUBSOIL_SPECTRUM_COEFFICIENTS,
+  NTC2018_SUMMER_SOLAR_TEMPERATURE_INCREMENTS,
+  NTC2018_THERMAL_EXPANSION_COEFFICIENTS,
+  NTC2018_THERMAL_REFERENCES,
   NTC2018_TIMBER_KMOD,
   NTC2018_TIMBER_STRENGTH_CLASSES,
+  NTC2018_TOPOGRAPHIC_AMPLIFICATION_MAXIMA,
+  NTC2018_TOPOGRAPHIC_CLASSIFICATION_METHOD,
+  NTC2018_TOPOGRAPHIC_CLASSIFICATION_REFERENCES,
   NTC2018_ULS_PARTIAL_FACTORS,
+  NTC2018_UNIT_WEIGHT_CATALOG,
   NTC2018_VARIABLE_ACTION_CATEGORIES,
+  NTC2018_WIND_EXPOSURE_CATEGORIES,
+  NTC2018_WIND_REFERENCES,
+  NTC2018_WIND_ZONES,
   NodalLoad,
   Node,
   PILE_TRANSFER_CURVE_MODELS,
@@ -93184,6 +98023,8 @@ export {
   SHALLOW_FOUNDATION_SHAPES,
   SHALLOW_FOUNDATION_SLS_RESULT_SCHEMA_VERSION,
   SHALLOW_FOUNDATION_ULS_RESULT_SCHEMA_VERSION,
+  SLAB_MATERIAL_WEIGHT_PRESET_DATABASE,
+  SLAB_MATERIAL_WEIGHT_PRESET_METADATA,
   SLOPE_MOVEMENT_DIRECTIONS,
   SLOPE_SLICE_DISCRETIZATION_2D_SCHEMA_VERSION,
   SLOPE_STABILITY_ANALYSIS_MODES,
@@ -93251,6 +98092,7 @@ export {
   SurfaceLoad,
   TECNARIA_CONNECTOR_CATALOG,
   TECNARIA_CONNECTOR_TYPES,
+  TERRAIN_ELEVATION_GRID_SCHEMA_VERSION,
   TSection,
   TecnariaConnector,
   ThermalAction,
@@ -93302,17 +98144,43 @@ export {
   calculateEn1992StrutAndTieNuPrime,
   calculateEn1992StrutDesignStrength,
   calculateEn1992TieResistance,
+  calculateNTC2018AreaSelfWeight,
+  calculateNTC2018BaseWindSpeed,
+  calculateNTC2018BuildingThermalActions,
   calculateNTC2018EffectiveJointWidth,
+  calculateNTC2018EquivalentPartitionAreaLoad,
+  calculateNTC2018ExternalAirTemperatures,
+  calculateNTC2018FreeThermalStrain,
+  calculateNTC2018GroundSnowLoad,
+  calculateNTC2018HorizontalElasticSpectrum,
+  calculateNTC2018HorizontalSpectrumParameters,
+  calculateNTC2018ImposedLoadAreaReduction,
+  calculateNTC2018ImposedLoadMultiStoreyReduction,
   calculateNTC2018JointCompressionCapacity,
   calculateNTC2018JointShearDemand,
   calculateNTC2018JointTensionReinforcement,
+  calculateNTC2018LineSelfWeight,
   calculateNTC2018MasonryPierElasticStiffness,
   calculateNTC2018MasonryPierFlexuralCapacity,
   calculateNTC2018MasonryPierIrregularDiagonalCapacity,
   calculateNTC2018MasonryPierRegularDiagonalCapacity,
   calculateNTC2018MasonryPierSlidingCapacity,
   calculateNTC2018MasonryPierUltimateDisplacement,
+  calculateNTC2018MeanElementTemperature,
+  calculateNTC2018PermanentAreaLoads,
+  calculateNTC2018PitchedRoofShapeCoefficient,
+  calculateNTC2018ReferenceWindPressure,
+  calculateNTC2018ReferenceWindSpeed,
   calculateNTC2018RetainingWallSeismicCoefficients,
+  calculateNTC2018RoofSnowLoad,
+  calculateNTC2018SelfWeight,
+  calculateNTC2018SnowAreaLoad,
+  calculateNTC2018StratigraphicSpectrumCoefficients,
+  calculateNTC2018UniformTemperatureChange,
+  calculateNTC2018WindAreaLoad,
+  calculateNTC2018WindExposureCoefficient,
+  calculateNTC2018WindPressure,
+  calculateNTC2018WindReturnCoefficient,
   calculateRetainingWallPolygonProperties,
   calculateRigidFoundationElasticStiffness,
   calculateSchmertmannStrainInfluence,
@@ -93330,6 +98198,7 @@ export {
   calculateTimberRectangularCriticalBendingStress,
   characteristicValueFromExistingMean,
   classifyNTC2018JointConfinement,
+  classifyNTC2018Topography,
   classifySteelSection,
   convertUnitProperties,
   coulombActiveEarthPressureCoefficient,
@@ -93388,13 +98257,27 @@ export {
   getNTC2018ActionCombinationFactors,
   getNTC2018ActionPartialFactors,
   getNTC2018ExistingMasonryModifierDefinition,
+  getNTC2018ExternalAirTemperatureZoneDefinition,
+  getNTC2018ImposedLoadDefinition,
   getNTC2018LoadDurationClass,
   getNTC2018LoadDurationDefinition,
+  getNTC2018SeismicLimitStateDefinition,
+  getNTC2018SimplifiedBuildingTemperatureChange,
   getNTC2018SlabVariableAction,
   getNTC2018SlabWeightValue,
+  getNTC2018SnowExposureClassDefinition,
+  getNTC2018SnowGroundZoneDefinition,
+  getNTC2018SolarTemperatureIncrement,
+  getNTC2018SubsoilSpectrumCoefficientDefinition,
   getTabulatedMechanicalProperties as getNTC2018TabulatedMasonryProperties,
+  getNTC2018ThermalExpansionCoefficientDefinition,
   getNTC2018TimberKmod,
+  getNTC2018TopographicAmplificationDefinition,
+  getNTC2018UnitWeightDefinition,
+  getNTC2018WindExposureCategoryDefinition,
+  getNTC2018WindZoneDefinition,
   getRcPunchingDesignCodeManifest,
+  getSlabMaterialWeightPresetValue,
   getSoilTypeData,
   getSteelProfileSectionData,
   getSteelVerificationCapabilities,
@@ -93410,15 +98293,21 @@ export {
   jakyAtRestCoefficient,
   listGroundAnchorBondCatalogEntries,
   listItalianHistoricalReinforcementSteelGrades,
+  listNTC2018ImposedLoadDefinitions,
   listNTC2018SlabWeightCategories,
   listNTC2018SlabWeightEntries,
+  listNTC2018UnitWeightDefinitions,
+  listSlabMaterialWeightPresetCategories,
+  listSlabMaterialWeightPresetEntries,
   listSoilTypes,
   listSteelProfileSectionsByFamily,
   listXlamPanelProducts,
   modifierSelectionsFromState,
   mononobeOkabeActiveEarthPressureCoefficient,
   normalizeExistingMaterialKnowledgeLevel,
+  normalizeNTC2018SiteHazardParameters,
   normalizeSectionRotation,
+  normalizeTerrainElevationGrid,
   normalizeUnitSystem,
   ntc2018JointOverstrengthFactor,
   ordinaryMethodOfSlices,
@@ -93430,7 +98319,13 @@ export {
   resolveExistingMaterialState,
   resolveMasonryStageMaterial,
   resolveNTC2018GoverningLoadDuration,
+  resolveNTC2018ImposedLoadDefinition,
+  resolveNTC2018InitialTemperature,
+  resolveNTC2018InternalAirTemperature,
   resolveMasonryTypology as resolveNTC2018MasonryTypology,
+  resolveNTC2018ThermalExpansionCoefficient,
+  resolveNTC2018TopographicAmplification,
+  resolveNTC2018UnitWeight,
   resolvePrincipalSectionFrame,
   resolvePunchingTransferFromJointActions,
   rotatePlateMoments,

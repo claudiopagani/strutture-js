@@ -28,6 +28,7 @@ import * as GroundAnchorApi from
   "strutture-js/applications/geotechnical-ground-anchors";
 import * as FemApi from "strutture-js/domain/fem";
 import * as MathApi from "strutture-js/domain/math";
+import * as TerrainApi from "strutture-js/domain/terrain";
 import * as GeotechnicsApi from "strutture-js/domain/geotechnics";
 import * as StrutAndTieApi from "strutture-js/domain/strut-and-tie";
 import * as SoilTypesApi from "strutture-js/catalogs/soil-types";
@@ -167,6 +168,22 @@ test("package root export exposes the main public API", () => {
   assert.equal(typeof PublicApi.NTC2018MasonryPierModel, "function");
   assert.equal(typeof PublicApi.NTC2018MasonryPierAnalysis, "function");
   assert.equal(typeof PublicApi.evaluateNTC2018MasonryPier, "function");
+  assert.equal(typeof PublicApi.calculateNTC2018PermanentAreaLoads, "function");
+  assert.equal(typeof PublicApi.resolveNTC2018ImposedLoadDefinition, "function");
+  assert.equal(typeof PublicApi.calculateNTC2018ImposedLoadAreaReduction, "function");
+  assert.equal(typeof PublicApi.calculateNTC2018HorizontalElasticSpectrum, "function");
+  assert.equal(typeof PublicApi.classifyNTC2018Topography, "function");
+  assert.equal(typeof PublicApi.normalizeTerrainElevationGrid, "function");
+  assert.equal(typeof PublicApi.calculateNTC2018SnowAreaLoad, "function");
+  assert.equal(typeof PublicApi.calculateNTC2018BuildingThermalActions, "function");
+  assert.equal(typeof PublicApi.calculateNTC2018WindAreaLoad, "function");
+  assert.equal(typeof PublicApi.NTC2018_UNIT_WEIGHT_CATALOG, "object");
+  assert.equal(typeof PublicApi.NTC2018_IMPOSED_LOAD_CATALOG, "object");
+  assert.equal(typeof PublicApi.SLAB_MATERIAL_WEIGHT_PRESET_METADATA, "object");
+  assert.equal(typeof PublicApi.NTC2018_SEISMIC_LIMIT_STATES, "object");
+  assert.equal(typeof PublicApi.NTC2018_SNOW_GROUND_ZONES, "object");
+  assert.equal(typeof PublicApi.NTC2018_THERMAL_EXPANSION_COEFFICIENTS, "object");
+  assert.equal(typeof PublicApi.NTC2018_WIND_ZONES, "object");
   assert.equal(typeof PublicApi.RESULT_STATUS, "object");
 });
 
@@ -418,6 +435,50 @@ test("ntc2018 subpath export exposes normative adapters", () => {
   assert.equal(typeof Ntc2018Api.createNTC2018BeamCombinations, "function");
   assert.equal(typeof Ntc2018Api.NTC2018_CONCRETE_CLASSES, "object");
   assert.equal(typeof Ntc2018Api.calculateNTC2018JointCompressionCapacity, "function");
+  assert.equal(
+    typeof Ntc2018Api.calculateNTC2018PermanentAreaLoads,
+    "function",
+  );
+  assert.equal(typeof Ntc2018Api.NTC2018_UNIT_WEIGHT_CATALOG, "object");
+  assert.equal(typeof Ntc2018Api.NTC2018_IMPOSED_LOAD_CATALOG, "object");
+  assert.equal(
+    typeof Ntc2018Api.resolveNTC2018ImposedLoadDefinition,
+    "function",
+  );
+  assert.equal(
+    typeof Ntc2018Api.calculateNTC2018ImposedLoadMultiStoreyReduction,
+    "function",
+  );
+  assert.equal(
+    typeof Ntc2018Api.calculateNTC2018HorizontalElasticSpectrum,
+    "function",
+  );
+  assert.equal(typeof Ntc2018Api.NTC2018_SEISMIC_LIMIT_STATES, "object");
+  assert.equal(typeof Ntc2018Api.classifyNTC2018Topography, "function");
+  assert.equal(
+    typeof Ntc2018Api.NTC2018_TOPOGRAPHIC_CLASSIFICATION_METHOD,
+    "object",
+  );
+  assert.equal(typeof Ntc2018Api.calculateNTC2018SnowAreaLoad, "function");
+  assert.equal(typeof Ntc2018Api.NTC2018_SNOW_GROUND_ZONES, "object");
+  assert.equal(
+    typeof Ntc2018Api.calculateNTC2018BuildingThermalActions,
+    "function",
+  );
+  assert.equal(
+    typeof Ntc2018Api.NTC2018_EXTERNAL_AIR_TEMPERATURE_ZONES,
+    "object",
+  );
+  assert.equal(typeof Ntc2018Api.calculateNTC2018WindAreaLoad, "function");
+  assert.equal(typeof Ntc2018Api.NTC2018_WIND_ZONES, "object");
+});
+
+test("terrain subpath export exposes the serializable elevation grid contract", () => {
+  assert.equal(typeof TerrainApi.normalizeTerrainElevationGrid, "function");
+  assert.equal(
+    TerrainApi.TERRAIN_ELEVATION_GRID_SCHEMA_VERSION,
+    "terrain-elevation-grid/v1",
+  );
 });
 
 test("en1992 subpath export exposes strut-and-tie normative helpers", () => {

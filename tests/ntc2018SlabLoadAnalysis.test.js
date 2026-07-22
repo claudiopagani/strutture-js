@@ -107,6 +107,21 @@ test("service combinations fall back to permanent loads only when variable loads
   assert.equal(result.quasiPermanent.value, 2.5);
 });
 
+test("slab ULS applies the NTC 2018 favourable G2 factor", () => {
+  const slab = new FloorSlab({ description: "Solaio con G2 favorevole" })
+    .addLoad(new SurfaceLoad({
+      description: "Permanente non strutturale favorevole",
+      loadGroup: "G2",
+      effect: "favourable",
+      surfaceWeight: 10,
+      units,
+    }));
+
+  const result = new NTC2018SlabLoadAnalysis(slab).calculateULS();
+
+  assert.equal(result.maximum.value, 8);
+});
+
 test("derived slab loads compute equivalent surface values", () => {
   const layerLoad = new LayerLoad({
     description: "Sottofondo alleggerito",

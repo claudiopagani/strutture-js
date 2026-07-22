@@ -17,6 +17,7 @@
     "./domain/fem": "./src/domain/fem/index.js",
     "./domain/geotechnics": "./src/domain/geotechnics/index.js",
     "./domain/math": "./src/domain/math/index.js",
+    "./domain/terrain": "./src/domain/terrain/index.js",
     "./domain/strut-and-tie": "./src/domain/strut-and-tie/index.js",
     "./catalogs/soil-types": "./src/catalogs/soil-types.js",
     "./catalogs/wall-interface-types": "./src/catalogs/wall-interface-types.js",

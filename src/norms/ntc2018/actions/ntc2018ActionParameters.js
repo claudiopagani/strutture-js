@@ -15,6 +15,11 @@ export const NTC2018_ACTION_COMBINATION_FACTORS = {
   SEISMIC: { psi0: 0.0, psi1: 0.0, psi2: 0.0, description: "azione sismica" },
 };
 
+export const NTC2018_CASE_BY_CASE_COMBINATION_CATEGORIES = Object.freeze({
+  I: { description: "coperture praticabili" },
+  K: { description: "coperture per usi speciali" },
+});
+
 export const NTC2018_ACTION_PARTIAL_FACTORS = {
   permanent: {
     G1: {
@@ -22,34 +27,38 @@ export const NTC2018_ACTION_PARTIAL_FACTORS = {
       A2: { favourable: 1.0, unfavourable: 1.0 },
     },
     G2: {
-      A1: { favourable: 0.0, unfavourable: 1.5 },
-      A2: { favourable: 0.0, unfavourable: 1.3 },
+      A1: { favourable: 0.8, unfavourable: 1.5 },
+      A2: { favourable: 0.8, unfavourable: 1.3 },
     },
   },
   variable: {
     imposed: {
       A1: { favourable: 0.0, unfavourable: 1.5 },
-      A2: { favourable: 0.0, unfavourable: 1.5 },
+      A2: { favourable: 0.0, unfavourable: 1.3 },
     },
     traffic: {
+      A1: { favourable: 0.0, unfavourable: 1.5 },
+      A2: { favourable: 0.0, unfavourable: 1.3 },
+    },
+    roadBridgeTraffic: {
       A1: { favourable: 0.0, unfavourable: 1.35 },
-      A2: { favourable: 0.0, unfavourable: 1.35 },
+      A2: { favourable: 0.0, unfavourable: 1.15 },
     },
     wind: {
       A1: { favourable: 0.0, unfavourable: 1.5 },
-      A2: { favourable: 0.0, unfavourable: 1.5 },
+      A2: { favourable: 0.0, unfavourable: 1.3 },
     },
     snow: {
       A1: { favourable: 0.0, unfavourable: 1.5 },
-      A2: { favourable: 0.0, unfavourable: 1.5 },
+      A2: { favourable: 0.0, unfavourable: 1.3 },
     },
     thermal: {
       A1: { favourable: 0.0, unfavourable: 1.5 },
-      A2: { favourable: 0.0, unfavourable: 1.5 },
+      A2: { favourable: 0.0, unfavourable: 1.3 },
     },
     climatic: {
       A1: { favourable: 0.0, unfavourable: 1.5 },
-      A2: { favourable: 0.0, unfavourable: 1.5 },
+      A2: { favourable: 0.0, unfavourable: 1.3 },
     },
   },
   accidental: {
