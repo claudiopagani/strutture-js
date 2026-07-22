@@ -165,6 +165,12 @@ test("package root export exposes the main public API", () => {
   assert.equal(typeof PublicApi.CyclicMasonryPier2D, "function");
   assert.equal(typeof PublicApi.CyclicMasonryPierAnalysis2D, "function");
   assert.equal(typeof PublicApi.cyclicMasonryPierHistoryToCsv, "function");
+  assert.equal(typeof PublicApi.createFemCapabilitiesContract, "function");
+  assert.equal(typeof PublicApi.createGlobalFemModelContract, "function");
+  assert.equal(typeof PublicApi.createGlobalFemAnalysisContract, "function");
+  assert.equal(typeof PublicApi.createFemEntityMappingContract, "function");
+  assert.equal(typeof PublicApi.createGlobalFemResultContract, "function");
+  assert.equal(typeof PublicApi.validateGlobalFemContractSet, "function");
   assert.equal(typeof PublicApi.NTC2018MasonryPierModel, "function");
   assert.equal(typeof PublicApi.NTC2018MasonryPierAnalysis, "function");
   assert.equal(typeof PublicApi.evaluateNTC2018MasonryPier, "function");
@@ -352,6 +358,13 @@ test("granular ESM subpaths expose applications, solvers and catalogs", () => {
   assert.equal(typeof FemApi.LinearStaticSolver2D, "function");
   assert.equal(typeof FemApi.CyclicMasonryPier2D, "function");
   assert.equal(typeof FemApi.CyclicMasonryPierAnalysis2D, "function");
+  assert.equal(typeof FemApi.createFemCapabilitiesContract, "function");
+  assert.equal(typeof FemApi.createGlobalFemModelContract, "function");
+  assert.equal(typeof FemApi.createGlobalFemAnalysisContract, "function");
+  assert.equal(typeof FemApi.createFemEntityMappingContract, "function");
+  assert.equal(typeof FemApi.createGlobalFemResultContract, "function");
+  assert.equal(typeof FemApi.validateGlobalFemContractSet, "function");
+  assert.equal(FemApi.GLOBAL_FEM_CONTRACT_VERSION, 0);
   assert.equal(typeof MathApi.BandedLinearSolver, "function");
   assert.equal(typeof MathApi.rayPolygonCapacity, "function");
   assert.equal(typeof GeotechnicsApi.SoilMaterial, "function");

@@ -92,6 +92,10 @@ Il macroelemento murario ciclico, i relativi materiali, l'interfaccia a fibre
 e il protocollo isolato sono esportati dal package root; elemento e protocollo
 sono esportati anche da `strutture-js/domain/fem`. Il metodo e i limiti sono
 descritti in [Macroelemento ciclico 2D per maschi murari](cyclic-masonry-pier.md).
+I contratti FEM globali candidati v0, i relativi factory e i validatori sono
+esportati sia dal package root sia da `strutture-js/domain/fem`; forma,
+convenzioni e strategia di evoluzione sono descritte in
+[Contratti FEM globali candidati v0](global-fem-contracts.md).
 Il distinto inviluppo bilineare NTC 2018/Circolare 2019 è esportato dagli entry
 point `strutture-js/norms/ntc2018` e
 `strutture-js/applications/masonry-piers`; campo, formule e differenze rispetto

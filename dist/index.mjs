@@ -47,13 +47,13 @@ function normalizeUnitSystem(units, defaultUnits = DEFAULT_TARGET_UNIT_SYSTEM) {
   if (units == null) {
     return null;
   }
-  const normalized = {
+  const normalized2 = {
     force: (_a = units.force) != null ? _a : defaultUnits.force,
     length: (_b = units.length) != null ? _b : defaultUnits.length
   };
-  assertSupportedUnit("force", normalized.force, FORCE_UNIT_FACTORS);
-  assertSupportedUnit("length", normalized.length, LENGTH_UNIT_FACTORS);
-  return normalized;
+  assertSupportedUnit("force", normalized2.force, FORCE_UNIT_FACTORS);
+  assertSupportedUnit("length", normalized2.length, LENGTH_UNIT_FACTORS);
+  return normalized2;
 }
 function createUnitResolver(units, targetUnits = DEFAULT_TARGET_UNIT_SYSTEM) {
   const source = normalizeUnitSystem(units, targetUnits);
@@ -270,11 +270,11 @@ var KNOWLEDGE_LEVEL_ALIASES = Object.freeze({
   lc3: "LC3"
 });
 function normalizeExistingMaterialKnowledgeLevel(knowledgeLevel = "LC1") {
-  const normalized = KNOWLEDGE_LEVEL_ALIASES[knowledgeLevel];
-  if (!normalized) {
+  const normalized2 = KNOWLEDGE_LEVEL_ALIASES[knowledgeLevel];
+  if (!normalized2) {
     throw new Error(`Unsupported existing material knowledge level: ${knowledgeLevel}.`);
   }
-  return normalized;
+  return normalized2;
 }
 function resolveExistingMaterialState({
   existing = false,
@@ -2743,9 +2743,9 @@ function resolveMasonryTypology(input) {
   if (typeof input !== "string") {
     return null;
   }
-  const normalized = input.trim().toLowerCase();
+  const normalized2 = input.trim().toLowerCase();
   return NTC2018_EXISTING_MASONRY_TYPOLOGIES.find(
-    (item) => item.name.toLowerCase() === normalized
+    (item) => item.name.toLowerCase() === normalized2
   );
 }
 function getTabulatedMechanicalProperties(typology, parameterLevel) {
@@ -2775,9 +2775,9 @@ var applyMechanicalMultipliers = (properties, multipliers) => ({
 var normalizeParameterLevel = ({ parameterLevel, knowledgeLevel }) => {
   var _a;
   if (parameterLevel != null) {
-    const normalized = Number(parameterLevel);
-    if (NTC2018_EXISTING_MASONRY_PARAMETER_LEVELS[normalized]) {
-      return normalized;
+    const normalized2 = Number(parameterLevel);
+    if (NTC2018_EXISTING_MASONRY_PARAMETER_LEVELS[normalized2]) {
+      return normalized2;
     }
     throw new Error(
       "parameterLevel deve assumere valore 1 oppure 2 per i parametri tabellati di muratura esistente."
@@ -3709,13 +3709,13 @@ function calculatePolygonMassProperties(points) {
   for (let index = 0; index < resolvedPoints.length; index += 1) {
     const current = resolvedPoints[index];
     const next = resolvedPoints[(index + 1) % resolvedPoints.length];
-    const cross4 = current.z * next.y - next.z * current.y;
-    signedDoubleArea += cross4;
-    centroidZFactor += (current.z + next.z) * cross4;
-    centroidYFactor += (current.y + next.y) * cross4;
-    inertiaYOrigin += (current.y ** 2 + current.y * next.y + next.y ** 2) * cross4;
-    inertiaZOrigin += (current.z ** 2 + current.z * next.z + next.z ** 2) * cross4;
-    productOrigin += (2 * current.y * current.z + current.y * next.z + next.y * current.z + 2 * next.y * next.z) * cross4;
+    const cross5 = current.z * next.y - next.z * current.y;
+    signedDoubleArea += cross5;
+    centroidZFactor += (current.z + next.z) * cross5;
+    centroidYFactor += (current.y + next.y) * cross5;
+    inertiaYOrigin += (current.y ** 2 + current.y * next.y + next.y ** 2) * cross5;
+    inertiaZOrigin += (current.z ** 2 + current.z * next.z + next.z ** 2) * cross5;
+    productOrigin += (2 * current.y * current.z + current.y * next.z + next.y * current.z + 2 * next.y * next.z) * cross5;
   }
   const signedArea2 = signedDoubleArea / 2;
   const orientation2 = Math.sign(signedArea2) || 1;
@@ -3920,12 +3920,12 @@ var PolygonSection = class extends CrossSection {
     for (let index = 0; index < resolvedPoints.length; index += 1) {
       const current = resolvedPoints[index];
       const next = resolvedPoints[(index + 1) % resolvedPoints.length];
-      const cross4 = current.z * next.y - next.z * current.y;
-      signedDoubleArea += cross4;
-      centroidZFactor += (current.z + next.z) * cross4;
-      centroidYFactor += (current.y + next.y) * cross4;
-      inertiaYOrigin += (current.y ** 2 + current.y * next.y + next.y ** 2) * cross4;
-      inertiaZOrigin += (current.z ** 2 + current.z * next.z + next.z ** 2) * cross4;
+      const cross5 = current.z * next.y - next.z * current.y;
+      signedDoubleArea += cross5;
+      centroidZFactor += (current.z + next.z) * cross5;
+      centroidYFactor += (current.y + next.y) * cross5;
+      inertiaYOrigin += (current.y ** 2 + current.y * next.y + next.y ** 2) * cross5;
+      inertiaZOrigin += (current.z ** 2 + current.z * next.z + next.z ** 2) * cross5;
     }
     const signedArea2 = signedDoubleArea / 2;
     const area = Math.abs(signedArea2);
@@ -22672,7 +22672,7 @@ function copyVerificationStations(verificationStations) {
 }
 function normalizeStationMode(mode) {
   var _a;
-  const normalized = String(mode != null ? mode : "all").trim().toLowerCase();
+  const normalized2 = String(mode != null ? mode : "all").trim().toLowerCase();
   const aliases = {
     automatic: "auto",
     declared: "combined",
@@ -22681,7 +22681,7 @@ function normalizeStationMode(mode) {
     fem: "all",
     samples: "all"
   };
-  return (_a = aliases[normalized]) != null ? _a : normalized;
+  return (_a = aliases[normalized2]) != null ? _a : normalized2;
 }
 function rawStationValues(options = {}) {
   var _a, _b, _c;
@@ -23040,7 +23040,7 @@ var BeamSectionActionVerifier = class {
       const selection = selectVerificationSamples(entry, stationSettings);
       warnings.push(...selection.warnings);
       for (const { sample, stationMetadata } of selection.records) {
-        const normalized = normalizeActionVerification(
+        const normalized2 = normalizeActionVerification(
           verifySectionActions({
             nEd: sample.n,
             vEd: sample.v,
@@ -23076,11 +23076,11 @@ var BeamSectionActionVerifier = class {
             ...stationMetadata
           }
         );
-        stationResults.push(normalized);
-        warnings.push(...normalized.warnings);
-        assumptions.push(...normalized.assumptions);
+        stationResults.push(normalized2);
+        warnings.push(...normalized2.warnings);
+        assumptions.push(...normalized2.assumptions);
         checks.push(
-          ...normalized.checks.map((check2) => {
+          ...normalized2.checks.map((check2) => {
             var _a2, _b2;
             return {
               ...check2,
@@ -23143,7 +23143,7 @@ function finiteOrNull2(value) {
 }
 function normalizeAngleUnits(units) {
   var _a;
-  const normalized = String(units != null ? units : "rad").trim().toLowerCase();
+  const normalized2 = String(units != null ? units : "rad").trim().toLowerCase();
   const aliases = {
     radians: "rad",
     radian: "rad",
@@ -23152,7 +23152,7 @@ function normalizeAngleUnits(units) {
     degrees: "deg",
     gradi: "deg"
   };
-  return (_a = aliases[normalized]) != null ? _a : normalized;
+  return (_a = aliases[normalized2]) != null ? _a : normalized2;
 }
 function angleToRadians2(alpha, units) {
   if (!Number.isFinite(alpha)) {
@@ -23477,7 +23477,7 @@ function calculateSimpleSectionProperties({
     section,
     oppositeShearAreaAxis(shearAreaAxis)
   );
-  const normalized = normalizeBeamProperties(
+  const normalized2 = normalizeBeamProperties(
     {
       axialRigidity: elasticModulus * area,
       flexuralRigidity: elasticModulus * inertia,
@@ -23493,7 +23493,7 @@ function calculateSimpleSectionProperties({
     units
   );
   return applySectionRotationToBeamProperties({
-    properties: normalized,
+    properties: normalized2,
     sectionRotation: context.sectionRotation,
     flexuralRigidityY: elasticModulus * ((_a = section == null ? void 0 : section.inertiaY) != null ? _a : inertia),
     flexuralRigidityZ: Number.isFinite(section == null ? void 0 : section.inertiaZ) ? elasticModulus * section.inertiaZ : Number.isFinite(oppositeInertia) ? elasticModulus * oppositeInertia : null,
@@ -23550,7 +23550,7 @@ function calculateCompositeSectionProperties({
   const flexuralRigidityZ = calculateCompositeFlexuralRigidity(section, material, "inertiaZ");
   const shearRigidityY = calculateCompositeShearRigidity(section, material, "shearAreaY");
   const shearRigidityZ = calculateCompositeShearRigidity(section, material, "shearAreaZ");
-  const normalized = normalizeBeamProperties(
+  const normalized2 = normalizeBeamProperties(
     {
       axialRigidity,
       flexuralRigidity,
@@ -23566,7 +23566,7 @@ function calculateCompositeSectionProperties({
     units
   );
   return applySectionRotationToBeamProperties({
-    properties: normalized,
+    properties: normalized2,
     sectionRotation: context.sectionRotation,
     flexuralRigidityY,
     flexuralRigidityZ,
@@ -23604,7 +23604,7 @@ var ElasticBeamSectionProvider = class {
       provider: "ElasticBeamSectionProvider"
     };
     if (typeof this.propertyResolver === "function") {
-      const normalized = normalizeBeamProperties(
+      const normalized2 = normalizeBeamProperties(
         this.propertyResolver({
           section: this.section,
           material: this.material,
@@ -23615,7 +23615,7 @@ var ElasticBeamSectionProvider = class {
         fallbackMetadata
       );
       return applySectionRotationToBeamProperties({
-        properties: normalized,
+        properties: normalized2,
         sectionRotation: context.sectionRotation
       });
     }
@@ -23625,7 +23625,7 @@ var ElasticBeamSectionProvider = class {
     ]) {
       const method = (_a = this.source) == null ? void 0 : _a[methodName];
       if (typeof method === "function") {
-        const normalized = normalizeBeamProperties(
+        const normalized2 = normalizeBeamProperties(
           method.call(this.source, {
             section: this.section,
             material: this.material,
@@ -23638,7 +23638,7 @@ var ElasticBeamSectionProvider = class {
           fallbackMetadata
         );
         return applySectionRotationToBeamProperties({
-          properties: normalized,
+          properties: normalized2,
           sectionRotation: context.sectionRotation
         });
       }
@@ -25131,7 +25131,7 @@ function normalizePresetName(type) {
 }
 function resolveBeamSupportPreset(type) {
   var _a;
-  const normalized = normalizePresetName(type);
+  const normalized2 = normalizePresetName(type);
   const aliases = {
     libero: "free",
     libera: "free",
@@ -25141,7 +25141,7 @@ function resolveBeamSupportPreset(type) {
     cerniera: "hinge",
     incastro: "fixed"
   };
-  const presetName = (_a = aliases[normalized]) != null ? _a : normalized;
+  const presetName = (_a = aliases[normalized2]) != null ? _a : normalized2;
   const preset = BEAM_SUPPORT_PRESETS[presetName];
   if (!preset) {
     throw new Error(`Unsupported beam support preset: ${type}.`);
@@ -25246,7 +25246,7 @@ function normalizeLoads(loads) {
     var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
     const actionType = resolveActionType(load);
     const id = (_a = load.id) != null ? _a : `${actionType}-${index + 1}`;
-    const normalized = {
+    const normalized2 = {
       ...load,
       id,
       actionType,
@@ -25254,11 +25254,11 @@ function normalizeLoads(loads) {
       factor: (_c = load.factor) != null ? _c : 1
     };
     return {
-      ...normalized,
-      loadCaseId: resolveLoadCaseId(normalized, index),
-      nature: resolveLoadNature(normalized),
-      variableCategory: (_j = (_i = (_h = (_e = normalized.variableCategory) != null ? _e : (_d = normalized.action) == null ? void 0 : _d.category) != null ? _h : (_g = (_f = normalized.loadCase) == null ? void 0 : _f.action) == null ? void 0 : _g.category) != null ? _i : normalized.category) != null ? _j : null,
-      loadDurationClass: resolveLoadDurationClass(normalized)
+      ...normalized2,
+      loadCaseId: resolveLoadCaseId(normalized2, index),
+      nature: resolveLoadNature(normalized2),
+      variableCategory: (_j = (_i = (_h = (_e = normalized2.variableCategory) != null ? _e : (_d = normalized2.action) == null ? void 0 : _d.category) != null ? _h : (_g = (_f = normalized2.loadCase) == null ? void 0 : _f.action) == null ? void 0 : _g.category) != null ? _i : normalized2.category) != null ? _j : null,
+      loadDurationClass: resolveLoadDurationClass(normalized2)
     };
   });
 }
@@ -25321,11 +25321,11 @@ function normalizeProjection(value) {
     horizontal: "horizontal",
     "global-x": "horizontal"
   };
-  const normalized = (_a = aliases[projection]) != null ? _a : projection;
-  if (!["horizontal", "beam-axis"].includes(normalized)) {
+  const normalized2 = (_a = aliases[projection]) != null ? _a : projection;
+  if (!["horizontal", "beam-axis"].includes(normalized2)) {
     throw new Error(`Unsupported loadProjection: ${value}.`);
   }
-  return normalized;
+  return normalized2;
 }
 function projectedLineLoadValue(value, load, geometry) {
   const projection = normalizeProjection(load.loadProjection);
@@ -25361,11 +25361,11 @@ function normalizeCombinationFactors(factors) {
 function inferLimitState(combination) {
   var _a, _b, _c, _d;
   const rawValue = (_d = (_c = (_b = (_a = combination.limitState) != null ? _a : combination.combinationType) != null ? _b : combination.type) != null ? _c : combination.id) != null ? _d : "";
-  const normalized = String(rawValue).trim().toUpperCase();
-  if (normalized.includes("ULS") || normalized.includes("SLU")) {
+  const normalized2 = String(rawValue).trim().toUpperCase();
+  if (normalized2.includes("ULS") || normalized2.includes("SLU")) {
     return "ULS";
   }
-  if (normalized.includes("SLE") || normalized.includes("SLS")) {
+  if (normalized2.includes("SLE") || normalized2.includes("SLS")) {
     return "SLE";
   }
   return null;
@@ -25422,7 +25422,7 @@ function loadsForCombination(loads, factors) {
 }
 function normalizeDurationOrder(loadDurationClass) {
   var _a;
-  const normalized = String(loadDurationClass != null ? loadDurationClass : "").trim().toLowerCase();
+  const normalized2 = String(loadDurationClass != null ? loadDurationClass : "").trim().toLowerCase();
   const aliases = {
     permanente: "permanent",
     lunga: "long",
@@ -25433,7 +25433,7 @@ function normalizeDurationOrder(loadDurationClass) {
     "breve-durata": "short",
     istantanea: "instantaneous"
   };
-  return (_a = aliases[normalized]) != null ? _a : normalized;
+  return (_a = aliases[normalized2]) != null ? _a : normalized2;
 }
 function loadParticipation(load) {
   var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
@@ -28054,7 +28054,7 @@ function addDiscretizationStations(stations, geometry, unitResolver, discretizat
 }
 function normalizeVerificationStationMode(mode) {
   var _a;
-  const normalized = String(mode != null ? mode : "combined").trim().toLowerCase();
+  const normalized2 = String(mode != null ? mode : "combined").trim().toLowerCase();
   const aliases = {
     automatic: "auto",
     declared: "combined",
@@ -28063,7 +28063,7 @@ function normalizeVerificationStationMode(mode) {
     fem: "all",
     samples: "all"
   };
-  return (_a = aliases[normalized]) != null ? _a : normalized;
+  return (_a = aliases[normalized2]) != null ? _a : normalized2;
 }
 function addVerificationStations(stations, geometry, unitResolver, verificationStations = null) {
   var _a, _b, _c, _d, _e, _f;
@@ -28448,11 +28448,11 @@ function resolveElementClass(analysisModel, overrideClass = null) {
   if (overrideClass) {
     return overrideClass;
   }
-  const normalized = String(analysisModel != null ? analysisModel : "euler-bernoulli").trim().toLowerCase();
-  if (["euler-bernoulli", "euler", "eb"].includes(normalized)) {
+  const normalized2 = String(analysisModel != null ? analysisModel : "euler-bernoulli").trim().toLowerCase();
+  if (["euler-bernoulli", "euler", "eb"].includes(normalized2)) {
     return FrameElement2DEulerBernoulli;
   }
-  if (["timoshenko", "timo"].includes(normalized)) {
+  if (["timoshenko", "timo"].includes(normalized2)) {
     return FrameElement2DTimoshenko;
   }
   throw new Error(`Unsupported beam analysis model: ${analysisModel}.`);
@@ -29006,7 +29006,7 @@ function resolveShearModulus3(material) {
 }
 function normalizeTimberMaterialType(materialType) {
   var _a;
-  const normalized = String(materialType != null ? materialType : "").trim().toLowerCase().replaceAll("-", "_");
+  const normalized2 = String(materialType != null ? materialType : "").trim().toLowerCase().replaceAll("-", "_");
   const aliases = {
     solid_timber: "solid_timber",
     solid: "solid_timber",
@@ -29017,7 +29017,7 @@ function normalizeTimberMaterialType(materialType) {
     wood_based_panels: "wood_based_panels",
     panel: "wood_based_panels"
   };
-  return (_a = aliases[normalized]) != null ? _a : normalized;
+  return (_a = aliases[normalized2]) != null ? _a : normalized2;
 }
 function resolveKmod({
   context,
@@ -29356,13 +29356,13 @@ function polygonMoments(polygon) {
   for (let index = 0; index < polygon.length; index += 1) {
     const a = polygon[index];
     const b = polygon[(index + 1) % polygon.length];
-    const cross4 = a.x * b.y - b.x * a.y;
-    area2 += cross4;
-    sx6 += (a.x + b.x) * cross4;
-    sy6 += (a.y + b.y) * cross4;
-    ixx12 += (a.x ** 2 + a.x * b.x + b.x ** 2) * cross4;
-    iyy12 += (a.y ** 2 + a.y * b.y + b.y ** 2) * cross4;
-    ixy24 += (2 * a.x * a.y + a.x * b.y + b.x * a.y + 2 * b.x * b.y) * cross4;
+    const cross5 = a.x * b.y - b.x * a.y;
+    area2 += cross5;
+    sx6 += (a.x + b.x) * cross5;
+    sy6 += (a.y + b.y) * cross5;
+    ixx12 += (a.x ** 2 + a.x * b.x + b.x ** 2) * cross5;
+    iyy12 += (a.y ** 2 + a.y * b.y + b.y ** 2) * cross5;
+    ixy24 += (2 * a.x * a.y + a.x * b.y + b.x * a.y + 2 * b.x * b.y) * cross5;
   }
   const sign = area2 >= 0 ? 1 : -1;
   return {
@@ -31071,14 +31071,14 @@ var GroundProfile = class _GroundProfile {
     let topElevation = Number(groundSurfaceElevation);
     const elevatedLayers = (layers != null ? layers : []).map((layer2, index) => {
       const thickness = positive3(Number(layer2.thickness), `layers[${index}].thickness`);
-      const normalized = {
+      const normalized2 = {
         ...layer2,
         topElevation,
         bottomElevation: topElevation - thickness
       };
-      delete normalized.thickness;
-      topElevation = normalized.bottomElevation;
-      return normalized;
+      delete normalized2.thickness;
+      topElevation = normalized2.bottomElevation;
+      return normalized2;
     });
     return new _GroundProfile({
       ...profile,
@@ -31234,25 +31234,25 @@ function normalizePolygon(points, resolver, label, tolerance) {
   if (!Array.isArray(points) || points.length < 3) {
     throw new Error(`${label} requires at least three points.`);
   }
-  const normalized = points.map((point4, index) => normalizePoint2(point4, resolver, `${label}[${index}]`));
-  if (normalized.length > 3 && samePoint(normalized[0], normalized.at(-1), tolerance)) {
-    normalized.pop();
+  const normalized2 = points.map((point4, index) => normalizePoint2(point4, resolver, `${label}[${index}]`));
+  if (normalized2.length > 3 && samePoint(normalized2[0], normalized2.at(-1), tolerance)) {
+    normalized2.pop();
   }
-  if (normalized.length < 3) {
+  if (normalized2.length < 3) {
     throw new Error(`${label} requires at least three distinct points.`);
   }
-  for (let index = 0; index < normalized.length; index += 1) {
-    const next = normalized[(index + 1) % normalized.length];
-    if (samePoint(normalized[index], next, tolerance)) {
+  for (let index = 0; index < normalized2.length; index += 1) {
+    const next = normalized2[(index + 1) % normalized2.length];
+    if (samePoint(normalized2[index], next, tolerance)) {
       throw new Error(`${label} contains consecutive duplicate points.`);
     }
   }
-  assertSimplePolygon(normalized, label, tolerance);
-  const area = signedPolygonArea(normalized);
+  assertSimplePolygon(normalized2, label, tolerance);
+  const area = signedPolygonArea(normalized2);
   if (Math.abs(area) <= tolerance ** 2) {
     throw new Error(`${label} must have positive area.`);
   }
-  return area > 0 ? normalized : normalized.reverse();
+  return area > 0 ? normalized2 : normalized2.reverse();
 }
 function polygonBounds(polygon) {
   return {
@@ -32512,12 +32512,12 @@ function positive7(value, label, { allowZero = false } = {}) {
   return number;
 }
 function provenance(value, label) {
-  const normalized = structuredClone(value != null ? value : {});
-  if (typeof normalized.source !== "string" || !normalized.source.trim()) {
+  const normalized2 = structuredClone(value != null ? value : {});
+  if (typeof normalized2.source !== "string" || !normalized2.source.trim()) {
     throw new Error(`${label}.source is required.`);
   }
-  normalized.source = normalized.source.trim();
-  return normalized;
+  normalized2.source = normalized2.source.trim();
+  return normalized2;
 }
 function optionalStress(value, resolver, label) {
   if (value == null) return null;
@@ -33921,12 +33921,12 @@ function positive8(value, label) {
   return number;
 }
 function normalizeProvenance(value, label) {
-  const normalized = structuredClone(value != null ? value : {});
-  if (typeof normalized.source !== "string" || !normalized.source.trim()) {
+  const normalized2 = structuredClone(value != null ? value : {});
+  if (typeof normalized2.source !== "string" || !normalized2.source.trim()) {
     throw new Error(`${label}.source is required.`);
   }
-  normalized.source = normalized.source.trim();
-  return normalized;
+  normalized2.source = normalized2.source.trim();
+  return normalized2;
 }
 function normalizeAction2(action, resolver) {
   var _a, _b, _c, _d;
@@ -34857,18 +34857,18 @@ function finite11(value, label) {
   return number;
 }
 function normalizeProvenance2(value) {
-  const normalized = structuredClone(value != null ? value : {});
-  if (typeof normalized.source !== "string" || !normalized.source.trim()) {
+  const normalized2 = structuredClone(value != null ? value : {});
+  if (typeof normalized2.source !== "string" || !normalized2.source.trim()) {
     throw new Error("PileTransferLaw provenance.source is required.");
   }
-  normalized.source = normalized.source.trim();
-  return normalized;
+  normalized2.source = normalized2.source.trim();
+  return normalized2;
 }
 function normalizePoints(points, resolver) {
   if (!Array.isArray(points) || points.length < 2) {
     throw new Error("PileTransferLaw requires at least two curve points.");
   }
-  const normalized = points.map((point4, index) => ({
+  const normalized2 = points.map((point4, index) => ({
     displacement: resolver.length(finite11(
       point4.displacement,
       `points[${index}].displacement`
@@ -34880,19 +34880,19 @@ function normalizePoints(points, resolver) {
   }));
   const scale = Math.max(
     1,
-    ...normalized.flatMap((point4) => [
+    ...normalized2.flatMap((point4) => [
       Math.abs(point4.displacement),
       Math.abs(point4.resistancePerLength)
     ])
   );
   const tolerance = 1e-12 * scale;
-  if (Math.abs(normalized[0].displacement) > tolerance || Math.abs(normalized[0].resistancePerLength) > tolerance) {
+  if (Math.abs(normalized2[0].displacement) > tolerance || Math.abs(normalized2[0].resistancePerLength) > tolerance) {
     throw new Error("PileTransferLaw curve must start at the origin.");
   }
-  normalized[0] = { displacement: 0, resistancePerLength: 0 };
-  for (let index = 1; index < normalized.length; index += 1) {
-    const previous = normalized[index - 1];
-    const current = normalized[index];
+  normalized2[0] = { displacement: 0, resistancePerLength: 0 };
+  for (let index = 1; index < normalized2.length; index += 1) {
+    const previous = normalized2[index - 1];
+    const current = normalized2[index];
     if (current.displacement <= previous.displacement + tolerance) {
       throw new Error(
         "PileTransferLaw displacements must be positive and strictly increasing."
@@ -34907,7 +34907,7 @@ function normalizePoints(points, resolver) {
       throw new Error("PileTransferLaw resistance must be non-negative.");
     }
   }
-  return normalized;
+  return normalized2;
 }
 function segmentResponse(points, magnitude, extrapolation) {
   let left = points[0];
@@ -35063,12 +35063,12 @@ function positiveInteger(value, label) {
   return number;
 }
 function normalizeProvenance3(value, label) {
-  const normalized = structuredClone(value != null ? value : {});
-  if (typeof normalized.source !== "string" || !normalized.source.trim()) {
+  const normalized2 = structuredClone(value != null ? value : {});
+  if (typeof normalized2.source !== "string" || !normalized2.source.trim()) {
     throw new Error(`${label}.source is required.`);
   }
-  normalized.source = normalized.source.trim();
-  return normalized;
+  normalized2.source = normalized2.source.trim();
+  return normalized2;
 }
 function normalizeAction3(action, resolver) {
   var _a, _b, _c, _d, _e, _f;
@@ -36474,12 +36474,12 @@ function positive11(value, label) {
   return number;
 }
 function provenance2(value, label) {
-  const normalized = structuredClone(value != null ? value : {});
-  if (typeof normalized.source !== "string" || !normalized.source.trim()) {
+  const normalized2 = structuredClone(value != null ? value : {});
+  if (typeof normalized2.source !== "string" || !normalized2.source.trim()) {
     throw new Error(`${label}.source is required.`);
   }
-  normalized.source = normalized.source.trim();
-  return normalized;
+  normalized2.source = normalized2.source.trim();
+  return normalized2;
 }
 function restraint(value, label) {
   var _a, _b;
@@ -36665,12 +36665,12 @@ function positiveInteger2(value, label) {
   return number;
 }
 function provenance3(value, label) {
-  const normalized = structuredClone(value != null ? value : {});
-  if (typeof normalized.source !== "string" || !normalized.source.trim()) {
+  const normalized2 = structuredClone(value != null ? value : {});
+  if (typeof normalized2.source !== "string" || !normalized2.source.trim()) {
     throw new Error(`${label}.source is required.`);
   }
-  normalized.source = normalized.source.trim();
-  return normalized;
+  normalized2.source = normalized2.source.trim();
+  return normalized2;
 }
 function normalizeLayerCurve2(side, layerId, input, resolver, units) {
   var _a, _b;
@@ -38717,12 +38717,12 @@ function positive13(value, label) {
   return number;
 }
 function provenance4(value, label) {
-  const normalized = structuredClone(value != null ? value : {});
-  if (typeof normalized.source !== "string" || !normalized.source.trim()) {
+  const normalized2 = structuredClone(value != null ? value : {});
+  if (typeof normalized2.source !== "string" || !normalized2.source.trim()) {
     throw new Error(`${label}.source is required.`);
   }
-  normalized.source = normalized.source.trim();
-  return normalized;
+  normalized2.source = normalized2.source.trim();
+  return normalized2;
 }
 function radians(value, angleUnits) {
   if (angleUnits === "rad") return value;
@@ -38977,12 +38977,12 @@ function nonNegative4(value, label) {
   return number;
 }
 function provenance5(value, label) {
-  const normalized = structuredClone(value != null ? value : {});
-  if (typeof normalized.source !== "string" || !normalized.source.trim()) {
+  const normalized2 = structuredClone(value != null ? value : {});
+  if (typeof normalized2.source !== "string" || !normalized2.source.trim()) {
     throw new Error(`${label}.source is required.`);
   }
-  normalized.source = normalized.source.trim();
-  return normalized;
+  normalized2.source = normalized2.source.trim();
+  return normalized2;
 }
 function normalizeDemand(input, resolver) {
   var _a, _b;
@@ -38990,7 +38990,7 @@ function normalizeDemand(input, resolver) {
   if (!GROUND_ANCHOR_DEMAND_SOURCES.includes(source)) {
     throw new Error(`Unsupported ground-anchor demand source: ${source}.`);
   }
-  const normalized = {
+  const normalized2 = {
     source,
     selection: (_a = input.selection) != null ? _a : "maximum-absolute",
     supportId: input.supportId == null ? null : String(input.supportId),
@@ -39001,13 +39001,13 @@ function normalizeDemand(input, resolver) {
     metadata: structuredClone((_b = input.metadata) != null ? _b : {})
   };
   if (source === "assigned-tendon-load") {
-    normalized.designLoad = positive14(
+    normalized2.designLoad = positive14(
       resolver.force(finite17(input.designLoad, "demand.designLoad")),
       "demand.designLoad"
     );
   }
   if (source === "assigned-horizontal-line-load") {
-    normalized.horizontalLineLoad = positive14(
+    normalized2.horizontalLineLoad = positive14(
       resolver.lineLoad(finite17(
         input.horizontalLineLoad,
         "demand.horizontalLineLoad"
@@ -39015,22 +39015,22 @@ function normalizeDemand(input, resolver) {
       "demand.horizontalLineLoad"
     );
   }
-  if (source !== "embedded-retaining-wall-result" && normalized.provenance == null) {
+  if (source !== "embedded-retaining-wall-result" && normalized2.provenance == null) {
     throw new Error("Assigned ground-anchor demand requires provenance.");
   }
-  if (source === "embedded-retaining-wall-result" && !normalized.supportId) {
+  if (source === "embedded-retaining-wall-result" && !normalized2.supportId) {
     throw new Error("Embedded-wall demand requires demand.supportId.");
   }
   if (![
     "maximum-absolute",
     "selected-stage"
-  ].includes(normalized.selection)) {
-    throw new Error(`Unsupported demand.selection: ${normalized.selection}.`);
+  ].includes(normalized2.selection)) {
+    throw new Error(`Unsupported demand.selection: ${normalized2.selection}.`);
   }
-  if (normalized.selection === "selected-stage" && !normalized.stageId) {
+  if (normalized2.selection === "selected-stage" && !normalized2.stageId) {
     throw new Error("selected-stage demand requires demand.stageId.");
   }
-  return normalized;
+  return normalized2;
 }
 function normalizeFailureSurface(input, resolver, angleUnits) {
   var _a;
@@ -39038,7 +39038,7 @@ function normalizeFailureSurface(input, resolver, angleUnits) {
   if (!GROUND_ANCHOR_FAILURE_SURFACE_MODELS.includes(model)) {
     throw new Error(`Unsupported critical-failure-surface model: ${model}.`);
   }
-  const normalized = {
+  const normalized2 = {
     model,
     wallHeight: positive14(
       resolver.length(finite17(
@@ -39054,7 +39054,7 @@ function normalizeFailureSurface(input, resolver, angleUnits) {
     metadata: structuredClone((_a = input.metadata) != null ? _a : {})
   };
   if (model === "assigned-distance") {
-    normalized.distanceAlongAnchor = positive14(
+    normalized2.distanceAlongAnchor = positive14(
       resolver.length(finite17(
         input.distanceAlongAnchor,
         "criticalFailureSurface.distanceAlongAnchor"
@@ -39066,7 +39066,7 @@ function normalizeFailureSurface(input, resolver, angleUnits) {
     if (!Array.isArray(input.points) || input.points.length < 2) {
       throw new Error("An assigned critical-failure polyline requires points.");
     }
-    normalized.points = input.points.map((point4, index) => ({
+    normalized2.points = input.points.map((point4, index) => ({
       x: resolver.length(finite17(
         point4.x,
         `criticalFailureSurface.points[${index}].x`
@@ -39086,13 +39086,13 @@ function normalizeFailureSurface(input, resolver, angleUnits) {
     if (phi <= 0 || phi >= Math.PI / 2) {
       throw new Error("Rankine frictionAngle must be between 0 and 90 degrees.");
     }
-    normalized.frictionAngle = phi;
-    normalized.excavationBaseElevation = resolver.length(finite17(
+    normalized2.frictionAngle = phi;
+    normalized2.excavationBaseElevation = resolver.length(finite17(
       input.excavationBaseElevation,
       "criticalFailureSurface.excavationBaseElevation"
     ));
   }
-  return normalized;
+  return normalized2;
 }
 function normalizeBondResistance(input, resolver, label) {
   var _a, _b;
@@ -39119,7 +39119,7 @@ function normalizeBondResistance(input, resolver, label) {
     input.capacityDivisor,
     `${label}.capacityDivisor`
   );
-  const normalized = {
+  const normalized2 = {
     model,
     groundClass,
     capacityDivisor,
@@ -39127,7 +39127,7 @@ function normalizeBondResistance(input, resolver, label) {
     metadata: structuredClone((_b = input.metadata) != null ? _b : {})
   };
   if (model === "ultimate-transfer-load") {
-    normalized.ultimateTransferLoad = positive14(
+    normalized2.ultimateTransferLoad = positive14(
       resolver.lineLoad(finite17(
         input.ultimateTransferLoad,
         `${label}.ultimateTransferLoad`
@@ -39135,7 +39135,7 @@ function normalizeBondResistance(input, resolver, label) {
       `${label}.ultimateTransferLoad`
     );
   } else {
-    normalized.ultimateBondStress = positive14(
+    normalized2.ultimateBondStress = positive14(
       resolver.stress(finite17(
         input.ultimateBondStress,
         `${label}.ultimateBondStress`
@@ -39143,7 +39143,7 @@ function normalizeBondResistance(input, resolver, label) {
       `${label}.ultimateBondStress`
     );
   }
-  return normalized;
+  return normalized2;
 }
 function normalizeResistanceMap(input, resolver, label) {
   if (input == null) return {};
@@ -44424,12 +44424,12 @@ function point2(value, resolver, label) {
   };
 }
 function provenance6(value) {
-  const normalized = structuredClone(value != null ? value : {});
-  if (typeof normalized.source !== "string" || !normalized.source.trim()) {
+  const normalized2 = structuredClone(value != null ? value : {});
+  if (typeof normalized2.source !== "string" || !normalized2.source.trim()) {
     throw new Error("Ground-anchor stability action provenance.source is required.");
   }
-  normalized.source = normalized.source.trim();
-  return normalized;
+  normalized2.source = normalized2.source.trim();
+  return normalized2;
 }
 function normalizedResult(value) {
   return typeof (value == null ? void 0 : value.toJSON) === "function" ? value.toJSON() : value;
@@ -50183,22 +50183,22 @@ function normalizeSource(source) {
   if (source != null && (typeof source !== "object" || Array.isArray(source))) {
     throw new Error("Punching action source must be an object.");
   }
-  const normalized = structuredClone(source != null ? source : { method: "manual" });
-  (_a = normalized.method) != null ? _a : normalized.method = "manual";
-  if (!SOURCE_METHODS.has(normalized.method)) {
-    throw new Error(`Unsupported punching action source method: ${normalized.method}.`);
+  const normalized2 = structuredClone(source != null ? source : { method: "manual" });
+  (_a = normalized2.method) != null ? _a : normalized2.method = "manual";
+  if (!SOURCE_METHODS.has(normalized2.method)) {
+    throw new Error(`Unsupported punching action source method: ${normalized2.method}.`);
   }
-  return normalized;
+  return normalized2;
 }
 function optionalNonNegativeForce(value, resolver, label) {
   if (value == null) {
     return null;
   }
-  const normalized = resolver.force(finite31(Number(value), label));
-  if (normalized < 0) {
+  const normalized2 = resolver.force(finite31(Number(value), label));
+  if (normalized2 < 0) {
     throw new Error(`${label} must be non-negative.`);
   }
-  return normalized;
+  return normalized2;
 }
 function normalizePerimeterForceMap(input, resolver, label) {
   if (input == null) {
@@ -52729,6 +52729,2537 @@ var CyclicMasonryPierAnalysis2D = class {
   }
 };
 
+// src/domain/fem/contracts/FemContractValidation.js
+var GLOBAL_FEM_CONTRACT_VERSION = 0;
+var FEM_CONTRACT_SCHEMAS = Object.freeze({
+  capabilities: "strutture-js/fem-capabilities",
+  model: "strutture-js/global-fem-model",
+  analysis: "strutture-js/global-fem-analysis",
+  mapping: "strutture-js/fem-entity-mapping",
+  result: "strutture-js/global-fem-result"
+});
+var FEM_ANALYSIS_CAPABILITY_KEYS = Object.freeze([
+  "linearStatic",
+  "secondOrder",
+  "modal",
+  "responseSpectrum",
+  "nonlinearStatic",
+  "timeHistory"
+]);
+var FEM_ELEMENT_CAPABILITY_KEYS = Object.freeze([
+  "line",
+  "shell",
+  "solid",
+  "link"
+]);
+var FEM_RESULT_CAPABILITY_KEYS = Object.freeze([
+  "nodalDisplacements",
+  "reactions",
+  "lineElementActions",
+  "shellResultants",
+  "stresses",
+  "strains",
+  "modes",
+  "sectionCuts",
+  "storeyResults",
+  "equilibriumResiduals"
+]);
+var FEM_ANALYSIS_TYPES = Object.freeze([
+  "linear-static",
+  "second-order-static",
+  "modal",
+  "response-spectrum",
+  "nonlinear-static",
+  "time-history"
+]);
+var FEM_RESULT_STATUS_VALUES = Object.freeze([
+  "completed",
+  "completed-with-warnings",
+  "partial",
+  "failed",
+  "not-supported"
+]);
+var GLOBAL_FEM_REQUIRED_UNIT_KEYS = Object.freeze([
+  "length",
+  "force",
+  "mass",
+  "time",
+  "angle",
+  "moment",
+  "stress",
+  "strain",
+  "acceleration",
+  "frequency",
+  "lineForce",
+  "lineMoment"
+]);
+var AMBIGUOUS_UNIT_TOKENS = /* @__PURE__ */ new Set([
+  "",
+  "-",
+  "?",
+  "default",
+  "metric",
+  "si",
+  "unspecified",
+  "unknown"
+]);
+function diagnostic(code, path, message) {
+  return { code, path, message };
+}
+function addError(errors, code, path, message) {
+  errors.push(diagnostic(code, path, message));
+}
+function addWarning(warnings, code, path, message) {
+  warnings.push(diagnostic(code, path, message));
+}
+function isRecord(value) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+function validateRecord(value, path, errors, { required = true } = {}) {
+  if (value == null && !required) return false;
+  if (isRecord(value)) return true;
+  addError(errors, "FEM_EXPECTED_OBJECT", path, `${path} must be a plain object.`);
+  return false;
+}
+function validateArray(value, path, errors, { required = true } = {}) {
+  if (value == null && !required) return false;
+  if (Array.isArray(value)) return true;
+  addError(errors, "FEM_EXPECTED_ARRAY", path, `${path} must be an array.`);
+  return false;
+}
+function validateId(value, path, errors) {
+  if (typeof value === "string" && value.trim().length > 0) return true;
+  addError(
+    errors,
+    "FEM_INVALID_ID",
+    path,
+    `${path} must be a non-empty stable string identifier.`
+  );
+  return false;
+}
+function validateString(value, path, errors, { allowed = null } = {}) {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    addError(errors, "FEM_INVALID_STRING", path, `${path} must be a non-empty string.`);
+    return false;
+  }
+  if (allowed && !allowed.includes(value)) {
+    addError(
+      errors,
+      "FEM_UNSUPPORTED_VALUE",
+      path,
+      `${path} must be one of: ${allowed.join(", ")}.`
+    );
+    return false;
+  }
+  return true;
+}
+function validateBoolean(value, path, errors) {
+  if (typeof value === "boolean") return true;
+  addError(errors, "FEM_EXPLICIT_BOOLEAN_REQUIRED", path, `${path} must be true or false.`);
+  return false;
+}
+function validateFinite(value, path, errors, options = {}) {
+  const { positive: positive37 = false, nonNegative: nonNegative11 = false, integer: integer2 = false } = options;
+  if (!Number.isFinite(value)) {
+    addError(errors, "FEM_NON_FINITE_NUMBER", path, `${path} must be finite.`);
+    return false;
+  }
+  if (positive37 && value <= 0) {
+    addError(errors, "FEM_POSITIVE_NUMBER_REQUIRED", path, `${path} must be positive.`);
+    return false;
+  }
+  if (nonNegative11 && value < 0) {
+    addError(errors, "FEM_NON_NEGATIVE_NUMBER_REQUIRED", path, `${path} must be non-negative.`);
+    return false;
+  }
+  if (integer2 && !Number.isInteger(value)) {
+    addError(errors, "FEM_INTEGER_REQUIRED", path, `${path} must be an integer.`);
+    return false;
+  }
+  return true;
+}
+function validateFiniteVector(value, path, errors) {
+  if (!validateRecord(value, path, errors)) return false;
+  let valid = true;
+  for (const component of ["x", "y", "z"]) {
+    valid = validateFinite(value[component], `${path}.${component}`, errors) && valid;
+  }
+  return valid;
+}
+function vectorNorm2(vector) {
+  return Math.sqrt(vector.x ** 2 + vector.y ** 2 + vector.z ** 2);
+}
+function dot3(left, right) {
+  return left.x * right.x + left.y * right.y + left.z * right.z;
+}
+function cross3(left, right) {
+  return {
+    x: left.y * right.z - left.z * right.y,
+    y: left.z * right.x - left.x * right.z,
+    z: left.x * right.y - left.y * right.x
+  };
+}
+function validateAxes(axes, path, errors, { tolerance = 1e-8 } = {}) {
+  if (!validateRecord(axes, path, errors)) return false;
+  const validVectors = ["x", "y", "z"].map((axis) => validateFiniteVector(axes[axis], `${path}.${axis}`, errors));
+  if (validVectors.some((valid2) => !valid2)) return false;
+  let valid = true;
+  for (const axis of ["x", "y", "z"]) {
+    const norm3 = vectorNorm2(axes[axis]);
+    if (Math.abs(norm3 - 1) > tolerance) {
+      addError(
+        errors,
+        "FEM_AXIS_NOT_UNIT",
+        `${path}.${axis}`,
+        `${path}.${axis} must be a unit vector; received norm ${norm3}.`
+      );
+      valid = false;
+    }
+  }
+  for (const [left, right] of [["x", "y"], ["y", "z"], ["z", "x"]]) {
+    const scalarProduct = dot3(axes[left], axes[right]);
+    if (Math.abs(scalarProduct) > tolerance) {
+      addError(
+        errors,
+        "FEM_AXES_NOT_ORTHOGONAL",
+        path,
+        `${path}.${left} and ${path}.${right} must be orthogonal.`
+      );
+      valid = false;
+    }
+  }
+  const handedness = dot3(cross3(axes.x, axes.y), axes.z);
+  if (Math.abs(handedness - 1) > tolerance) {
+    addError(
+      errors,
+      "FEM_AXES_NOT_RIGHT_HANDED",
+      path,
+      `${path} must be a non-degenerate right-handed orthonormal frame.`
+    );
+    valid = false;
+  }
+  return valid;
+}
+function validateUnits(units, path, errors) {
+  if (!validateRecord(units, path, errors)) return false;
+  let valid = true;
+  for (const key of GLOBAL_FEM_REQUIRED_UNIT_KEYS) {
+    const unit = units[key];
+    if (typeof unit !== "string" || AMBIGUOUS_UNIT_TOKENS.has(unit.trim().toLowerCase())) {
+      addError(
+        errors,
+        "FEM_UNIT_MISSING_OR_AMBIGUOUS",
+        `${path}.${key}`,
+        `${path}.${key} must be an explicit, unambiguous unit symbol.`
+      );
+      valid = false;
+    }
+  }
+  return valid;
+}
+function validateHeader(value, schema, errors) {
+  if (!validateRecord(value, "$", errors)) return false;
+  let valid = true;
+  if (value.schema !== schema) {
+    addError(
+      errors,
+      "FEM_SCHEMA_MISMATCH",
+      "$.schema",
+      `$.schema must be ${schema}.`
+    );
+    valid = false;
+  }
+  if (value.version !== GLOBAL_FEM_CONTRACT_VERSION) {
+    addError(
+      errors,
+      "FEM_VERSION_MISMATCH",
+      "$.version",
+      `$.version must be the candidate schema version ${GLOBAL_FEM_CONTRACT_VERSION}.`
+    );
+    valid = false;
+  }
+  return valid;
+}
+function validateUniqueIds(items, path, errors) {
+  if (!Array.isArray(items)) return /* @__PURE__ */ new Map();
+  const index = /* @__PURE__ */ new Map();
+  items.forEach((item, itemIndex) => {
+    const itemPath = `${path}[${itemIndex}]`;
+    if (!validateRecord(item, itemPath, errors)) return;
+    if (!validateId(item.id, `${itemPath}.id`, errors)) return;
+    if (index.has(item.id)) {
+      addError(
+        errors,
+        "FEM_DUPLICATE_ID",
+        `${itemPath}.id`,
+        `Duplicate id ${item.id} in ${path}.`
+      );
+      return;
+    }
+    index.set(item.id, item);
+  });
+  return index;
+}
+function validateIdArray(value, path, errors, { minLength = 0 } = {}) {
+  if (!validateArray(value, path, errors)) return false;
+  let valid = true;
+  if (value.length < minLength) {
+    addError(
+      errors,
+      "FEM_ARRAY_TOO_SHORT",
+      path,
+      `${path} must contain at least ${minLength} entries.`
+    );
+    valid = false;
+  }
+  const seen = /* @__PURE__ */ new Set();
+  value.forEach((id, index) => {
+    if (!validateId(id, `${path}[${index}]`, errors)) {
+      valid = false;
+      return;
+    }
+    if (seen.has(id)) {
+      addError(
+        errors,
+        "FEM_DUPLICATE_REFERENCE",
+        `${path}[${index}]`,
+        `${path} contains duplicate reference ${id}.`
+      );
+      valid = false;
+    }
+    seen.add(id);
+  });
+  return valid;
+}
+function validateReferences(ids, targetIndex, path, errors, targetLabel) {
+  if (!Array.isArray(ids)) return;
+  ids.forEach((id, index) => {
+    if (typeof id === "string" && !targetIndex.has(id)) {
+      addError(
+        errors,
+        "FEM_UNKNOWN_REFERENCE",
+        `${path}[${index}]`,
+        `${path}[${index}] references unknown ${targetLabel} ${id}.`
+      );
+    }
+  });
+}
+function validateSerializable(value, path, errors, ancestors = /* @__PURE__ */ new Set()) {
+  const valueType = typeof value;
+  if (value === null || valueType === "string" || valueType === "boolean") return true;
+  if (valueType === "number") {
+    if (Number.isFinite(value)) return true;
+    addError(errors, "FEM_NOT_JSON_SERIALIZABLE", path, `${path} contains a non-finite number.`);
+    return false;
+  }
+  if (["undefined", "bigint", "function", "symbol"].includes(valueType)) {
+    addError(errors, "FEM_NOT_JSON_SERIALIZABLE", path, `${path} is not JSON-serializable.`);
+    return false;
+  }
+  if (ancestors.has(value)) {
+    addError(errors, "FEM_NOT_JSON_SERIALIZABLE", path, `${path} contains a circular reference.`);
+    return false;
+  }
+  if (!Array.isArray(value) && !isRecord(value)) {
+    addError(errors, "FEM_NOT_JSON_SERIALIZABLE", path, `${path} must contain only plain JSON values.`);
+    return false;
+  }
+  if (!Array.isArray(value) && Object.getOwnPropertySymbols(value).length > 0) {
+    addError(errors, "FEM_NOT_JSON_SERIALIZABLE", path, `${path} contains symbol keys.`);
+    return false;
+  }
+  ancestors.add(value);
+  let valid = true;
+  if (Array.isArray(value)) {
+    value.forEach((entry, index) => {
+      valid = validateSerializable(entry, `${path}[${index}]`, errors, ancestors) && valid;
+    });
+  } else {
+    for (const [key, entry] of Object.entries(value)) {
+      valid = validateSerializable(entry, `${path}.${key}`, errors, ancestors) && valid;
+    }
+  }
+  ancestors.delete(value);
+  return valid;
+}
+function cloneJson(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+function finalizeValidation(value, errors, warnings) {
+  const serializable = validateSerializable(value, "$", errors);
+  return {
+    ok: errors.length === 0,
+    value: serializable ? cloneJson(value) : null,
+    errors,
+    warnings
+  };
+}
+function withContractHeader(input, schema) {
+  return {
+    ...isRecord(input) ? input : {},
+    schema,
+    version: GLOBAL_FEM_CONTRACT_VERSION
+  };
+}
+function throwForInvalidContract(label, validation) {
+  if (validation.ok) return validation.value;
+  const details = validation.errors.map((item) => `[${item.code}] ${item.path}: ${item.message}`).join(" ");
+  throw new Error(`Invalid ${label}: ${details}`);
+}
+function sameJsonValue(left, right) {
+  if (Object.is(left, right)) return true;
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return Array.isArray(left) && Array.isArray(right) && left.length === right.length && left.every((entry, index) => sameJsonValue(entry, right[index]));
+  }
+  if (isRecord(left) || isRecord(right)) {
+    if (!isRecord(left) || !isRecord(right)) return false;
+    const leftKeys = Object.keys(left).sort();
+    const rightKeys = Object.keys(right).sort();
+    return leftKeys.length === rightKeys.length && leftKeys.every((key, index) => key === rightKeys[index] && sameJsonValue(left[key], right[key]));
+  }
+  return false;
+}
+function indexById(items = []) {
+  return new Map(items.map((item) => [item.id, item]));
+}
+function vectorBetween(start, end) {
+  return {
+    x: end.x - start.x,
+    y: end.y - start.y,
+    z: end.z - start.z
+  };
+}
+function normalized(vector) {
+  const norm3 = vectorNorm2(vector);
+  if (!Number.isFinite(norm3) || norm3 <= 0) return null;
+  return { x: vector.x / norm3, y: vector.y / norm3, z: vector.z / norm3 };
+}
+function dotProduct(left, right) {
+  return dot3(left, right);
+}
+function crossProduct(left, right) {
+  return cross3(left, right);
+}
+
+// src/domain/fem/contracts/FemCapabilitiesContract.js
+function validateCapabilityGroup(group, keys, path, errors, warnings) {
+  if (!validateRecord(group, path, errors)) return;
+  for (const key of keys) {
+    const itemPath = `${path}.${key}`;
+    if (!validateBoolean(group[key], itemPath, errors)) continue;
+    if (!group[key]) {
+      addWarning(
+        warnings,
+        "FEM_CAPABILITY_UNAVAILABLE",
+        itemPath,
+        `${itemPath} is explicitly unavailable; consumers must not infer or synthesize it.`
+      );
+    }
+  }
+}
+function validateFemCapabilitiesContract(input) {
+  const errors = [];
+  const warnings = [];
+  if (validateHeader(input, FEM_CONTRACT_SCHEMAS.capabilities, errors)) {
+    validateId(input.id, "$.id", errors);
+    if (validateRecord(input.solver, "$.solver", errors)) {
+      validateId(input.solver.id, "$.solver.id", errors);
+      validateString(input.solver.name, "$.solver.name", errors);
+      validateString(input.solver.version, "$.solver.version", errors);
+    }
+    validateCapabilityGroup(
+      input.analyses,
+      FEM_ANALYSIS_CAPABILITY_KEYS,
+      "$.analyses",
+      errors,
+      warnings
+    );
+    validateCapabilityGroup(
+      input.elements,
+      FEM_ELEMENT_CAPABILITY_KEYS,
+      "$.elements",
+      errors,
+      warnings
+    );
+    validateCapabilityGroup(
+      input.results,
+      FEM_RESULT_CAPABILITY_KEYS,
+      "$.results",
+      errors,
+      warnings
+    );
+    if (input.metadata != null) {
+      validateRecord(input.metadata, "$.metadata", errors);
+    }
+  }
+  return finalizeValidation(input, errors, warnings);
+}
+function createFemCapabilitiesContract(input) {
+  const candidate = withContractHeader(input, FEM_CONTRACT_SCHEMAS.capabilities);
+  return throwForInvalidContract(
+    "FemCapabilitiesContract",
+    validateFemCapabilitiesContract(candidate)
+  );
+}
+
+// src/domain/fem/contracts/GlobalFemModelContract.js
+var DOF_NAMES = ["ux", "uy", "uz", "rx", "ry", "rz"];
+var GROUP_TARGETS = /* @__PURE__ */ new Map([
+  ["nodes", "nodes"],
+  ["line-elements", "lineElements"],
+  ["shell-elements", "shellElements"],
+  ["links", "links"],
+  ["diaphragms", "diaphragms"],
+  ["storeys", "storeys"],
+  ["section-cuts", "sectionCuts"]
+]);
+function requireCollections(input, errors) {
+  const names = [
+    "nodes",
+    "materials",
+    "sections",
+    "lineElements",
+    "shellElements",
+    "supports",
+    "links",
+    "constraints",
+    "diaphragms",
+    "storeys",
+    "groups",
+    "sectionCuts"
+  ];
+  for (const name of names) {
+    validateArray(input[name], `$.${name}`, errors);
+  }
+}
+function validateGlobalCoordinateSystem(system, errors) {
+  if (!validateRecord(system, "$.globalCoordinateSystem", errors)) return;
+  validateId(system.id, "$.globalCoordinateSystem.id", errors);
+  validateString(system.type, "$.globalCoordinateSystem.type", errors, {
+    allowed: ["cartesian"]
+  });
+  validateString(system.handedness, "$.globalCoordinateSystem.handedness", errors, {
+    allowed: ["right"]
+  });
+  validateString(system.verticalAxis, "$.globalCoordinateSystem.verticalAxis", errors, {
+    allowed: ["X", "Y", "Z"]
+  });
+  validateString(
+    system.rotationConvention,
+    "$.globalCoordinateSystem.rotationConvention",
+    errors,
+    { allowed: ["right-hand-rule"] }
+  );
+  validateFiniteVector(system.origin, "$.globalCoordinateSystem.origin", errors);
+  validateAxes(system.axes, "$.globalCoordinateSystem.axes", errors);
+  if (validateFiniteVector(
+    system.gravityDirection,
+    "$.globalCoordinateSystem.gravityDirection",
+    errors
+  )) {
+    const direction = normalized(system.gravityDirection);
+    if (!direction) {
+      addError(
+        errors,
+        "FEM_DEGENERATE_VECTOR",
+        "$.globalCoordinateSystem.gravityDirection",
+        "Gravity direction must be non-zero."
+      );
+    }
+  }
+}
+function validateNodes(nodes, errors) {
+  const index = validateUniqueIds(nodes, "$.nodes", errors);
+  nodes == null ? void 0 : nodes.forEach((node, itemIndex) => {
+    validateFiniteVector(node.coordinates, `$.nodes[${itemIndex}].coordinates`, errors);
+    if (node.metadata != null) {
+      validateRecord(node.metadata, `$.nodes[${itemIndex}].metadata`, errors);
+    }
+  });
+  return index;
+}
+function validateMaterials(materials, errors) {
+  const index = validateUniqueIds(materials, "$.materials", errors);
+  materials == null ? void 0 : materials.forEach((material, itemIndex) => {
+    validateString(material.type, `$.materials[${itemIndex}].type`, errors);
+    validateRecord(material.properties, `$.materials[${itemIndex}].properties`, errors);
+  });
+  return index;
+}
+function validateSections(sections, materialIndex, errors) {
+  const index = validateUniqueIds(sections, "$.sections", errors);
+  sections == null ? void 0 : sections.forEach((section, itemIndex) => {
+    const path = `$.sections[${itemIndex}]`;
+    validateString(section.type, `${path}.type`, errors, {
+      allowed: ["line", "shell", "solid"]
+    });
+    if (validateId(section.materialId, `${path}.materialId`, errors) && !materialIndex.has(section.materialId)) {
+      addError(
+        errors,
+        "FEM_UNKNOWN_REFERENCE",
+        `${path}.materialId`,
+        `${path}.materialId references unknown material ${section.materialId}.`
+      );
+    }
+    validateRecord(section.properties, `${path}.properties`, errors);
+  });
+  return index;
+}
+function validateOffsets(offsets, path, errors) {
+  if (offsets == null) return;
+  if (!validateRecord(offsets, path, errors)) return;
+  for (const end of ["start", "end"]) {
+    const endPath = `${path}.${end}`;
+    if (!validateRecord(offsets[end], endPath, errors)) continue;
+    validateString(offsets[end].referenceSystem, `${endPath}.referenceSystem`, errors, {
+      allowed: ["global", "local"]
+    });
+    validateFiniteVector(offsets[end].vector, `${endPath}.vector`, errors);
+  }
+}
+function validateLineElements(lineElements, indices, errors) {
+  const index = validateUniqueIds(lineElements, "$.lineElements", errors);
+  lineElements == null ? void 0 : lineElements.forEach((element, itemIndex) => {
+    var _a, _b, _c, _d;
+    const path = `$.lineElements[${itemIndex}]`;
+    if (validateIdArray(element.nodeIds, `${path}.nodeIds`, errors, { minLength: 2 }) && element.nodeIds.length !== 2) {
+      addError(
+        errors,
+        "FEM_INVALID_CONNECTIVITY",
+        `${path}.nodeIds`,
+        "A line element must reference exactly two distinct nodes."
+      );
+    }
+    validateReferences(element.nodeIds, indices.nodes, `${path}.nodeIds`, errors, "node");
+    for (const [key, target, label] of [
+      ["sectionId", indices.sections, "section"],
+      ["materialId", indices.materials, "material"]
+    ]) {
+      if (validateId(element[key], `${path}.${key}`, errors) && !target.has(element[key])) {
+        addError(
+          errors,
+          "FEM_UNKNOWN_REFERENCE",
+          `${path}.${key}`,
+          `${path}.${key} references unknown ${label} ${element[key]}.`
+        );
+      }
+    }
+    const section = indices.sections.get(element.sectionId);
+    if (section && section.type !== "line") {
+      addError(
+        errors,
+        "FEM_SECTION_TYPE_MISMATCH",
+        `${path}.sectionId`,
+        `${path} requires a line section.`
+      );
+    }
+    if (section && section.materialId !== element.materialId) {
+      addError(
+        errors,
+        "FEM_MATERIAL_REFERENCE_MISMATCH",
+        `${path}.materialId`,
+        `${path}.materialId must match the referenced section materialId.`
+      );
+    }
+    const axesValid = validateAxes(element.localAxes, `${path}.localAxes`, errors);
+    validateOffsets(element.offsets, `${path}.offsets`, errors);
+    const start = (_b = indices.nodes.get((_a = element.nodeIds) == null ? void 0 : _a[0])) == null ? void 0 : _b.coordinates;
+    const end = (_d = indices.nodes.get((_c = element.nodeIds) == null ? void 0 : _c[1])) == null ? void 0 : _d.coordinates;
+    const direction = start && end ? normalized(vectorBetween(start, end)) : null;
+    if (start && end && !direction) {
+      addError(
+        errors,
+        "FEM_DEGENERATE_ELEMENT",
+        `${path}.nodeIds`,
+        `${path} has coincident end nodes.`
+      );
+    } else if (direction && axesValid && dotProduct(direction, element.localAxes.x) < 1 - 1e-8) {
+      addError(
+        errors,
+        "FEM_LOCAL_AXIS_MISMATCH",
+        `${path}.localAxes.x`,
+        `${path}.localAxes.x must point from nodeIds[0] to nodeIds[1].`
+      );
+    }
+  });
+  return index;
+}
+function validateShellElements(shellElements, indices, errors) {
+  const index = validateUniqueIds(shellElements, "$.shellElements", errors);
+  shellElements == null ? void 0 : shellElements.forEach((element, itemIndex) => {
+    var _a;
+    const path = `$.shellElements[${itemIndex}]`;
+    const connectivityValid = validateIdArray(
+      element.nodeIds,
+      `${path}.nodeIds`,
+      errors,
+      { minLength: 3 }
+    );
+    if (connectivityValid && ![3, 4].includes(element.nodeIds.length)) {
+      addError(
+        errors,
+        "FEM_INVALID_CONNECTIVITY",
+        `${path}.nodeIds`,
+        "A shell element must reference three or four distinct nodes."
+      );
+    }
+    validateReferences(element.nodeIds, indices.nodes, `${path}.nodeIds`, errors, "node");
+    for (const [key, target, label] of [
+      ["sectionId", indices.sections, "section"],
+      ["materialId", indices.materials, "material"]
+    ]) {
+      if (validateId(element[key], `${path}.${key}`, errors) && !target.has(element[key])) {
+        addError(
+          errors,
+          "FEM_UNKNOWN_REFERENCE",
+          `${path}.${key}`,
+          `${path}.${key} references unknown ${label} ${element[key]}.`
+        );
+      }
+    }
+    const section = indices.sections.get(element.sectionId);
+    if (section && section.type !== "shell") {
+      addError(
+        errors,
+        "FEM_SECTION_TYPE_MISMATCH",
+        `${path}.sectionId`,
+        `${path} requires a shell section.`
+      );
+    }
+    if (section && section.materialId !== element.materialId) {
+      addError(
+        errors,
+        "FEM_MATERIAL_REFERENCE_MISMATCH",
+        `${path}.materialId`,
+        `${path}.materialId must match the referenced section materialId.`
+      );
+    }
+    const axesValid = validateAxes(element.localAxes, `${path}.localAxes`, errors);
+    validateString(element.faceConvention, `${path}.faceConvention`, errors, {
+      allowed: ["positive-local-z"]
+    });
+    const coordinates = (_a = element.nodeIds) == null ? void 0 : _a.slice(0, 3).map((nodeId) => {
+      var _a2;
+      return (_a2 = indices.nodes.get(nodeId)) == null ? void 0 : _a2.coordinates;
+    });
+    if ((coordinates == null ? void 0 : coordinates.length) === 3 && coordinates.every(Boolean)) {
+      const firstEdge = vectorBetween(coordinates[0], coordinates[1]);
+      const secondEdge = vectorBetween(coordinates[0], coordinates[2]);
+      const normal = normalized(crossProduct(firstEdge, secondEdge));
+      if (!normal) {
+        addError(
+          errors,
+          "FEM_DEGENERATE_ELEMENT",
+          `${path}.nodeIds`,
+          `${path} has degenerate shell connectivity.`
+        );
+      } else if (axesValid && dotProduct(normal, element.localAxes.z) < 1 - 1e-8) {
+        addError(
+          errors,
+          "FEM_LOCAL_AXIS_MISMATCH",
+          `${path}.localAxes.z`,
+          `${path}.localAxes.z must follow the connectivity right-hand rule.`
+        );
+      }
+    }
+  });
+  return index;
+}
+function validateSupports(supports, nodeIndex, errors) {
+  const index = validateUniqueIds(supports, "$.supports", errors);
+  supports == null ? void 0 : supports.forEach((support, itemIndex) => {
+    const path = `$.supports[${itemIndex}]`;
+    if (validateId(support.nodeId, `${path}.nodeId`, errors) && !nodeIndex.has(support.nodeId)) {
+      addError(
+        errors,
+        "FEM_UNKNOWN_REFERENCE",
+        `${path}.nodeId`,
+        `${path}.nodeId references unknown node ${support.nodeId}.`
+      );
+    }
+    if (validateRecord(support.restraints, `${path}.restraints`, errors)) {
+      for (const dof of DOF_NAMES) {
+        validateBoolean(support.restraints[dof], `${path}.restraints.${dof}`, errors);
+      }
+    }
+  });
+  return index;
+}
+function validateLinks(links, nodeIndex, errors) {
+  const index = validateUniqueIds(links, "$.links", errors);
+  links == null ? void 0 : links.forEach((link, itemIndex) => {
+    const path = `$.links[${itemIndex}]`;
+    if (validateIdArray(link.nodeIds, `${path}.nodeIds`, errors, { minLength: 2 }) && link.nodeIds.length !== 2) {
+      addError(errors, "FEM_INVALID_CONNECTIVITY", `${path}.nodeIds`, "A link needs two nodes.");
+    }
+    validateReferences(link.nodeIds, nodeIndex, `${path}.nodeIds`, errors, "node");
+    validateString(link.type, `${path}.type`, errors);
+    validateAxes(link.localAxes, `${path}.localAxes`, errors);
+    validateRecord(link.properties, `${path}.properties`, errors);
+  });
+  return index;
+}
+function validateConstraints(constraints, nodeIndex, errors) {
+  const index = validateUniqueIds(constraints, "$.constraints", errors);
+  constraints == null ? void 0 : constraints.forEach((constraint, itemIndex) => {
+    const path = `$.constraints[${itemIndex}]`;
+    validateString(constraint.type, `${path}.type`, errors);
+    if (validateId(constraint.masterNodeId, `${path}.masterNodeId`, errors) && !nodeIndex.has(constraint.masterNodeId)) {
+      addError(
+        errors,
+        "FEM_UNKNOWN_REFERENCE",
+        `${path}.masterNodeId`,
+        `${path}.masterNodeId references unknown node ${constraint.masterNodeId}.`
+      );
+    }
+    validateIdArray(constraint.slaveNodeIds, `${path}.slaveNodeIds`, errors, { minLength: 1 });
+    validateReferences(
+      constraint.slaveNodeIds,
+      nodeIndex,
+      `${path}.slaveNodeIds`,
+      errors,
+      "node"
+    );
+    if (validateArray(constraint.dofs, `${path}.dofs`, errors)) {
+      constraint.dofs.forEach((dof, dofIndex) => {
+        validateString(dof, `${path}.dofs[${dofIndex}]`, errors, { allowed: DOF_NAMES });
+      });
+    }
+  });
+  return index;
+}
+function validateDiaphragms(diaphragms, nodeIndex, errors) {
+  const index = validateUniqueIds(diaphragms, "$.diaphragms", errors);
+  diaphragms == null ? void 0 : diaphragms.forEach((diaphragm, itemIndex) => {
+    const path = `$.diaphragms[${itemIndex}]`;
+    validateString(diaphragm.type, `${path}.type`, errors, {
+      allowed: ["rigid", "semi-rigid"]
+    });
+    validateIdArray(diaphragm.nodeIds, `${path}.nodeIds`, errors, { minLength: 3 });
+    validateReferences(diaphragm.nodeIds, nodeIndex, `${path}.nodeIds`, errors, "node");
+    if (validateRecord(diaphragm.plane, `${path}.plane`, errors)) {
+      validateFiniteVector(diaphragm.plane.origin, `${path}.plane.origin`, errors);
+      validateAxes(diaphragm.plane.localAxes, `${path}.plane.localAxes`, errors);
+    }
+  });
+  return index;
+}
+function validateStoreys(storeys, diaphragmIndex, errors) {
+  const index = validateUniqueIds(storeys, "$.storeys", errors);
+  const levelIndices = /* @__PURE__ */ new Set();
+  storeys == null ? void 0 : storeys.forEach((storey, itemIndex) => {
+    const path = `$.storeys[${itemIndex}]`;
+    validateString(storey.name, `${path}.name`, errors);
+    validateFinite(storey.elevation, `${path}.elevation`, errors);
+    if (validateFinite(storey.levelIndex, `${path}.levelIndex`, errors, { integer: true })) {
+      if (levelIndices.has(storey.levelIndex)) {
+        addError(
+          errors,
+          "FEM_DUPLICATE_LEVEL_INDEX",
+          `${path}.levelIndex`,
+          `Duplicate storey levelIndex ${storey.levelIndex}.`
+        );
+      }
+      levelIndices.add(storey.levelIndex);
+    }
+    validateIdArray(storey.diaphragmIds, `${path}.diaphragmIds`, errors);
+    validateReferences(
+      storey.diaphragmIds,
+      diaphragmIndex,
+      `${path}.diaphragmIds`,
+      errors,
+      "diaphragm"
+    );
+  });
+  return index;
+}
+function validateSectionCuts(sectionCuts, elementIndices, errors) {
+  const index = validateUniqueIds(sectionCuts, "$.sectionCuts", errors);
+  sectionCuts == null ? void 0 : sectionCuts.forEach((sectionCut, itemIndex) => {
+    const path = `$.sectionCuts[${itemIndex}]`;
+    if (validateRecord(sectionCut.plane, `${path}.plane`, errors)) {
+      validateFiniteVector(sectionCut.plane.origin, `${path}.plane.origin`, errors);
+      validateAxes(sectionCut.plane.localAxes, `${path}.plane.localAxes`, errors);
+    }
+    validateIdArray(sectionCut.lineElementIds, `${path}.lineElementIds`, errors);
+    validateIdArray(sectionCut.shellElementIds, `${path}.shellElementIds`, errors);
+    validateReferences(
+      sectionCut.lineElementIds,
+      elementIndices.lineElements,
+      `${path}.lineElementIds`,
+      errors,
+      "line element"
+    );
+    validateReferences(
+      sectionCut.shellElementIds,
+      elementIndices.shellElements,
+      `${path}.shellElementIds`,
+      errors,
+      "shell element"
+    );
+  });
+  return index;
+}
+function validateGroups(groups, indices, errors) {
+  const index = validateUniqueIds(groups, "$.groups", errors);
+  groups == null ? void 0 : groups.forEach((group, itemIndex) => {
+    const path = `$.groups[${itemIndex}]`;
+    if (!validateString(group.entityType, `${path}.entityType`, errors, {
+      allowed: [...GROUP_TARGETS.keys()]
+    })) return;
+    validateIdArray(group.entityIds, `${path}.entityIds`, errors, { minLength: 1 });
+    const targetName = GROUP_TARGETS.get(group.entityType);
+    validateReferences(
+      group.entityIds,
+      indices[targetName],
+      `${path}.entityIds`,
+      errors,
+      group.entityType
+    );
+  });
+  return index;
+}
+function validateGlobalFemModelContract(input) {
+  const errors = [];
+  const warnings = [];
+  if (validateHeader(input, FEM_CONTRACT_SCHEMAS.model, errors)) {
+    validateId(input.id, "$.id", errors);
+    validateId(input.hash, "$.hash", errors);
+    validateUnits(input.units, "$.units", errors);
+    validateGlobalCoordinateSystem(input.globalCoordinateSystem, errors);
+    requireCollections(input, errors);
+    const nodes = validateNodes(input.nodes, errors);
+    const materials = validateMaterials(input.materials, errors);
+    const sections = validateSections(input.sections, materials, errors);
+    const lineElements = validateLineElements(
+      input.lineElements,
+      { nodes, materials, sections },
+      errors
+    );
+    const shellElements = validateShellElements(
+      input.shellElements,
+      { nodes, materials, sections },
+      errors
+    );
+    const supports = validateSupports(input.supports, nodes, errors);
+    const links = validateLinks(input.links, nodes, errors);
+    const constraints = validateConstraints(input.constraints, nodes, errors);
+    const diaphragms = validateDiaphragms(input.diaphragms, nodes, errors);
+    const storeys = validateStoreys(input.storeys, diaphragms, errors);
+    const sectionCuts = validateSectionCuts(
+      input.sectionCuts,
+      { lineElements, shellElements },
+      errors
+    );
+    const indices = {
+      nodes,
+      materials,
+      sections,
+      lineElements,
+      shellElements,
+      supports,
+      links,
+      constraints,
+      diaphragms,
+      storeys,
+      sectionCuts
+    };
+    validateGroups(input.groups, indices, errors);
+    if (input.metadata != null) {
+      validateRecord(input.metadata, "$.metadata", errors);
+    }
+  }
+  return finalizeValidation(input, errors, warnings);
+}
+function createGlobalFemModelContract(input) {
+  const candidate = withContractHeader(input, FEM_CONTRACT_SCHEMAS.model);
+  return throwForInvalidContract(
+    "GlobalFemModelContract",
+    validateGlobalFemModelContract(candidate)
+  );
+}
+
+// src/domain/fem/contracts/GlobalFemAnalysisContract.js
+var ANALYSIS_CAPABILITY_BY_TYPE = Object.freeze({
+  "linear-static": "linearStatic",
+  "second-order-static": "secondOrder",
+  modal: "modal",
+  "response-spectrum": "responseSpectrum",
+  "nonlinear-static": "nonlinearStatic",
+  "time-history": "timeHistory"
+});
+function validateLoadPatterns(loadPatterns, errors) {
+  const index = validateUniqueIds(loadPatterns, "$.loadPatterns", errors);
+  loadPatterns == null ? void 0 : loadPatterns.forEach((loadPattern, itemIndex) => {
+    const path = `$.loadPatterns[${itemIndex}]`;
+    validateString(loadPattern.nature, `${path}.nature`, errors);
+    if (loadPattern.metadata != null) {
+      validateRecord(loadPattern.metadata, `${path}.metadata`, errors);
+    }
+  });
+  return index;
+}
+function validateLoadCases(loadCases, loadPatternIndex, errors) {
+  const index = validateUniqueIds(loadCases, "$.loadCases", errors);
+  loadCases == null ? void 0 : loadCases.forEach((loadCase, itemIndex) => {
+    const path = `$.loadCases[${itemIndex}]`;
+    validateString(loadCase.nature, `${path}.nature`, errors);
+    validateIdArray(loadCase.loadPatternIds, `${path}.loadPatternIds`, errors);
+    validateReferences(
+      loadCase.loadPatternIds,
+      loadPatternIndex,
+      `${path}.loadPatternIds`,
+      errors,
+      "load pattern"
+    );
+    validateFinite(loadCase.selfWeightFactor, `${path}.selfWeightFactor`, errors);
+  });
+  return index;
+}
+function validateCombinations(combinations, loadCaseIndex, errors) {
+  const index = validateUniqueIds(combinations, "$.combinations", errors);
+  combinations == null ? void 0 : combinations.forEach((combination, itemIndex) => {
+    var _a;
+    const path = `$.combinations[${itemIndex}]`;
+    validateString(combination.limitState, `${path}.limitState`, errors, {
+      allowed: ["ultimate", "serviceability", "accidental", "seismic", "fatigue", "other"]
+    });
+    validateString(combination.nature, `${path}.nature`, errors);
+    if (validateArray(combination.terms, `${path}.terms`, errors) && combination.terms.length === 0) {
+      addError(
+        errors,
+        "FEM_ARRAY_TOO_SHORT",
+        `${path}.terms`,
+        `${path}.terms must contain at least one load case.`
+      );
+    }
+    (_a = combination.terms) == null ? void 0 : _a.forEach((term, termIndex) => {
+      const termPath = `${path}.terms[${termIndex}]`;
+      if (!validateRecord(term, termPath, errors)) return;
+      if (validateId(term.loadCaseId, `${termPath}.loadCaseId`, errors) && !loadCaseIndex.has(term.loadCaseId)) {
+        addError(
+          errors,
+          "FEM_UNKNOWN_REFERENCE",
+          `${termPath}.loadCaseId`,
+          `${termPath}.loadCaseId references unknown load case ${term.loadCaseId}.`
+        );
+      }
+      validateFinite(term.factor, `${termPath}.factor`, errors);
+    });
+  });
+  return index;
+}
+function validateMassSources(massSources, loadCaseIndex, errors) {
+  const index = validateUniqueIds(massSources, "$.massSources", errors);
+  massSources == null ? void 0 : massSources.forEach((massSource, itemIndex) => {
+    var _a, _b;
+    const path = `$.massSources[${itemIndex}]`;
+    if (validateArray(massSource.directions, `${path}.directions`, errors) && massSource.directions.length === 0) {
+      addError(errors, "FEM_ARRAY_TOO_SHORT", `${path}.directions`, "Mass directions are required.");
+    }
+    const directions = /* @__PURE__ */ new Set();
+    (_a = massSource.directions) == null ? void 0 : _a.forEach((direction, directionIndex) => {
+      validateString(direction, `${path}.directions[${directionIndex}]`, errors, {
+        allowed: ["X", "Y", "Z"]
+      });
+      if (directions.has(direction)) {
+        addError(
+          errors,
+          "FEM_DUPLICATE_REFERENCE",
+          `${path}.directions[${directionIndex}]`,
+          `${path}.directions contains duplicate direction ${direction}.`
+        );
+      }
+      directions.add(direction);
+    });
+    if (validateArray(massSource.contributions, `${path}.contributions`, errors) && massSource.contributions.length === 0) {
+      addError(
+        errors,
+        "FEM_ARRAY_TOO_SHORT",
+        `${path}.contributions`,
+        "A mass source needs at least one contribution."
+      );
+    }
+    (_b = massSource.contributions) == null ? void 0 : _b.forEach((contribution, contributionIndex) => {
+      const contributionPath = `${path}.contributions[${contributionIndex}]`;
+      if (!validateRecord(contribution, contributionPath, errors)) return;
+      if (validateId(
+        contribution.loadCaseId,
+        `${contributionPath}.loadCaseId`,
+        errors
+      ) && !loadCaseIndex.has(contribution.loadCaseId)) {
+        addError(
+          errors,
+          "FEM_UNKNOWN_REFERENCE",
+          `${contributionPath}.loadCaseId`,
+          `${contributionPath}.loadCaseId references unknown load case ${contribution.loadCaseId}.`
+        );
+      }
+      validateFinite(contribution.factor, `${contributionPath}.factor`, errors, {
+        nonNegative: true
+      });
+    });
+  });
+  return index;
+}
+function validateSpectra(spectra, errors) {
+  const index = validateUniqueIds(spectra, "$.spectra", errors);
+  spectra == null ? void 0 : spectra.forEach((spectrum, itemIndex) => {
+    var _a;
+    const path = `$.spectra[${itemIndex}]`;
+    validateString(spectrum.direction, `${path}.direction`, errors, {
+      allowed: ["X", "Y", "Z"]
+    });
+    validateFinite(spectrum.dampingRatio, `${path}.dampingRatio`, errors, {
+      nonNegative: true
+    });
+    if (validateArray(spectrum.points, `${path}.points`, errors) && spectrum.points.length < 2) {
+      addError(
+        errors,
+        "FEM_ARRAY_TOO_SHORT",
+        `${path}.points`,
+        "A response spectrum requires at least two points."
+      );
+    }
+    (_a = spectrum.points) == null ? void 0 : _a.forEach((point4, pointIndex) => {
+      const pointPath = `${path}.points[${pointIndex}]`;
+      if (!validateRecord(point4, pointPath, errors)) return;
+      validateFinite(point4.period, `${pointPath}.period`, errors, { nonNegative: true });
+      validateFinite(point4.acceleration, `${pointPath}.acceleration`, errors, {
+        nonNegative: true
+      });
+    });
+  });
+  return index;
+}
+function validateTimeSeries(timeSeries, errors) {
+  const index = validateUniqueIds(timeSeries, "$.timeSeries", errors);
+  timeSeries == null ? void 0 : timeSeries.forEach((series, itemIndex) => {
+    var _a;
+    const path = `$.timeSeries[${itemIndex}]`;
+    validateFinite(series.timeStep, `${path}.timeStep`, errors, { positive: true });
+    if (validateArray(series.values, `${path}.values`, errors) && series.values.length < 2) {
+      addError(
+        errors,
+        "FEM_ARRAY_TOO_SHORT",
+        `${path}.values`,
+        "A time series requires at least two values."
+      );
+    }
+    (_a = series.values) == null ? void 0 : _a.forEach((value, valueIndex) => {
+      validateFinite(value, `${path}.values[${valueIndex}]`, errors);
+    });
+  });
+  return index;
+}
+function validateRequestedOutputs(outputs, path, errors) {
+  if (!validateArray(outputs, path, errors)) return;
+  if (outputs.length === 0) {
+    addError(errors, "FEM_ARRAY_TOO_SHORT", path, `${path} must not be empty.`);
+  }
+  const seen = /* @__PURE__ */ new Set();
+  outputs.forEach((output, index) => {
+    const outputPath = `${path}[${index}]`;
+    if (!validateString(output, outputPath, errors, {
+      allowed: FEM_RESULT_CAPABILITY_KEYS
+    })) return;
+    if (seen.has(output)) {
+      addError(
+        errors,
+        "FEM_DUPLICATE_REFERENCE",
+        outputPath,
+        `${path} contains duplicate output ${output}.`
+      );
+    }
+    seen.add(output);
+  });
+}
+function validateStaticProcedure(procedure, path, indices, model, errors) {
+  validateIdArray(procedure.loadCaseIds, `${path}.loadCaseIds`, errors, { minLength: 1 });
+  validateReferences(
+    procedure.loadCaseIds,
+    indices.loadCases,
+    `${path}.loadCaseIds`,
+    errors,
+    "load case"
+  );
+  validateIdArray(procedure.combinationIds, `${path}.combinationIds`, errors, {
+    minLength: ["linear-static", "second-order-static"].includes(procedure.type) ? 1 : 0
+  });
+  validateReferences(
+    procedure.combinationIds,
+    indices.combinations,
+    `${path}.combinationIds`,
+    errors,
+    "combination"
+  );
+  if (validateRecord(procedure.secondOrder, `${path}.secondOrder`, errors)) {
+    const enabledValid = validateBoolean(
+      procedure.secondOrder.enabled,
+      `${path}.secondOrder.enabled`,
+      errors
+    );
+    if (enabledValid && procedure.type === "linear-static" && procedure.secondOrder.enabled) {
+      addError(
+        errors,
+        "FEM_ANALYSIS_SETTING_CONFLICT",
+        `${path}.secondOrder.enabled`,
+        "linear-static requires secondOrder.enabled=false; use second-order-static otherwise."
+      );
+    }
+    if (enabledValid && procedure.type === "second-order-static" && !procedure.secondOrder.enabled) {
+      addError(
+        errors,
+        "FEM_ANALYSIS_SETTING_CONFLICT",
+        `${path}.secondOrder.enabled`,
+        "second-order-static requires secondOrder.enabled=true."
+      );
+    }
+    if (procedure.secondOrder.enabled) {
+      validateString(procedure.secondOrder.method, `${path}.secondOrder.method`, errors);
+    } else if (procedure.secondOrder.method !== null) {
+      addError(
+        errors,
+        "FEM_EXPLICIT_NULL_REQUIRED",
+        `${path}.secondOrder.method`,
+        "Disabled second-order effects require method=null."
+      );
+    }
+  }
+  if (validateArray(procedure.stiffnessAssumptions, `${path}.stiffnessAssumptions`, errors)) {
+    procedure.stiffnessAssumptions.forEach((assumption, assumptionIndex) => {
+      const assumptionPath = `${path}.stiffnessAssumptions[${assumptionIndex}]`;
+      if (!validateRecord(assumption, assumptionPath, errors)) return;
+      validateId(assumption.id, `${assumptionPath}.id`, errors);
+      validateString(assumption.scope, `${assumptionPath}.scope`, errors);
+      validateString(assumption.property, `${assumptionPath}.property`, errors);
+      validateFinite(assumption.factor, `${assumptionPath}.factor`, errors, { positive: true });
+      validateString(assumption.description, `${assumptionPath}.description`, errors);
+    });
+  }
+  if (validateArray(
+    procedure.accidentalEccentricities,
+    `${path}.accidentalEccentricities`,
+    errors
+  )) {
+    procedure.accidentalEccentricities.forEach((eccentricity, eccentricityIndex) => {
+      const eccentricityPath = `${path}.accidentalEccentricities[${eccentricityIndex}]`;
+      if (!validateRecord(eccentricity, eccentricityPath, errors)) return;
+      validateId(eccentricity.id, `${eccentricityPath}.id`, errors);
+      validateString(eccentricity.direction, `${eccentricityPath}.direction`, errors, {
+        allowed: ["X", "Y", "Z"]
+      });
+      validateFinite(eccentricity.offset, `${eccentricityPath}.offset`, errors);
+      if (eccentricity.storeyId != null && model && !model.storeys.some((storey) => storey.id === eccentricity.storeyId)) {
+        addError(
+          errors,
+          "FEM_UNKNOWN_REFERENCE",
+          `${eccentricityPath}.storeyId`,
+          `${eccentricityPath}.storeyId references unknown storey ${eccentricity.storeyId}.`
+        );
+      }
+    });
+  }
+}
+function validateModalProcedure(procedure, path, indices, errors) {
+  var _a;
+  if (validateId(procedure.massSourceId, `${path}.massSourceId`, errors) && !indices.massSources.has(procedure.massSourceId)) {
+    addError(
+      errors,
+      "FEM_UNKNOWN_REFERENCE",
+      `${path}.massSourceId`,
+      `${path}.massSourceId references unknown mass source ${procedure.massSourceId}.`
+    );
+  }
+  validateFinite(procedure.requestedModes, `${path}.requestedModes`, errors, {
+    positive: true,
+    integer: true
+  });
+  if (validateArray(procedure.directions, `${path}.directions`, errors) && procedure.directions.length === 0) {
+    addError(errors, "FEM_ARRAY_TOO_SHORT", `${path}.directions`, "Modal directions are required.");
+  }
+  const directions = /* @__PURE__ */ new Set();
+  (_a = procedure.directions) == null ? void 0 : _a.forEach((direction, directionIndex) => {
+    validateString(direction, `${path}.directions[${directionIndex}]`, errors, {
+      allowed: ["X", "Y", "Z"]
+    });
+    if (directions.has(direction)) {
+      addError(
+        errors,
+        "FEM_DUPLICATE_REFERENCE",
+        `${path}.directions[${directionIndex}]`,
+        `${path}.directions contains duplicate direction ${direction}.`
+      );
+    }
+    directions.add(direction);
+  });
+}
+function validateProcedures(procedures, indices, options, errors) {
+  const index = validateUniqueIds(procedures, "$.procedures", errors);
+  procedures == null ? void 0 : procedures.forEach((procedure, itemIndex) => {
+    var _a, _b;
+    const path = `$.procedures[${itemIndex}]`;
+    const typeValid = validateString(procedure.type, `${path}.type`, errors, {
+      allowed: FEM_ANALYSIS_TYPES
+    });
+    validateRequestedOutputs(procedure.requestedOutputs, `${path}.requestedOutputs`, errors);
+    if (typeValid && options.capabilities) {
+      const capability = ANALYSIS_CAPABILITY_BY_TYPE[procedure.type];
+      if (((_a = options.capabilities.analyses) == null ? void 0 : _a[capability]) !== true) {
+        addError(
+          errors,
+          "FEM_CAPABILITY_REQUIRED",
+          `${path}.type`,
+          `${procedure.type} requires analyses.${capability}=true.`
+        );
+      }
+    }
+    if (options.capabilities) {
+      (_b = procedure.requestedOutputs) == null ? void 0 : _b.forEach((output, outputIndex) => {
+        var _a2;
+        if (((_a2 = options.capabilities.results) == null ? void 0 : _a2[output]) !== true) {
+          addError(
+            errors,
+            "FEM_CAPABILITY_REQUIRED",
+            `${path}.requestedOutputs[${outputIndex}]`,
+            `Requested output ${output} requires results.${output}=true.`
+          );
+        }
+      });
+    }
+    if (["linear-static", "second-order-static", "nonlinear-static", "time-history"].includes(procedure.type)) {
+      validateStaticProcedure(procedure, path, indices, options.model, errors);
+    }
+    if (["modal", "response-spectrum"].includes(procedure.type)) {
+      validateModalProcedure(procedure, path, indices, errors);
+    }
+    if (procedure.type === "response-spectrum") {
+      validateIdArray(procedure.spectrumIds, `${path}.spectrumIds`, errors, { minLength: 1 });
+      validateReferences(
+        procedure.spectrumIds,
+        indices.spectra,
+        `${path}.spectrumIds`,
+        errors,
+        "response spectrum"
+      );
+    }
+    if (["nonlinear-static", "time-history"].includes(procedure.type)) {
+      validateFinite(procedure.requestedSteps, `${path}.requestedSteps`, errors, {
+        positive: true,
+        integer: true
+      });
+    }
+    if (procedure.type === "time-history") {
+      validateIdArray(procedure.timeSeriesIds, `${path}.timeSeriesIds`, errors, { minLength: 1 });
+      validateReferences(
+        procedure.timeSeriesIds,
+        indices.timeSeries,
+        `${path}.timeSeriesIds`,
+        errors,
+        "time series"
+      );
+    }
+  });
+  return index;
+}
+function validateGlobalFemAnalysisContract(input, { model = null, capabilities = null } = {}) {
+  const errors = [];
+  const warnings = [];
+  if (validateHeader(input, FEM_CONTRACT_SCHEMAS.analysis, errors)) {
+    validateId(input.id, "$.id", errors);
+    validateId(input.hash, "$.hash", errors);
+    validateId(input.modelId, "$.modelId", errors);
+    validateId(input.modelHash, "$.modelHash", errors);
+    validateUnits(input.units, "$.units", errors);
+    for (const collection of ["loadPatterns", "loadCases", "combinations", "procedures"]) {
+      validateArray(input[collection], `$.${collection}`, errors);
+    }
+    for (const collection of ["massSources", "spectra", "timeSeries"]) {
+      validateArray(input[collection], `$.${collection}`, errors, { required: false });
+    }
+    if (model) {
+      if (input.modelId !== model.id || input.modelHash !== model.hash) {
+        addError(
+          errors,
+          "FEM_MODEL_ASSOCIATION_MISMATCH",
+          "$.modelId",
+          "Analysis modelId/modelHash do not match the supplied model."
+        );
+      }
+      if (!sameJsonValue(input.units, model.units)) {
+        addError(
+          errors,
+          "FEM_UNIT_SYSTEM_MISMATCH",
+          "$.units",
+          "Analysis units must exactly match model units in schema v0."
+        );
+      }
+    }
+    const loadPatterns = validateLoadPatterns(input.loadPatterns, errors);
+    const loadCases = validateLoadCases(input.loadCases, loadPatterns, errors);
+    const combinations = validateCombinations(input.combinations, loadCases, errors);
+    const massSources = validateMassSources(input.massSources, loadCases, errors);
+    const spectra = validateSpectra(input.spectra, errors);
+    const timeSeries = validateTimeSeries(input.timeSeries, errors);
+    validateProcedures(
+      input.procedures,
+      { loadCases, combinations, massSources, spectra, timeSeries },
+      { model, capabilities },
+      errors
+    );
+    if (input.metadata != null) {
+      validateRecord(input.metadata, "$.metadata", errors);
+    }
+  }
+  return finalizeValidation(input, errors, warnings);
+}
+function createGlobalFemAnalysisContract(input, options = {}) {
+  const candidate = withContractHeader(input, FEM_CONTRACT_SCHEMAS.analysis);
+  return throwForInvalidContract(
+    "GlobalFemAnalysisContract",
+    validateGlobalFemAnalysisContract(candidate, options)
+  );
+}
+
+// src/domain/fem/contracts/FemEntityMappingContract.js
+function registerAssignments(ids, assignmentIndex, path, errors) {
+  ids == null ? void 0 : ids.forEach((id, itemIndex) => {
+    if (assignmentIndex.has(id)) {
+      addError(
+        errors,
+        "FEM_AMBIGUOUS_ENTITY_MAPPING",
+        `${path}[${itemIndex}]`,
+        `${id} is already mapped by ${assignmentIndex.get(id)}.`
+      );
+      return;
+    }
+    assignmentIndex.set(id, path);
+  });
+}
+function validateMembers(members, modelIndices, errors) {
+  const index = validateUniqueIds(members, "$.members", errors);
+  const assignments = /* @__PURE__ */ new Map();
+  members == null ? void 0 : members.forEach((member, itemIndex) => {
+    const path = `$.members[${itemIndex}]`;
+    validateString(member.role, `${path}.role`, errors, {
+      allowed: ["beam", "column", "brace", "other"]
+    });
+    validateIdArray(member.lineElementIds, `${path}.lineElementIds`, errors, { minLength: 1 });
+    if (modelIndices) {
+      validateReferences(
+        member.lineElementIds,
+        modelIndices.lineElements,
+        `${path}.lineElementIds`,
+        errors,
+        "line element"
+      );
+    }
+    registerAssignments(member.lineElementIds, assignments, `${path}.lineElementIds`, errors);
+  });
+  return { index, assignments };
+}
+function validateWalls(walls, modelIndices, errors) {
+  const index = validateUniqueIds(walls, "$.walls", errors);
+  const assignments = /* @__PURE__ */ new Map();
+  walls == null ? void 0 : walls.forEach((wall, itemIndex) => {
+    const path = `$.walls[${itemIndex}]`;
+    validateIdArray(wall.shellElementIds, `${path}.shellElementIds`, errors, { minLength: 1 });
+    validateIdArray(wall.sectionCutIds, `${path}.sectionCutIds`, errors);
+    validateIdArray(wall.storeyIds, `${path}.storeyIds`, errors, { minLength: 1 });
+    if (modelIndices) {
+      validateReferences(
+        wall.shellElementIds,
+        modelIndices.shellElements,
+        `${path}.shellElementIds`,
+        errors,
+        "shell element"
+      );
+      validateReferences(
+        wall.sectionCutIds,
+        modelIndices.sectionCuts,
+        `${path}.sectionCutIds`,
+        errors,
+        "section cut"
+      );
+      validateReferences(
+        wall.storeyIds,
+        modelIndices.storeys,
+        `${path}.storeyIds`,
+        errors,
+        "storey"
+      );
+    }
+    registerAssignments(wall.shellElementIds, assignments, `${path}.shellElementIds`, errors);
+  });
+  return { index, assignments };
+}
+function validateSlabs(slabs, modelIndices, shellAssignments, errors) {
+  const index = validateUniqueIds(slabs, "$.slabs", errors);
+  slabs == null ? void 0 : slabs.forEach((slab, itemIndex) => {
+    const path = `$.slabs[${itemIndex}]`;
+    validateIdArray(slab.shellElementIds, `${path}.shellElementIds`, errors, { minLength: 1 });
+    if (validateId(slab.storeyId, `${path}.storeyId`, errors) && modelIndices && !modelIndices.storeys.has(slab.storeyId)) {
+      addError(
+        errors,
+        "FEM_UNKNOWN_REFERENCE",
+        `${path}.storeyId`,
+        `${path}.storeyId references unknown storey ${slab.storeyId}.`
+      );
+    }
+    if (modelIndices) {
+      validateReferences(
+        slab.shellElementIds,
+        modelIndices.shellElements,
+        `${path}.shellElementIds`,
+        errors,
+        "shell element"
+      );
+    }
+    registerAssignments(slab.shellElementIds, shellAssignments, `${path}.shellElementIds`, errors);
+  });
+  return index;
+}
+function validateStoreyMappings(storeys, modelIndices, errors) {
+  const index = validateUniqueIds(storeys, "$.storeys", errors);
+  const mappedStoreys = /* @__PURE__ */ new Set();
+  storeys == null ? void 0 : storeys.forEach((storey, itemIndex) => {
+    const path = `$.storeys[${itemIndex}]`;
+    if (validateId(storey.storeyId, `${path}.storeyId`, errors)) {
+      if (mappedStoreys.has(storey.storeyId)) {
+        addError(
+          errors,
+          "FEM_AMBIGUOUS_ENTITY_MAPPING",
+          `${path}.storeyId`,
+          `Storey ${storey.storeyId} is mapped more than once.`
+        );
+      }
+      mappedStoreys.add(storey.storeyId);
+      if (modelIndices && !modelIndices.storeys.has(storey.storeyId)) {
+        addError(
+          errors,
+          "FEM_UNKNOWN_REFERENCE",
+          `${path}.storeyId`,
+          `${path}.storeyId references unknown storey ${storey.storeyId}.`
+        );
+      }
+    }
+    for (const [key, targetName, label] of [
+      ["nodeIds", "nodes", "node"],
+      ["diaphragmIds", "diaphragms", "diaphragm"],
+      ["lineElementIds", "lineElements", "line element"],
+      ["shellElementIds", "shellElements", "shell element"]
+    ]) {
+      validateIdArray(storey[key], `${path}.${key}`, errors);
+      if (modelIndices) {
+        validateReferences(
+          storey[key],
+          modelIndices[targetName],
+          `${path}.${key}`,
+          errors,
+          label
+        );
+      }
+    }
+  });
+  return { index, mappedStoreys };
+}
+function validateJoints(joints, modelIndices, errors) {
+  const index = validateUniqueIds(joints, "$.joints", errors);
+  const mappedNodes = /* @__PURE__ */ new Set();
+  joints == null ? void 0 : joints.forEach((joint, itemIndex) => {
+    const path = `$.joints[${itemIndex}]`;
+    if (validateId(joint.nodeId, `${path}.nodeId`, errors)) {
+      if (mappedNodes.has(joint.nodeId)) {
+        addError(
+          errors,
+          "FEM_AMBIGUOUS_ENTITY_MAPPING",
+          `${path}.nodeId`,
+          `Node ${joint.nodeId} is mapped to more than one structural joint.`
+        );
+      }
+      mappedNodes.add(joint.nodeId);
+      if (modelIndices && !modelIndices.nodes.has(joint.nodeId)) {
+        addError(
+          errors,
+          "FEM_UNKNOWN_REFERENCE",
+          `${path}.nodeId`,
+          `${path}.nodeId references unknown node ${joint.nodeId}.`
+        );
+      }
+    }
+    if (validateArray(joint.lineElementEnds, `${path}.lineElementEnds`, errors)) {
+      joint.lineElementEnds.forEach((end, endIndex) => {
+        var _a, _b;
+        const endPath = `${path}.lineElementEnds[${endIndex}]`;
+        if (!validateRecord(end, endPath, errors)) return;
+        if (validateId(end.lineElementId, `${endPath}.lineElementId`, errors) && modelIndices && !modelIndices.lineElements.has(end.lineElementId)) {
+          addError(
+            errors,
+            "FEM_UNKNOWN_REFERENCE",
+            `${endPath}.lineElementId`,
+            `${endPath}.lineElementId references unknown line element ${end.lineElementId}.`
+          );
+        }
+        validateString(end.end, `${endPath}.end`, errors, { allowed: ["start", "end"] });
+        const element = modelIndices == null ? void 0 : modelIndices.lineElements.get(end.lineElementId);
+        const expectedNodeId = end.end === "start" ? (_a = element == null ? void 0 : element.nodeIds) == null ? void 0 : _a[0] : (_b = element == null ? void 0 : element.nodeIds) == null ? void 0 : _b[1];
+        if (element && expectedNodeId !== joint.nodeId) {
+          addError(
+            errors,
+            "FEM_JOINT_END_MISMATCH",
+            endPath,
+            `${end.lineElementId}.${end.end} is not connected to joint node ${joint.nodeId}.`
+          );
+        }
+      });
+    }
+  });
+  return index;
+}
+function validateCoverage(model, assignments, mappedStoreys, errors) {
+  model.lineElements.forEach((element) => {
+    if (!assignments.lineElements.has(element.id)) {
+      addError(
+        errors,
+        "FEM_MAPPING_INCOMPLETE",
+        "$.members",
+        `Line element ${element.id} is not mapped to a structural member.`
+      );
+    }
+  });
+  model.shellElements.forEach((element) => {
+    if (!assignments.shellElements.has(element.id)) {
+      addError(
+        errors,
+        "FEM_MAPPING_INCOMPLETE",
+        "$.walls",
+        `Shell element ${element.id} is not mapped to a wall or slab.`
+      );
+    }
+  });
+  model.storeys.forEach((storey) => {
+    if (!mappedStoreys.has(storey.id)) {
+      addError(
+        errors,
+        "FEM_MAPPING_INCOMPLETE",
+        "$.storeys",
+        `Storey ${storey.id} has no explicit semantic mapping.`
+      );
+    }
+  });
+}
+function validateFemEntityMappingContract(input, { model = null } = {}) {
+  const errors = [];
+  const warnings = [];
+  if (validateHeader(input, FEM_CONTRACT_SCHEMAS.mapping, errors)) {
+    validateId(input.id, "$.id", errors);
+    validateId(input.modelId, "$.modelId", errors);
+    validateId(input.modelHash, "$.modelHash", errors);
+    for (const collection of ["members", "walls", "slabs", "storeys", "joints"]) {
+      validateArray(input[collection], `$.${collection}`, errors);
+    }
+    if (model && (input.modelId !== model.id || input.modelHash !== model.hash)) {
+      addError(
+        errors,
+        "FEM_MODEL_ASSOCIATION_MISMATCH",
+        "$.modelId",
+        "Mapping modelId/modelHash do not match the supplied model."
+      );
+    }
+    const modelIndices = model ? {
+      nodes: indexById(model.nodes),
+      lineElements: indexById(model.lineElements),
+      shellElements: indexById(model.shellElements),
+      diaphragms: indexById(model.diaphragms),
+      storeys: indexById(model.storeys),
+      sectionCuts: indexById(model.sectionCuts)
+    } : null;
+    const members = validateMembers(input.members, modelIndices, errors);
+    const walls = validateWalls(input.walls, modelIndices, errors);
+    const shellAssignments = new Map(walls.assignments);
+    validateSlabs(input.slabs, modelIndices, shellAssignments, errors);
+    const storeys = validateStoreyMappings(input.storeys, modelIndices, errors);
+    validateJoints(input.joints, modelIndices, errors);
+    if (model) {
+      validateCoverage(
+        model,
+        {
+          lineElements: members.assignments,
+          shellElements: shellAssignments
+        },
+        storeys.mappedStoreys,
+        errors
+      );
+    }
+    if (input.metadata != null) {
+      validateRecord(input.metadata, "$.metadata", errors);
+    }
+  }
+  return finalizeValidation(input, errors, warnings);
+}
+function createFemEntityMappingContract(input, options = {}) {
+  const candidate = withContractHeader(input, FEM_CONTRACT_SCHEMAS.mapping);
+  return throwForInvalidContract(
+    "FemEntityMappingContract",
+    validateFemEntityMappingContract(candidate, options)
+  );
+}
+
+// src/domain/fem/contracts/GlobalFemResultContract.js
+var RESULT_COLLECTION_BY_OUTPUT = Object.freeze({
+  nodalDisplacements: "nodalDisplacements",
+  reactions: "reactions",
+  lineElementActions: "lineElementActions",
+  shellResultants: "shellResultants",
+  stresses: "stresses",
+  strains: "strains",
+  modes: "modes",
+  sectionCuts: "sectionCuts",
+  storeyResults: "storeyResults",
+  equilibriumResiduals: "equilibriumResiduals"
+});
+var LINE_ACTION_COMPONENTS = ["N", "Vy", "Vz", "T", "My", "Mz"];
+var SHELL_RESULTANT_COMPONENTS = ["Nx", "Ny", "Nxy", "Mx", "My", "Mxy", "Vx", "Vy"];
+var SIX_COMPONENTS = ["Fx", "Fy", "Fz", "Mx", "My", "Mz"];
+function validateResultCollections(results, errors) {
+  if (!validateRecord(results, "$.results", errors)) return;
+  for (const name of [...Object.values(RESULT_COLLECTION_BY_OUTPUT), "envelopes"]) {
+    validateArray(results[name], `$.results.${name}`, errors, { required: false });
+  }
+}
+function validateSignConventions(signConventions, results, capabilities, errors) {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i;
+  if (!validateRecord(signConventions, "$.signConventions", errors)) return;
+  const required = /* @__PURE__ */ new Set();
+  const available = (_a = capabilities == null ? void 0 : capabilities.results) != null ? _a : {};
+  if (available.nodalDisplacements || available.modes || ((_b = results == null ? void 0 : results.nodalDisplacements) == null ? void 0 : _b.length) || ((_c = results == null ? void 0 : results.modes) == null ? void 0 : _c.length)) {
+    required.add("translations");
+    required.add("rotations");
+  }
+  if (available.reactions || ((_d = results == null ? void 0 : results.reactions) == null ? void 0 : _d.length)) required.add("reactions");
+  if (available.lineElementActions || ((_e = results == null ? void 0 : results.lineElementActions) == null ? void 0 : _e.length)) {
+    required.add("lineActions");
+  }
+  if (available.shellResultants || available.stresses || available.strains || ((_f = results == null ? void 0 : results.shellResultants) == null ? void 0 : _f.length) || ((_g = results == null ? void 0 : results.stresses) == null ? void 0 : _g.length) || ((_h = results == null ? void 0 : results.strains) == null ? void 0 : _h.length)) {
+    required.add("shellResultants");
+  }
+  if (available.sectionCuts || ((_i = results == null ? void 0 : results.sectionCuts) == null ? void 0 : _i.length)) required.add("sectionCuts");
+  for (const key of required) {
+    validateString(signConventions[key], `$.signConventions.${key}`, errors);
+  }
+}
+function validateProvenance(provenance7, input, context, errors) {
+  var _a;
+  if (!validateRecord(provenance7, "$.provenance", errors)) return;
+  if (validateRecord(provenance7.solver, "$.provenance.solver", errors)) {
+    validateId(provenance7.solver.id, "$.provenance.solver.id", errors);
+    validateString(provenance7.solver.name, "$.provenance.solver.name", errors);
+    validateString(provenance7.solver.version, "$.provenance.solver.version", errors);
+  }
+  if (validateRecord(provenance7.model, "$.provenance.model", errors)) {
+    validateId(provenance7.model.id, "$.provenance.model.id", errors);
+    validateId(provenance7.model.hash, "$.provenance.model.hash", errors);
+    if (provenance7.model.id !== input.modelId || provenance7.model.hash !== input.modelHash) {
+      addError(
+        errors,
+        "FEM_PROVENANCE_MISMATCH",
+        "$.provenance.model",
+        "Provenance model id/hash must match the result association."
+      );
+    }
+  }
+  if (validateRecord(provenance7.analysis, "$.provenance.analysis", errors)) {
+    validateId(provenance7.analysis.id, "$.provenance.analysis.id", errors);
+    validateId(provenance7.analysis.hash, "$.provenance.analysis.hash", errors);
+    if (provenance7.analysis.id !== input.analysisId || provenance7.analysis.hash !== input.analysisHash) {
+      addError(
+        errors,
+        "FEM_PROVENANCE_MISMATCH",
+        "$.provenance.analysis",
+        "Provenance analysis id/hash must match the result association."
+      );
+    }
+  }
+  if (context.capabilities && provenance7.solver.id !== ((_a = context.capabilities.solver) == null ? void 0 : _a.id)) {
+    addError(
+      errors,
+      "FEM_PROVENANCE_MISMATCH",
+      "$.provenance.solver.id",
+      "Provenance solver id must match the capability manifest solver id."
+    );
+  }
+}
+function validateConvergence(convergence, procedureIndex, errors) {
+  if (!validateArray(convergence, "$.convergence", errors)) return;
+  const seen = /* @__PURE__ */ new Set();
+  convergence.forEach((entry, itemIndex) => {
+    const path = `$.convergence[${itemIndex}]`;
+    if (!validateRecord(entry, path, errors)) return;
+    if (validateId(entry.procedureId, `${path}.procedureId`, errors)) {
+      if (seen.has(entry.procedureId)) {
+        addError(
+          errors,
+          "FEM_DUPLICATE_REFERENCE",
+          `${path}.procedureId`,
+          `Convergence for procedure ${entry.procedureId} is repeated.`
+        );
+      }
+      seen.add(entry.procedureId);
+      if (procedureIndex && !procedureIndex.has(entry.procedureId)) {
+        addError(
+          errors,
+          "FEM_UNKNOWN_REFERENCE",
+          `${path}.procedureId`,
+          `${path}.procedureId references unknown procedure ${entry.procedureId}.`
+        );
+      }
+    }
+    validateBoolean(entry.converged, `${path}.converged`, errors);
+    validateFinite(entry.iterations, `${path}.iterations`, errors, {
+      nonNegative: true,
+      integer: true
+    });
+    validateFinite(entry.residualNorm, `${path}.residualNorm`, errors, {
+      nonNegative: true
+    });
+    validateFinite(entry.tolerance, `${path}.tolerance`, errors, { nonNegative: true });
+    if (validateArray(entry.diagnostics, `${path}.diagnostics`, errors)) {
+      entry.diagnostics.forEach((message, messageIndex) => {
+        validateString(message, `${path}.diagnostics[${messageIndex}]`, errors);
+      });
+    }
+  });
+}
+function validateProcedureReference(entry, path, procedureIndex, errors, allowedTypes = null) {
+  if (!validateId(entry.procedureId, `${path}.procedureId`, errors)) return null;
+  const procedure = procedureIndex == null ? void 0 : procedureIndex.get(entry.procedureId);
+  if (procedureIndex && !procedure) {
+    addError(
+      errors,
+      "FEM_UNKNOWN_REFERENCE",
+      `${path}.procedureId`,
+      `${path}.procedureId references unknown procedure ${entry.procedureId}.`
+    );
+    return null;
+  }
+  if (procedure && allowedTypes && !allowedTypes.includes(procedure.type)) {
+    addError(
+      errors,
+      "FEM_RESULT_PROCEDURE_MISMATCH",
+      `${path}.procedureId`,
+      `${path} is not valid for procedure type ${procedure.type}.`
+    );
+  }
+  return procedure;
+}
+function validateStaticCaseReference(entry, path, indices, errors, procedure = null) {
+  const hasLoadCase = entry.loadCaseId != null;
+  const hasCombination = entry.combinationId != null;
+  if (hasLoadCase === hasCombination) {
+    addError(
+      errors,
+      "FEM_RESULT_CASE_AMBIGUOUS",
+      path,
+      `${path} must declare exactly one of loadCaseId or combinationId.`
+    );
+    return;
+  }
+  const key = hasLoadCase ? "loadCaseId" : "combinationId";
+  const target = hasLoadCase ? indices.loadCases : indices.combinations;
+  const label = hasLoadCase ? "load case" : "combination";
+  if (validateId(entry[key], `${path}.${key}`, errors) && target && !target.has(entry[key])) {
+    addError(
+      errors,
+      "FEM_UNKNOWN_REFERENCE",
+      `${path}.${key}`,
+      `${path}.${key} references unknown ${label} ${entry[key]}.`
+    );
+  }
+  if (["nonlinear-static", "time-history"].includes(procedure == null ? void 0 : procedure.type)) {
+    validateFinite(entry.step, `${path}.step`, errors, { nonNegative: true, integer: true });
+  }
+  if ((procedure == null ? void 0 : procedure.type) === "time-history") {
+    validateFinite(entry.time, `${path}.time`, errors, { nonNegative: true });
+  }
+}
+function validateVectorComponents(value, keys, path, errors) {
+  if (!validateRecord(value, path, errors)) return;
+  keys.forEach((key) => validateFinite(value[key], `${path}.${key}`, errors));
+}
+function validateNodalResults(items, path, indices, errors, { reactions = false } = {}) {
+  items == null ? void 0 : items.forEach((entry, itemIndex) => {
+    const itemPath = `${path}[${itemIndex}]`;
+    if (!validateRecord(entry, itemPath, errors)) return;
+    const procedure = validateProcedureReference(
+      entry,
+      itemPath,
+      indices.procedures,
+      errors,
+      ["linear-static", "second-order-static", "nonlinear-static", "time-history", "response-spectrum"]
+    );
+    validateStaticCaseReference(entry, itemPath, indices, errors, procedure);
+    if (validateId(entry.nodeId, `${itemPath}.nodeId`, errors) && indices.nodes && !indices.nodes.has(entry.nodeId)) {
+      addError(
+        errors,
+        "FEM_UNKNOWN_REFERENCE",
+        `${itemPath}.nodeId`,
+        `${itemPath}.nodeId references unknown node ${entry.nodeId}.`
+      );
+    }
+    validateString(entry.coordinateSystem, `${itemPath}.coordinateSystem`, errors, {
+      allowed: ["global"]
+    });
+    if (reactions) {
+      validateVectorComponents(entry.forces, ["x", "y", "z"], `${itemPath}.forces`, errors);
+      validateVectorComponents(entry.moments, ["x", "y", "z"], `${itemPath}.moments`, errors);
+    } else {
+      validateVectorComponents(
+        entry.translations,
+        ["x", "y", "z"],
+        `${itemPath}.translations`,
+        errors
+      );
+      validateVectorComponents(entry.rotations, ["x", "y", "z"], `${itemPath}.rotations`, errors);
+    }
+  });
+}
+function lineElementLength(element, nodeIndex) {
+  var _a, _b;
+  if (!element || !nodeIndex) return null;
+  const start = (_a = nodeIndex.get(element.nodeIds[0])) == null ? void 0 : _a.coordinates;
+  const end = (_b = nodeIndex.get(element.nodeIds[1])) == null ? void 0 : _b.coordinates;
+  if (!start || !end) return null;
+  return Math.sqrt(
+    (end.x - start.x) ** 2 + (end.y - start.y) ** 2 + (end.z - start.z) ** 2
+  );
+}
+function validateLineElementActions(items, indices, errors) {
+  const coveredElements = /* @__PURE__ */ new Set();
+  items == null ? void 0 : items.forEach((entry, itemIndex) => {
+    var _a, _b;
+    const path = `$.results.lineElementActions[${itemIndex}]`;
+    if (!validateRecord(entry, path, errors)) return;
+    const procedure = validateProcedureReference(
+      entry,
+      path,
+      indices.procedures,
+      errors,
+      ["linear-static", "second-order-static", "nonlinear-static", "time-history", "response-spectrum"]
+    );
+    validateStaticCaseReference(entry, path, indices, errors, procedure);
+    if (validateId(entry.lineElementId, `${path}.lineElementId`, errors)) {
+      coveredElements.add(entry.lineElementId);
+      if (indices.lineElements && !indices.lineElements.has(entry.lineElementId)) {
+        addError(
+          errors,
+          "FEM_UNKNOWN_REFERENCE",
+          `${path}.lineElementId`,
+          `${path}.lineElementId references unknown line element ${entry.lineElementId}.`
+        );
+      }
+    }
+    validateString(entry.coordinateSystem, `${path}.coordinateSystem`, errors, {
+      allowed: ["element-local"]
+    });
+    if (validateArray(entry.stations, `${path}.stations`, errors) && entry.stations.length < 2) {
+      addError(
+        errors,
+        "FEM_ARRAY_TOO_SHORT",
+        `${path}.stations`,
+        "Line-element actions require at least two stations."
+      );
+    }
+    const element = (_a = indices.lineElements) == null ? void 0 : _a.get(entry.lineElementId);
+    const length = lineElementLength(element, indices.nodes);
+    let previousXi = -Infinity;
+    (_b = entry.stations) == null ? void 0 : _b.forEach((station, stationIndex) => {
+      const stationPath = `${path}.stations[${stationIndex}]`;
+      if (!validateRecord(station, stationPath, errors)) return;
+      const xiValid = validateFinite(station.xi, `${stationPath}.xi`, errors);
+      const positionValid = validateFinite(station.position, `${stationPath}.position`, errors, {
+        nonNegative: true
+      });
+      if (xiValid && (station.xi < 0 || station.xi > 1)) {
+        addError(
+          errors,
+          "FEM_STATION_OUT_OF_RANGE",
+          `${stationPath}.xi`,
+          `${stationPath}.xi must lie in [0, 1].`
+        );
+      }
+      if (xiValid && station.xi < previousXi) {
+        addError(
+          errors,
+          "FEM_STATIONS_NOT_ORDERED",
+          `${stationPath}.xi`,
+          "Line-element stations must be ordered by non-decreasing xi."
+        );
+      }
+      if (xiValid) previousXi = station.xi;
+      if (xiValid && positionValid && Number.isFinite(length) && Math.abs(station.position - station.xi * length) > Math.max(1e-9, length * 1e-8)) {
+        addError(
+          errors,
+          "FEM_STATION_POSITION_MISMATCH",
+          `${stationPath}.position`,
+          `${stationPath}.position does not match xi times the element length.`
+        );
+      }
+      validateString(station.side, `${stationPath}.side`, errors, {
+        allowed: ["single", "before", "after"]
+      });
+      validateVectorComponents(
+        station.actions,
+        LINE_ACTION_COMPONENTS,
+        `${stationPath}.actions`,
+        errors
+      );
+    });
+  });
+  return coveredElements;
+}
+function validateLocation(location, path, errors) {
+  if (!validateRecord(location, path, errors)) return;
+  validateString(location.kind, `${path}.kind`, errors, {
+    allowed: ["centroid", "node", "integration-point", "coordinate"]
+  });
+  validateFiniteVector(location.position, `${path}.position`, errors);
+  if (location.kind === "node") validateId(location.nodeId, `${path}.nodeId`, errors);
+  if (location.kind === "integration-point") {
+    validateId(location.integrationPointId, `${path}.integrationPointId`, errors);
+  }
+}
+function validateShellResultants(items, indices, errors) {
+  const coveredElements = /* @__PURE__ */ new Set();
+  items == null ? void 0 : items.forEach((entry, itemIndex) => {
+    const path = `$.results.shellResultants[${itemIndex}]`;
+    if (!validateRecord(entry, path, errors)) return;
+    const procedure = validateProcedureReference(
+      entry,
+      path,
+      indices.procedures,
+      errors,
+      ["linear-static", "second-order-static", "nonlinear-static", "time-history", "response-spectrum"]
+    );
+    validateStaticCaseReference(entry, path, indices, errors, procedure);
+    if (validateId(entry.shellElementId, `${path}.shellElementId`, errors)) {
+      coveredElements.add(entry.shellElementId);
+      if (indices.shellElements && !indices.shellElements.has(entry.shellElementId)) {
+        addError(
+          errors,
+          "FEM_UNKNOWN_REFERENCE",
+          `${path}.shellElementId`,
+          `${path}.shellElementId references unknown shell element ${entry.shellElementId}.`
+        );
+      }
+    }
+    validateString(entry.coordinateSystem, `${path}.coordinateSystem`, errors, {
+      allowed: ["element-local"]
+    });
+    validateString(entry.face, `${path}.face`, errors, {
+      allowed: ["mid-surface", "positive-local-z", "negative-local-z"]
+    });
+    validateLocation(entry.location, `${path}.location`, errors);
+    validateVectorComponents(
+      entry.components,
+      SHELL_RESULTANT_COMPONENTS,
+      `${path}.components`,
+      errors
+    );
+  });
+  return coveredElements;
+}
+function validateTensorResults(items, path, indices, errors) {
+  items == null ? void 0 : items.forEach((entry, itemIndex) => {
+    var _a;
+    const itemPath = `${path}[${itemIndex}]`;
+    if (!validateRecord(entry, itemPath, errors)) return;
+    const procedure = validateProcedureReference(entry, itemPath, indices.procedures, errors);
+    validateStaticCaseReference(entry, itemPath, indices, errors, procedure);
+    validateString(entry.entityType, `${itemPath}.entityType`, errors, {
+      allowed: ["line-element", "shell-element", "solid-element"]
+    });
+    validateId(entry.entityId, `${itemPath}.entityId`, errors);
+    validateString(entry.coordinateSystem, `${itemPath}.coordinateSystem`, errors);
+    validateString(entry.face, `${itemPath}.face`, errors);
+    validateLocation(entry.location, `${itemPath}.location`, errors);
+    if (validateRecord(entry.components, `${itemPath}.components`, errors) && Object.keys(entry.components).length === 0) {
+      addError(
+        errors,
+        "FEM_EMPTY_COMPONENT_SET",
+        `${itemPath}.components`,
+        `${itemPath}.components must not be empty.`
+      );
+    }
+    for (const [key, value] of Object.entries((_a = entry.components) != null ? _a : {})) {
+      validateFinite(value, `${itemPath}.components.${key}`, errors);
+    }
+  });
+}
+function validateSectionCutResults(items, indices, errors) {
+  items == null ? void 0 : items.forEach((entry, itemIndex) => {
+    const path = `$.results.sectionCuts[${itemIndex}]`;
+    if (!validateRecord(entry, path, errors)) return;
+    const procedure = validateProcedureReference(entry, path, indices.procedures, errors);
+    validateStaticCaseReference(entry, path, indices, errors, procedure);
+    if (validateId(entry.sectionCutId, `${path}.sectionCutId`, errors) && indices.sectionCuts && !indices.sectionCuts.has(entry.sectionCutId)) {
+      addError(
+        errors,
+        "FEM_UNKNOWN_REFERENCE",
+        `${path}.sectionCutId`,
+        `${path}.sectionCutId references unknown section cut ${entry.sectionCutId}.`
+      );
+    }
+    validateString(entry.coordinateSystem, `${path}.coordinateSystem`, errors, {
+      allowed: ["section-cut-local"]
+    });
+    validateFiniteVector(entry.position, `${path}.position`, errors);
+    validateVectorComponents(entry.resultants, SIX_COMPONENTS, `${path}.resultants`, errors);
+  });
+}
+function validateModalMap(map, directions, path, errors, { ratio: ratio2 = false, nonNegative: nonNegative11 = false } = {}) {
+  if (!validateRecord(map, path, errors)) return;
+  directions == null ? void 0 : directions.forEach((direction) => {
+    const valid = validateFinite(map[direction], `${path}.${direction}`, errors, {
+      nonNegative: ratio2 || nonNegative11
+    });
+    if (valid && ratio2 && map[direction] > 1 + 1e-12) {
+      addError(
+        errors,
+        "FEM_RATIO_OUT_OF_RANGE",
+        `${path}.${direction}`,
+        `${path}.${direction} must not exceed 1.`
+      );
+    }
+  });
+}
+function validateModes(items, indices, errors) {
+  const countByProcedure = /* @__PURE__ */ new Map();
+  const keys = /* @__PURE__ */ new Set();
+  items == null ? void 0 : items.forEach((mode, itemIndex) => {
+    var _a, _b, _c, _d;
+    const path = `$.results.modes[${itemIndex}]`;
+    if (!validateRecord(mode, path, errors)) return;
+    const procedure = validateProcedureReference(
+      mode,
+      path,
+      indices.procedures,
+      errors,
+      ["modal", "response-spectrum"]
+    );
+    const modeValid = validateFinite(mode.modeNumber, `${path}.modeNumber`, errors, {
+      positive: true,
+      integer: true
+    });
+    const key = `${mode.procedureId}:${mode.modeNumber}`;
+    if (modeValid && keys.has(key)) {
+      addError(errors, "FEM_DUPLICATE_MODE", `${path}.modeNumber`, `Duplicate mode ${key}.`);
+    }
+    keys.add(key);
+    countByProcedure.set(mode.procedureId, ((_a = countByProcedure.get(mode.procedureId)) != null ? _a : 0) + 1);
+    const periodValid = validateFinite(mode.period, `${path}.period`, errors, { positive: true });
+    const frequencyValid = validateFinite(mode.frequency, `${path}.frequency`, errors, {
+      positive: true
+    });
+    if (periodValid && frequencyValid && Math.abs(mode.period * mode.frequency - 1) > 1e-6) {
+      addError(
+        errors,
+        "FEM_MODAL_PERIOD_FREQUENCY_MISMATCH",
+        path,
+        `${path}.period and frequency must be reciprocal.`
+      );
+    }
+    validateFinite(mode.eigenvalue, `${path}.eigenvalue`, errors, { positive: true });
+    if (validateArray(mode.modalShape, `${path}.modalShape`, errors) && mode.modalShape.length === 0) {
+      addError(errors, "FEM_ARRAY_TOO_SHORT", `${path}.modalShape`, "A modal shape is required.");
+    }
+    const shapeNodes = /* @__PURE__ */ new Set();
+    (_b = mode.modalShape) == null ? void 0 : _b.forEach((shape, shapeIndex) => {
+      const shapePath = `${path}.modalShape[${shapeIndex}]`;
+      if (!validateRecord(shape, shapePath, errors)) return;
+      if (validateId(shape.nodeId, `${shapePath}.nodeId`, errors)) {
+        if (shapeNodes.has(shape.nodeId)) {
+          addError(
+            errors,
+            "FEM_DUPLICATE_REFERENCE",
+            `${shapePath}.nodeId`,
+            `Node ${shape.nodeId} is repeated in modal shape ${key}.`
+          );
+        }
+        shapeNodes.add(shape.nodeId);
+        if (indices.nodes && !indices.nodes.has(shape.nodeId)) {
+          addError(
+            errors,
+            "FEM_UNKNOWN_REFERENCE",
+            `${shapePath}.nodeId`,
+            `${shapePath}.nodeId references unknown node ${shape.nodeId}.`
+          );
+        }
+      }
+      validateVectorComponents(
+        shape.translations,
+        ["x", "y", "z"],
+        `${shapePath}.translations`,
+        errors
+      );
+      validateVectorComponents(shape.rotations, ["x", "y", "z"], `${shapePath}.rotations`, errors);
+    });
+    const directions = (_d = procedure == null ? void 0 : procedure.directions) != null ? _d : Object.keys((_c = mode.participationFactors) != null ? _c : {});
+    validateModalMap(mode.participationFactors, directions, `${path}.participationFactors`, errors);
+    validateModalMap(
+      mode.participatingMasses,
+      directions,
+      `${path}.participatingMasses`,
+      errors,
+      { nonNegative: true }
+    );
+    validateModalMap(
+      mode.participatingMassRatios,
+      directions,
+      `${path}.participatingMassRatios`,
+      errors,
+      { ratio: true }
+    );
+  });
+  return countByProcedure;
+}
+function validateStoreyResults(items, indices, errors) {
+  items == null ? void 0 : items.forEach((entry, itemIndex) => {
+    const path = `$.results.storeyResults[${itemIndex}]`;
+    if (!validateRecord(entry, path, errors)) return;
+    const procedure = validateProcedureReference(entry, path, indices.procedures, errors);
+    validateStaticCaseReference(entry, path, indices, errors, procedure);
+    for (const [key, target, label] of [
+      ["storeyId", indices.storeys, "storey"],
+      ["diaphragmId", indices.diaphragms, "diaphragm"]
+    ]) {
+      if (validateId(entry[key], `${path}.${key}`, errors) && target && !target.has(entry[key])) {
+        addError(
+          errors,
+          "FEM_UNKNOWN_REFERENCE",
+          `${path}.${key}`,
+          `${path}.${key} references unknown ${label} ${entry[key]}.`
+        );
+      }
+    }
+    validateFiniteVector(entry.centerOfMass, `${path}.centerOfMass`, errors);
+    validateFiniteVector(entry.centerOfRigidity, `${path}.centerOfRigidity`, errors);
+    validateVectorComponents(entry.translations, ["x", "y", "z"], `${path}.translations`, errors);
+    validateVectorComponents(entry.rotations, ["x", "y", "z"], `${path}.rotations`, errors);
+    validateVectorComponents(entry.driftRatios, ["X", "Y"], `${path}.driftRatios`, errors);
+    validateVectorComponents(entry.resultants, SIX_COMPONENTS, `${path}.resultants`, errors);
+    if (validateRecord(entry.torsionalMetrics, `${path}.torsionalMetrics`, errors)) {
+      for (const [key, value] of Object.entries(entry.torsionalMetrics)) {
+        validateFinite(value, `${path}.torsionalMetrics.${key}`, errors);
+      }
+    }
+  });
+}
+function validateEquilibriumResiduals(items, indices, errors) {
+  items == null ? void 0 : items.forEach((entry, itemIndex) => {
+    const path = `$.results.equilibriumResiduals[${itemIndex}]`;
+    if (!validateRecord(entry, path, errors)) return;
+    const procedure = validateProcedureReference(entry, path, indices.procedures, errors);
+    validateStaticCaseReference(entry, path, indices, errors, procedure);
+    validateVectorComponents(entry.forces, ["x", "y", "z"], `${path}.forces`, errors);
+    validateVectorComponents(entry.moments, ["x", "y", "z"], `${path}.moments`, errors);
+    validateFinite(entry.normalizedResidual, `${path}.normalizedResidual`, errors, {
+      nonNegative: true
+    });
+  });
+}
+function validateEnvelopes(items, indices, errors) {
+  validateUniqueIds(items, "$.results.envelopes", errors);
+  items == null ? void 0 : items.forEach((entry, itemIndex) => {
+    var _a;
+    const path = `$.results.envelopes[${itemIndex}]`;
+    validateString(entry.quantity, `${path}.quantity`, errors);
+    if (validateRecord(entry.target, `${path}.target`, errors)) {
+      validateString(entry.target.entityType, `${path}.target.entityType`, errors);
+      validateId(entry.target.entityId, `${path}.target.entityId`, errors);
+    }
+    if (validateArray(entry.governing, `${path}.governing`, errors) && entry.governing.length === 0) {
+      addError(errors, "FEM_ARRAY_TOO_SHORT", `${path}.governing`, "Envelope governing data are required.");
+    }
+    (_a = entry.governing) == null ? void 0 : _a.forEach((governing, governingIndex) => {
+      const governingPath = `${path}.governing[${governingIndex}]`;
+      if (!validateRecord(governing, governingPath, errors)) return;
+      if (validateId(governing.combinationId, `${governingPath}.combinationId`, errors) && indices.combinations && !indices.combinations.has(governing.combinationId)) {
+        addError(
+          errors,
+          "FEM_UNKNOWN_REFERENCE",
+          `${governingPath}.combinationId`,
+          `${governingPath}.combinationId references unknown combination ${governing.combinationId}.`
+        );
+      }
+      validateFinite(governing.value, `${governingPath}.value`, errors);
+    });
+  });
+}
+function validateCapabilityCompleteness(input, context, coverage, modeCounts, errors) {
+  var _a, _b, _c, _d;
+  const { capabilities, analysis, model } = context;
+  if (!capabilities || !analysis || !input.results) return;
+  for (const capability of FEM_RESULT_CAPABILITY_KEYS) {
+    const collection = RESULT_COLLECTION_BY_OUTPUT[capability];
+    if (((_a = capabilities.results) == null ? void 0 : _a[capability]) === false && ((_b = input.results[collection]) == null ? void 0 : _b.length) > 0) {
+      addError(
+        errors,
+        "FEM_UNDECLARED_RESULT_CAPABILITY",
+        `$.results.${collection}`,
+        `Results are present although results.${capability}=false.`
+      );
+    }
+  }
+  if (["failed", "not-supported"].includes(input.status)) return;
+  const requests = /* @__PURE__ */ new Map();
+  analysis.procedures.forEach((procedure) => {
+    procedure.requestedOutputs.forEach((output) => {
+      if (!requests.has(output)) requests.set(output, []);
+      requests.get(output).push(procedure);
+    });
+  });
+  for (const [output, procedures] of requests) {
+    const collection = RESULT_COLLECTION_BY_OUTPUT[output];
+    if (((_c = capabilities.results) == null ? void 0 : _c[output]) !== true) {
+      addError(
+        errors,
+        "FEM_CAPABILITY_REQUIRED",
+        `$.results.${collection}`,
+        `Requested output ${output} is not declared available.`
+      );
+    } else if (((_d = input.results[collection]) == null ? void 0 : _d.length) === 0) {
+      addError(
+        errors,
+        "FEM_DECLARED_RESULT_MISSING",
+        `$.results.${collection}`,
+        `Requested and available output ${output} is missing.`
+      );
+    }
+    if (output === "modes") {
+      procedures.forEach((procedure) => {
+        var _a2;
+        if (((_a2 = modeCounts.get(procedure.id)) != null ? _a2 : 0) < procedure.requestedModes) {
+          addError(
+            errors,
+            "FEM_DECLARED_RESULT_MISSING",
+            "$.results.modes",
+            `Procedure ${procedure.id} requested ${procedure.requestedModes} modes.`
+          );
+        }
+      });
+    }
+  }
+  if (model && requests.has("lineElementActions")) {
+    model.lineElements.forEach((element) => {
+      if (!coverage.lineElements.has(element.id)) {
+        addError(
+          errors,
+          "FEM_RESULT_COVERAGE_INCOMPLETE",
+          "$.results.lineElementActions",
+          `No line-element action result exists for ${element.id}.`
+        );
+      }
+    });
+  }
+  if (model && requests.has("shellResultants")) {
+    model.shellElements.forEach((element) => {
+      if (!coverage.shellElements.has(element.id)) {
+        addError(
+          errors,
+          "FEM_RESULT_COVERAGE_INCOMPLETE",
+          "$.results.shellResultants",
+          `No shell resultant exists for ${element.id}.`
+        );
+      }
+    });
+  }
+}
+function validateGlobalFemResultContract(input, { model = null, analysis = null, capabilities = null, mapping = null } = {}) {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
+  const errors = [];
+  const warnings = [];
+  if (validateHeader(input, FEM_CONTRACT_SCHEMAS.result, errors)) {
+    validateId(input.id, "$.id", errors);
+    validateId(input.modelId, "$.modelId", errors);
+    validateId(input.modelHash, "$.modelHash", errors);
+    validateId(input.analysisId, "$.analysisId", errors);
+    validateId(input.analysisHash, "$.analysisHash", errors);
+    validateId(input.capabilitiesId, "$.capabilitiesId", errors);
+    validateString(input.status, "$.status", errors, { allowed: FEM_RESULT_STATUS_VALUES });
+    validateUnits(input.units, "$.units", errors);
+    validateSignConventions(input.signConventions, input.results, capabilities, errors);
+    validateResultCollections(input.results, errors);
+    if (model) {
+      if (input.modelId !== model.id || input.modelHash !== model.hash) {
+        addError(
+          errors,
+          "FEM_MODEL_ASSOCIATION_MISMATCH",
+          "$.modelId",
+          "Result modelId/modelHash do not match the supplied model."
+        );
+      }
+      if (!sameJsonValue(input.units, model.units)) {
+        addError(
+          errors,
+          "FEM_UNIT_SYSTEM_MISMATCH",
+          "$.units",
+          "Result units must exactly match model units in schema v0."
+        );
+      }
+    }
+    if (analysis) {
+      if (input.analysisId !== analysis.id || input.analysisHash !== analysis.hash) {
+        addError(
+          errors,
+          "FEM_ANALYSIS_ASSOCIATION_MISMATCH",
+          "$.analysisId",
+          "Result analysisId/analysisHash do not match the supplied analysis."
+        );
+      }
+      if (!sameJsonValue(input.units, analysis.units)) {
+        addError(
+          errors,
+          "FEM_UNIT_SYSTEM_MISMATCH",
+          "$.units",
+          "Result units must exactly match analysis units in schema v0."
+        );
+      }
+    }
+    if (capabilities && input.capabilitiesId !== capabilities.id) {
+      addError(
+        errors,
+        "FEM_CAPABILITIES_ASSOCIATION_MISMATCH",
+        "$.capabilitiesId",
+        "Result capabilitiesId does not match the supplied capability manifest."
+      );
+    }
+    if (mapping && model && (mapping.modelId !== model.id || mapping.modelHash !== model.hash)) {
+      addError(
+        errors,
+        "FEM_MODEL_ASSOCIATION_MISMATCH",
+        "$.modelId",
+        "Supplied mapping is not associated with the supplied model."
+      );
+    }
+    const indices = {
+      procedures: analysis ? indexById(analysis.procedures) : null,
+      loadCases: analysis ? indexById(analysis.loadCases) : null,
+      combinations: analysis ? indexById(analysis.combinations) : null,
+      nodes: model ? indexById(model.nodes) : null,
+      lineElements: model ? indexById(model.lineElements) : null,
+      shellElements: model ? indexById(model.shellElements) : null,
+      sectionCuts: model ? indexById(model.sectionCuts) : null,
+      storeys: model ? indexById(model.storeys) : null,
+      diaphragms: model ? indexById(model.diaphragms) : null
+    };
+    validateProvenance(input.provenance, input, { capabilities }, errors);
+    validateConvergence(input.convergence, indices.procedures, errors);
+    validateNodalResults(
+      (_a = input.results) == null ? void 0 : _a.nodalDisplacements,
+      "$.results.nodalDisplacements",
+      indices,
+      errors
+    );
+    validateNodalResults(
+      (_b = input.results) == null ? void 0 : _b.reactions,
+      "$.results.reactions",
+      indices,
+      errors,
+      { reactions: true }
+    );
+    const lineElements = validateLineElementActions(
+      (_c = input.results) == null ? void 0 : _c.lineElementActions,
+      indices,
+      errors
+    );
+    const shellElements = validateShellResultants(
+      (_d = input.results) == null ? void 0 : _d.shellResultants,
+      indices,
+      errors
+    );
+    validateTensorResults((_e = input.results) == null ? void 0 : _e.stresses, "$.results.stresses", indices, errors);
+    validateTensorResults((_f = input.results) == null ? void 0 : _f.strains, "$.results.strains", indices, errors);
+    validateSectionCutResults((_g = input.results) == null ? void 0 : _g.sectionCuts, indices, errors);
+    const modeCounts = validateModes((_h = input.results) == null ? void 0 : _h.modes, indices, errors);
+    validateStoreyResults((_i = input.results) == null ? void 0 : _i.storeyResults, indices, errors);
+    validateEquilibriumResiduals((_j = input.results) == null ? void 0 : _j.equilibriumResiduals, indices, errors);
+    validateEnvelopes((_k = input.results) == null ? void 0 : _k.envelopes, indices, errors);
+    validateCapabilityCompleteness(
+      input,
+      { model, analysis, capabilities },
+      { lineElements, shellElements },
+      modeCounts,
+      errors
+    );
+    if (input.qualityIndicators != null) {
+      if (validateRecord(input.qualityIndicators, "$.qualityIndicators", errors)) {
+        for (const [key, value] of Object.entries(input.qualityIndicators)) {
+          validateFinite(value, `$.qualityIndicators.${key}`, errors, { nonNegative: true });
+        }
+      }
+    }
+    if (input.metadata != null) {
+      validateRecord(input.metadata, "$.metadata", errors);
+    }
+  }
+  return finalizeValidation(input, errors, warnings);
+}
+function createGlobalFemResultContract(input, options = {}) {
+  const candidate = withContractHeader(input, FEM_CONTRACT_SCHEMAS.result);
+  return throwForInvalidContract(
+    "GlobalFemResultContract",
+    validateGlobalFemResultContract(candidate, options)
+  );
+}
+
+// src/domain/fem/contracts/GlobalFemContractSet.js
+function validateGlobalFemContractSet(input = {}) {
+  const capabilities = validateFemCapabilitiesContract(input.capabilities);
+  const model = validateGlobalFemModelContract(input.model);
+  const analysis = validateGlobalFemAnalysisContract(input.analysis, {
+    model: input.model,
+    capabilities: input.capabilities
+  });
+  const mapping = validateFemEntityMappingContract(input.mapping, {
+    model: input.model
+  });
+  const result9 = validateGlobalFemResultContract(input.result, {
+    model: input.model,
+    analysis: input.analysis,
+    capabilities: input.capabilities,
+    mapping: input.mapping
+  });
+  const validations = { capabilities, model, analysis, mapping, result: result9 };
+  const errors = Object.values(validations).flatMap((validation) => validation.errors);
+  const warnings = Object.values(validations).flatMap((validation) => validation.warnings);
+  return {
+    ok: errors.length === 0,
+    value: Object.values(validations).every((validation) => validation.value !== null) ? Object.fromEntries(
+      Object.entries(validations).map(([key, validation]) => [key, validation.value])
+    ) : null,
+    errors,
+    warnings,
+    contracts: validations
+  };
+}
+function createGlobalFemContractSet(input = {}) {
+  const capabilities = createFemCapabilitiesContract(input.capabilities);
+  const model = createGlobalFemModelContract(input.model);
+  const analysis = createGlobalFemAnalysisContract(input.analysis, { model, capabilities });
+  const mapping = createFemEntityMappingContract(input.mapping, { model });
+  const result9 = createGlobalFemResultContract(input.result, {
+    model,
+    analysis,
+    capabilities,
+    mapping
+  });
+  return { capabilities, model, analysis, mapping, result: result9 };
+}
+
 // src/domain/math/BandedLinearSolver.js
 function cloneSymmetricMatrix(matrix, symmetryTolerance) {
   if (!Array.isArray(matrix) || matrix.length === 0) {
@@ -52900,7 +55431,7 @@ var BandedLinearSolver = class {
 
 // src/domain/math/rayPolygonCapacity.js
 var DEFAULT_TOLERANCE = 1e-9;
-function cross3(a, b) {
+function cross4(a, b) {
   return a.x * b.y - a.y * b.x;
 }
 function rayPolygonCapacity(points, demandX, demandY, { tolerance = DEFAULT_TOLERANCE } = {}) {
@@ -52932,12 +55463,12 @@ function rayPolygonCapacity(points, demandX, demandY, { tolerance = DEFAULT_TOLE
       x: end.x - start.x,
       y: end.y - start.y
     };
-    const denominator = cross3(direction, segment);
+    const denominator = cross4(direction, segment);
     if (Math.abs(denominator) <= tolerance) {
       continue;
     }
-    const distance = cross3(start, segment) / denominator;
-    const segmentParameter = cross3(start, direction) / denominator;
+    const distance = cross4(start, segment) / denominator;
+    const segmentParameter = cross4(start, direction) / denominator;
     if (distance >= -tolerance && segmentParameter >= -tolerance && segmentParameter <= 1 + tolerance) {
       const nonNegativeDistance = Math.max(0, distance);
       intersections.push({
@@ -54046,22 +56577,22 @@ function assertNonNegative7(value, label) {
   }
 }
 function normalizeAxialForceConvention(value = "compression-positive") {
-  const normalized = String(value).trim().toLowerCase();
-  if (normalized === "compression-positive" || normalized === "compression-negative" || normalized === "absolute") {
-    return normalized;
+  const normalized2 = String(value).trim().toLowerCase();
+  if (normalized2 === "compression-positive" || normalized2 === "compression-negative" || normalized2 === "absolute") {
+    return normalized2;
   }
   throw new Error(
     `Unsupported masonry pier axialForceConvention: ${value}.`
   );
 }
 function normalizeReductionTableScheme(value = "hinged") {
-  const normalized = String(value).trim().toLowerCase();
-  if (normalized !== "hinged") {
+  const normalized2 = String(value).trim().toLowerCase();
+  if (normalized2 !== "hinged") {
     throw new Error(
       `MasonryPierModel supports only the "hinged" reductionTableScheme for Phi reduction factors. Received: ${value}.`
     );
   }
-  return normalized;
+  return normalized2;
 }
 function normalizePlainMaterial(material) {
   var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
@@ -54860,11 +57391,11 @@ function calculateNTC2018MasonryPierElasticStiffness({
 
 // src/norms/ntc2018/masonry/evaluateNTC2018MasonryPier.js
 function normalizeTexture(value = "irregular") {
-  const normalized = String(value).trim().toLowerCase();
-  if (normalized !== "irregular" && normalized !== "regular") {
+  const normalized2 = String(value).trim().toLowerCase();
+  if (normalized2 !== "irregular" && normalized2 !== "regular") {
     throw new Error(`Unsupported masonryTexture: ${value}.`);
   }
-  return normalized;
+  return normalized2;
 }
 function responseAtDisplacement({ displacement, stiffness, resistance, yieldDisplacement, ultimateDisplacement }) {
   if (!Number.isFinite(displacement)) return null;
@@ -55033,30 +57564,30 @@ function evaluateNTC2018MasonryPier({
 // src/applications/masonry-piers/models/NTC2018MasonryPierModel.js
 var INTERNAL_UNITS23 = Object.freeze({ force: "N", length: "mm" });
 function normalizeScope(value = "existing") {
-  const normalized = String(value).trim().toLowerCase();
-  if (normalized !== "existing") {
+  const normalized2 = String(value).trim().toLowerCase();
+  if (normalized2 !== "existing") {
     throw new Error(
       `Unsupported NTC 2018 masonry pier scope: ${value}. The autonomous three-mechanism model currently covers existing unreinforced masonry only.`
     );
   }
-  return normalized;
+  return normalized2;
 }
 function normalizeTexture2(value = "irregular") {
-  const normalized = String(value).trim().toLowerCase();
-  if (normalized !== "irregular" && normalized !== "regular") {
+  const normalized2 = String(value).trim().toLowerCase();
+  if (normalized2 !== "irregular" && normalized2 !== "regular") {
     throw new Error(`Unsupported NTC 2018 masonry texture: ${value}.`);
   }
-  return normalized;
+  return normalized2;
 }
 function normalizeBoundaryCondition2(value = "cantilever") {
-  const normalized = String(value).trim().toLowerCase();
+  const normalized2 = String(value).trim().toLowerCase();
   const aliases = /* @__PURE__ */ new Map([
     ["cantilever", "cantilever"],
     ["free", "cantilever"],
     ["fixed-fixed", "fixed-fixed"],
     ["fixed", "fixed-fixed"]
   ]);
-  const resolved = aliases.get(normalized);
+  const resolved = aliases.get(normalized2);
   if (!resolved) {
     throw new Error(`Unsupported NTC 2018 pier boundary condition: ${value}.`);
   }
@@ -56550,7 +59081,7 @@ function assertFinite6(value, label) {
   }
 }
 function normalizeBaseCondition(value = DEFAULT_BASE_CONDITION) {
-  const normalized = String(value != null ? value : "").trim().toLowerCase();
+  const normalized2 = String(value != null ? value : "").trim().toLowerCase();
   const aliases = /* @__PURE__ */ new Map([
     ["fixed", "fixed-base"],
     ["fixed-base", "fixed-base"],
@@ -56568,7 +59099,7 @@ function normalizeBaseCondition(value = DEFAULT_BASE_CONDITION) {
     ["incernierato-senza-traverso", "pinned-base-without-bottom-beam"],
     ["incernierati-senza-traverso", "pinned-base-without-bottom-beam"]
   ]);
-  const resolved = aliases.get(normalized);
+  const resolved = aliases.get(normalized2);
   if (!resolved) {
     throw new Error(
       `Unsupported steel ring frame baseCondition: ${value}.`
@@ -56577,7 +59108,7 @@ function normalizeBaseCondition(value = DEFAULT_BASE_CONDITION) {
   return resolved;
 }
 function normalizeControlNode(value = "top-left") {
-  const normalized = String(value != null ? value : "").trim().toLowerCase();
+  const normalized2 = String(value != null ? value : "").trim().toLowerCase();
   const aliases = /* @__PURE__ */ new Map([
     ["top-left", "top-left"],
     ["left-top", "top-left"],
@@ -56586,7 +59117,7 @@ function normalizeControlNode(value = "top-left") {
     ["right-top", "top-right"],
     ["architrave-right", "top-right"]
   ]);
-  const resolved = aliases.get(normalized);
+  const resolved = aliases.get(normalized2);
   if (!resolved) {
     throw new Error(
       `Unsupported steel ring frame control node: ${value}.`
@@ -56679,7 +59210,7 @@ function profileFamily(section) {
   return String((_b = (_a = section == null ? void 0 : section.family) != null ? _a : section == null ? void 0 : section.profileName) != null ? _b : "").trim().toUpperCase();
 }
 function normalizeOrientationAlias(value) {
-  const normalized = String(value != null ? value : "").trim().toLowerCase();
+  const normalized2 = String(value != null ? value : "").trim().toLowerCase();
   if ([
     "weak",
     "minor",
@@ -56697,7 +59228,7 @@ function normalizeOrientationAlias(value) {
     "web-up",
     "lato-senza-labbri-up",
     "lato-senza-labbri-verso-alto"
-  ].includes(normalized)) {
+  ].includes(normalized2)) {
     return "z";
   }
   return "y";
@@ -59573,16 +62104,16 @@ function documentedCombinationFactors({ category, combinationFactors, source }) 
   if (source == null || typeof source !== "object" || typeof source.reference !== "string" || source.reference.trim() === "") {
     throw new Error(`NTC 2018 category ${category} requires combinationFactorsSource.reference.`);
   }
-  const normalized = {};
+  const normalized2 = {};
   for (const key of ["psi0", "psi1", "psi2"]) {
     const value = combinationFactors == null ? void 0 : combinationFactors[key];
     if (!Number.isFinite(value) || value < 0 || value > 1) {
       throw new Error(`combinationFactors.${key} must be between 0 and 1.`);
     }
-    normalized[key] = value;
+    normalized2[key] = value;
   }
   return {
-    factors: normalized,
+    factors: normalized2,
     description: definition.description,
     source: { ...source }
   };
@@ -60466,7 +62997,7 @@ function formatMissingRatio(ratio2) {
     minimumFractionDigits: 0
   })}%`;
 }
-function addWarning(warnings, warning) {
+function addWarning2(warnings, warning) {
   if (warning && !warnings.includes(warning)) {
     warnings.push(warning);
   }
@@ -60488,25 +63019,25 @@ function validateModel(model) {
   const missingRatio = expectedPointCount > 0 ? missingCount / expectedPointCount : 1;
   let canClassify = true;
   if (!ALLOWED_GRID_SIZES.includes(gridSize)) {
-    addWarning(
+    addWarning2(
       warnings,
       "La procedura Mascandola et al. richiede una griglia 21x21, 51x51 o 101x101."
     );
     canClassify = false;
   }
   if (spacingM !== RAW_CELL_SIZE_M) {
-    addWarning(warnings, "La procedura richiede una griglia DEM con passo 10 m.");
+    addWarning2(warnings, "La procedura richiede una griglia DEM con passo 10 m.");
     canClassify = false;
   }
   if (!Array.isArray(rawCells) || rawCells.length !== expectedPointCount) {
-    addWarning(warnings, "La griglia altimetrica non e quadrata o non e completa.");
+    addWarning2(warnings, "La griglia altimetrica non e quadrata o non e completa.");
     canClassify = false;
   }
   if (missingCount > 0 || interpolatedCount > 0) {
-    addWarning(warnings, "La griglia altimetrica contiene celle mancanti/interpolate.");
+    addWarning2(warnings, "La griglia altimetrica contiene celle mancanti/interpolate.");
   }
   if (missingRatio > MAX_MISSING_RATIO_FOR_RELIABLE_CLASSIFICATION) {
-    addWarning(
+    addWarning2(
       warnings,
       `Quote mancanti superiori al 5% (${formatMissingRatio(
         missingRatio
@@ -60944,22 +63475,22 @@ function buildRidgeMap(tpiMap, h30Map, {
 }
 function addThresholdWarnings(warnings, result9) {
   if (Number.isFinite(result9.slopeDeg) && Math.abs(result9.slopeDeg - SLOPE_THRESHOLD_DEG) < 2) {
-    addWarning(
+    addWarning2(
       warnings,
       "Pendenza prossima alla soglia 15\xB0: classificazione T1/T2 sensibile alla risoluzione del DEM."
     );
   }
   if (Number.isFinite(result9.tpiCenterM) && Math.abs(result9.tpiCenterM - TPI_THRESHOLD_M) < 2) {
-    addWarning(
+    addWarning2(
       warnings,
       "TPI prossimo alla soglia 5 m: individuazione della cresta sensibile alla scala."
     );
   }
   if (Number.isFinite(result9.localElevationRangeM) && Math.abs(result9.localElevationRangeM - H30_THRESHOLD_M) < 5) {
-    addWarning(warnings, "Dislivello locale prossimo alla soglia H30.");
+    addWarning2(warnings, "Dislivello locale prossimo alla soglia H30.");
   }
   if (Number.isFinite(result9.localElevationRangeM) && Math.abs(result9.localElevationRangeM - H60_THRESHOLD_M) < 5) {
-    addWarning(
+    addWarning2(
       warnings,
       "Dislivello locale prossimo alla soglia H60: distinzione T3/T4 sensibile."
     );
@@ -61012,7 +63543,7 @@ function classifyTopographyMascandola(model, options = {}) {
   const preprocessingMode = getPreprocessingMode(options.preprocessingMode);
   const warnings = [...validation.warnings];
   if (mode && !mode.isArticleCompliantScale) {
-    addWarning(
+    addWarning2(
       warnings,
       "La classificazione usa una scala ridotta rispetto all'articolo, che adotta TPI con raggio 500 m. Il risultato e diagnostico."
     );
@@ -61061,11 +63592,11 @@ function classifyTopographyMascandola(model, options = {}) {
   let topographicClass = null;
   let canClassifyCenter = Number.isFinite(centerSlopeDeg);
   if (tpiCenterM == null) {
-    addWarning(warnings, "Copertura TPI insufficiente in corrispondenza del punto.");
+    addWarning2(warnings, "Copertura TPI insufficiente in corrispondenza del punto.");
     canClassifyCenter = false;
   }
   if (isOnRidge && h60Center == null) {
-    addWarning(warnings, "Dislivello H60 non valutabile in corrispondenza del punto.");
+    addWarning2(warnings, "Dislivello H60 non valutabile in corrispondenza del punto.");
     canClassifyCenter = false;
   }
   if (canClassifyCenter) {
@@ -61118,7 +63649,7 @@ function classifyTopographyMascandola(model, options = {}) {
   };
   addThresholdWarnings(warnings, result9);
   if (["T3", "T4"].includes(topographicClass)) {
-    addWarning(
+    addWarning2(
       warnings,
       "La classificazione automatica individua una possibile amplificazione topografica; verificare la morfologia con profili topografici locali, soprattutto in configurazioni 3D complesse."
     );
@@ -63531,15 +66062,15 @@ function validateCombinationFactors(combinationFactors) {
   if (combinationFactors == null || typeof combinationFactors !== "object") {
     throw new Error("Category K requires documentedCombinationFactors.");
   }
-  const normalized = {};
+  const normalized2 = {};
   for (const key of ["psi0", "psi1", "psi2"]) {
     const value = combinationFactors[key];
     if (!Number.isFinite(value) || value < 0 || value > 1) {
       throw new Error(`documentedCombinationFactors.${key} must be between 0 and 1.`);
     }
-    normalized[key] = value;
+    normalized2[key] = value;
   }
-  return normalized;
+  return normalized2;
 }
 function resolveCombinationFactors({ definition, inheritedDefinition, documentedCombinationFactors: documentedCombinationFactors2 }) {
   var _a;
@@ -64888,7 +67419,7 @@ function compactId(value) {
 }
 function normalizeType(type) {
   var _a;
-  const normalized = String(type != null ? type : "").trim().toUpperCase();
+  const normalized2 = String(type != null ? type : "").trim().toUpperCase();
   const aliases = {
     SLU: "ULS",
     "ULS_STR_GEO": "ULS",
@@ -64903,7 +67434,7 @@ function normalizeType(type) {
     "SLS_QP": "SLE_QUASI_PERMANENT",
     "SLS_QUASI_PERMANENT": "SLE_QUASI_PERMANENT"
   };
-  return (_a = aliases[normalized]) != null ? _a : normalized;
+  return (_a = aliases[normalized2]) != null ? _a : normalized2;
 }
 function resolveAction(input) {
   var _a, _b, _c, _d, _e;
@@ -65220,7 +67751,7 @@ function createNTC2018BeamCombinations({
   combinationSet = "A1"
 } = {}) {
   const normalizedTypes = types.map(normalizeType);
-  const normalized = normalizeInputActions({
+  const normalized2 = normalizeInputActions({
     loads,
     permanentActions,
     variableActions
@@ -65228,12 +67759,12 @@ function createNTC2018BeamCombinations({
   const combinations = [];
   for (const type of normalizedTypes) {
     if (type === "ULS") {
-      for (const leadingVariableAction of leadingVariableActionsFor(type, normalized.variableActions)) {
+      for (const leadingVariableAction of leadingVariableActionsFor(type, normalized2.variableActions)) {
         combinations.push(
           createUlsCombination({
             idPrefix,
-            permanentActions: normalized.permanentActions,
-            variableActions: normalized.variableActions,
+            permanentActions: normalized2.permanentActions,
+            variableActions: normalized2.variableActions,
             leadingVariableAction,
             combinationSet
           })
@@ -65242,13 +67773,13 @@ function createNTC2018BeamCombinations({
       continue;
     }
     if (["SLE_RARE", "SLE_FREQUENT", "SLE_QUASI_PERMANENT"].includes(type)) {
-      for (const leadingVariableAction of leadingVariableActionsFor(type, normalized.variableActions)) {
+      for (const leadingVariableAction of leadingVariableActionsFor(type, normalized2.variableActions)) {
         combinations.push(
           createSleCombination({
             idPrefix,
             type,
-            permanentActions: normalized.permanentActions,
-            variableActions: normalized.variableActions,
+            permanentActions: normalized2.permanentActions,
+            variableActions: normalized2.variableActions,
             leadingVariableAction
           })
         );
@@ -65279,11 +67810,11 @@ function nonNegative8(value, label) {
   return value;
 }
 function ntc2018JointOverstrengthFactor(ductilityClass2) {
-  const normalized = String(ductilityClass2 != null ? ductilityClass2 : "").trim().toUpperCase().replaceAll('"', "").replaceAll("-", "");
-  if (["CDA", "A"].includes(normalized)) {
+  const normalized2 = String(ductilityClass2 != null ? ductilityClass2 : "").trim().toUpperCase().replaceAll('"', "").replaceAll("-", "");
+  if (["CDA", "A"].includes(normalized2)) {
     return 1.2;
   }
-  if (["CDB", "B"].includes(normalized)) {
+  if (["CDB", "B"].includes(normalized2)) {
     return 1;
   }
   throw new Error(`Unsupported NTC 2018 ductility class: ${ductilityClass2}.`);
@@ -66352,14 +68883,14 @@ function shearModulus(material) {
 }
 function imperfectionFactorFromCurve(curve) {
   var _a;
-  const normalized = String(curve != null ? curve : "").trim().toLowerCase();
+  const normalized2 = String(curve != null ? curve : "").trim().toLowerCase();
   const values = {
     a: 0.21,
     b: 0.34,
     c: 0.49,
     d: 0.76
   };
-  return (_a = values[normalized]) != null ? _a : null;
+  return (_a = values[normalized2]) != null ? _a : null;
 }
 function defaultLtbCurve(section) {
   var _a, _b, _c, _d;
@@ -67447,10 +69978,10 @@ function firstFinite4(...values) {
   return (_a = values.find((value) => Number.isFinite(value))) != null ? _a : null;
 }
 function normalizeLimitState(value) {
-  const normalized = String(value != null ? value : "").trim().toUpperCase();
-  if (normalized === "ULS") return "SLU";
-  if (normalized === "SLS") return "SLE";
-  return normalized;
+  const normalized2 = String(value != null ? value : "").trim().toUpperCase();
+  if (normalized2 === "ULS") return "SLU";
+  if (normalized2 === "SLS") return "SLE";
+  return normalized2;
 }
 function entries2(value) {
   return Array.isArray(value) ? value : Object.values(value != null ? value : {});
@@ -70497,7 +73028,7 @@ var SHEAR_CORRECTION_FACTOR = 5 / 6;
 var STEEL_RING_FRAME_USER_UNITS = Object.freeze({ force: "kN", length: "m" });
 var EPS8 = 1e-9;
 function normalizeTopRotation(value = DEFAULT_TOP_ROTATION) {
-  const normalized = String(value != null ? value : "").trim().toLowerCase();
+  const normalized2 = String(value != null ? value : "").trim().toLowerCase();
   const aliases = /* @__PURE__ */ new Map([
     ["free", "free"],
     ["libera", "free"],
@@ -70507,7 +73038,7 @@ function normalizeTopRotation(value = DEFAULT_TOP_ROTATION) {
     ["incastrata", "fixed"],
     ["clamped", "fixed"]
   ]);
-  const resolved = aliases.get(normalized);
+  const resolved = aliases.get(normalized2);
   if (!resolved) {
     throw new Error(`Unsupported pier topRotation option: ${value}.`);
   }
@@ -71227,7 +73758,7 @@ var FEM_UNITS9 = Object.freeze({ force: "kN", length: "m" });
 var SHEAR_CORRECTION_FACTOR2 = 5 / 6;
 var EPS9 = 1e-9;
 function normalizeTopRotation2(value = "free") {
-  const normalized = String(value != null ? value : "").trim().toLowerCase();
+  const normalized2 = String(value != null ? value : "").trim().toLowerCase();
   const aliases = /* @__PURE__ */ new Map([
     ["free", "free"],
     ["libera", "free"],
@@ -71237,7 +73768,7 @@ function normalizeTopRotation2(value = "free") {
     ["incastrata", "fixed"],
     ["clamped", "fixed"]
   ]);
-  const resolved = aliases.get(normalized);
+  const resolved = aliases.get(normalized2);
   if (!resolved) {
     throw new Error(`Unsupported equivalent-frame topRotation option: ${value}.`);
   }
@@ -72715,7 +75246,7 @@ var DEFAULT_MAX_ITERATIONS2 = 60;
 var DEFAULT_YIELD_TOLERANCE2 = 1e-9;
 var EPS11 = 1e-9;
 function normalizeTopRotation3(value = DEFAULT_TOP_ROTATION2) {
-  const normalized = String(value != null ? value : "").trim().toLowerCase();
+  const normalized2 = String(value != null ? value : "").trim().toLowerCase();
   const aliases = /* @__PURE__ */ new Map([
     ["free", "free"],
     ["libera", "free"],
@@ -72725,7 +75256,7 @@ function normalizeTopRotation3(value = DEFAULT_TOP_ROTATION2) {
     ["incastrata", "fixed"],
     ["clamped", "fixed"]
   ]);
-  const resolved = aliases.get(normalized);
+  const resolved = aliases.get(normalized2);
   if (!resolved) {
     throw new Error(`Unsupported masonry pier topRotation option: ${value}.`);
   }
@@ -73151,7 +75682,7 @@ var DEFAULT_YIELD_TOLERANCE3 = 1e-9;
 var DIRECT_MASONRY_MECHANISM_MODEL = "equivalent-frame-hinges-and-shear-plateau";
 var EPS12 = 1e-9;
 function normalizeTopRotation4(value = DEFAULT_TOP_ROTATION3) {
-  const normalized = String(value != null ? value : "").trim().toLowerCase();
+  const normalized2 = String(value != null ? value : "").trim().toLowerCase();
   const aliases = /* @__PURE__ */ new Map([
     ["free", "free"],
     ["libera", "free"],
@@ -73161,7 +75692,7 @@ function normalizeTopRotation4(value = DEFAULT_TOP_ROTATION3) {
     ["incastrata", "fixed"],
     ["clamped", "fixed"]
   ]);
-  const resolved = aliases.get(normalized);
+  const resolved = aliases.get(normalized2);
   if (!resolved) {
     throw new Error(`Unsupported equivalent-frame pushover topRotation option: ${value}.`);
   }
@@ -75896,19 +78427,19 @@ function normalizeNeutralAxisAngle(theta) {
   if (!Number.isFinite(theta)) {
     throw new Error("Neutral-axis theta must be finite.");
   }
-  let normalized = theta % TWO_PI;
-  if (normalized < 0) {
-    normalized += TWO_PI;
+  let normalized2 = theta % TWO_PI;
+  if (normalized2 < 0) {
+    normalized2 += TWO_PI;
   }
-  if (Math.abs(normalized) <= ANGLE_TOLERANCE || Math.abs(normalized - TWO_PI) <= ANGLE_TOLERANCE) {
+  if (Math.abs(normalized2) <= ANGLE_TOLERANCE || Math.abs(normalized2 - TWO_PI) <= ANGLE_TOLERANCE) {
     return 0;
   }
   for (const cardinal of [Math.PI / 2, Math.PI, 3 * Math.PI / 2]) {
-    if (Math.abs(normalized - cardinal) <= ANGLE_TOLERANCE) {
+    if (Math.abs(normalized2 - cardinal) <= ANGLE_TOLERANCE) {
       return cardinal;
     }
   }
-  return Number(normalized.toPrecision(15));
+  return Number(normalized2.toPrecision(15));
 }
 function neutralAxisDirection(theta) {
   const normalizedTheta = normalizeNeutralAxisAngle(theta);
@@ -76080,18 +78611,18 @@ function normalizePostUltimateFractureEnergyDensity(value) {
       "RC post-ultimate fracture energy density must be a non-negative number or an object."
     );
   }
-  const normalized = {
+  const normalized2 = {
     concrete: (_a = value.concrete) != null ? _a : 0,
     steel: (_b = value.steel) != null ? _b : 0
   };
-  for (const [material, energyDensity] of Object.entries(normalized)) {
+  for (const [material, energyDensity] of Object.entries(normalized2)) {
     if (!Number.isFinite(energyDensity) || energyDensity < 0) {
       throw new Error(
         `RC post-ultimate ${material} fracture energy density must be non-negative.`
       );
     }
   }
-  return normalized;
+  return normalized2;
 }
 function applyPostUltimateResponse({
   stress,
@@ -77016,16 +79547,16 @@ var RCServiceStressSolver = class {
 
 // src/applications/reinforced-concrete-sections/analysis/SectionFiberDiscretizer.js
 function isPointOnSegment(point4, start, end, tolerance = 1e-9) {
-  const cross4 = (point4.y - start.y) * (end.z - start.z) - (point4.z - start.z) * (end.y - start.y);
-  if (Math.abs(cross4) > tolerance) {
+  const cross5 = (point4.y - start.y) * (end.z - start.z) - (point4.z - start.z) * (end.y - start.y);
+  if (Math.abs(cross5) > tolerance) {
     return false;
   }
-  const dot3 = (point4.y - start.y) * (end.y - start.y) + (point4.z - start.z) * (end.z - start.z);
-  if (dot3 < -tolerance) {
+  const dot4 = (point4.y - start.y) * (end.y - start.y) + (point4.z - start.z) * (end.z - start.z);
+  if (dot4 < -tolerance) {
     return false;
   }
   const squaredLength = (end.y - start.y) ** 2 + (end.z - start.z) ** 2;
-  return dot3 <= squaredLength + tolerance;
+  return dot4 <= squaredLength + tolerance;
 }
 function isPointInsidePolygon(point4, polygon) {
   let inside = false;
@@ -79544,11 +82075,11 @@ function parsePositiveInteger(value, fallback) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 function resolveCombinationType(value) {
-  const normalized = String(value != null ? value : "rare").trim().toLowerCase();
-  if (["quasipermanent", "quasi-permanent", "quasi_permanent", "qp"].includes(normalized)) {
+  const normalized2 = String(value != null ? value : "rare").trim().toLowerCase();
+  if (["quasipermanent", "quasi-permanent", "quasi_permanent", "qp"].includes(normalized2)) {
     return "SLE_QUASI_PERMANENT";
   }
-  if (["frequent", "frequente"].includes(normalized)) {
+  if (["frequent", "frequente"].includes(normalized2)) {
     return "SLE_FREQUENT";
   }
   return "SLE_RARE";
@@ -79833,19 +82364,19 @@ function normalizeActions3(actions, resolver, label) {
       throw new Error(`${label}.${key} is outside the plate-module scope; membrane actions must be zero.`);
     }
   }
-  const normalized = {
+  const normalized2 = {
     mxx: resolver.force((_a = source.mxx) != null ? _a : 0),
     myy: resolver.force((_b = source.myy) != null ? _b : 0),
     mxy: resolver.force((_c = source.mxy) != null ? _c : 0),
     qx: resolver.lineLoad((_d = source.qx) != null ? _d : 0),
     qy: resolver.lineLoad((_e = source.qy) != null ? _e : 0)
   };
-  for (const [key, value] of Object.entries(normalized)) {
+  for (const [key, value] of Object.entries(normalized2)) {
     if (!Number.isFinite(value)) {
       throw new Error(`${label}.${key} must be finite.`);
     }
   }
-  return normalized;
+  return normalized2;
 }
 function normalizeLayer({ input, face, direction, thickness, resolver }) {
   if (!input) {
@@ -88361,9 +90892,9 @@ function maxCheck(id, description, provided, allowed, metadata = {}) {
   return utilizationCheck({ id, description, demand: provided, capacity: allowed, metadata });
 }
 function ductilityClass(value) {
-  const normalized = String(value != null ? value : "").toUpperCase().replaceAll('"', "").replaceAll("-", "");
-  if (["CDA", "A"].includes(normalized)) return "CDA";
-  if (["CDB", "B"].includes(normalized)) return "CDB";
+  const normalized2 = String(value != null ? value : "").toUpperCase().replaceAll('"', "").replaceAll("-", "");
+  if (["CDA", "A"].includes(normalized2)) return "CDA";
+  if (["CDB", "B"].includes(normalized2)) return "CDB";
   throw new Error(`Unsupported NTC 2018 ductility class: ${value}.`);
 }
 var ReinforcedConcreteColumnDetailingVerification = class {
@@ -90459,9 +92990,9 @@ function maximumCheck(id, description, provided, allowed, metadata = {}) {
   });
 }
 function normalizeDuctilityClass(value) {
-  const normalized = String(value != null ? value : "").toUpperCase().replaceAll('"', "").replaceAll("-", "");
-  if (["CDA", "A"].includes(normalized)) return "CDA";
-  if (["CDB", "B"].includes(normalized)) return "CDB";
+  const normalized2 = String(value != null ? value : "").toUpperCase().replaceAll('"', "").replaceAll("-", "");
+  if (["CDA", "A"].includes(normalized2)) return "CDA";
+  if (["CDB", "B"].includes(normalized2)) return "CDB";
   throw new Error(`Unsupported NTC 2018 ductility class: ${value}.`);
 }
 function anchorageChecks({ anchors, fctd, fyk, seismic }) {
@@ -97756,6 +100287,12 @@ export {
   EmbeddedRetainingWallScenario,
   ExistingMasonryMaterial,
   ExistingMaterial,
+  FEM_ANALYSIS_CAPABILITY_KEYS,
+  FEM_ANALYSIS_TYPES,
+  FEM_CONTRACT_SCHEMAS,
+  FEM_ELEMENT_CAPABILITY_KEYS,
+  FEM_RESULT_CAPABILITY_KEYS,
+  FEM_RESULT_STATUS_VALUES,
   FORCE_UNIT_FACTORS,
   FemAssembler2D,
   FloorSlab,
@@ -97772,6 +100309,8 @@ export {
   GEOTECHNICAL_LIMIT_STATES,
   GEOTECHNICAL_SEISMIC_MODELS,
   GEOTECHNICAL_TIME_CONDITIONS,
+  GLOBAL_FEM_CONTRACT_VERSION,
+  GLOBAL_FEM_REQUIRED_UNIT_KEYS,
   GROUND_ANCHOR_BOND_CATALOG,
   GROUND_ANCHOR_BOND_CATALOG_IDS,
   GROUND_ANCHOR_BOND_CATALOG_REFERENCE,
@@ -98209,6 +100748,12 @@ export {
   createDoubleAngleOpposedSection,
   createDoubleUPNBackToBackSection,
   createElasticBeamSectionProvider,
+  createFemCapabilitiesContract,
+  createFemEntityMappingContract,
+  createGlobalFemAnalysisContract,
+  createGlobalFemContractSet,
+  createGlobalFemModelContract,
+  createGlobalFemResultContract,
   createItalianHistoricalReinforcementSteelMaterial,
   createLongitudinalReinforcementLayout,
   createMasonryPierCapacityCurveComparisonReportArtifacts,
@@ -98349,6 +100894,12 @@ export {
   updateNTC2018ExistingMasonryMaltaBuona,
   utilizationCheck,
   validateBeamReportDto,
+  validateFemCapabilitiesContract,
+  validateFemEntityMappingContract,
+  validateGlobalFemAnalysisContract,
+  validateGlobalFemContractSet,
+  validateGlobalFemModelContract,
+  validateGlobalFemResultContract,
   validateSteelMemberFem3DResult,
   verifyBeamSectionActions,
   verifyPlateBending,

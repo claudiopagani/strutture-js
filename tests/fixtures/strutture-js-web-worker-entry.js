@@ -6,6 +6,7 @@ import {
   ReinforcedConcretePlateModel,
   ReinforcementBar,
   RectangularSection,
+  createFemCapabilitiesContract,
   createNTC2018ConcreteMaterial,
   createNTC2018ReinforcementSteelMaterial,
 } from "strutture-js";
@@ -100,6 +101,32 @@ function createWorkerSmokeModel() {
 }
 
 export function runWorkerSmoke() {
+  const femCapabilities = createFemCapabilitiesContract({
+    id: "worker-global-fem-smoke",
+    solver: { id: "worker-smoke", name: "Worker smoke", version: "0" },
+    analyses: {
+      linearStatic: true,
+      secondOrder: false,
+      modal: false,
+      responseSpectrum: false,
+      nonlinearStatic: false,
+      timeHistory: false,
+    },
+    elements: { line: true, shell: false, solid: false, link: false },
+    results: {
+      nodalDisplacements: true,
+      reactions: true,
+      lineElementActions: true,
+      shellResultants: false,
+      stresses: false,
+      strains: false,
+      modes: false,
+      sectionCuts: false,
+      storeyResults: false,
+      equilibriumResiduals: true,
+    },
+    metadata: { environment: "web-worker" },
+  });
   const model = createWorkerSmokeModel();
   const result = new ReinforcedConcreteSectionApplication().run({ model });
   const concreteMaterial = createNTC2018ConcreteMaterial({
@@ -144,6 +171,8 @@ export function runWorkerSmoke() {
     plateApplicationId: plateResult.applicationId,
     plateStatus: plateResult.status,
     plateCheckCount: plateResult.checks.length,
+    globalFemCapabilitySchema: femCapabilities.schema,
+    globalFemCapabilityVersion: femCapabilities.version,
   };
 }
 
