@@ -190,6 +190,71 @@ test("shell resultants require axes context, face and physical result position",
   assert.ok(validation.errors.some((item) => item.path.endsWith(".location.position")));
 });
 
+test("element-average shell resultants declare their averaging provenance", () => {
+  const fixture = createGlobalFemBuildingFixture();
+  const location = fixture.result.results.shellResultants[0].location;
+  location.kind = "element-average";
+  location.averaging = {
+    method: "arithmetic-mean",
+    source: "nodal-smoothed",
+    sampleCount: 4,
+  };
+
+  const valid = validateGlobalFemResultContract(fixture.result, fixture);
+  assert.equal(valid.ok, true, JSON.stringify(valid.errors));
+
+  delete location.averaging;
+  const missingProvenance = validateGlobalFemResultContract(fixture.result, fixture);
+  assert.equal(missingProvenance.ok, false);
+  assert.ok(missingProvenance.errors.some(
+    (item) => item.path.endsWith(".location.averaging"),
+  ));
+
+  for (const [field, value] of [
+    ["method", "weighted-mean"],
+    ["source", "integration-points"],
+    ["sampleCount", 0],
+  ]) {
+    const invalidFixture = createGlobalFemBuildingFixture();
+    const invalidLocation = invalidFixture.result.results.shellResultants[0].location;
+    invalidLocation.kind = "element-average";
+    invalidLocation.averaging = {
+      method: "arithmetic-mean",
+      source: "nodal-smoothed",
+      sampleCount: 4,
+      [field]: value,
+    };
+
+    const invalid = validateGlobalFemResultContract(invalidFixture.result, invalidFixture);
+    assert.equal(invalid.ok, false);
+    assert.ok(invalid.errors.some(
+      (item) => item.path.endsWith(`.location.averaging.${field}`),
+    ));
+  }
+});
+
+test("individual result validation may omit mapping while the complete set requires it", () => {
+  const fixture = createGlobalFemBuildingFixture();
+  const contextWithoutMapping = {
+    model: fixture.model,
+    analysis: fixture.analysis,
+    capabilities: fixture.capabilities,
+  };
+
+  const individual = validateGlobalFemResultContract(fixture.result, contextWithoutMapping);
+  assert.equal(individual.ok, true, JSON.stringify(individual.errors));
+
+  const completeSet = validateGlobalFemContractSet({
+    ...contextWithoutMapping,
+    result: fixture.result,
+  });
+  assert.equal(completeSet.ok, false);
+  assert.equal(completeSet.contracts.mapping.ok, false);
+  assert.ok(completeSet.contracts.mapping.errors.some(
+    (item) => item.code === "FEM_EXPECTED_OBJECT" && item.path === "$",
+  ));
+});
+
 test("entity mapping explicitly connects members, walls, slabs, storeys and joints", () => {
   const fixture = createGlobalFemBuildingFixture();
   const validation = validateFemEntityMappingContract(fixture.mapping, {

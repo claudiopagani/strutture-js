@@ -120,7 +120,11 @@ Le famiglie di risultato sono array distinti:
 - reazioni come azioni del supporto sulla struttura;
 - azioni delle aste in assi locali, con `xi`, posizione fisica e lato della
   stazione;
-- risultanti shell con posizione geometrica, faccia e componenti locali;
+- risultanti shell con posizione geometrica, faccia e componenti locali. Una
+  posizione `element-average` dichiara obbligatoriamente metodo, origine e
+  numero dei campioni in `location.averaging`, così una media di valori nodali
+  smussati non viene presentata come valore al centroide o al punto di
+  integrazione;
 - tensioni e deformazioni opzionali;
 - risultanti di section cut;
 - modi con periodo, frequenza, autovalore, forma modale, fattori di
@@ -302,6 +306,20 @@ I factory `create*Contract` aggiungono l'envelope v0 e sollevano un errore se
 il DTO non è valido. I validator `validate*Contract` non modificano l'input e
 restituiscono `{ ok, value, errors, warnings }`. `value` è una copia plain JSON
 quando il payload è serializzabile.
+
+### Livelli di validazione
+
+Un consumer semplificato che non esegue verifiche dipendenti dalla semantica
+strutturale può validare separatamente capability, modello, analisi e risultato.
+In questo caso `validateGlobalFemResultContract` accetta un contesto privo di
+`mapping`; i controlli fra entità FEM e membri, setti, piani o giunti non vengono
+eseguiti e non devono essere simulati.
+
+Il flusso completo usa invece `validateGlobalFemContractSet` e richiede sempre
+tutti e cinque i contratti, incluso un `FemEntityMappingContract` valido e
+completo. L'assenza del mapping è quindi ammessa soltanto nel flusso individuale
+ridotto, non è una capability implicita e non indebolisce il validatore
+aggregato destinato alle verifiche strutturali avanzate.
 
 ## Evoluzione verso v1
 

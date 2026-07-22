@@ -54724,9 +54724,21 @@ function validateLineElementActions(items, indices, errors) {
 function validateLocation(location, path, errors) {
   if (!validateRecord(location, path, errors)) return;
   validateString(location.kind, `${path}.kind`, errors, {
-    allowed: ["centroid", "node", "integration-point", "coordinate"]
+    allowed: ["centroid", "element-average", "node", "integration-point", "coordinate"]
   });
   validateFiniteVector(location.position, `${path}.position`, errors);
+  if (location.kind === "element-average" && validateRecord(location.averaging, `${path}.averaging`, errors)) {
+    validateString(location.averaging.method, `${path}.averaging.method`, errors, {
+      allowed: ["arithmetic-mean"]
+    });
+    validateString(location.averaging.source, `${path}.averaging.source`, errors, {
+      allowed: ["nodal-smoothed"]
+    });
+    validateFinite(location.averaging.sampleCount, `${path}.averaging.sampleCount`, errors, {
+      positive: true,
+      integer: true
+    });
+  }
   if (location.kind === "node") validateId(location.nodeId, `${path}.nodeId`, errors);
   if (location.kind === "integration-point") {
     validateId(location.integrationPointId, `${path}.integrationPointId`, errors);
