@@ -21,6 +21,11 @@ import { ReinforcedConcreteIsolatedFootingApplication } from "./reinforced-concr
 import { ReinforcedConcreteFoundationBeamApplication } from "./reinforced-concrete-foundation-beams/index.js";
 import { ReinforcedConcreteBeamColumnJointApplication } from "./reinforced-concrete-beam-column-joints/index.js";
 import { ReinforcedConcreteStrutAndTieApplication } from "./reinforced-concrete-strut-and-tie/index.js";
+import {
+  RcBuildingVerificationApplication,
+  verifyWallBiaxialBending,
+  WALL_BIAXIAL_REFERENCE,
+} from "./rc-building-verification/index.js";
 import { ReinforcedConcreteSectionApplication } from "./reinforced-concrete-sections/index.js";
 import { SingleBeamDesignApplication } from "./single-beam-design/index.js";
 import { SteelFrameApplication } from "./steel-frames/index.js";
@@ -270,6 +275,11 @@ export {
   ReinforcedConcreteStrutAndTieVerification,
 } from "./reinforced-concrete-strut-and-tie/index.js";
 export {
+  RcBuildingVerificationApplication,
+  verifyWallBiaxialBending,
+  WALL_BIAXIAL_REFERENCE,
+} from "./rc-building-verification/index.js";
+export {
   PUNCHING_VERIFICATION_REQUEST_SCHEMA_VERSION,
   PunchingVerification,
   PunchingVerificationRequest,
@@ -363,6 +373,7 @@ export function createDefaultApplicationRegistry() {
     new ReinforcedConcreteFoundationBeamApplication(),
     new ReinforcedConcreteBeamColumnJointApplication(),
     new ReinforcedConcreteStrutAndTieApplication(),
+    new RcBuildingVerificationApplication(),
     new TimberBeamApplication(),
     new TimberConcreteCompositeBeamApplication(),
     new TimberXlamCompositeBeamApplication(),

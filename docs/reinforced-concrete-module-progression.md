@@ -283,14 +283,20 @@ governa tutte le verifiche successive. Non e una deduzione automatica.
 | Elemento | Riferimento | Descrizione |
 | --- | --- | --- |
 | `NTC2018StructuralBehavior` | § 7.3.2, § 7.8 | Enum: `non-dissipative`, `cd-a`, `cd-b`. Non dissipativo ammesso solo in zona sismica 3-4 o con `ag < 0.075g` (§ 7.8.1) |
-| `NTC2018StructuralType` | § 7.3.3, § 7.4.2 | Enum: `frame`, `wall`, `coupled-wall`, `dual`, `core`, `inverted-pendulum` |
-| `selectOverstrengthFactors()` | § 7.4.4, Tab. 7.4.I | `gammaRd` per travi, pilastri, nodi in funzione di CD |
-| `selectBaseQFactor()` | § 7.3.2.1, Tab. 7.3.I-II | `q0` in funzione di tipo strutturale, CD e regolarita |
+| `NTC2018StructuralType` | § 7.3.3, § 7.4.2 | Enum: `frame`, `wall`, `coupled-wall`, `dual`, `core`, `torsionally-flexible`, `inverted-pendulum` |
+| `selectOverstrengthFactors()` | § 7.4.4, Tab. 7.2.I | `gammaRd` **per meccanismo**: `beamShear`, `columnBending`, `columnShear`, `jointShear`, `wallShear` |
+| `selectBaseQFactor()` | § 7.3.2.1, Tab. 7.3.II | `q0` per tipo strutturale e CD; `alpha_u/alpha_1` solo per telaio/pareti accoppiate/miste |
 | `computeEffectiveQFactor()` | § 7.3.1, Eq. [7.3.1] | `q = q0 * kr`; `kr = 1.0` regolare, `0.8` non regolare in altezza |
 | `selectAllowedAnalysisMethods()` | § 7.2.3 | Determina i metodi di analisi ammissibili: statica lineare, dinamica lineare |
+| `NTC2018_QLimits` | Tab. 7.3.I | Limiti di `q` per stato limite: SLO/SLD `q=1` (SLD `<=1.5`); SLV dissipativo `>=1.5`, non dissipativo `<=1.5` |
 
-**Stato:** `planned-kernel`. Le costanti e le funzioni di selezione sono
-prerequisito di tutti i moduli successivi.
+**Stato:** `implemented` (in `structuralBehavior.js`). I fattori `gammaRd`
+seguono la **Tab. 7.2.I per meccanismo** (travi taglio 1.20/1.10, pilastri
+pressoflessione 1.30/1.30, pilastri taglio 1.30/1.10, nodi 1.20/1.10,
+pareti taglio 1.20/—). I `q0` seguono la **Tab. 7.3.II** (telaio
+4.5/3.0·αu/α1, pareti non accoppiate 4.0/3.0, pareti accoppiate e miste
+4.5/3.0·αu/α1, deformabili torsionalmente 3.0/2.0, pendolo inverso
+2.0/1.5). Validato dal caso indipendente `rc-cd-beam-column-hierarchy`.
 
 **Output:** Contratto `structuralBehavior` serializzabile. Il consumer lo
 imposta una volta; ogni verificatore lo riceve come input.
@@ -317,7 +323,8 @@ geometrie) e dal mapping strutturale.
 **Input:** Dal `GlobalFemModelContract` + `FemEntityMappingContract`:
 coordinate dei nodi di piano, masse, rigidezze elastiche dei membri.
 
-**Stato:** `planned-kernel`.
+**Stato:** `implemented` (in `structuralRegularity.js`). La regolarita in
+pianta e validata dal caso indipendente `rc-reg-plan`.
 
 **Esclusioni:** Analisi non lineare, pushover, time history.
 
@@ -365,9 +372,11 @@ resistenti).
 **Output per membro e giunto:** `capacityDesignDemand`, `capacity`,
 `utilizationRatio`, `checks[]`.
 
-**Stato:** `deferred-fem`. I kernel locali per il calcolo dei momenti
-resistenti e i nodi sono gia implementati; manca l'orchestratore che
-raccoglie, coordina e applica i `gammaRd`.
+**Stato:** `implemented` il kernel di domanda (in `capacityDesign.js`);
+`partial` l'orchestratore in `rc-building-verification/` (la raccolta dei
+momenti resistenti dai verificatori locali non e ancora automatizzata).
+Validato dai casi indipendenti `rc-cd-beam-column-hierarchy`,
+`rc-cd-beam-capacity-shear`, `rc-cd-column-capacity-shear`.
 
 **Esclusioni:** Gerarchia per pareti (richiede WP-SETTI); giunti non
 conformi al modulo esistente.
@@ -393,9 +402,11 @@ conformi al modulo esistente.
 **Output per piano:** `drift`, `storeyShear`, `storeyWeight`, `theta`,
 `checks[]`.
 
-**Stato:** `deferred-fem`. I dati FEM (spostamenti e reazioni) sono gia
-disponibili nei contratti v0; manca il kernel di calcolo del drift e del
-coefficiente `theta`.
+**Stato:** `implemented` il kernel (in `displacementChecks.js`); `partial`
+l'integrazione nell'orchestratore (pesi e tagli di piano non sono ancora
+estratti automaticamente dai contratti FEM, quindi il P-Delta si auto-salta
+quando i dati mancano). Validato dai casi indipendenti
+`rc-disp-storey-drift` e `rc-disp-pdelta`.
 
 **Esclusioni:** Analisi non lineare (pushover o time history); `theta > 0.2`
 restituisce `not-supported` e richiede al consumer un'analisi non lineare.
@@ -441,7 +452,20 @@ le verifiche in sequenza e produce un report di edificio serializzabile.
   semantiche)
 - Se mancano dati FEM: assessment `blocked` con `missingInputs`
 
-**Stato:** `deferred-fem`.
+**Stato:** `partial`. Implementate la validazione contratti, il behavior,
+la regolarita (WP2), gli spostamenti/P-Delta (WP5, con pesi e tagli di
+piano estratti da `storeyResults.resultants`), la verifica member-level
+tramite **verificatori iniettati dal consumer** (`memberVerifiers`) e la
+gerarchia trave-pilastro (WP4) tramite `jointHierarchy`. Le armature non
+sono generate automaticamente: il consumer fornisce sezioni, materiali e
+verificatori per ciascun membro.
+
+**Correzioni applicate (verifica contro D.M. 17/01/2018):**
+- Displacement: lettura `translations.{x,y,z}` (minuscolo) dal contratto
+  risultati, non piu `Ux` — prima il drift risultava sempre nullo.
+- Footing: lettura `forces.{x,y,z}`/`moments.{x,y,z}` (con alias legacy).
+- P-Delta: si attiva solo se peso e taglio di piano sono positivi; altrimenti
+  si auto-salta invece di lanciare.
 
 **Esclusioni:** Armature automatiche, solutore FEM interno, analisi non
 lineare, tamponamenti, verifica di setti e piastre (seguono percorsi
@@ -516,7 +540,16 @@ a fibre esistente.
 
 | Verifica | Riferimento | Calcolo |
 | --- | --- | --- |
-| Pressoflessione deviata | § 4.1.2.3.9, § 7.4.8 | Dominio biassiale a fibre con `NEd` assegnato; confronto raggio vettore `(Mx, My)` con contorno |
+| Pressoflessione deviata | § 4.1.2.3.9, § 7.4.4.5.1 | Dominio biassiale a fibre con `NEd` assegnato; confronto raggio vettore `(Mx, My)` con contorno |
+
+**Stato:** `implemented`. La pressoflessione biassiale e collegata al
+risolutore a fibre (`RCUltimateSectionSolver.solveAtAxialLoad`) tramite
+`verifyWallBiaxialBending` in
+`src/applications/rc-building-verification/wallBiaxialVerification.js`
+(livello `applications`, perche compone solver `applications` + leggi
+`domain`). L'orchestratore la esegue per ogni setto con sezione e azioni
+fornite dal consumer (`wallSections`). Validato dal caso indipendente
+`rc-wall-biaxial-bending`.
 | Taglio | § 7.4.8.2, Eq. [7.4.22-23] | `VRd = VRd,c + VRd,s` con `alpha_c = 1.0` per setti tozzi (`h_w/l_w <= 2`); `cot(theta) = 1.0` per CD"A" |
 | Compressione diagonale anima | § 7.4.8.2, Eq. [7.4.24] | `VRd,max = 0.8 * fcd * bw * l_w * 0.8 * cot(theta) / (1 + cot^2(theta))` per CD"B"; fattore `0.15` aggiuntivo in CD"A" |
 
@@ -524,26 +557,36 @@ a fibre esistente.
 
 **Dove:** `src/norms/ntc2018/reinforced-concrete/ntc2018ShearWall.js`
 
-**Cosa:** La regola di capacity design per i setti (§ 7.4.8.1) richiede la
-traslazione verso l'alto del diagramma dei momenti flettenti per coprire
-gli effetti dei modi superiori. Questa e una delle particolarita normative
-piu rilevanti.
+**Cosa:** La regola di capacity design per i setti snelli (§ 7.4.4.5.1)
+richiede la traslazione verso l'alto del diagramma dei momenti flettenti per
+coprire gli effetti dei modi superiori. Questa e una delle particolarita
+normative piu rilevanti.
 
 | Parametro | CD"A" | CD"B" |
 | --- | --- | --- |
-| Altezza zona critica `h_cr` | `max(l_w, H_w / 6)` ma `<= 2 l_w` e `<= h_s` per piani bassi | `max(l_w, H_w / 6)` ma `<= 2 l_w` |
-| Traslazione momento `a_l` | `max(0.5 l_w, 0.5 h_cr)` | `max(0.25 l_w, 0.25 h_cr)` |
-| Taglio di capacita | `VEd = gammaRd * MRd / h_w * omega` con `omega = 1.5` per CD"A" (Eq. 7.4.20) | `omega = 1.3` per CD"B" |
+| Altezza zona critica `h_cr` (Eq. [7.4.13]) | `max(l_w, h_w / 6)`, inoltre `<= 2 l_w` e `<= h_s` se fornita | uguale |
+| Traslazione momento `a_l` (Presso-flessione) | `a_l = h_cr` | `a_l = h_cr` |
+| Taglio di capacita (Taglio) | `eps = 1.5 * q * (gammaRd * MRd / MEd) * (Se(T_C) / Se(T_1))^2`, `VEd = eps * V_analisi` | uguale |
 
-Dove `omega` e il fattore amplificativo dinamico che tiene conto dei modi
-superiori. La traslazione `a_l` sposta il diagramma dei momenti di progetto
-verso l'alto: il momento a quota `z` diventa il momento a quota `z + a_l`,
-producendo una domanda maggiorata nelle zone critiche alla base.
+La traslazione `a_l` sposta il diagramma dei momenti di progetto verso
+l'alto: il momento a quota `z` diventa il momento a quota `z + a_l`,
+producendo una domanda maggiorata nelle zone critiche alla base. Il taglio
+amplificato non puo essere inferiore al taglio da analisi.
 
-Il taglio di progetto non puo comunque essere inferiore al taglio elastico
-ridotto del fattore di struttura: `VEd >= VE / q`.
+> **Correzione (verifica contro NTC 2018):** una versione precedente di
+> questa sezione riportava `a_l = max(0.5 l_w, 0.5 h_cr)` per CD"A",
+> `max(0.25 l_w, 0.25 h_cr)` per CD"B" e `VEd = gammaRd * MRd / h_w * omega`
+> con `omega = 1.5 / 1.3`. Tali formule **non compaiono** nel D.M.
+> 17/01/2018: la traslazione e `h_cr` e il taglio segue l'espressione con
+> `Se(T_C)/Se(T_1)` sopra riportata. Il kernel `ntc2018ShearWall.js` e stato
+> corretto di conseguenza.
 
-**Riferimenti:** § 7.4.8.1, Eq. [7.4.19-21], Circolare C7.4.8.1.
+**Stato:** `implemented` (in `ntc2018ShearWall.js`). Validato dai casi
+indipendenti `rc-wall-critical-zone`, `rc-wall-moment-shift`,
+`rc-wall-capacity-shear`.
+
+**Riferimenti:** § 7.4.4.5.1, Eq. [7.4.13] (h_cr), Presso-flessione
+(traslazione), Taglio (amplificazione); Circolare C7.4.4.5.
 
 ### SETTI-4 – Elementi di bordo confinati (`deferred-fem`)
 

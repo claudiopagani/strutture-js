@@ -212,6 +212,92 @@ export {
 } from "./reinforced-concrete/ntc2018BeamColumnJoint.js";
 
 export {
+  NTC2018_ANALYSIS_METHOD,
+  NTC2018_BASE_Q_FACTORS,
+  NTC2018_DEFAULT_FRAME_ALPHA_RATIO,
+  NTC2018_DEFAULT_WALL_ALPHA_RATIO,
+  NTC2018_ELEVATION_REGULARITY,
+  NTC2018_OVERSTRENGTH_FACTORS,
+  NTC2018_PLAN_REGULARITY,
+  NTC2018_REGULARITY_REDUCTION,
+  NTC2018_STRUCTURAL_BEHAVIOR,
+  NTC2018_STRUCTURAL_BEHAVIOR_REFERENCES,
+  NTC2018_STRUCTURAL_TYPE,
+  checkNonDissipativeAdmissibility,
+  computeNTC2018EffectiveQFactor,
+  createNTC2018StructuralBehavior,
+  normalizeNTC2018StructuralBehavior,
+  normalizeNTC2018StructuralType,
+  selectNTC2018AllowedAnalysisMethods,
+  selectNTC2018BaseQFactor,
+  selectNTC2018OverstrengthFactors,
+} from "./reinforced-concrete/structuralBehavior.js";
+
+export {
+  NTC2018_REGULARITY_REFERENCES,
+  createNTC2018RegularityAssessment,
+  evaluateNTC2018ElevationRegularity,
+  evaluateNTC2018PlanRegularity,
+} from "./reinforced-concrete/structuralRegularity.js";
+
+export {
+  NTC2018_CAPACITY_DESIGN_REFERENCES,
+  computeBeamCapacityShear,
+  computeColumnCapacityShear,
+  computeJointCapacityShear,
+  createCapacityDesignAssessment,
+  verifyBeamColumnHierarchy,
+} from "./reinforced-concrete/capacityDesign.js";
+
+export {
+  NTC2018_DISPLACEMENT_REFERENCES,
+  NTC2018_DRIFT_INFILL_CATEGORY,
+  NTC2018_DRIFT_LIMITS,
+  NTC2018_PDELTA_THRESHOLDS,
+  computePDeltaCoefficient,
+  computeSeismicJointWidth,
+  computeStoreyDrift,
+  createDisplacementAssessment,
+  verifyPDelta,
+  verifyStoreyDisplacements,
+  verifyStoreyDrift,
+} from "./reinforced-concrete/displacementChecks.js";
+
+export {
+  DM522023_COLUMN_MAX_HOOP_SPACING,
+  DM522023_COLUMN_MAX_LONGITUDINAL_RATIO,
+  DM522023_COLUMN_MIN_HOOP_DIAMETER,
+  DM522023_COLUMN_MIN_LONGITUDINAL_RATIO,
+  DM522023_MATERIAL_PARTIAL_FACTORS,
+  DM522023_REFERENCES,
+  DM522023_REINFORCEMENT_STEEL_GRADES,
+  applyDM522023SteelGrades,
+  computeDM522023ConfinementOmegaWd,
+  selectDM522023PartialFactor,
+} from "./reinforced-concrete/dm522023.js";
+
+export {
+  NTC2018_DIAPHRAGM_REFERENCES,
+  computeDiaphragmChordReinforcement,
+  createDiaphragmAssessment,
+  verifyDiaphragmCompression,
+  verifyDiaphragmDiagonalTension,
+  verifyDiaphragmShearConnection,
+} from "./reinforced-concrete/ntc2018Diaphragm.js";
+
+export {
+  NTC2018_SHEAR_WALL_REFERENCES,
+  computeWallBoundaryLength,
+  computeWallCapacityShear,
+  computeWallConfinementOmegaWd,
+  computeWallCriticalZoneHeight,
+  computeWallMomentShift,
+  createWallSectionAssessment,
+  verifyWallBoundaryConfinement,
+  verifyWallShear,
+} from "./reinforced-concrete/ntc2018ShearWall.js";
+
+export {
   NTC2018_RETAINING_WALL_SEISMIC_REFERENCE,
   calculateNTC2018RetainingWallSeismicCoefficients,
   createNTC2018MononobeOkabeSeismicInput,

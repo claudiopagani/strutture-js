@@ -54,6 +54,7 @@ import {
   verifySteelLateralTorsionalBuckling,
 } from "../src/index.js";
 import { createReinforcedConcreteLocalValidationCases } from "./reinforcedConcreteLocalValidationCases.js";
+import { createReinforcedConcreteGlobalValidationCases } from "./reinforcedConcreteGlobalValidationCases.js";
 
 const femUnits = Object.freeze({ force: "kN", length: "m" });
 const sectionUnits = Object.freeze({ force: "N", length: "mm" });
@@ -3118,6 +3119,7 @@ export function createBeamValidationCases() {
     timberConcreteCompositeWorkbookCase(),
     verificationStationSelectionCase(),
     ...createReinforcedConcreteLocalValidationCases(),
+    ...createReinforcedConcreteGlobalValidationCases(),
   ];
 }
 

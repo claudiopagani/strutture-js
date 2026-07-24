@@ -108,6 +108,14 @@ export const APPLICATION_CATALOG = [
       "Analysis and EN 1992 verification of assigned two-dimensional strut-and-tie topologies for D-regions.",
   },
   {
+    id: "rc-building-verification",
+    name: "RC Building Verification",
+    domain: "reinforced-concrete",
+    maturity: "partial",
+    primaryFocus:
+      "Global NTC 2018 building verification from FEM results: regularity, capacity design, storey drift, P-Delta.",
+  },
+  {
     id: "timber-beams",
     name: "Timber Beams",
     domain: "timber",
@@ -193,9 +201,9 @@ export const APPLICATION_CATALOG = [
     id: "geotechnical-earth-pressures",
     name: "Geotechnical Earth Pressures",
     domain: "geotechnics",
-      maturity: "implemented-local",
-      primaryFocus:
-        "Serializable layered static pressure diagrams, planar Coulomb actions, restricted Mononobe-Okabe thrusts and layered pseudostatic trial-wedge resultants.",
+    maturity: "implemented-local",
+    primaryFocus:
+      "Serializable layered static pressure diagrams, planar Coulomb actions, restricted Mononobe-Okabe thrusts and layered pseudostatic trial-wedge resultants.",
   },
   {
     id: "geotechnical-shallow-foundations",
@@ -216,9 +224,9 @@ export const APPLICATION_CATALOG = [
   {
     id: "geotechnical-slope-stability",
     name: "Geotechnical Slope Stability",
-      domain: "geotechnics",
-      maturity: "implemented-local",
-      primaryFocus:
-        "Static and pseudostatic circular slip-surface analysis with Spencer, static Bishop/Ordinary diagnostics, bounded search and FHWA ground-anchor mobilization.",
+    domain: "geotechnics",
+    maturity: "implemented-local",
+    primaryFocus:
+      "Static and pseudostatic circular slip-surface analysis with Spencer, static Bishop/Ordinary diagnostics, bounded search and FHWA ground-anchor mobilization.",
   },
 ];
