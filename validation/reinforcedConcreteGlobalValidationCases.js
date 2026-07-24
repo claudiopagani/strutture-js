@@ -427,140 +427,140 @@ function planRegularityCase() {
 // ---------------------------------------------------------------------------
 
 function wallBiaxialBendingCase() {
-  const units = Object.freeze({ force: "N", length: "mm" });
-  return {
-    id: "rc-wall-biaxial-bending",
-    title: "Shear wall biaxial bending via fiber solver (§ 4.1.2.3.9, § 7.4.4.5.1)",
-    category: "reinforced-concrete-shear-wall",
-    source:
-      "D.M. 17/01/2018, NTC 2018 § 4.1.2.3.9, § 7.4.4.5.1; independent radial comparison vs the fiber-section domain",
-    sourceKind: "independent-calculation",
-    notes:
-      "A 2000x300 mm wall (C25/30, B450C, 8 phi 16) is verified under N, Mx, My. The same fiber solver is solved independently at the demand direction and the radial utilization is compared; a zero-demand case must pass.",
-    evaluate() {
-      const concreteMaterial = createNTC2018ConcreteMaterial({
-        strengthClass: "C25/30",
-        units,
-      });
-      const reinforcementMaterial = createNTC2018ReinforcementSteelMaterial({
-        grade: "B450C",
-        units,
-      });
-      // Wall 2000 (length) x 300 (thickness); bars distributed at edges.
-      const barDiameter = 16;
-      const barPositions = [
-        [40, 40], [40, 150], [40, 260],
-        [460, 40], [460, 150], [460, 260],
-        [250, 40], [250, 260],
-      ];
-      const section = new ReinforcedConcreteSection({
-        id: "validation-wall",
-        concreteSection: new RectangularSection({
-            width: 300,
-            height: 500,
-            units,
-        }),
-        concreteMaterial,
-        reinforcementMaterial,
-        reinforcementBars: barPositions.map(([y, z], i) =>
-          new ReinforcementBar({
-            id: `wall-bar-${i + 1}`,
-            diameter: barDiameter,
-            material: reinforcementMaterial,
-            y,
-            z,
-            units,
-          })),
-        units,
-      });
+    const units = Object.freeze({ force: "N", length: "mm" });
+    return {
+        id: "rc-wall-biaxial-bending",
+        title: "Shear wall biaxial bending via fiber solver (§ 4.1.2.3.9, § 7.4.4.5.1)",
+        category: "reinforced-concrete-shear-wall",
+        source:
+            "D.M. 17/01/2018, NTC 2018 § 4.1.2.3.9, § 7.4.4.5.1; independent radial comparison vs the fiber-section domain",
+        sourceKind: "independent-calculation",
+        notes:
+            "A 2000x300 mm wall (C25/30, B450C, 8 phi 16) is verified under N, Mx, My. The same fiber solver is solved independently at the demand direction and the radial utilization is compared; a zero-demand case must pass.",
+        evaluate() {
+            const concreteMaterial = createNTC2018ConcreteMaterial({
+                strengthClass: "C25/30",
+                units,
+            });
+            const reinforcementMaterial = createNTC2018ReinforcementSteelMaterial({
+                grade: "B450C",
+                units,
+            });
+            // Wall 2000 (length) x 300 (thickness); bars distributed at edges.
+            const barDiameter = 16;
+            const barPositions = [
+                [40, 40], [40, 150], [40, 260],
+                [460, 40], [460, 150], [460, 260],
+                [250, 40], [250, 260],
+            ];
+            const section = new ReinforcedConcreteSection({
+                id: "validation-wall",
+                concreteSection: new RectangularSection({
+                    width: 300,
+                    height: 500,
+                    units,
+                }),
+                concreteMaterial,
+                reinforcementMaterial,
+                reinforcementBars: barPositions.map(([y, z], i) =>
+                    new ReinforcementBar({
+                        id: `wall-bar-${i + 1}`,
+                        diameter: barDiameter,
+                        material: reinforcementMaterial,
+                        y,
+                        z,
+                        units,
+                    })),
+                units,
+            });
 
-      const fcd = concreteMaterial.fcd;
-      const fyd = reinforcementMaterial.fyd;
-      const nEd = -500_000; // compression (solver convention)
-      const mxEd = 20_000_000;
-      const myEd = 5_000_000;
+            const fcd = concreteMaterial.fcd;
+            const fyd = reinforcementMaterial.fyd;
+            const nEd = -500_000; // compression (solver convention)
+            const mxEd = 20_000_000;
+            const myEd = 5_000_000;
 
-      const result = verifyWallBiaxialBending({
-        section,
-        axialForce: nEd,
-        momentX: mxEd,
-        momentY: myEd,
-        concreteDesignStrength: fcd,
-        reinforcementDesignStrength: fyd,
-      });
+            const result = verifyWallBiaxialBending({
+                section,
+                axialForce: nEd,
+                momentX: mxEd,
+                momentY: myEd,
+                concreteDesignStrength: fcd,
+                reinforcementDesignStrength: fyd,
+            });
 
-      // Independent: re-solve at the same demand direction and compare the
-      // radial capacity directly with the same fiber solver.
-      const theta = Math.atan2(mxEd, myEd);
-      const concreteFibers = new SectionFiberDiscretizer().discretize(section, {
-        targetCount: 400,
-      }).fibers;
-      const solved = new RCUltimateSectionSolver().solveAtAxialLoad({
-        section,
-        concreteFibers,
-        concreteLaw: new ConcreteParabolaRectangleLaw({
-            fcd, ec2: 0.002, ecu: 0.0035,
-        }),
-        steelLaw: new SteelElasticPerfectlyPlasticLaw({
-            Es: 200000, fyd, esu: 0.01,
-        }),
-        nEd,
-        theta,
-        compressedSide: "positive",
-      });
-      const independentCapacity = Math.hypot(solved.MxRd ?? 0, solved.MyRd ?? 0);
-      const independentDemand = Math.hypot(mxEd, myEd);
-      const independentRatio = independentCapacity > 0
-        ? independentDemand / independentCapacity
-        : Infinity;
+            // Independent: re-solve at the same demand direction and compare the
+            // radial capacity directly with the same fiber solver.
+            const theta = Math.atan2(mxEd, myEd);
+            const concreteFibers = new SectionFiberDiscretizer().discretize(section, {
+                targetCount: 400,
+            }).fibers;
+            const solved = new RCUltimateSectionSolver().solveAtAxialLoad({
+                section,
+                concreteFibers,
+                concreteLaw: new ConcreteParabolaRectangleLaw({
+                    fcd, ec2: 0.002, ecu: 0.0035,
+                }),
+                steelLaw: new SteelElasticPerfectlyPlasticLaw({
+                    Es: 200000, fyd, esu: 0.01,
+                }),
+                nEd,
+                theta,
+                compressedSide: "positive",
+            });
+            const independentCapacity = Math.hypot(solved.MxRd ?? 0, solved.MyRd ?? 0);
+            const independentDemand = Math.hypot(mxEd, myEd);
+            const independentRatio = independentCapacity > 0
+                ? independentDemand / independentCapacity
+                : Infinity;
 
-      // Zero demand must always verify.
-      const zero = verifyWallBiaxialBending({
-        section,
-        axialForce: nEd,
-        momentX: 0,
-        momentY: 0,
-        concreteDesignStrength: fcd,
-        reinforcementDesignStrength: fyd,
-      });
+            // Zero demand must always verify.
+            const zero = verifyWallBiaxialBending({
+                section,
+                axialForce: nEd,
+                momentX: 0,
+                momentY: 0,
+                concreteDesignStrength: fcd,
+                reinforcementDesignStrength: fyd,
+            });
 
-      return {
-        capacity: result.capacity,
-        demand: result.demand,
-        utilizationRatio: result.utilizationRatio,
-        axialResidual: result.axialResidual,
-        zeroDemandOk: zero.ok,
-        independentMatches:
-          approxPath(result.capacity, independentCapacity, Math.max(1, independentCapacity * 1e-6)) &&
-          approxPath(result.demand, independentDemand, 1e-6) &&
-          approxPath(result.utilizationRatio, independentRatio, 1e-6),
-      };
-    },
-    expectations: [
-      { id: "demand", path: "demand", expected: Math.hypot(20e6, 5e6), tolerance: 1e-6 },
-      {
-        id: "capacity-positive",
-        path: "capacity",
-        expected: 0,
-        type: "greater-than",
-      },
-      { id: "zero-demand-ok", path: "zeroDemandOk", expected: true, type: "equal" },
-      { id: "independent", path: "independentMatches", expected: true, type: "equal" },
-    ],
-  };
+            return {
+                capacity: result.capacity,
+                demand: result.demand,
+                utilizationRatio: result.utilizationRatio,
+                axialResidual: result.axialResidual,
+                zeroDemandOk: zero.ok,
+                independentMatches:
+                    approxPath(result.capacity, independentCapacity, Math.max(1, independentCapacity * 1e-6)) &&
+                    approxPath(result.demand, independentDemand, 1e-6) &&
+                    approxPath(result.utilizationRatio, independentRatio, 1e-6),
+            };
+        },
+        expectations: [
+            { id: "demand", path: "demand", expected: Math.hypot(20e6, 5e6), tolerance: 1e-6 },
+            {
+                id: "capacity-positive",
+                path: "capacity",
+                expected: 0,
+                type: "greater-than",
+            },
+            { id: "zero-demand-ok", path: "zeroDemandOk", expected: true, type: "equal" },
+            { id: "independent", path: "independentMatches", expected: true, type: "equal" },
+        ],
+    };
 }
 
 // ---------------------------------------------------------------------------
 
 export function createReinforcedConcreteGlobalValidationCases() {
-  return [
-    beamColumnHierarchyCase(),
-    beamCapacityShearCase(),
-    columnCapacityShearCase(),
-    wallCriticalZoneCase(),
-    wallMomentShiftCase(),
-    wallCapacityShearCase(),
-    wallBiaxialBendingCase(),
+    return [
+        beamColumnHierarchyCase(),
+        beamCapacityShearCase(),
+        columnCapacityShearCase(),
+        wallCriticalZoneCase(),
+        wallMomentShiftCase(),
+        wallCapacityShearCase(),
+        wallBiaxialBendingCase(),
         pDeltaCase(),
         planRegularityCase(),
     ];
