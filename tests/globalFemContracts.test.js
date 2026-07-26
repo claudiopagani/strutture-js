@@ -277,6 +277,33 @@ test("entity mapping explicitly connects members, walls, slabs, storeys and join
   assert.ok(diagnosticCodes(ambiguous).includes("FEM_MAPPING_INCOMPLETE"));
 });
 
+test("punching mapping connects one slab to supporting member ends", () => {
+  const fixture = createGlobalFemBuildingFixture();
+  fixture.mapping.punchingConnections.push({
+    id: "PUNCH-A1",
+    slabId: "SLAB-1",
+    nodeId: "A1",
+    shellElementIds: ["SLAB-S1"],
+    supportLineElementEnds: [
+      { lineElementId: "COL-A-1", end: "end" },
+      { lineElementId: "COL-A-2", end: "start" },
+    ],
+  });
+  const valid = validateFemEntityMappingContract(fixture.mapping, {
+    model: fixture.model,
+  });
+
+  assert.equal(valid.ok, true, JSON.stringify(valid.errors));
+
+  fixture.mapping.punchingConnections[0]
+    .supportLineElementEnds[0].end = "start";
+  const invalid = validateFemEntityMappingContract(fixture.mapping, {
+    model: fixture.model,
+  });
+  assert.equal(invalid.ok, false);
+  assert.ok(diagnosticCodes(invalid).includes("FEM_JOINT_END_MISMATCH"));
+});
+
 test("modal results expose reciprocal periods, shapes, participation and masses", () => {
   const fixture = createGlobalFemBuildingFixture();
   const validation = validateGlobalFemResultContract(fixture.result, fixture);

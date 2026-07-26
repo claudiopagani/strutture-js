@@ -43,7 +43,8 @@ verificato. Il verso opposto richiede un secondo stato di input.
 
 ## Formulazione NTC 2018
 
-Il fattore di sovraresistenza vale `gammaRd = 1.2` in CDA e `1.0` in CDB. La
+Per il taglio del nodo il fattore di sovraresistenza vale `gammaRd = 1.2` in
+CDA e `1.1` in CDB. La
 larghezza efficace del nodo e:
 
 ```text
@@ -107,7 +108,7 @@ un'area resistente per livello.
 La gerarchia controlla:
 
 ```text
-gammaRd sum(MRb) <= sum(MRc efficace)
+1.30 sum(MRb) <= sum(MRc efficace)
 ```
 
 L'input `effectiveColumnMomentResistance` deve essere gia ridotto secondo i

@@ -42,22 +42,29 @@ Esempi attuali:
   superficie monovaluata rispetto a `x`, zone poligonali senza fori e campo di
   pressione interstiziale assegnato;
 * le verifiche acciaio non coprono ancora torsione e proprieta efficaci per classe 4;
-* il workflow pilastri RC esegue lo screening della snellezza e richiede
-  momenti totali espliciti per le aste snelle; non genera ancora gli effetti del
-  secondo ordine e non include duttilita o dettaglio completo;
+* il workflow pilastri RC può generare i momenti del secondo ordine con il
+  metodo della rigidezza nominale quando sono assegnati viscosità e lunghezze
+  efficaci; il P-Delta globale e la determinazione automatica delle lunghezze
+  efficaci restano responsabilità del modello globale;
 * la torsione RC copre il traliccio periferico e l'interazione taglio-torsione
   nel campo documentato, ma non il dettaglio completo o la torsione da
   ingobbamento;
-* il workflow dei plinti isolati copre il contatto completo e rileva la perdita
-  di contatto; le verifiche strutturali sono limitate a plinti rettangolari con
-  pilastro centrato e le resistenze geotecniche restano input assegnati;
-* il workflow delle travi di fondazione usa un letto di Winkler lineare
-  bilaterale condensato in molle nodali tributarie; segnala le reazioni di
-  trazione ma non risolve ancora il contatto monolatero, e non calcola modulo
-  di sottofondo o cedimenti geotecnici;
-* il workflow dei nodi trave-pilastro RC verifica localmente una direzione
-  sismica assegnata secondo NTC 2018; non genera azioni o capacita dal telaio e
-  non include ancora ancoraggi, trasferimento eccentrico o interazione 3D;
+* il workflow dei plinti isolati copre, nel campo geometrico dichiarato,
+  contatto completo e parziale monoassiale o biassiale; le resistenze
+  geotecniche restano input assegnati;
+* il workflow delle travi di fondazione usa un letto di Winkler condensato in
+  molle nodali tributarie, risolve il contatto monolatero con active set e può
+  iterare la rigidezza fessurata; non calcola modulo di sottofondo o cedimenti
+  geotecnici;
+* il workflow dei nodi trave-pilastro RC include ancoraggi, trasferimento
+  eccentrico e aggregazione 3D di verifiche direzionali concorrenti; non genera
+  geometria, armature, azioni o capacità dal telaio globale;
+* `RcBuildingVerificationApplication` è completa per edifici ordinari in c.a.
+  gettato in opera nel perimetro eseguibile dichiarato. Conserva gli stati FEM
+  concorrenti, richiede mapping espliciti degli assi e chiude membri, nodi,
+  setti, solai, punzonamento, diaframmi, controlli dinamici e fondazioni.
+  Precompresso, prefabbricati e ponti restano fuori dal perimetro; i
+  verificatori locali non generano armature o dati geotecnici mancanti;
 * il workflow tirante-puntone RC risolve e verifica una topologia 2D assegnata;
   non genera i percorsi di carico, non rimuove iterativamente aste con segno
   incompatibile e non verifica ancora ancoraggi o armature di splitting;

@@ -100,7 +100,9 @@ export class ReinforcedConcreteBeamColumnJointVerification {
       });
     }
 
-    const gammaRd = ntc2018JointOverstrengthFactor(model.ductilityClass);
+    const jointShearGammaRd =
+      ntc2018JointOverstrengthFactor(model.ductilityClass);
+    const columnBendingGammaRd = 1.3;
     const normativeJointType = model.jointType === "corner"
       ? "external"
       : model.jointType;
@@ -115,7 +117,7 @@ export class ReinforcedConcreteBeamColumnJointVerification {
     const confinement = classifyNTC2018JointConfinement(model.confinement);
     const demand = calculateNTC2018JointShearDemand({
       jointType: normativeJointType,
-      gammaRd,
+      gammaRd: jointShearGammaRd,
       topReinforcementArea: model.beamReinforcement.topArea,
       bottomReinforcementArea: model.beamReinforcement.bottomArea,
       reinforcementDesignStrength: fyd,
@@ -145,7 +147,7 @@ export class ReinforcedConcreteBeamColumnJointVerification {
           normalizedAxialForce,
           fcd,
           fctd: fctd.value,
-          gammaRd,
+          gammaRd: jointShearGammaRd,
           topReinforcementArea: model.beamReinforcement.topArea,
           bottomReinforcementArea: model.beamReinforcement.bottomArea,
           reinforcementDesignStrength: fyd,
@@ -215,10 +217,12 @@ export class ReinforcedConcreteBeamColumnJointVerification {
       checks.push(utilizationCheck({
         id: "rc-joint-strong-column-weak-beam",
         description: "Strong-column weak-beam capacity hierarchy",
-        demand: gammaRd * model.capacityHierarchy.beamMomentResistanceSum,
+        demand:
+          columnBendingGammaRd *
+          model.capacityHierarchy.beamMomentResistanceSum,
         capacity: model.capacityHierarchy.effectiveColumnMomentResistance,
         metadata: {
-          gammaRd,
+          gammaRd: columnBendingGammaRd,
           preReducedForMomentSigns: true,
           reference: "NTC2018-7.4.4",
         },
@@ -329,7 +333,11 @@ export class ReinforcedConcreteBeamColumnJointVerification {
         jointType: model.jointType,
         normativeJointType,
         ductilityClass: model.ductilityClass,
-        gammaRd,
+        gammaRd: jointShearGammaRd,
+        overstrengthFactors: {
+          jointShear: jointShearGammaRd,
+          columnBending: columnBendingGammaRd,
+        },
         geometry: {
           ...model.geometry,
           effectiveJointWidth: round(effectiveJointWidth),

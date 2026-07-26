@@ -5,10 +5,21 @@ import { rayPolygonCapacity } from "../../domain/math/rayPolygonCapacity.js";
 import { ReinforcedConcreteSectionVerification } from "../reinforced-concrete-sections/checks/ReinforcedConcreteSectionVerification.js";
 import { ReinforcedConcreteShearVerification } from "../reinforced-concrete-sections/checks/ReinforcedConcreteShearVerification.js";
 import { ReinforcedConcreteSectionModel } from "../reinforced-concrete-sections/models/ReinforcedConcreteSectionModel.js";
+import { selectNTC2018OverstrengthFactors } from "../../norms/ntc2018/reinforced-concrete/structuralBehavior.js";
 import { ReinforcedConcreteColumnDetailingVerification } from "./ReinforcedConcreteColumnDetailingVerification.js";
 
 const INTERNAL_UNITS = Object.freeze({ force: "N", length: "mm" });
 const EPS = 1e-9;
+
+function seismicBehavior(ductilityClass) {
+  const normalized = String(ductilityClass ?? "")
+    .toUpperCase()
+    .replaceAll('"', "")
+    .replaceAll("-", "");
+  if (normalized === "CDA" || normalized === "A") return "cd-a";
+  if (normalized === "CDB" || normalized === "B") return "cd-b";
+  throw new Error(`Unsupported NTC 2018 ductility class: ${ductilityClass}.`);
+}
 
 function concreteSectionFrom(section) {
   return section?.concreteSection ?? section;
@@ -361,9 +372,9 @@ export class ReinforcedConcreteColumnVerification {
     };
     const capacityDesign = model.shear?.capacityDesign;
     const seismicGammaRd = model.detailing?.seismic?.enabled
-      ? String(model.detailing.seismic.ductilityClass).toUpperCase().includes("A")
-        ? 1.2
-        : 1
+      ? selectNTC2018OverstrengthFactors({
+          behavior: seismicBehavior(model.detailing.seismic.ductilityClass),
+        }).columnShear
       : 1;
     const shearResults = Object.fromEntries(
       [
@@ -466,6 +477,11 @@ export class ReinforcedConcreteColumnVerification {
         ...sectionResult.assumptions,
         ...Object.values(shearResults).flatMap((result) => result.assumptions),
         ...(detailingResult?.assumptions ?? []),
+        ...(capacityDesign
+          ? [
+              "The two capacity-design end moments for each checked axis are explicitly declared as already reduced by the beam/column hierarchy ratios at the corresponding joints, as required before applying Eq. [7.4.5].",
+            ]
+          : []),
         "Compression is negative by default; change stability.compressionSignConvention explicitly when required.",
         "mxEd is paired with concreteSection.inertiaY and myEd with concreteSection.inertiaZ, following the existing RC section action convention.",
         "Explicit total moments are assumed to include imperfections, cracking, creep and second-order effects; generated moments use the documented NTC nominal-stiffness isolated-member method.",

@@ -1,10 +1,9 @@
 /**
  * Reinforced Concrete Building Verification Application.
  *
- * Orchestrates the complete NTC 2018 verification of an entire RC building
- * from global FEM contracts. The FEM solver is external; this application
- * receives the model, analysis results, mapping and structural behavior
- * choice, then executes all applicable verifications.
+ * Coordinates the NTC 2018 checks for an ordinary cast-in-place RC building
+ * from global FEM contracts. Complete results require every readiness family
+ * and every applicable local verifier. The FEM solver remains external.
  *
  * Pipeline:
  *   1. Contract validation
@@ -17,15 +16,12 @@
  *   8. Displacement checks (WP5)
  *   9. Aggregate results → VerificationResult building-level
  *
- * This application is `partial` (first increment). It validates inputs,
- * extracts demands, evaluates readiness, and produces a structured report
- * with checks from WP2, WP4 and WP5. Full member-level verification
- * orchestration (steps 5-6-7) requires per-member material and
- * reinforcement data from the consumer and will be completed in a
- * follow-up increment.
+ * Missing project data or local verification families produce a non-positive
+ * result. A positive result is possible only when the executable normative
+ * coverage inventory is complete and no readiness assessment is blocked.
  *
  * References:
- * - NTC 2018 §§ 7.2-7.4, 7.8-7.9
+ * - NTC 2018 §§ 4.1, 7.2-7.4
  * - GlobalFemDemandSet v0
  * - FemEntityMappingContract v0
  */
@@ -34,21 +30,34 @@ import { StructuralApplication } from "../../core/applications/StructuralApplica
 import { CalculationResult } from "../../core/results/CalculationResult.js";
 import {
     RESULT_STATUS,
-    RESULT_STATUS_OK,
+    RESULT_STATUS_NOT_IMPLEMENTED,
     RESULT_STATUS_NOT_VERIFIED,
 } from "../../core/results/resultStatus.js";
 
 import {
+    collectConcurrentJointActionStates,
+    collectConcurrentMemberActionStates,
+    collectConcurrentSectionCutStates,
+    collectConcurrentSurfaceResultantStates,
+    projectJointActionStatesToResistanceAxes,
+    projectMemberActionStatesToResistanceAxes,
+    projectWallSectionCutStatesToResistanceAxes,
     validateFemCapabilitiesContract,
     validateFemEntityMappingContract,
     validateGlobalFemAnalysisContract,
     validateGlobalFemModelContract,
     validateGlobalFemResultContract,
 } from "../../domain/fem/index.js";
+import {
+    GLOBAL_FEM_POSTPROCESSING_PROFILES,
+    GlobalFemPostProcessingApplication,
+} from "../global-fem-postprocessing/index.js";
 
 import {
     NTC2018_STRUCTURAL_BEHAVIOR,
     createNTC2018StructuralBehavior,
+    normalizeNTC2018StructuralBehavior,
+    normalizeNTC2018StructuralType,
 } from "../../norms/ntc2018/reinforced-concrete/structuralBehavior.js";
 import {
     createNTC2018RegularityAssessment,
@@ -61,15 +70,31 @@ import {
     createDisplacementAssessment,
 } from "../../norms/ntc2018/reinforced-concrete/displacementChecks.js";
 import {
+    createNTC2018LinearDynamicAssessment,
+} from "../../norms/ntc2018/seismicAnalysisChecks.js";
+import {
     verifyWallBiaxialBending,
 } from "./wallBiaxialVerification.js";
+import {
+    runWallSystemVerifications,
+} from "./wallSystemVerification.js";
+import {
+    runSlabSystemVerifications,
+} from "./slabSystemVerification.js";
+import {
+    runFoundationSystemVerifications,
+} from "./foundationSystemVerification.js";
+import {
+    evaluateNTC2018RcBuildingCompleteness,
+    getNTC2018RcBuildingCoverage,
+} from "./ntc2018RcBuildingCoverage.js";
 
 // ---------------------------------------------------------------------------
 // Application metadata
 // ---------------------------------------------------------------------------
 
 const APP_ID = "rc-building-verification";
-const APP_VERSION = "0.1.0";
+const APP_VERSION = "0.2.0";
 const APP_DOMAIN = "reinforced-concrete";
 const APP_CODES = ["ntc2018"];
 const APP_TAGS = [
@@ -80,7 +105,7 @@ const APP_TAGS = [
     "ntc2018",
     "capacity-design",
 ];
-const APP_MATURITY = "partial";
+const APP_MATURITY = "complete";
 
 // ---------------------------------------------------------------------------
 // Contract validation helpers
@@ -118,7 +143,7 @@ function extractValidationErrors(...results) {
  * @returns {Array}
  */
 function buildStoreyDisplacementData({ model, mapping, result }) {
-    const storeys = mapping.storeys ?? [];
+    const storeys = mapping?.storeys ?? [];
     if (storeys.length === 0) return [];
 
     // Nodal displacements lookup (contract uses lowercase translations.{x,y,z}).
@@ -140,7 +165,7 @@ function buildStoreyDisplacementData({ model, mapping, result }) {
         (model?.storeys ?? []).map((s) => [s.id ?? s.storeyId, s]),
     );
     const elevationOf = (storey) => {
-        const ms = modelStoreyById.get(storey.id ?? storey.storeyId);
+        const ms = modelStoreyById.get(storey.storeyId ?? storey.id);
         return storey.elevation ?? ms?.elevation;
     };
 
@@ -149,7 +174,7 @@ function buildStoreyDisplacementData({ model, mapping, result }) {
     const storeyWeightAbove = (index) => {
         let w = 0;
         for (let i = index; i < storeys.length; i++) {
-            const sr = storeyResultBySid.get(storeys[i].id ?? storeys[i].storeyId);
+            const sr = storeyResultBySid.get(storeys[i].storeyId ?? storeys[i].id);
             const fz = sr?.resultants?.Fz;
             if (Number.isFinite(fz)) w += Math.abs(fz);
         }
@@ -157,7 +182,7 @@ function buildStoreyDisplacementData({ model, mapping, result }) {
     };
 
     return storeys.map((storey, index) => {
-        const sid = storey.id ?? storey.storeyId ?? `storey-${index}`;
+        const sid = storey.storeyId ?? storey.id ?? `storey-${index}`;
         const storeyNodes = storey.nodeIds ?? [];
         const belowStorey = index > 0 ? (storeys[index - 1]?.nodeIds ?? []) : [];
 
@@ -179,7 +204,7 @@ function buildStoreyDisplacementData({ model, mapping, result }) {
         const height = storey.height ??
             (Number.isFinite(thisElev) && Number.isFinite(belowElev)
                 ? thisElev - belowElev
-                : 3.0);
+                : undefined);
 
         const sr = storeyResultBySid.get(sid);
         const shearX = sr?.resultants?.Fx;
@@ -187,9 +212,9 @@ function buildStoreyDisplacementData({ model, mapping, result }) {
 
         return {
             storeyId: sid,
-            height: height > 0 ? height : 3.0,
-            displacementX: top.x ?? 0,
-            displacementXBelow: below.x ?? 0,
+            height: Number.isFinite(height) && height > 0 ? height : undefined,
+            displacementX: top.x,
+            displacementXBelow: below.x,
             displacementY: top.y,
             displacementYBelow: below.y,
             // Populated from storeyResults.resultants when available; omitted
@@ -213,42 +238,74 @@ function buildStoreyDisplacementData({ model, mapping, result }) {
  * @param {Object} params.input – Raw input.
  * @returns {Array<{ assessment: string, status: string, missing: string[] }>}
  */
-function evaluateReadiness({ contracts, input }) {
+function evaluateReadiness({
+    contracts,
+    input,
+    demandSet = null,
+    behaviorDescriptor = null,
+    behaviorError = null,
+    linearDynamicAssessment = null,
+    linearDynamicError = null,
+}) {
     const assessments = [];
     const hasMapping = contracts.mapping?.ok ?? false;
     const hasResult = contracts.result?.ok ?? false;
     const hasBehavior = input.behavior != null;
     const hasStoreys = (input.mapping?.storeys?.length ?? 0) > 0;
+    const hasRegularityInput =
+        input.regularityAssessmentInput?.planInput != null &&
+        input.regularityAssessmentInput?.elevationInput != null;
+    const hasDisplacementInput = input.displacementAssessmentInput != null;
+
+    assessments.push({
+        assessment: "structural-behavior",
+        status: behaviorDescriptor ? "ready" : "blocked",
+        missing: [
+            ...(input.behavior == null ? ["behavior"] : []),
+            ...(input.structuralType == null ? ["structuralType"] : []),
+            ...(behaviorError ? ["valid structural behavior parameters"] : []),
+        ],
+        reason: behaviorError,
+    });
 
     // Regularity
     assessments.push({
         assessment: "structural-regularity",
-        status: hasMapping && hasStoreys ? "ready" : "blocked",
+        status: hasMapping && hasStoreys && hasRegularityInput ? "ready" : "blocked",
         missing: [
             ...(!hasMapping ? ["mapping"] : []),
             ...(!hasStoreys ? ["storeys"] : []),
+            ...(!hasRegularityInput ? ["regularityAssessmentInput"] : []),
         ],
     });
 
     // Capacity design
     assessments.push({
         assessment: "capacity-design",
-        status: hasBehavior && input.behavior !== "non-dissipative"
-            ? "ready"
-            : input.behavior === "non-dissipative"
+        status: behaviorDescriptor?.behavior ===
+            NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE
                 ? "not-applicable"
-                : "blocked",
-        missing: !hasBehavior ? ["behavior"] : [],
+                : behaviorDescriptor
+                    ? "ready"
+                    : "blocked",
+        missing: !hasBehavior
+            ? ["behavior"]
+            : behaviorDescriptor
+                ? []
+                : ["complete structural behavior descriptor"],
     });
 
     // Displacement checks
     assessments.push({
         assessment: "displacement-checks",
-        status: hasMapping && hasStoreys && hasResult ? "ready" : "blocked",
+        status: hasMapping && hasStoreys && hasResult && hasDisplacementInput
+            ? "ready"
+            : "blocked",
         missing: [
             ...(!hasMapping ? ["mapping"] : []),
             ...(!hasStoreys ? ["storeys"] : []),
             ...(!hasResult ? ["result"] : []),
+            ...(!hasDisplacementInput ? ["displacementAssessmentInput"] : []),
         ],
     });
 
@@ -257,10 +314,54 @@ function evaluateReadiness({ contracts, input }) {
         input.memberVerifiers != null &&
         (typeof input.memberVerifiers.beam === "function" ||
             typeof input.memberVerifiers.column === "function");
+    const hasMemberDemands = (demandSet?.memberDemands?.length ?? 0) > 0;
+    const mappedMembers = input.mapping?.members ?? [];
+    const membersHaveAxisMappings =
+        mappedMembers.length > 0 &&
+        mappedMembers.every((member) =>
+            Array.isArray(member.lineActionMappings) &&
+            member.lineActionMappings.length === member.lineElementIds.length);
     assessments.push({
         assessment: "member-verification",
-        status: hasMemberVerifiers ? "ready" : "blocked",
-        missing: hasMemberVerifiers ? [] : ["memberVerifiers"],
+        status:
+            hasMemberVerifiers &&
+            hasMemberDemands &&
+            membersHaveAxisMappings
+                ? "ready"
+                : "blocked",
+        missing: [
+            ...(!hasMemberVerifiers ? ["memberVerifiers"] : []),
+            ...(!hasMemberDemands ? ["globalFemDemandSet.memberDemands"] : []),
+            ...(!membersHaveAxisMappings
+                ? ["mapping.members.*.lineActionMappings"]
+                : []),
+        ],
+    });
+
+    const modalInput = input.linearDynamicAssessmentInput;
+    const modalMissing = linearDynamicAssessment?.missing ?? [
+        ...(modalInput == null
+            ? ["linearDynamicAssessmentInput"]
+            : []),
+        ...(modalInput?.modalProcedureId == null
+            ? ["linearDynamicAssessmentInput.modalProcedureId"]
+            : []),
+        ...(modalInput?.responseSpectrumProcedureId == null
+            ? ["linearDynamicAssessmentInput.responseSpectrumProcedureId"]
+            : []),
+        ...(modalInput?.meanPlanDimensions == null
+            ? ["linearDynamicAssessmentInput.meanPlanDimensions"]
+            : []),
+    ];
+    assessments.push({
+        assessment: "linear-dynamic-analysis",
+        status: linearDynamicAssessment?.complete === true
+            ? "ready"
+            : "blocked",
+        missing: linearDynamicAssessment?.complete === true
+            ? []
+            : [...new Set(modalMissing)],
+        reason: linearDynamicError,
     });
 
     // Beam-column joint hierarchy verification (WP4)
@@ -268,9 +369,168 @@ function evaluateReadiness({ contracts, input }) {
         input.jointHierarchy != null &&
         Object.keys(input.jointHierarchy).length > 0;
     assessments.push({
+        assessment: "beam-column-hierarchy",
+        status: behaviorDescriptor?.behavior ===
+            NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE
+                ? "not-applicable"
+                : hasHierarchyData
+                    ? "ready"
+                    : "blocked",
+        missing:
+            behaviorDescriptor?.behavior ===
+                NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE ||
+            hasHierarchyData
+                ? []
+                : ["jointHierarchy"],
+    });
+
+    const hasJointVerifier = typeof input.jointVerifier === "function";
+    const hasJointDemands = (demandSet?.jointDemands?.length ?? 0) > 0;
+    assessments.push({
         assessment: "joint-verification",
-        status: hasHierarchyData ? "ready" : "blocked",
-        missing: hasHierarchyData ? [] : ["jointHierarchy"],
+        status: hasJointVerifier && hasJointDemands ? "ready" : "blocked",
+        missing: [
+            ...(!hasJointVerifier ? ["jointVerifier"] : []),
+            ...(!hasJointDemands ? ["globalFemDemandSet.jointDemands"] : []),
+        ],
+    });
+
+    const mappedWalls = input.mapping?.walls ?? [];
+    const hasWallSectionStateVerifier =
+        typeof input.wallSectionStateVerifier === "function";
+    const wallsHaveSystemData =
+        mappedWalls.length > 0 &&
+        mappedWalls.every((wall) => {
+            const data = input.wallSystemData?.[wall.id];
+            return data?.detailingInput != null &&
+                Array.isArray(data.couplingBeamInputs) &&
+                typeof data.systemType === "string" &&
+                typeof data.redistributionApplied === "boolean" &&
+                Array.isArray(data.additionalChecks);
+        });
+    const completeWallSystemInput =
+        hasWallSectionStateVerifier && wallsHaveSystemData;
+    const wallsHaveSectionAndActionMapping =
+        mappedWalls.length > 0 &&
+        mappedWalls.every((wall) => {
+            const data = input.wallSections?.[wall.id];
+            return data?.section != null &&
+                Array.isArray(wall.sectionCutActionMappings) &&
+                wall.sectionCutActionMappings.length ===
+                    wall.sectionCutIds.length &&
+                (data.actions != null ||
+                    typeof data.selectActionsFromFem === "function");
+        });
+    assessments.push({
+        assessment: "wall-biaxial-verification",
+        status: completeWallSystemInput
+            ? "covered-by-wall-system"
+            : wallsHaveSectionAndActionMapping
+                ? "ready"
+                : "blocked",
+        missing: completeWallSystemInput ||
+            wallsHaveSectionAndActionMapping
+            ? []
+            : [
+                "mapping.walls.*.sectionCutActionMappings",
+                "wallSections.*.section",
+                "wallSections.*.actions|selectActionsFromFem",
+            ],
+    });
+
+    assessments.push({
+        assessment: "wall-system-verification",
+        status: hasWallSectionStateVerifier && wallsHaveSystemData
+            ? "ready"
+            : "blocked",
+        missing: [
+            ...(!hasWallSectionStateVerifier
+                ? ["wallSectionStateVerifier"]
+                : []),
+            ...(!wallsHaveSystemData
+                ? [
+                    "wallSystemData.*.detailingInput",
+                    "wallSystemData.*.couplingBeamInputs",
+                    "wallSystemData.*.systemType",
+                    "wallSystemData.*.redistributionApplied",
+                    "wallSystemData.*.additionalChecks",
+                ]
+                : []),
+        ],
+    });
+
+    const mappedSlabs = input.mapping?.slabs ?? [];
+    const slabsHaveAxisMappings =
+        mappedSlabs.length > 0 &&
+        mappedSlabs.every((slab) =>
+            Array.isArray(slab.shellResultantMappings) &&
+            slab.shellResultantMappings.length ===
+                slab.shellElementIds.length);
+    const slabsHaveSystemData =
+        mappedSlabs.length > 0 &&
+        mappedSlabs.every((slab) => {
+            const data = input.slabSystemData?.[slab.id];
+            return Array.isArray(data?.detailingChecks) &&
+                typeof data?.punchingRequired === "boolean" &&
+                typeof data?.diaphragmRequired === "boolean";
+        });
+    assessments.push({
+        assessment: "slab-punching-diaphragm-verification",
+        status:
+            typeof input.slabStateVerifier === "function" &&
+            slabsHaveAxisMappings &&
+            slabsHaveSystemData
+                ? "ready"
+                : "blocked",
+        missing: [
+            ...(typeof input.slabStateVerifier !== "function"
+                ? ["slabStateVerifier"]
+                : []),
+            ...(!slabsHaveAxisMappings
+                ? ["mapping.slabs.*.shellResultantMappings"]
+                : []),
+            ...(!slabsHaveSystemData
+                ? [
+                    "slabSystemData.*.detailingChecks",
+                    "slabSystemData.*.punchingRequired",
+                    "slabSystemData.*.diaphragmRequired",
+                ]
+                : []),
+        ],
+    });
+
+    const mappedFoundations = input.mapping?.foundations ?? [];
+    const foundationsHaveMappings =
+        mappedFoundations.length > 0 &&
+        mappedFoundations.every((foundation) =>
+            Array.isArray(foundation.supportReactionMappings) &&
+            foundation.supportReactionMappings.length ===
+                foundation.supportNodeIds.length);
+    const foundationsHaveData =
+        mappedFoundations.length > 0 &&
+        mappedFoundations.every((foundation) =>
+            input.foundationSystemData?.[foundation.id] != null);
+    assessments.push({
+        assessment: "foundation-system-verification",
+        status:
+            typeof input.foundationVerifier === "function" &&
+            foundationsHaveMappings &&
+            foundationsHaveData
+                ? "ready"
+                : "blocked",
+        missing: [
+            ...(typeof input.foundationVerifier !== "function"
+                ? ["foundationVerifier"]
+                : []),
+            ...(!foundationsHaveMappings
+                ? [
+                    "mapping.foundations.*.supportReactionMappings",
+                ]
+                : []),
+            ...(!foundationsHaveData
+                ? ["foundationSystemData"]
+                : []),
+        ],
     });
 
     return assessments;
@@ -296,7 +556,13 @@ function evaluateReadiness({ contracts, input }) {
  * @param {Object} params.context – Shared context (behavior, q, units).
  * @returns {Array}
  */
-function runMemberVerifications({ members, memberVerifiers, memberData, context }) {
+function runMemberVerifications({
+    members,
+    memberVerifiers,
+    memberData,
+    demandSet,
+    context,
+}) {
     const results = [];
     for (const member of members ?? []) {
         const role = member.role;
@@ -310,16 +576,45 @@ function runMemberVerifications({ members, memberVerifiers, memberData, context 
             });
             continue;
         }
+        const memberDemand = demandSet?.memberDemands?.find(
+            (item) => item.id === member.id,
+        );
+        const concurrentActionStates = memberDemand
+            ? collectConcurrentMemberActionStates(memberDemand)
+            : [];
+        if (!memberDemand || concurrentActionStates.length === 0) {
+            results.push({
+                memberId: member.id,
+                role,
+                status: "not-analyzed",
+                reason: "No concurrent GlobalFemDemandSet action states are available.",
+            });
+            continue;
+        }
         try {
+            const concurrentResistanceActionStates =
+                projectMemberActionStatesToResistanceAxes({
+                    member,
+                    states: concurrentActionStates,
+                });
             const outcome = verifier({
                 member,
                 data: memberData?.[member.id] ?? null,
+                demand: {
+                    schema: "strutture-js/rc-member-fem-demand-context",
+                    version: 0,
+                    units: demandSet.units,
+                    signConventions: demandSet.signConventions,
+                    memberDemand,
+                    concurrentActionStates,
+                    concurrentResistanceActionStates,
+                },
                 context,
             });
             results.push({
                 memberId: member.id,
                 role,
-                status: outcome?.status ?? "ok",
+                status: outcome?.status ?? "not-verified",
                 utilizationRatio: outcome?.utilizationRatio ?? null,
                 checks: outcome?.checks ?? [],
                 outputs: outcome?.outputs ?? null,
@@ -328,6 +623,78 @@ function runMemberVerifications({ members, memberVerifiers, memberData, context 
             results.push({
                 memberId: member.id,
                 role,
+                status: "failed",
+                reason: error?.message ?? String(error),
+            });
+        }
+    }
+    return results;
+}
+
+function runJointVerifications({
+    joints,
+    members,
+    jointVerifier,
+    jointData,
+    demandSet,
+    context,
+}) {
+    const results = [];
+    for (const joint of joints ?? []) {
+        if (typeof jointVerifier !== "function") {
+            results.push({
+                jointId: joint.id,
+                status: "not-analyzed",
+                reason: "No jointVerifier was supplied.",
+            });
+            continue;
+        }
+
+        const jointDemand = demandSet?.jointDemands?.find(
+            (item) => item.jointId === joint.id,
+        );
+        const concurrentActionStates = jointDemand
+            ? collectConcurrentJointActionStates(jointDemand)
+            : [];
+        if (!jointDemand || concurrentActionStates.length === 0) {
+            results.push({
+                jointId: joint.id,
+                status: "not-analyzed",
+                reason: "No concurrent GlobalFemDemandSet joint states are available.",
+            });
+            continue;
+        }
+
+        try {
+            const concurrentResistanceActionStates =
+                projectJointActionStatesToResistanceAxes({
+                    members,
+                    states: concurrentActionStates,
+                });
+            const outcome = jointVerifier({
+                joint,
+                data: jointData?.[joint.id] ?? null,
+                demand: {
+                    schema: "strutture-js/rc-joint-fem-demand-context",
+                    version: 0,
+                    units: demandSet.units,
+                    signConventions: demandSet.signConventions,
+                    jointDemand,
+                    concurrentActionStates,
+                    concurrentResistanceActionStates,
+                },
+                context,
+            });
+            results.push({
+                jointId: joint.id,
+                status: outcome?.status ?? "not-verified",
+                utilizationRatio: outcome?.utilizationRatio ?? null,
+                checks: outcome?.checks ?? [],
+                outputs: outcome?.outputs ?? null,
+            });
+        } catch (error) {
+            results.push({
+                jointId: joint.id,
                 status: "failed",
                 reason: error?.message ?? String(error),
             });
@@ -346,15 +713,24 @@ function runMemberVerifications({ members, memberVerifiers, memberData, context 
  * @param {Object} params
  * @param {Array} params.joints – FemEntityMappingContract joints.
  * @param {Object} params.jointHierarchy – Per-joint hierarchy data by id:
- *   `{ [jointId]: { beamMomentResistancePositive,
- *                   beamMomentResistanceNegative,
- *                   columnMomentResistance } }`.
+ *   `{ [jointId]: { beamMomentResistances: number[],
+ *                   columnMomentResistances: number[],
+ *                   isTopStoreyColumnJoint?: boolean } }`.
  * @param {string} params.behavior – Structural behavior.
  * @returns {Array}
  */
 function runJointHierarchyVerifications({ joints, jointHierarchy, behavior }) {
     const results = [];
     for (const joint of joints ?? []) {
+        if (behavior === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE) {
+            results.push({
+                jointId: joint.id,
+                status: "not-applicable",
+                reason:
+                    "Beam-column resistance hierarchy is not applied to non-dissipative design.",
+            });
+            continue;
+        }
         const data = jointHierarchy?.[joint.id];
         if (!data) {
             results.push({
@@ -404,7 +780,7 @@ function runJointHierarchyVerifications({ joints, jointHierarchy, behavior }) {
  *   reinforcementDesignStrength, ... } }`.
  * @returns {Array}
  */
-function runWallBiaxialVerifications({ walls, wallSections }) {
+function runWallBiaxialVerifications({ walls, wallSections, demandSet }) {
     const results = [];
     for (const wall of walls ?? []) {
         const data = wallSections?.[wall.id];
@@ -416,12 +792,77 @@ function runWallBiaxialVerifications({ walls, wallSections }) {
             });
             continue;
         }
+        const surfaceDemand = demandSet?.surfaceDemands?.find(
+            (item) => item.id === wall.id,
+        );
+        const femDemand = {
+            schema: "strutture-js/rc-wall-fem-demand-context",
+            version: 0,
+            units: demandSet?.units ?? null,
+            signConventions: demandSet?.signConventions ?? null,
+            surfaceDemand: surfaceDemand ?? null,
+            concurrentShellResultantStates: surfaceDemand
+                ? collectConcurrentSurfaceResultantStates(surfaceDemand)
+                : [],
+            concurrentSectionCutStates: collectConcurrentSectionCutStates({
+                sectionCutIds: wall.sectionCutIds ?? [],
+                globalResponses: demandSet?.globalResponses,
+            }),
+        };
+        try {
+            femDemand.concurrentResistanceSectionCutStates =
+                projectWallSectionCutStatesToResistanceAxes({
+                    wall,
+                    states: femDemand.concurrentSectionCutStates,
+                });
+        } catch (error) {
+            results.push({
+                wallId: wall.id,
+                status: "failed",
+                reason: error?.message ?? String(error),
+            });
+            continue;
+        }
+        let actions;
+        try {
+            actions = typeof data.selectActionsFromFem === "function"
+                ? data.selectActionsFromFem({
+                    wall,
+                    data,
+                    demand: femDemand,
+                })
+                : data.actions;
+        } catch (error) {
+            results.push({
+                wallId: wall.id,
+                status: "failed",
+                reason: error?.message ?? String(error),
+            });
+            continue;
+        }
+        if (
+            !Number.isFinite(actions?.axialForce) ||
+            !Number.isFinite(actions?.momentX) ||
+            !Number.isFinite(actions?.momentY)
+        ) {
+            results.push({
+                wallId: wall.id,
+                status: "not-analyzed",
+                reason:
+                    "Explicit finite wall actions or selectActionsFromFem output are required.",
+                availableShellStateCount:
+                    femDemand.concurrentShellResultantStates.length,
+                availableSectionCutStateCount:
+                    femDemand.concurrentSectionCutStates.length,
+            });
+            continue;
+        }
         try {
             const outcome = verifyWallBiaxialBending({
                 section: data.section,
-                axialForce: data.actions?.axialForce,
-                momentX: data.actions?.momentX,
-                momentY: data.actions?.momentY,
+                axialForce: actions.axialForce,
+                momentX: actions.momentX,
+                momentY: actions.momentY,
                 concreteDesignStrength: data.concreteDesignStrength,
                 reinforcementDesignStrength: data.reinforcementDesignStrength,
                 concreteEc2: data.concreteEc2,
@@ -429,6 +870,7 @@ function runWallBiaxialVerifications({ walls, wallSections }) {
                 steelElasticModulus: data.steelElasticModulus,
                 steelUltimateStrain: data.steelUltimateStrain,
                 targetFiberCount: data.targetFiberCount,
+                angleCount: data.angleCount,
             });
             results.push({
                 wallId: wall.id,
@@ -438,6 +880,9 @@ function runWallBiaxialVerifications({ walls, wallSections }) {
                 capacity: outcome.capacity,
                 theta: outcome.theta,
                 converged: outcome.converged,
+                angleCount: outcome.angleCount,
+                intersection: outcome.intersection,
+                actionReference: actions.reference ?? null,
                 check: outcome.check,
                 reference: outcome.reference,
             });
@@ -488,7 +933,7 @@ export class RcBuildingVerificationApplication extends StructuralApplication {
      * @param {Object} input.result – GlobalFemResultContract.
      * @param {Object} input.mapping – FemEntityMappingContract (confirmed).
      * @param {string} input.behavior – Structural behavior choice.
-     * @param {string} [input.structuralType] – Structural type. Default "frame".
+     * @param {string} input.structuralType – Explicit structural type.
      * @param {Object} [input.siteParams] – Site hazard parameters.
      * @param {Object} [input.metadata] – Consumer metadata.
      * @returns {CalculationResult}
@@ -514,6 +959,7 @@ export class RcBuildingVerificationApplication extends StructuralApplication {
                 model: modelVal.ok ? modelVal.value : null,
                 analysis: analysisVal.ok ? analysisVal.value : null,
                 capabilities: capabilitiesVal.ok ? capabilitiesVal.value : null,
+                mapping: mappingVal?.ok ? mappingVal.value : null,
             })
             : null;
 
@@ -548,6 +994,11 @@ export class RcBuildingVerificationApplication extends StructuralApplication {
                             result: resultVal,
                         },
                         input,
+                        demandSet: null,
+                        behaviorDescriptor: null,
+                        behaviorError: null,
+                        linearDynamicAssessment: null,
+                        linearDynamicError: null,
                     }),
                 },
                 warnings,
@@ -558,74 +1009,132 @@ export class RcBuildingVerificationApplication extends StructuralApplication {
             });
         }
 
-        // ---- 2. Structural behavior ----
-        const behavior = input.behavior ?? NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE;
-        const structuralType = input.structuralType ?? "frame";
+        // ---- 2. Solver-neutral demand extraction ----
+        const postprocessing = mappingVal?.ok && resultVal?.ok
+            ? new GlobalFemPostProcessingApplication().run({
+                capabilities: capabilitiesVal.value,
+                model: modelVal.value,
+                analysis: analysisVal.value,
+                result: resultVal.value,
+                mapping: mappingVal.value,
+                profile: GLOBAL_FEM_POSTPROCESSING_PROFILES.CONFIRMED,
+            })
+            : null;
+        const demandSet = postprocessing?.outputs?.demands ?? null;
 
-        const behaviorDesc = createNTC2018StructuralBehavior({
-            behavior,
-            structuralType,
-            regularity: {
-                plan: "regular",   // will be updated after regularity assessment
-                elevation: "regular",
-            },
-        });
+        // ---- 3. Explicit structural behavior inputs ----
+        let behavior = null;
+        let structuralType = null;
+        let behaviorError = null;
+        try {
+            behavior = input.behavior == null
+                ? null
+                : normalizeNTC2018StructuralBehavior(input.behavior);
+            structuralType = input.structuralType == null
+                ? null
+                : normalizeNTC2018StructuralType(input.structuralType);
+        } catch (error) {
+            behaviorError = error?.message ?? String(error);
+        }
 
-        // ---- 3. Storey data extraction ----
+        // ---- 4. Storey data extraction ----
         const storeys = buildStoreyDisplacementData({
             model: modelVal.value,
             mapping: mappingVal?.value ?? input.mapping,
             result: resultVal?.value ?? input.result,
         });
 
-        // ---- 4. Regularity assessment (WP2) ----
+        // ---- 4b. Linear dynamic analysis checks (NTC 2018 § 7.3.3.1) ----
+        let linearDynamicAssessment = null;
+        let linearDynamicError = null;
+        if (input.linearDynamicAssessmentInput != null && resultVal?.ok) {
+            const linearDynamicInput =
+                input.linearDynamicAssessmentInput;
+            try {
+                linearDynamicAssessment =
+                    createNTC2018LinearDynamicAssessment({
+                        analysis: analysisVal.value,
+                        result: resultVal.value,
+                        ...linearDynamicInput,
+                        storeyIds: linearDynamicInput.storeyIds ??
+                            modelVal.value.storeys.map((storey) =>
+                                storey.id),
+                    });
+            } catch (error) {
+                linearDynamicError = error?.message ?? String(error);
+            }
+        }
+
+        // ---- 5. Regularity assessment (WP2) ----
         let regularityAssessment = null;
-        if (mappingVal?.ok && storeys.length >= 2) {
+        if (
+            mappingVal?.ok &&
+            storeys.length >= 2 &&
+            behavior != null &&
+            input.regularityAssessmentInput?.planInput != null &&
+            input.regularityAssessmentInput?.elevationInput != null
+        ) {
             regularityAssessment = createNTC2018RegularityAssessment({
-                planInput: {
-                    planLengthX: input.planLengthX ?? 20,
-                    planLengthY: input.planLengthY ?? 15,
-                },
-                elevationInput: {
-                    storeys: storeys.map((s) => ({
-                        storeyId: s.storeyId,
-                        elevation: 0,
-                        height: s.height,
-                        mass: s.weight > 0 ? s.weight : 200,
-                    })),
-                },
+                ...input.regularityAssessmentInput,
                 behavior,
             });
 
-            // Update behavior with actual regularity
-            behaviorDesc.regularity = {
-                plan: regularityAssessment.planRegularity,
-                elevation: regularityAssessment.elevationRegularity,
-            };
-            behaviorDesc.kr = regularityAssessment.reductionFactorKr;
-            behaviorDesc.q = behaviorDesc.q0 * behaviorDesc.kr;
         }
 
-        // ---- 5. Displacement checks (WP5) ----
+        let behaviorDesc = null;
+        if (
+            behavior != null &&
+            structuralType != null &&
+            (
+                behavior === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE ||
+                regularityAssessment != null
+            )
+        ) {
+            try {
+                behaviorDesc = createNTC2018StructuralBehavior({
+                    behavior,
+                    structuralType,
+                    regularity: regularityAssessment
+                        ? {
+                            plan: regularityAssessment.planRegularity,
+                            elevation: regularityAssessment.elevationRegularity,
+                        }
+                        : {},
+                    ...(input.structuralBehaviorParameters ?? {}),
+                });
+            } catch (error) {
+                behaviorError = error?.message ?? String(error);
+            }
+        } else if (
+            behavior !== NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE &&
+            behavior != null &&
+            regularityAssessment == null
+        ) {
+            behaviorError =
+                "Dissipative behavior requires an explicit regularity assessment.";
+        }
+
+        // ---- 6. Displacement checks (WP5) ----
         let displacementAssessment = null;
-        if (storeys.length > 0) {
+        if (storeys.length > 0 && input.displacementAssessmentInput != null) {
             displacementAssessment = createDisplacementAssessment({
-                storeys,
-                limitState: "SLU",
-                behavior,
+                ...input.displacementAssessmentInput,
+                storeys: input.displacementAssessmentInput.storeys ?? storeys,
             });
         }
 
-        // ---- 6. Capacity design (WP4) ----
+        // ---- 7. Capacity design (WP4) ----
         const capacityDesignSummary = {
-            applicable: behavior !== NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE,
+            applicable:
+                behavior != null &&
+                behavior !== NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE,
             jointCount: mappingVal?.value?.joints?.length ?? 0,
             checks: [],
         };
 
-        // If joints are mapped, create a placeholder assessment for each.
-        // Full capacity design requires member resistances from local
-        // verifiers (deferred to follow-up increment).
+        // This summary records where capacity design applies. The executable
+        // resistance checks use the concurrent states and capacities supplied
+        // to the member, joint and joint-hierarchy verification paths below.
         if (capacityDesignSummary.applicable && mappingVal?.ok) {
             for (const joint of (mappingVal.value.joints ?? [])) {
                 const assessment = createCapacityDesignAssessment({
@@ -640,64 +1149,167 @@ export class RcBuildingVerificationApplication extends StructuralApplication {
             }
         }
 
-        // ---- 6b. Member verification (WP3/WP6) via consumer verifiers ----
+        // ---- 7b. Member verification (WP3/WP6) via consumer verifiers ----
         const memberVerifications = runMemberVerifications({
             members: mappingVal?.value?.members ?? [],
             memberVerifiers: input.memberVerifiers ?? null,
             memberData: input.memberData ?? null,
+            demandSet,
             context: {
                 behavior,
                 structuralType,
-                q: behaviorDesc.q,
-                q0: behaviorDesc.q0,
-                kr: behaviorDesc.kr,
+                q: behaviorDesc?.q ?? null,
+                q0: behaviorDesc?.q0 ?? null,
+                kr: behaviorDesc?.kr ?? null,
                 units: input.units ?? null,
+                globalFem: demandSet
+                    ? {
+                        units: demandSet.units,
+                        signConventions: demandSet.signConventions,
+                        model: demandSet.model,
+                        analysis: demandSet.analysis,
+                        resultId: demandSet.resultId,
+                    }
+                    : null,
             },
         });
 
-        // ---- 6c. Beam-column joint hierarchy (WP4) ----
+        // ---- 7c. Local joint verification with concurrent FEM states ----
+        const sharedVerificationContext = {
+            behavior,
+            structuralType,
+            q: behaviorDesc?.q ?? null,
+            q0: behaviorDesc?.q0 ?? null,
+            kr: behaviorDesc?.kr ?? null,
+            units: input.units ?? null,
+            analysis: analysisVal.value,
+            globalFem: demandSet
+                ? {
+                    units: demandSet.units,
+                    signConventions: demandSet.signConventions,
+                    model: demandSet.model,
+                    analysis: demandSet.analysis,
+                    resultId: demandSet.resultId,
+                }
+                : null,
+        };
+        const jointVerifications = runJointVerifications({
+            joints: mappingVal?.value?.joints ?? [],
+            members: mappingVal?.value?.members ?? [],
+            jointVerifier: input.jointVerifier,
+            jointData: input.jointData,
+            demandSet,
+            context: sharedVerificationContext,
+        });
+
+        // ---- 7d. Beam-column joint hierarchy (WP4) ----
         const jointHierarchyVerifications = runJointHierarchyVerifications({
             joints: mappingVal?.value?.joints ?? [],
             jointHierarchy: input.jointHierarchy ?? null,
             behavior,
         });
 
-        // ---- 6d. Shear-wall biaxial bending (SETTI-2) ----
+        // ---- 7e. Shear-wall biaxial bending (SETTI-2) ----
         const wallBiaxialVerifications = runWallBiaxialVerifications({
             walls: mappingVal?.value?.walls ?? [],
             wallSections: input.wallSections ?? null,
+            demandSet,
         });
 
-        // ---- 7. Readiness evaluation ----
+        // ---- 7f. Complete wall-height and coupling-beam workflow ----
+        const wallSystemVerifications = runWallSystemVerifications({
+            walls: mappingVal?.value?.walls ?? [],
+            wallSystemData: input.wallSystemData,
+            wallSectionStateVerifier: input.wallSectionStateVerifier,
+            demandSet,
+            context: sharedVerificationContext,
+        });
+
+        // ---- 7g. Slabs, punching and in-plane diaphragm resistance ----
+        const slabSystemVerifications = runSlabSystemVerifications({
+            slabs: mappingVal?.value?.slabs ?? [],
+            slabSystemData: input.slabSystemData,
+            slabStateVerifier: input.slabStateVerifier,
+            punchingConnections:
+                mappingVal?.value?.punchingConnections ?? [],
+            punchingVerifier: input.punchingVerifier,
+            diaphragmStateVerifier: input.diaphragmStateVerifier,
+            demandSet,
+            context: sharedVerificationContext,
+        });
+
+        // ---- 7h. Supports, reactions and complete foundation checks ----
+        const foundationSystemVerifications =
+            runFoundationSystemVerifications({
+                foundations: mappingVal?.value?.foundations ?? [],
+                foundationSystemData: input.foundationSystemData,
+                foundationVerifier: input.foundationVerifier,
+                demandSet,
+                context: sharedVerificationContext,
+            });
+
+        // ---- 8. Readiness evaluation ----
         const readiness = evaluateReadiness({
             contracts: {
                 mapping: mappingVal,
                 result: resultVal,
             },
             input,
+            demandSet,
+            behaviorDescriptor: behaviorDesc,
+            behaviorError,
+            linearDynamicAssessment,
+            linearDynamicError,
         });
 
-        // ---- 8. Aggregate results ----
-        const membersOk = memberVerifications.every(
-            (m) => m.status !== "not-verified" && m.status !== "failed",
+        // ---- 9. Aggregate results ----
+        const membersOk = memberVerifications.every((m) => m.status === "ok");
+        const jointsOk = jointVerifications.every((j) => j.status === "ok");
+        const hierarchyOk = jointHierarchyVerifications.every((j) =>
+            ["ok", "not-applicable"].includes(j.status));
+        const wallSystemsOk = wallSystemVerifications.every((wall) =>
+            wall.status === "ok");
+        const wallsOk = wallSystemVerifications.length > 0 &&
+            wallSystemsOk
+            ? true
+            : wallBiaxialVerifications.every((wall) =>
+                wall.status === "ok");
+        const slabSystemsOk = slabSystemVerifications.every((slab) =>
+            slab.status === "ok");
+        const foundationsOk = foundationSystemVerifications.every(
+            (foundation) => foundation.status === "ok",
         );
-        const jointsOk = jointHierarchyVerifications.every(
-            (j) => j.status !== "not-verified" && j.status !== "failed",
-        );
-        const wallsOk = wallBiaxialVerifications.every(
-            (w) => w.status !== "not-verified" && w.status !== "failed",
-        );
-        const allOk =
+        const allImplementedChecksOk =
             (regularityAssessment?.allChecksOk ?? true) &&
             (displacementAssessment?.allChecksOk ?? true) &&
+            (linearDynamicAssessment?.ok ?? false) &&
             membersOk &&
             jointsOk &&
-            wallsOk;
+            hierarchyOk &&
+            wallsOk &&
+            wallSystemsOk &&
+            slabSystemsOk &&
+            foundationsOk;
+        const blockedAssessments = readiness.filter(
+            (assessment) => assessment.status === "blocked",
+        );
+        const workflowComplete =
+            APP_MATURITY === "complete" &&
+            blockedAssessments.length === 0 &&
+            allImplementedChecksOk;
 
         const allChecks = [
             ...(regularityAssessment?.checks ?? []),
             ...(displacementAssessment?.checks ?? []),
+            ...(linearDynamicAssessment?.checks ?? []),
             ...memberVerifications.flatMap((m) => m.checks ?? []),
+            ...jointVerifications.flatMap((joint) => joint.checks ?? []),
+            ...wallSystemVerifications.flatMap((wall) =>
+                wall.checks ?? []),
+            ...slabSystemVerifications.flatMap((slab) =>
+                slab.checks ?? []),
+            ...foundationSystemVerifications.flatMap((foundation) =>
+                foundation.checks ?? []),
             ...jointHierarchyVerifications
                 .filter((j) => j.check != null)
                 .map((j) => ({
@@ -712,26 +1324,51 @@ export class RcBuildingVerificationApplication extends StructuralApplication {
 
         return new CalculationResult({
             applicationId: APP_ID,
-            status: allOk ? RESULT_STATUS_OK : RESULT_STATUS_NOT_VERIFIED,
-            summary: allOk
-                ? "Building verification completed: all checks satisfied."
-                : "Building verification completed: some checks not satisfied.",
+            status: APP_MATURITY !== "complete"
+                ? RESULT_STATUS_NOT_IMPLEMENTED
+                : workflowComplete
+                    ? RESULT_STATUS.OK
+                    : RESULT_STATUS_NOT_VERIFIED,
+            summary: APP_MATURITY !== "complete"
+                ? "Building verification is incomplete: no positive compliance outcome is issued."
+                : workflowComplete
+                    ? "Building verification completed: all required checks satisfied."
+                    : "Building verification completed: one or more required checks are missing or not satisfied.",
             outputs: {
-                behavior: {
-                    behavior: behaviorDesc.behavior,
-                    structuralType: behaviorDesc.structuralType,
-                    isDissipative: behaviorDesc.isDissipative,
-                    ductilityClass: behaviorDesc.ductilityClass,
-                    q0: behaviorDesc.q0,
-                    q: behaviorDesc.q,
-                    kr: behaviorDesc.kr,
-                },
+                globalFemDemandSet: demandSet,
+                normativeCoverage: getNTC2018RcBuildingCoverage(),
+                completeness: evaluateNTC2018RcBuildingCompleteness(),
+                behavior: behaviorDesc
+                    ? {
+                        status: "evaluated",
+                        behavior: behaviorDesc.behavior,
+                        structuralType: behaviorDesc.structuralType,
+                        isDissipative: behaviorDesc.isDissipative,
+                        ductilityClass: behaviorDesc.ductilityClass,
+                        q0: behaviorDesc.q0,
+                        q: behaviorDesc.q,
+                        kr: behaviorDesc.kr,
+                    }
+                    : {
+                        status: "not-evaluated",
+                        behavior,
+                        structuralType,
+                        reason: behaviorError ??
+                            "Explicit behavior and structuralType are required.",
+                    },
                 regularity: regularityAssessment ? {
                     planRegularity: regularityAssessment.planRegularity,
                     elevationRegularity: regularityAssessment.elevationRegularity,
                     reductionFactorKr: regularityAssessment.reductionFactorKr,
                     analysisMethods: regularityAssessment.analysisMethodsX,
                 } : { status: "not-evaluated" },
+                linearDynamicAnalysis: linearDynamicAssessment ?? {
+                    status: "not-evaluated",
+                    complete: false,
+                    ok: false,
+                    reason: linearDynamicError ??
+                        "Explicit linearDynamicAssessmentInput is required.",
+                },
                 displacement: displacementAssessment ? {
                     limitState: displacementAssessment.limitState,
                     governingDriftX: displacementAssessment.governingDriftX,
@@ -754,9 +1391,17 @@ export class RcBuildingVerificationApplication extends StructuralApplication {
                     results: memberVerifications,
                 },
                 joints: {
+                    count: jointVerifications.length,
+                    verified: jointVerifications.filter((j) => j.status === "ok").length,
+                    notAnalyzed: jointVerifications.filter((j) => j.status === "not-analyzed").length,
+                    results: jointVerifications,
+                },
+                jointHierarchy: {
                     count: jointHierarchyVerifications.length,
-                    verified: jointHierarchyVerifications.filter((j) => j.status === "ok").length,
-                    notAnalyzed: jointHierarchyVerifications.filter((j) => j.status === "not-analyzed").length,
+                    verified: jointHierarchyVerifications.filter((j) =>
+                        j.status === "ok").length,
+                    notAnalyzed: jointHierarchyVerifications.filter((j) =>
+                        j.status === "not-analyzed").length,
                     results: jointHierarchyVerifications,
                 },
                 walls: {
@@ -765,13 +1410,43 @@ export class RcBuildingVerificationApplication extends StructuralApplication {
                     notAnalyzed: wallBiaxialVerifications.filter((w) => w.status === "not-analyzed").length,
                     results: wallBiaxialVerifications,
                 },
+                wallSystems: {
+                    count: wallSystemVerifications.length,
+                    verified: wallSystemVerifications.filter((wall) =>
+                        wall.status === "ok").length,
+                    notAnalyzed: wallSystemVerifications.filter((wall) =>
+                        wall.status === "not-implemented").length,
+                    results: wallSystemVerifications,
+                },
+                slabSystems: {
+                    count: slabSystemVerifications.length,
+                    verified: slabSystemVerifications.filter((slab) =>
+                        slab.status === "ok").length,
+                    notAnalyzed: slabSystemVerifications.filter((slab) =>
+                        slab.status === "not-implemented").length,
+                    results: slabSystemVerifications,
+                },
+                foundationSystems: {
+                    count: foundationSystemVerifications.length,
+                    verified: foundationSystemVerifications.filter(
+                        (foundation) => foundation.status === "ok",
+                    ).length,
+                    notAnalyzed: foundationSystemVerifications.filter(
+                        (foundation) =>
+                            foundation.status === "not-implemented",
+                    ).length,
+                    results: foundationSystemVerifications,
+                },
                 readiness,
+                blockedAssessments,
                 checks: allChecks,
                 checkCount: allChecks.length,
             },
             warnings,
             assumptions: [
-                "Member-level verifications run only for members with a consumer-injected verifier (memberVerifiers).",
+                "Member-level verifiers receive every concurrent FEM action state; the orchestrator does not combine independently enveloped components.",
+                "Global FEM action units and signs are preserved; proper orthogonal transformations to resistance axes come only from the confirmed mapping contract.",
+                "Wall action-state selection remains explicit; every section-cut state is transformed by its confirmed resistance-axis mapping before selection.",
                 "Per-member material and reinforcement data must be provided by the consumer (no automatic reinforcement).",
                 "Beam-column hierarchy runs only for joints with jointHierarchy data.",
                 ...assumptions,

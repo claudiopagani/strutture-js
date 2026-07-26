@@ -214,8 +214,6 @@ export {
 export {
   NTC2018_ANALYSIS_METHOD,
   NTC2018_BASE_Q_FACTORS,
-  NTC2018_DEFAULT_FRAME_ALPHA_RATIO,
-  NTC2018_DEFAULT_WALL_ALPHA_RATIO,
   NTC2018_ELEVATION_REGULARITY,
   NTC2018_OVERSTRENGTH_FACTORS,
   NTC2018_PLAN_REGULARITY,
@@ -228,6 +226,7 @@ export {
   createNTC2018StructuralBehavior,
   normalizeNTC2018StructuralBehavior,
   normalizeNTC2018StructuralType,
+  resolveNTC2018AlphaRatio,
   selectNTC2018AllowedAnalysisMethods,
   selectNTC2018BaseQFactor,
   selectNTC2018OverstrengthFactors,
@@ -264,25 +263,16 @@ export {
 } from "./reinforced-concrete/displacementChecks.js";
 
 export {
-  DM522023_COLUMN_MAX_HOOP_SPACING,
-  DM522023_COLUMN_MAX_LONGITUDINAL_RATIO,
-  DM522023_COLUMN_MIN_HOOP_DIAMETER,
-  DM522023_COLUMN_MIN_LONGITUDINAL_RATIO,
-  DM522023_MATERIAL_PARTIAL_FACTORS,
+  DM522023_AMENDMENTS,
   DM522023_REFERENCES,
-  DM522023_REINFORCEMENT_STEEL_GRADES,
-  applyDM522023SteelGrades,
-  computeDM522023ConfinementOmegaWd,
-  selectDM522023PartialFactor,
+  describeDM522023Amendment,
 } from "./reinforced-concrete/dm522023.js";
 
 export {
+  NTC2018_DIAPHRAGM_FORCE_FACTOR,
   NTC2018_DIAPHRAGM_REFERENCES,
-  computeDiaphragmChordReinforcement,
+  amplifyNTC2018DiaphragmActions,
   createDiaphragmAssessment,
-  verifyDiaphragmCompression,
-  verifyDiaphragmDiagonalTension,
-  verifyDiaphragmShearConnection,
 } from "./reinforced-concrete/ntc2018Diaphragm.js";
 
 export {
@@ -298,7 +288,26 @@ export {
 } from "./reinforced-concrete/ntc2018ShearWall.js";
 
 export {
+  NTC2018_WALL_SYSTEM_REFERENCES,
+  computeMixedSystemWallShearEnvelope,
+  computeWallEffectiveFlangeWidth,
+  computeWeaklyReinforcedWallAxialDemandRange,
+  computeWeaklyReinforcedWallShearDemand,
+  createCouplingBeamAssessment,
+  createWallHeightSystemAssessment,
+  verifyWallCurvatureDuctility,
+  verifyWallGeneralDetailing,
+} from "./reinforced-concrete/wallSystemChecks.js";
+
+export {
   NTC2018_RETAINING_WALL_SEISMIC_REFERENCE,
   calculateNTC2018RetainingWallSeismicCoefficients,
   createNTC2018MononobeOkabeSeismicInput,
 } from "./geotechnics/ntc2018RetainingWallSeismic.js";
+
+export {
+  NTC2018_LINEAR_DYNAMIC_REFERENCES,
+  createNTC2018LinearDynamicAssessment,
+  verifyNTC2018AccidentalEccentricities,
+  verifyNTC2018ModalMassParticipation,
+} from "./seismicAnalysisChecks.js";

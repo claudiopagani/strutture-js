@@ -145,6 +145,7 @@ Stato sintetico dei moduli applicativi:
 | `reinforced-concrete-foundation-beams` | Implementato locale | Contatto monolatero, rigidezza fessurata iterativa e verifiche locali di travi prismatiche orizzontali su letto di Winkler assegnato. |
 | `reinforced-concrete-beam-column-joints` | Implementato locale | Verifica locale NTC 2018 di nodi interni, esterni e d'angolo, inclusi ancoraggi, eccentricita e stati 3D concorrenti. |
 | `reinforced-concrete-strut-and-tie` | Parziale | Analisi e verifica EN 1992 di modelli tirante-puntone 2D con topologia e zone nodali assegnate. |
+| `rc-building-verification` | Completo nel perimetro dichiarato | Orchestrazione NTC 2018 di edifici ordinari in c.a. gettato in opera da contratti FEM solver-neutral: dinamica, membri, nodi, setti, solai, punzonamento, diaframmi e fondazioni. |
 | `timber-beams` | Parziale | Verifiche di travi in legno da risultati FEM disponibili. |
 | `timber-concrete-composite-beams` | Implementato | Verifica gamma-method di travi legno-calcestruzzo con connettori. |
 | `timber-xlam-composite-beams` | Implementato | Verifica gamma-method di travi lignee collaboranti con pannelli XLAM. |
@@ -508,7 +509,9 @@ funzionalita operativa e non sostituisce questi criteri. Vedi
 - La libreria non e ancora un software normativo completo.
 - Alcuni moduli sono scaffold intenzionali.
 - Le verifiche acciaio non includono ancora torsione e proprieta efficaci per classe 4.
-- I workflow RC non includono ancora duttilita e colonna modello.
+- L'orchestratore RC globale è completo per edifici ordinari gettati in opera
+  nel perimetro eseguibile dichiarato; precompresso, prefabbricati e ponti
+  restano esplicitamente fuori campo.
 - Le verifiche legno e XLAM sono solide per i casi coperti dai test, ma richiedono campagne piu ampie per usi fuori da quei domini.
 - Ogni uso professionale richiede controllo, responsabilita e giudizio dell'ingegnere.
 

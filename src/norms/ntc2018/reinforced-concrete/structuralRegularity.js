@@ -1,514 +1,439 @@
 /**
- * NTC 2018 structural regularity module.
- *
- * Evaluates plan and elevation regularity per § 7.2.2, Tables 7.2.I-II.
- * Produces the regularity reduction factor k_r (§ 7.3.1) and determines
- * admissible analysis methods based on the results.
- *
- * The data (masses, stiffnesses, geometries) comes from the global FEM
- * model via GlobalFemModelContract + FemEntityMappingContract. This
- * module evaluates the criteria; data extraction from FEM contracts
- * belongs to the orchestrator (WP3/WP6).
- *
- * References:
- * - D.M. 17/01/2018 (NTC 2018): §§ 7.2.2, 7.2.3, 7.3.1
- * - Circolare 21/01/2019 n. 7: C7.2.2
+ * Solver-neutral NTC 2018 regularity checks for buildings.
  */
 
 import {
-    NTC2018_PLAN_REGULARITY,
-    NTC2018_ELEVATION_REGULARITY,
-    NTC2018_REGULARITY_REDUCTION,
-    NTC2018_STRUCTURAL_BEHAVIOR,
-    NTC2018_ANALYSIS_METHOD,
-} from "./structuralBehavior.js";
-import {
-    selectNTC2018AllowedAnalysisMethods,
+  NTC2018_ELEVATION_REGULARITY,
+  NTC2018_PLAN_REGULARITY,
+  NTC2018_REGULARITY_REDUCTION,
+  selectNTC2018AllowedAnalysisMethods,
 } from "./structuralBehavior.js";
 
-// ---------------------------------------------------------------------------
-// Reference metadata
-// ---------------------------------------------------------------------------
-
-/** @readonly */
 export const NTC2018_REGULARITY_REFERENCES = Object.freeze([
-    {
-        source: "NTC 2018",
-        citation: "D.M. 17/01/2018, §§ 7.2.2, 7.2.3, 7.3.1, Tab. 7.2.I, Tab. 7.2.II",
-    },
-    {
-        source: "Circolare 2019",
-        citation: "Circ. 21/01/2019 n. 7, C7.2.2",
-    },
+  Object.freeze({
+    source: "NTC 2018",
+    citation: "§ 7.2.1 (regolarità in pianta e in altezza) e § 7.3.1 (fattore ηR)",
+  }),
+  Object.freeze({
+    source: "Circolare 21 gennaio 2019, n. 7 C.S.LL.PP.",
+    citation: "§ C7.2.1",
+  }),
 ]);
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+function positive(value, label) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) {
+    throw new Error(`${label} must be finite and positive; got ${value}.`);
+  }
+  return number;
+}
 
-/**
- * @param {number} value
- * @param {string} label
- * @returns {number}
- */
-function finiteNonNegative(value, label) {
-    if (!Number.isFinite(value) || value < 0) {
-        throw new Error(`${label} must be finite and non-negative; got ${value}.`);
-    }
-    return value;
+function ratio01(value, label) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 0 || number > 1) {
+    throw new Error(`${label} must be between 0 and 1; got ${value}.`);
+  }
+  return number;
+}
+
+function requiredBoolean(value, label) {
+  if (typeof value !== "boolean") {
+    throw new Error(`${label} must be explicitly true or false.`);
+  }
+  return value;
+}
+
+function normalizeFloorPlans(input) {
+  if (Array.isArray(input.floors) && input.floors.length > 0) {
+    return input.floors;
+  }
+  if (input.planLengthX !== undefined || input.planLengthY !== undefined) {
+    return [{
+      storeyId: input.storeyId ?? "plan",
+      planLengthX: input.planLengthX,
+      planLengthY: input.planLengthY,
+      contourConvex: input.contourConvex,
+      reentrantAreaRatios: input.reentrantAreaRatios,
+      reentrantInfluenceNegligible: input.reentrantInfluenceNegligible,
+      diaphragmInPlaneRigidityAdequate:
+        input.diaphragmInPlaneRigidityAdequate,
+      diaphragmInPlaneStrengthAdequate:
+        input.diaphragmInPlaneStrengthAdequate,
+    }];
+  }
+  throw new Error("At least one floor plan is required.");
 }
 
 /**
- * @param {number} value
- * @param {string} label
- * @returns {number}
+ * Evaluate every condition a), b) and c) of NTC 2018 § 7.2.1.
+ *
+ * Missing qualitative assessments are rejected rather than interpreted as
+ * compliance.
  */
-function finitePositive(value, label) {
-    if (!Number.isFinite(value) || value <= 0) {
-        throw new Error(`${label} must be finite and positive; got ${value}.`);
-    }
-    return value;
-}
+export function evaluateNTC2018PlanRegularity(input = {}) {
+  const symmetry = requiredBoolean(
+    input.massAndStiffnessApproximatelySymmetric,
+    "massAndStiffnessApproximatelySymmetric",
+  );
+  const floors = normalizeFloorPlans(input);
+  const checks = [{
+    check: "plan-mass-stiffness-symmetry",
+    ok: symmetry,
+    reference: "NTC 2018 § 7.2.1, lettera a)",
+  }];
+  const floorDetails = [];
 
-// ---------------------------------------------------------------------------
-// Plan regularity – § 7.2.2.1, Tab. 7.2.I
-// ---------------------------------------------------------------------------
+  for (let index = 0; index < floors.length; index++) {
+    const floor = floors[index];
+    const storeyId = floor.storeyId ?? `floor-${index + 1}`;
+    const lengthX = positive(
+      floor.planLengthX,
+      `floors[${index}].planLengthX`,
+    );
+    const lengthY = positive(
+      floor.planLengthY,
+      `floors[${index}].planLengthY`,
+    );
+    const slenderness = Math.max(lengthX, lengthY) / Math.min(lengthX, lengthY);
+    const slendernessOk = slenderness < 4;
+    const contourConvex = requiredBoolean(
+      floor.contourConvex,
+      `floors[${index}].contourConvex`,
+    );
 
-/**
- * Evaluate plan regularity from structural geometry data.
- *
- * Tab. 7.2.I criteria:
- * 1. Symmetric mass and stiffness distribution
- * 2. Slenderness Lmax/Lmin ≤ 4
- * 3. Re-entrant corners ≤ 25% of parallel total dimension
- * 4. Floors acting as rigid diaphragms (delegated to consumer)
- * 5. No significant floor discontinuities
- *
- * @param {Object} params
- * @param {number} params.planLengthX – Building plan dimension along X [length].
- * @param {number} params.planLengthY – Building plan dimension along Y [length].
- * @param {number} [params.maxReentrantX] – Maximum re-entrant depth along X [length]. 0 if none.
- * @param {number} [params.maxReentrantY] – Maximum re-entrant depth along Y [length]. 0 if none.
- * @param {number} [params.eccentricityX] – Mass-stiffness eccentricity along X [length]. Requires radiusX.
- * @param {number} [params.eccentricityY] – Mass-stiffness eccentricity along Y [length]. Requires radiusY.
- * @param {number} [params.torsionalRadiusX] – Torsional radius of stiffness along X [length].
- * @param {number} [params.torsionalRadiusY] – Torsional radius of stiffness along Y [length].
- * @param {number} [params.floorOpeningRatio] – Max ratio of opening area to gross floor area (0–1).
- *   Omit if floors are continuous.
- * @param {boolean} [params.hasRigidDiaphragms] – Whether floors act as rigid diaphragms.
- *   Defaults to true; set false only when demonstrated otherwise.
- * @returns {{
- *   regularity: string,
- *   checks: Array<{ check: string, ok: boolean, reference: string, detail?: string }>,
- *   slenderness: number,
- *   reentrantRatioX: number|null,
- *   reentrantRatioY: number|null,
- *   eccentricityRatioX: number|null,
- *   eccentricityRatioY: number|null,
- * }}
- */
-export function evaluateNTC2018PlanRegularity({
-    planLengthX,
-    planLengthY,
-    maxReentrantX = 0,
-    maxReentrantY = 0,
-    eccentricityX,
-    eccentricityY,
-    torsionalRadiusX,
-    torsionalRadiusY,
-    floorOpeningRatio,
-    hasRigidDiaphragms = true,
-} = {}) {
-    const Lx = finitePositive(planLengthX, "planLengthX");
-    const Ly = finitePositive(planLengthY, "planLengthY");
-    const rx = finiteNonNegative(maxReentrantX, "maxReentrantX");
-    const ry = finiteNonNegative(maxReentrantY, "maxReentrantY");
-
-    const checks = [];
-    let allOk = true;
-
-    // --- Criterion 1: Slenderness Lmax/Lmin ≤ 4 ---
-    const Lmax = Math.max(Lx, Ly);
-    const Lmin = Math.min(Lx, Ly);
-    const slenderness = Lmax / Lmin;
-    const slendernessOk = slenderness <= 4;
-    checks.push({
-        check: "plan-slenderness",
-        ok: slendernessOk,
-        reference: "NTC 2018 Tab. 7.2.I (snellezza Lmax/Lmin ≤ 4)",
-        detail: `Lmax/Lmin = ${Lmax}/${Lmin} = ${slenderness.toFixed(2)}`,
-    });
-    if (!slendernessOk) allOk = false;
-
-    // --- Criterion 2: Re-entrant corners ≤ 25% ---
-    let reentrantRatioX = null;
-    let reentrantRatioY = null;
-
-    if (rx > 0) {
-        reentrantRatioX = rx / Lx;
-        const reentrantOkX = reentrantRatioX <= 0.25;
-        checks.push({
-            check: "plan-reentrant-x",
-            ok: reentrantOkX,
-            reference: "NTC 2018 Tab. 7.2.I (rientranze ≤ 25%)",
-            detail: `rientranza X/Lx = ${rx}/${Lx} = ${(reentrantRatioX * 100).toFixed(1)}%`,
-        });
-        if (!reentrantOkX) allOk = false;
-    }
-
-    if (ry > 0) {
-        reentrantRatioY = ry / Ly;
-        const reentrantOkY = reentrantRatioY <= 0.25;
-        checks.push({
-            check: "plan-reentrant-y",
-            ok: reentrantOkY,
-            reference: "NTC 2018 Tab. 7.2.I (rientranze ≤ 25%)",
-            detail: `rientranza Y/Ly = ${ry}/${Ly} = ${(reentrantRatioY * 100).toFixed(1)}%`,
-        });
-        if (!reentrantOkY) allOk = false;
-    }
-
-    // --- Criterion 3: Mass-stiffness eccentricity ≤ 0.3 r ---
-    let eccentricityRatioX = null;
-    let eccentricityRatioY = null;
-
-    if (eccentricityX !== undefined && torsionalRadiusX !== undefined) {
-        const ex = finiteNonNegative(eccentricityX, "eccentricityX");
-        const trx = finitePositive(torsionalRadiusX, "torsionalRadiusX");
-        eccentricityRatioX = ex / trx;
-        const eccOkX = eccentricityRatioX <= 0.3;
-        checks.push({
-            check: "plan-eccentricity-x",
-            ok: eccOkX,
-            reference: "NTC 2018 Tab. 7.2.I (eccentricità masse-rigidezze ≤ 0.3 r)",
-            detail: `ex/rx = ${ex}/${trx} = ${eccentricityRatioX.toFixed(3)}`,
-        });
-        if (!eccOkX) allOk = false;
-    }
-
-    if (eccentricityY !== undefined && torsionalRadiusY !== undefined) {
-        const ey = finiteNonNegative(eccentricityY, "eccentricityY");
-        const trY = finitePositive(torsionalRadiusY, "torsionalRadiusY");
-        eccentricityRatioY = ey / trY;
-        const eccOkY = eccentricityRatioY <= 0.3;
-        checks.push({
-            check: "plan-eccentricity-y",
-            ok: eccOkY,
-            reference: "NTC 2018 Tab. 7.2.I (eccentricità masse-rigidezze ≤ 0.3 r)",
-            detail: `ey/ry = ${ey}/${trY} = ${eccentricityRatioY.toFixed(3)}`,
-        });
-        if (!eccOkY) allOk = false;
-    }
-
-    // --- Criterion 4: Floor continuity ---
-    const floorContinuityOk = floorOpeningRatio === undefined ||
-        floorOpeningRatio <= 0.25;
-    checks.push({
-        check: "plan-floor-continuity",
-        ok: floorContinuityOk,
-        reference: "NTC 2018 Tab. 7.2.I (assenza discontinuità significative nei solai)",
-        detail: floorOpeningRatio !== undefined
-            ? `rapporto aperture = ${(floorOpeningRatio * 100).toFixed(1)}%`
-            : "non valutato (dati non forniti)",
-    });
-    if (!floorContinuityOk) allOk = false;
-
-    // --- Criterion 5: Rigid diaphragms ---
-    checks.push({
-        check: "plan-rigid-diaphragms",
-        ok: hasRigidDiaphragms,
-        reference: "NTC 2018 Tab. 7.2.I (solai infinitamente rigidi nel piano)",
-        detail: hasRigidDiaphragms
-            ? "diaframmi rigidi dichiarati"
-            : "diaframmi non rigidi",
-    });
-    if (!hasRigidDiaphragms) allOk = false;
-
-    return {
-        regularity: allOk
-            ? NTC2018_PLAN_REGULARITY.REGULAR
-            : NTC2018_PLAN_REGULARITY.NON_REGULAR,
-        checks,
-        slenderness,
-        reentrantRatioX,
-        reentrantRatioY,
-        eccentricityRatioX,
-        eccentricityRatioY,
-    };
-}
-
-// ---------------------------------------------------------------------------
-// Elevation regularity – § 7.2.2.2, Tab. 7.2.II
-// ---------------------------------------------------------------------------
-
-/**
- * Storey data for elevation regularity evaluation.
- *
- * @typedef {Object} StoreyData
- * @property {string} storeyId – Storey identifier.
- * @property {number} elevation – Storey elevation (base of storey) [length].
- * @property {number} height – Storey height [length].
- * @property {number} mass – Storey seismic mass.
- * @property {number} [stiffnessX] – Lateral stiffness along X [force/length].
- * @property {number} [stiffnessY] – Lateral stiffness along Y [force/length].
- * @property {number} [resistanceX] – Lateral resistance (base shear capacity) along X [force].
- * @property {number} [resistanceY] – Lateral resistance (base shear capacity) along Y [force].
- * @property {number} [setbackX] – Setback depth along X relative to storey below [length].
- * @property {number} [setbackY] – Setback depth along Y relative to storey below [length].
- * @property {number} [planLengthX] – Building plan length along X at this storey [length].
- * @property {number} [planLengthY] – Building plan length along Y at this storey [length].
- */
-
-/**
- * Evaluate elevation regularity from storey-level data.
- *
- * Tab. 7.2.II criteria:
- * 1. Vertical resisting systems continuous from base to top
- * 2. Mass variation ≤ 25% between adjacent storeys
- * 3. Lateral stiffness does not reduce abruptly
- * 4. Resistance ratio ≥ 0.8 between adjacent storeys (Eq. 7.2.1)
- * 5. Setbacks ≤ 20% of parallel dimension
- * 6. No significant inclined elements
- *
- * Storeys must be ordered from base to top.
- *
- * @param {Object} params
- * @param {StoreyData[]} params.storeys – Ordered array of storey data (base first).
- * @param {boolean} [params.continuousVerticalSystems] – Whether vertical
- *   resisting systems are continuous. Defaults to true.
- * @param {boolean} [params.hasInclinedElements] – Whether significant inclined
- *   elements exist. Defaults to false.
- * @returns {{
- *   regularity: string,
- *   checks: Array<{ check: string, ok: boolean, reference: string, detail?: string }>,
- *   storeyDetails: Array<{ storeyId: string, checks: Array }>,
- * }}
- */
-export function evaluateNTC2018ElevationRegularity({
-    storeys,
-    continuousVerticalSystems = true,
-    hasInclinedElements = false,
-} = {}) {
-    if (!Array.isArray(storeys) || storeys.length < 2) {
+    let maximumReentrantAreaRatio = 0;
+    let compactnessOk = contourConvex;
+    if (!contourConvex) {
+      if (
+        !Array.isArray(floor.reentrantAreaRatios) ||
+        floor.reentrantAreaRatios.length === 0
+      ) {
         throw new Error(
-            "At least two storeys are required for elevation regularity evaluation.",
+          `floors[${index}].reentrantAreaRatios is required for a non-convex plan.`,
+        );
+      }
+      maximumReentrantAreaRatio = Math.max(
+        ...floor.reentrantAreaRatios.map((value, reentrantIndex) =>
+          ratio01(
+            value,
+            `floors[${index}].reentrantAreaRatios[${reentrantIndex}]`,
+          )),
+      );
+      compactnessOk =
+        maximumReentrantAreaRatio <= 0.05 &&
+        requiredBoolean(
+          floor.reentrantInfluenceNegligible,
+          `floors[${index}].reentrantInfluenceNegligible`,
         );
     }
 
-    const checks = [];
-    const storeyDetails = [];
-    let allOk = true;
-
-    // --- Criterion 1: Continuous vertical systems ---
-    checks.push({
-        check: "elevation-continuous-systems",
-        ok: continuousVerticalSystems,
-        reference: "NTC 2018 Tab. 7.2.II (sistemi resistenti verticali continui)",
-        detail: continuousVerticalSystems
-            ? "sistemi verticali continui"
-            : "sistemi verticali non continui",
+    const rigidityOk = requiredBoolean(
+      floor.diaphragmInPlaneRigidityAdequate,
+      `floors[${index}].diaphragmInPlaneRigidityAdequate`,
+    );
+    const strengthOk = requiredBoolean(
+      floor.diaphragmInPlaneStrengthAdequate,
+      `floors[${index}].diaphragmInPlaneStrengthAdequate`,
+    );
+    const floorChecks = [
+      {
+        check: "plan-compactness",
+        storeyId,
+        ok: compactnessOk,
+        maximumReentrantAreaRatio,
+        reference: "NTC 2018 § 7.2.1, lettera a)",
+      },
+      {
+        check: "plan-bounding-rectangle-ratio",
+        storeyId,
+        ok: slendernessOk,
+        value: slenderness,
+        limit: 4,
+        comparison: "<",
+        reference: "NTC 2018 § 7.2.1, lettera b)",
+      },
+      {
+        check: "plan-diaphragm-in-plane-rigidity",
+        storeyId,
+        ok: rigidityOk,
+        reference: "NTC 2018 § 7.2.1, lettera c)",
+      },
+      {
+        check: "plan-diaphragm-in-plane-strength",
+        storeyId,
+        ok: strengthOk,
+        reference: "NTC 2018 § 7.2.1, lettera c)",
+      },
+    ];
+    checks.push(...floorChecks);
+    floorDetails.push({
+      storeyId,
+      slenderness,
+      maximumReentrantAreaRatio,
+      checks: floorChecks,
     });
-    if (!continuousVerticalSystems) allOk = false;
+  }
 
-    // --- Criterion 2-4: Per-storey comparisons ---
-    for (let i = 1; i < storeys.length; i++) {
-        const current = storeys[i];
-        const below = storeys[i - 1];
-        const storeyChecks = [];
+  const allChecksOk = checks.every((check) => check.ok === true);
+  const governingFloor = floorDetails.reduce(
+    (governing, floor) =>
+      governing == null || floor.slenderness > governing.slenderness
+        ? floor
+        : governing,
+    null,
+  );
 
-        // Mass variation
-        if (below.mass > 0) {
-            const massRatio = current.mass / below.mass;
-            const massOk = massRatio >= 0.75 && massRatio <= 1.25;
-            storeyChecks.push({
-                check: "elevation-mass-variation",
-                ok: massOk,
-                reference: "NTC 2018 Tab. 7.2.II (variazione massa ≤ 25%)",
-                detail:
-                    `massa ${current.storeyId}/${below.storeyId} = ${massRatio.toFixed(3)}`,
-            });
-            if (!massOk) allOk = false;
-        }
-
-        // Stiffness variation (if data available)
-        if (current.stiffnessX !== undefined && below.stiffnessX !== undefined &&
-            below.stiffnessX > 0) {
-            const stiffRatioX = current.stiffnessX / below.stiffnessX;
-            const stiffOkX = stiffRatioX >= 0.70; // Tab. 7.2.II: no abrupt reduction
-            storeyChecks.push({
-                check: "elevation-stiffness-x",
-                ok: stiffOkX,
-                reference: "NTC 2018 Tab. 7.2.II (riduzione rigidezza non brusca)",
-                detail:
-                    `rigidezza X ${current.storeyId}/${below.storeyId} = ${stiffRatioX.toFixed(3)}`,
-            });
-            if (!stiffOkX) allOk = false;
-        }
-
-        // Resistance ratio (Eq. 7.2.1): Ri / Ri-1 ≥ 0.8
-        if (current.resistanceX !== undefined && below.resistanceX !== undefined &&
-            below.resistanceX > 0) {
-            const resRatioX = current.resistanceX / below.resistanceX;
-            const resOkX = resRatioX >= 0.80;
-            storeyChecks.push({
-                check: "elevation-resistance-x",
-                ok: resOkX,
-                reference: "NTC 2018 Tab. 7.2.II, Eq. [7.2.1] (rapporto resistenze ≥ 0.8)",
-                detail:
-                    `resistenza X ${current.storeyId}/${below.storeyId} = ${resRatioX.toFixed(3)}`,
-            });
-            if (!resOkX) allOk = false;
-        }
-
-        if (current.resistanceY !== undefined && below.resistanceY !== undefined &&
-            below.resistanceY > 0) {
-            const resRatioY = current.resistanceY / below.resistanceY;
-            const resOkY = resRatioY >= 0.80;
-            storeyChecks.push({
-                check: "elevation-resistance-y",
-                ok: resOkY,
-                reference: "NTC 2018 Tab. 7.2.II, Eq. [7.2.1] (rapporto resistenze ≥ 0.8)",
-                detail:
-                    `resistenza Y ${current.storeyId}/${below.storeyId} = ${resRatioY.toFixed(3)}`,
-            });
-            if (!resOkY) allOk = false;
-        }
-
-        // Setback ratio
-        if (current.setbackX !== undefined && current.planLengthX !== undefined &&
-            current.planLengthX > 0) {
-            const setbackRatioX = current.setbackX / current.planLengthX;
-            const setbackOkX = setbackRatioX <= 0.20;
-            storeyChecks.push({
-                check: "elevation-setback-x",
-                ok: setbackOkX,
-                reference: "NTC 2018 Tab. 7.2.II (arretramenti ≤ 20%)",
-                detail:
-                    `arretramento X = ${(setbackRatioX * 100).toFixed(1)}%`,
-            });
-            if (!setbackOkX) allOk = false;
-        }
-
-        storeyDetails.push({
-            storeyId: current.storeyId,
-            comparedTo: below.storeyId,
-            checks: storeyChecks,
-        });
-    }
-
-    // --- Criterion 6: No inclined elements ---
-    checks.push({
-        check: "elevation-no-inclined-elements",
-        ok: !hasInclinedElements,
-        reference: "NTC 2018 Tab. 7.2.II (assenza elementi inclinati significativi)",
-        detail: hasInclinedElements
-            ? "presenti elementi inclinati significativi"
-            : "nessun elemento inclinato significativo",
-    });
-    if (hasInclinedElements) allOk = false;
-
-    return {
-        regularity: allOk
-            ? NTC2018_ELEVATION_REGULARITY.REGULAR
-            : NTC2018_ELEVATION_REGULARITY.NON_REGULAR,
-        checks,
-        storeyDetails,
-    };
+  return {
+    regularity: allChecksOk
+      ? NTC2018_PLAN_REGULARITY.REGULAR
+      : NTC2018_PLAN_REGULARITY.NON_REGULAR,
+    allChecksOk,
+    checks,
+    floors: floorDetails,
+    slenderness: governingFloor?.slenderness ?? null,
+    maximumReentrantAreaRatio: Math.max(
+      ...floorDetails.map((floor) => floor.maximumReentrantAreaRatio),
+    ),
+    reentrantRatioX: null,
+    reentrantRatioY: null,
+    eccentricityRatioX: null,
+    eccentricityRatioY: null,
+  };
 }
 
-// ---------------------------------------------------------------------------
-// Combined regularity assessment
-// ---------------------------------------------------------------------------
+function pairCheck({
+  check,
+  storeyId,
+  comparedTo,
+  value,
+  minimum,
+  maximum,
+  reference,
+}) {
+  return {
+    check,
+    storeyId,
+    comparedTo,
+    ok: value >= minimum && value <= maximum,
+    value,
+    minimum,
+    maximum,
+    reference,
+  };
+}
+
+function positiveStoreyValue(storey, key, index) {
+  return positive(storey[key], `storeys[${index}].${key}`);
+}
 
 /**
- * Produce a complete structural regularity assessment.
- *
- * Combines plan and elevation evaluations and derives:
- * - Regularity classes
- * - Reduction factor k_r (§ 7.3.1)
- * - Admissible analysis methods (§ 7.2.3)
- *
- * @param {Object} params
- * @param {Object} params.planInput – Input for evaluateNTC2018PlanRegularity.
- * @param {Object} params.elevationInput – Input for evaluateNTC2018ElevationRegularity.
- * @param {string} params.behavior – Structural behavior (from WP1).
- * @param {number} [params.t1X] – Fundamental period along X [s].
- * @param {number} [params.t1Y] – Fundamental period along Y [s].
- * @param {number} [params.tc] – Spectrum period TC [s].
- * @param {number} [params.td] – Spectrum period TD [s].
- * @returns {{
- *   planRegularity: string,
- *   elevationRegularity: string,
- *   reductionFactorKr: number,
- *   analysisMethodsX: Object,
- *   analysisMethodsY: Object,
- *   checks: Array,
- *   references: Array,
- * }}
+ * Evaluate conditions d), e), f) and g) of NTC 2018 § 7.2.1.
  */
+export function evaluateNTC2018ElevationRegularity({
+  storeys,
+  continuousVerticalSystems,
+  stiffnessCriterionExempt = false,
+  isFrameStructure = false,
+} = {}) {
+  if (!Array.isArray(storeys) || storeys.length < 2) {
+    throw new Error(
+      "At least two storeys ordered from base to top are required.",
+    );
+  }
+  requiredBoolean(continuousVerticalSystems, "continuousVerticalSystems");
+  requiredBoolean(stiffnessCriterionExempt, "stiffnessCriterionExempt");
+  requiredBoolean(isFrameStructure, "isFrameStructure");
+
+  const normalized = storeys.map((storey, index) => {
+    const topResistanceException =
+      isFrameStructure && storeys.length >= 3 &&
+      index === storeys.length - 1;
+    return {
+      ...storey,
+      storeyId: storey.storeyId ?? `storey-${index + 1}`,
+      mass: positiveStoreyValue(storey, "mass", index),
+      planLengthX: positiveStoreyValue(storey, "planLengthX", index),
+      planLengthY: positiveStoreyValue(storey, "planLengthY", index),
+      stiffnessX: stiffnessCriterionExempt
+        ? null
+        : positiveStoreyValue(storey, "stiffnessX", index),
+      stiffnessY: stiffnessCriterionExempt
+        ? null
+        : positiveStoreyValue(storey, "stiffnessY", index),
+      capacityDemandRatioX: topResistanceException
+        ? null
+        : positiveStoreyValue(storey, "capacityDemandRatioX", index),
+      capacityDemandRatioY: topResistanceException
+        ? null
+        : positiveStoreyValue(storey, "capacityDemandRatioY", index),
+    };
+  });
+
+  const checks = [{
+    check: "elevation-continuous-horizontal-resisting-systems",
+    ok: continuousVerticalSystems,
+    reference: "NTC 2018 § 7.2.1, lettera d)",
+  }];
+  const storeyDetails = [];
+  const first = normalized[0];
+
+  for (let index = 1; index < normalized.length; index++) {
+    const current = normalized[index];
+    const below = normalized[index - 1];
+    const pairChecks = [];
+
+    pairChecks.push(pairCheck({
+      check: "elevation-mass-variation",
+      storeyId: current.storeyId,
+      comparedTo: below.storeyId,
+      value: current.mass / below.mass,
+      minimum: 0.75,
+      maximum: 1.25,
+      reference: "NTC 2018 § 7.2.1, lettera e)",
+    }));
+
+    if (!stiffnessCriterionExempt) {
+      for (const direction of ["X", "Y"]) {
+        pairChecks.push(pairCheck({
+          check: `elevation-stiffness-${direction.toLowerCase()}`,
+          storeyId: current.storeyId,
+          comparedTo: below.storeyId,
+          value: current[`stiffness${direction}`] /
+            below[`stiffness${direction}`],
+          minimum: 0.70,
+          maximum: 1.10,
+          reference: "NTC 2018 § 7.2.1, lettera e)",
+        }));
+      }
+    }
+
+    const topResistanceException =
+      isFrameStructure && normalized.length >= 3 &&
+      index === normalized.length - 1;
+    if (!topResistanceException) {
+      for (const direction of ["X", "Y"]) {
+        pairChecks.push(pairCheck({
+          check: `elevation-capacity-demand-${direction.toLowerCase()}`,
+          storeyId: current.storeyId,
+          comparedTo: below.storeyId,
+          value: current[`capacityDemandRatio${direction}`] /
+            below[`capacityDemandRatio${direction}`],
+          minimum: 0.70,
+          maximum: 1.30,
+          reference: "NTC 2018 § 7.2.1, lettera f)",
+        }));
+      }
+    }
+
+    const topSetbackException =
+      normalized.length >= 4 && index === normalized.length - 1;
+    if (!topSetbackException) {
+      for (const direction of ["X", "Y"]) {
+        const dimensionKey = `planLength${direction}`;
+        const immediateSetback = current[`setback${direction}`] !== undefined
+          ? Number(current[`setback${direction}`])
+          : Math.max(0, below[dimensionKey] - current[dimensionKey]);
+        const firstSetback = current[`setbackFromFirst${direction}`] !== undefined
+          ? Number(current[`setbackFromFirst${direction}`])
+          : Math.max(0, first[dimensionKey] - current[dimensionKey]);
+        if (
+          !Number.isFinite(immediateSetback) || immediateSetback < 0 ||
+          !Number.isFinite(firstSetback) || firstSetback < 0
+        ) {
+          throw new Error(
+            `Storey ${current.storeyId} setbacks in ${direction} must be finite and non-negative.`,
+          );
+        }
+        pairChecks.push({
+          check: `elevation-setback-${direction.toLowerCase()}`,
+          storeyId: current.storeyId,
+          comparedTo: below.storeyId,
+          ok:
+            immediateSetback / below[dimensionKey] <= 0.10 &&
+            firstSetback / first[dimensionKey] <= 0.30,
+          immediateRatio: immediateSetback / below[dimensionKey],
+          fromFirstRatio: firstSetback / first[dimensionKey],
+          immediateLimit: 0.10,
+          fromFirstLimit: 0.30,
+          reference: "NTC 2018 § 7.2.1, lettera g)",
+        });
+      }
+    }
+
+    checks.push(...pairChecks);
+    storeyDetails.push({
+      storeyId: current.storeyId,
+      comparedTo: below.storeyId,
+      checks: pairChecks,
+      topResistanceException,
+      topSetbackException,
+    });
+  }
+
+  const allChecksOk = checks.every((check) => check.ok === true);
+  return {
+    regularity: allChecksOk
+      ? NTC2018_ELEVATION_REGULARITY.REGULAR
+      : NTC2018_ELEVATION_REGULARITY.NON_REGULAR,
+    allChecksOk,
+    checks,
+    storeyDetails,
+    stiffnessCriterionExempt,
+  };
+}
+
 export function createNTC2018RegularityAssessment({
-    planInput,
-    elevationInput,
+  planInput,
+  elevationInput,
+  behavior,
+  t1X,
+  t1Y,
+  tc,
+  td,
+}) {
+  const planResult = evaluateNTC2018PlanRegularity(planInput);
+  const elevationResult = evaluateNTC2018ElevationRegularity(elevationInput);
+  const reductionFactorKr =
+    NTC2018_REGULARITY_REDUCTION[elevationResult.regularity];
+
+  const analysisMethodsX = selectNTC2018AllowedAnalysisMethods({
     behavior,
-    t1X,
-    t1Y,
+    planRegularity: planResult.regularity,
+    elevationRegularity: elevationResult.regularity,
+    t1: t1X,
     tc,
     td,
-}) {
-    const planResult = evaluateNTC2018PlanRegularity(planInput);
-    const elevResult = evaluateNTC2018ElevationRegularity(elevationInput);
+  });
+  const analysisMethodsY = selectNTC2018AllowedAnalysisMethods({
+    behavior,
+    planRegularity: planResult.regularity,
+    elevationRegularity: elevationResult.regularity,
+    t1: t1Y,
+    tc,
+    td,
+  });
+  const checks = [
+    ...planResult.checks.map((check) => ({ ...check, scope: "plan" })),
+    ...elevationResult.checks.map((check) => ({
+      ...check,
+      scope: "elevation",
+    })),
+  ];
 
-    const kr = NTC2018_REGULARITY_REDUCTION[elevResult.regularity];
-
-    const analysisX = selectNTC2018AllowedAnalysisMethods({
-        behavior,
-        planRegularity: planResult.regularity,
-        elevationRegularity: elevResult.regularity,
-        t1: t1X,
-        tc,
-        td,
-    });
-
-    const analysisY = selectNTC2018AllowedAnalysisMethods({
-        behavior,
-        planRegularity: planResult.regularity,
-        elevationRegularity: elevResult.regularity,
-        t1: t1Y,
-        tc,
-        td,
-    });
-
-    // Flatten all checks
-    const allChecks = [
-        ...planResult.checks.map((c) => ({ ...c, scope: "plan" })),
-        ...elevResult.checks.map((c) => ({ ...c, scope: "elevation" })),
-    ];
-
-    return {
-        planRegularity: planResult.regularity,
-        elevationRegularity: elevResult.regularity,
-        reductionFactorKr: kr,
-        analysisMethodsX: {
-            allowed: analysisX.allowed,
-            recommended: analysisX.recommended,
-            linearStaticAllowed: analysisX.linearStaticAllowed,
-            checks: analysisX.checks,
-        },
-        analysisMethodsY: {
-            allowed: analysisY.allowed,
-            recommended: analysisY.recommended,
-            linearStaticAllowed: analysisY.linearStaticAllowed,
-            checks: analysisY.checks,
-        },
-        planDetails: {
-            slenderness: planResult.slenderness,
-            reentrantRatioX: planResult.reentrantRatioX,
-            reentrantRatioY: planResult.reentrantRatioY,
-            eccentricityRatioX: planResult.eccentricityRatioX,
-            eccentricityRatioY: planResult.eccentricityRatioY,
-        },
-        elevationDetails: elevResult.storeyDetails,
-        checks: allChecks,
-        references: NTC2018_REGULARITY_REFERENCES,
-    };
+  return {
+    planRegularity: planResult.regularity,
+    elevationRegularity: elevationResult.regularity,
+    reductionFactorKr,
+    analysisMethodsX,
+    analysisMethodsY,
+    planDetails: {
+      slenderness: planResult.slenderness,
+      maximumReentrantAreaRatio: planResult.maximumReentrantAreaRatio,
+      floors: planResult.floors,
+    },
+    elevationDetails: elevationResult.storeyDetails,
+    allChecksOk: checks.every((check) => check.ok === true),
+    checks,
+    references: NTC2018_REGULARITY_REFERENCES,
+  };
 }

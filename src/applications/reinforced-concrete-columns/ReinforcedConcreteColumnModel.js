@@ -174,19 +174,44 @@ export class ReinforcedConcreteColumnModel {
       vxEd: resolver.force(actions.vxEd ?? 0),
       vyEd: resolver.force(actions.vyEd ?? 0),
     };
+    const capacityDesign = shear?.capacityDesign ?? null;
+    if (capacityDesign) {
+      if (detailing?.seismic?.enabled !== true) {
+        throw new Error(
+          "shear.capacityDesign requires an explicit dissipative detailing.seismic contract.",
+        );
+      }
+      if (capacityDesign.endMomentsPreAdjustedForHierarchy !== true) {
+        throw new Error(
+          "shear.capacityDesign.endMomentsPreAdjustedForHierarchy must be true: Eq. [7.4.5] requires each end resistance to be reduced by its beam/column hierarchy ratio before applying gammaRd.",
+        );
+      }
+      for (const [axisId, endMoments] of [
+        ["x", capacityDesign.endMomentsX],
+        ["y", capacityDesign.endMomentsY],
+      ]) {
+        if (shear?.[axisId] && (!Array.isArray(endMoments) ||
+            endMoments.length !== 2 ||
+            endMoments.some((value) => !Number.isFinite(Number(value))))) {
+          throw new Error(
+            `shear.capacityDesign.endMoments${axisId.toUpperCase()} must contain the two finite, hierarchy-adjusted end resistances.`,
+          );
+        }
+      }
+    }
     this.shear = shear
       ? {
           x: convertShearAxis(shear.x, resolver, "x"),
           y: convertShearAxis(shear.y, resolver, "y"),
-          capacityDesign: shear.capacityDesign
+          capacityDesign: capacityDesign
             ? {
-                ...shear.capacityDesign,
+                ...capacityDesign,
                 clearLength: resolver.length(
-                  Number(shear.capacityDesign.clearLength ?? length),
+                  Number(capacityDesign.clearLength ?? length),
                 ),
-                endMomentsX: (shear.capacityDesign.endMomentsX ?? [])
+                endMomentsX: (capacityDesign.endMomentsX ?? [])
                   .map((value) => resolver.moment(Number(value))),
-                endMomentsY: (shear.capacityDesign.endMomentsY ?? [])
+                endMomentsY: (capacityDesign.endMomentsY ?? [])
                   .map((value) => resolver.moment(Number(value))),
               }
             : null,

@@ -2,16 +2,17 @@
 
 ## Scopo e stato
 
-`GlobalFemPostProcessingApplication` è il primo collegamento operativo fra i
-contratti FEM globali candidati v0 e le future applicazioni di verifica. Valida
-i dati, estrae domande senza perdere assi o convenzioni e comunica quali
-elaborazioni sono eseguibili. Non applica formule NTC 2018 e non restituisce
-esiti di resistenza.
+`GlobalFemPostProcessingApplication` è il collegamento generico fra i
+contratti FEM globali candidati v0 e le applicazioni di verifica. Valida i
+dati, estrae domande senza perdere assi o convenzioni e comunica quali
+elaborazioni sono eseguibili. Non applica direttamente formule NTC 2018 e non
+restituisce esiti di resistenza: per gli edifici in calcestruzzo armato il
+consumer normativo è `RcBuildingVerificationApplication`.
 
-L'applicazione è `partial`: classificazione, estrazione e readiness sono
-implementate; l'orchestrazione delle verifiche in calcestruzzo armato è
-intenzionalmente `not-implemented` finché non saranno definiti i relativi
-input applicativi e riferimenti normativi.
+Il postprocessore resta `partial` per scelta architetturale: classificazione,
+estrazione e readiness generica sono implementate, mentre l'orchestrazione
+normativa è mantenuta nell'applicazione dedicata e completa nel relativo
+perimetro dichiarato.
 
 ```text
 capabilities + model + analysis + result
@@ -28,7 +29,7 @@ capabilities + model + analysis + result
        rapporto di readiness
                   │
                   ▼
- future applications ──► future norms/ntc2018 checks
+ RcBuildingVerificationApplication ──► norms/ntc2018
 ```
 
 Il codice non contiene rete, job, autenticazione o formati di solver. Un
@@ -145,14 +146,17 @@ assessment controlla i propri dati. `failed` e `not-supported` bloccano invece
 il processing. In questo modo un solver parziale non inventa risultati e può
 essere usato per il sottoinsieme che espone correttamente.
 
-Gli assessment implementati riguardano estrazione generica/semantica e
-disponibilità dei dati di spostamento, modali e del secondo ordine. Gli
-assessment per membri in c.a., setti, nodi, gerarchia delle resistenze e
-verifica completa dell'edificio descrivono i prerequisiti, ma dichiarano
-`implementationStatus: "not-implemented"`.
+Gli assessment di questo postprocessore riguardano estrazione
+generica/semantica e disponibilità dei dati di spostamento, modali e del
+secondo ordine. Gli assessment legacy per membri in c.a., setti, nodi,
+gerarchia delle resistenze e verifica completa dell'edificio continuano a
+descrivere i prerequisiti del solo postprocessore e dichiarano
+`implementationStatus: "not-implemented"`: l'esecuzione normativa corrente
+avviene tramite `RcBuildingVerificationApplication`, che valida nuovamente
+l'intero set contrattuale e non eredita uno status positivo da questo report.
 
-La matrice dettagliata “verifica futura → dati FEM necessari” è in
-[Contratti FEM globali](global-fem-contracts.md#matrice-dati-per-verifiche-future).
+La matrice dettagliata “verifica → dati FEM necessari” è in
+[Contratti FEM globali](global-fem-contracts.md#matrice-dati-per-le-verifiche-globali).
 
 ## Esempio
 
@@ -181,9 +185,10 @@ if (payload.status === "ok") {
 ```
 
 Per il flusso avanzato il consumer passa `profile: "confirmed"` e un mapping
-completo. Per interrogare i prerequisiti futuri può aggiungere, per esempio,
-`requestedAssessments: ["complete-ntc2018-building-verification"]`: l'esito
-rimarrà `not-analyzed` finché input o implementazioni risultano mancanti.
+completo. `requestedAssessments:
+["complete-ntc2018-building-verification"]` resta un'interrogazione legacy dei
+prerequisiti generici e non esegue la verifica; il calcolo completo deve
+essere richiesto a `RcBuildingVerificationApplication`.
 
 ## Passaggio da proposta a mapping
 
@@ -201,9 +206,10 @@ Gli identificativi originali del provider restano soltanto in metadata
 generica. Sostituire il solver non cambia mapping, estrattore o verificatori se
 il nuovo producer mantiene id stabili, unità, assi, segni e hash coerenti.
 
-## Limiti intenzionali del primo incremento
+## Limiti intenzionali del postprocessore generico
 
-- nessuna formula NTC 2018 per setti, regolarità o gerarchia;
+- nessuna formula NTC 2018 nel postprocessore; tali formule sono nei moduli
+  `norms/ntc2018` e nell'applicazione RC;
 - nessuna generazione di armature, sezioni resistenti o dettagli costruttivi;
 - nessuna scelta automatica di duttilità o comportamento dissipativo;
 - nessuna deduzione di parametri d'uso o sismici;

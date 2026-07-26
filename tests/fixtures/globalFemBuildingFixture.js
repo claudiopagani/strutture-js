@@ -38,6 +38,16 @@ const wallAxes = Object.freeze({
   y: { x: 0, y: 0, z: 1 },
   z: { x: 1, y: 0, z: 0 },
 });
+const identityAxisTransformation = Object.freeze([
+  Object.freeze([1, 0, 0]),
+  Object.freeze([0, 1, 0]),
+  Object.freeze([0, 0, 1]),
+]);
+const wallCutToResistanceAxes = Object.freeze([
+  Object.freeze([1, 0, 0]),
+  Object.freeze([0, 0, -1]),
+  Object.freeze([0, 1, 0]),
+]);
 
 function copy(value) {
   return JSON.parse(JSON.stringify(value));
@@ -371,6 +381,13 @@ export function createGlobalFemBuildingFixture() {
     id: `MEMBER-${element.id}`,
     role: element.id.startsWith("COL-") ? "column" : "beam",
     lineElementIds: [element.id],
+    lineActionMappings: [{
+      lineElementId: element.id,
+      sourceCoordinateSystem: "element-local",
+      resistanceCoordinateSystemId: `RESISTANCE-${element.id}`,
+      sourceToResistance: copy(identityAxisTransformation),
+      localAxes: copy(element.localAxes),
+    }],
     metadata: {},
   }));
   const mapping = {
@@ -384,13 +401,29 @@ export function createGlobalFemBuildingFixture() {
       id: "WALL-W1",
       shellElementIds: ["WALL-S1", "WALL-S2"],
       sectionCutIds: ["CUT-WALL-BASE", "CUT-WALL-L1"],
+      sectionCutActionMappings: [
+        "CUT-WALL-BASE",
+        "CUT-WALL-L1",
+      ].map((sectionCutId) => ({
+        sectionCutId,
+        sourceCoordinateSystem: "section-cut-local",
+        resistanceCoordinateSystemId: "RESISTANCE-WALL-W1",
+        sourceToResistance: copy(wallCutToResistanceAxes),
+      })),
       storeyIds: ["L1", "L2"],
       metadata: {},
     }],
     slabs: [1, 2].map((level) => ({
       id: `SLAB-${level}`,
       shellElementIds: [`SLAB-S${level}`],
+      shellResultantMappings: [{
+        shellElementId: `SLAB-S${level}`,
+        sourceCoordinateSystem: "element-local",
+        resistanceCoordinateSystemId: `RESISTANCE-SLAB-${level}`,
+        sourceToResistance: copy(identityAxisTransformation),
+      }],
       storeyId: `L${level}`,
+      diaphragmIds: [`DIA-${level}`],
       metadata: {},
     })),
     storeys: [1, 2].map((level) => ({
@@ -425,6 +458,20 @@ export function createGlobalFemBuildingFixture() {
         ],
       },
     ],
+    punchingConnections: [],
+    foundations: ["A0", "B0", "C0", "D0"].map((nodeId) => ({
+      id: `FOUNDATION-${nodeId}`,
+      type: "isolated-footing",
+      supportIds: [`SUP-${nodeId}`],
+      supportNodeIds: [nodeId],
+      supportReactionMappings: [{
+        supportNodeId: nodeId,
+        sourceCoordinateSystem: "global",
+        resistanceCoordinateSystemId: `RESISTANCE-FOUNDATION-${nodeId}`,
+        sourceToResistance: copy(identityAxisTransformation),
+      }],
+      metadata: {},
+    })),
     metadata: {
       providerEntityIds: { sourceModel: "synthetic-fixture-only" },
     },
@@ -519,8 +566,8 @@ export function createGlobalFemBuildingFixture() {
       position: copy(sectionCut.plane.origin),
       resultants: {
         Fx: 180 * scale,
-        Fy: 35 * scale,
-        Fz: 620 * scale,
+        Fy: 620 * scale,
+        Fz: 35 * scale,
         Mx: 90 * scale,
         My: 140 * scale,
         Mz: 25 * scale,
@@ -653,4 +700,246 @@ export function createGlobalFemBuildingFixture() {
   };
 
   return { capabilities, model, analysis, mapping, result };
+}
+
+/**
+ * Add complete, deliberately simple verification inputs to the synthetic FEM
+ * fixture. All local capacities are test doubles; this is an orchestration
+ * and producer-conformance fixture, not a numerical RC benchmark.
+ */
+export function configureCompleteRcBuildingFixture(fixture) {
+  fixture.capabilities.analyses.responseSpectrum = true;
+  fixture.analysis.spectra = ["X", "Y"].map((direction) => ({
+    id: `SPECTRUM-${direction}`,
+    direction,
+    dampingRatio: 0.05,
+    points: [
+      { period: 0, acceleration: 1 },
+      { period: 1, acceleration: 0.5 },
+    ],
+  }));
+  fixture.analysis.procedures.push({
+    id: "PROC-RS",
+    type: "response-spectrum",
+    massSourceId: "MASS-1",
+    requestedModes: 2,
+    directions: ["X", "Y"],
+    requestedOutputs: ["modes"],
+    spectrumIds: ["SPECTRUM-X", "SPECTRUM-Y"],
+    modalCombinationMethod: "cqc",
+    componentCombinationRule: "100-30-30",
+    accidentalEccentricities: ["L1", "L2"].flatMap((storeyId) =>
+      ["X", "Y"].flatMap((direction) =>
+        [1, -1].map((sign) => ({
+          id: `ECC-${storeyId}-${direction}-${sign > 0 ? "P" : "N"}`,
+          storeyId,
+          direction,
+          offset: sign * 0.2,
+        })))),
+  });
+  fixture.result.results.modes[0].participatingMassRatios = {
+    X: 0.8,
+    Y: 0.06,
+  };
+  fixture.result.results.modes[1].participatingMassRatios = {
+    X: 0.06,
+    Y: 0.8,
+  };
+  fixture.result.results.modes.push(
+    ...fixture.result.results.modes.map((mode) => ({
+      ...copy(mode),
+      procedureId: "PROC-RS",
+    })),
+  );
+  fixture.linearDynamicAssessmentInput = {
+    modalProcedureId: "PROC-MODAL",
+    responseSpectrumProcedureId: "PROC-RS",
+    meanPlanDimensions: { X: 4, Y: 4 },
+  };
+
+  fixture.behavior = "non-dissipative";
+  fixture.structuralType = "wall";
+  fixture.regularityAssessmentInput = {
+    planInput: {
+      massAndStiffnessApproximatelySymmetric: true,
+      floors: ["L1", "L2"].map((storeyId) => ({
+        storeyId,
+        planLengthX: 4,
+        planLengthY: 4,
+        contourConvex: true,
+        diaphragmInPlaneRigidityAdequate: true,
+        diaphragmInPlaneStrengthAdequate: true,
+      })),
+    },
+    elevationInput: {
+      continuousVerticalSystems: true,
+      storeys: ["L1", "L2"].map((storeyId, index) => ({
+        storeyId,
+        mass: 100 - 5 * index,
+        stiffnessX: 100 - 5 * index,
+        stiffnessY: 100 - 5 * index,
+        capacityDemandRatioX: 1,
+        capacityDemandRatioY: 1,
+        planLengthX: 4,
+        planLengthY: 4,
+      })),
+    },
+    t1X: 0.6,
+    t1Y: 0.4,
+    tc: 0.4,
+    td: 2,
+  };
+  fixture.displacementAssessmentInput = {
+    storeys: [
+      {
+        storeyId: "L1",
+        height: 3,
+        serviceDisplacementX: 0.002,
+        serviceDisplacementXBelow: 0,
+        serviceDisplacementY: 0.001,
+        serviceDisplacementYBelow: 0,
+        slvDisplacementX: 0.010,
+        slvDisplacementXBelow: 0,
+        slvDisplacementY: 0.005,
+        slvDisplacementYBelow: 0,
+        weight: 1000,
+        shearX: 500,
+        shearY: 400,
+      },
+      {
+        storeyId: "L2",
+        height: 3,
+        serviceDisplacementX: 0.004,
+        serviceDisplacementXBelow: 0.002,
+        serviceDisplacementY: 0.002,
+        serviceDisplacementYBelow: 0.001,
+        slvDisplacementX: 0.020,
+        slvDisplacementXBelow: 0.010,
+        slvDisplacementY: 0.010,
+        slvDisplacementYBelow: 0.005,
+        weight: 500,
+        shearX: 300,
+        shearY: 250,
+      },
+    ],
+    limitState: "SLD",
+    useClass: "II",
+    q: 1.5,
+    infillCategory: "rigidly-connected-fragile",
+    checkPDelta: true,
+  };
+
+  const passingCheck = (id) => ({
+    id,
+    demand: 1,
+    capacity: 2,
+    utilizationRatio: 0.5,
+    ok: true,
+  });
+  fixture.memberVerifiers = {
+    beam: ({ member }) => ({
+      status: "ok",
+      checks: [passingCheck(`member-${member.id}`)],
+    }),
+    column: ({ member }) => ({
+      status: "ok",
+      checks: [passingCheck(`member-${member.id}`)],
+    }),
+  };
+  fixture.jointVerifier = ({ joint }) => ({
+    status: "ok",
+    checks: [passingCheck(`joint-${joint.id}`)],
+  });
+
+  fixture.wallSectionStateVerifier = ({ state }) => ({
+    flexure: passingCheck(`wall-flexure-${state.sectionCutId}`),
+    shear: passingCheck(`wall-shear-${state.sectionCutId}`),
+  });
+  fixture.wallSystemData = {
+    "WALL-W1": {
+      systemType: "wall",
+      redistributionApplied: false,
+      additionalChecks: [],
+      couplingBeamInputs: [],
+      detailingInput: {
+        wallThickness: 0.25,
+        clearStoreyHeight: 3,
+        supportedFromFoundationOrRigidBox: true,
+        irregularOpeningsIncludedInAnalysis: true,
+        verticalReinforcementRatio: 0.002,
+        horizontalReinforcementRatio: 0.002,
+        maximumBarDiameter: 0.016,
+        barsOnBothFaces: true,
+        maximumBarSpacing: 0.25,
+        tiesPerSquareMetre: 9,
+      },
+    },
+  };
+
+  fixture.slabStateVerifier = ({ state, limitState }) =>
+    limitState === "ultimate"
+      ? {
+          bending: passingCheck(`slab-bending-${state.shellElementId}`),
+          oneWayShear: passingCheck(
+            `slab-shear-${state.shellElementId}`,
+          ),
+        }
+      : {
+          stress: passingCheck(`slab-stress-${state.shellElementId}`),
+          cracking: passingCheck(
+            `slab-cracking-${state.shellElementId}`,
+          ),
+          deflection: passingCheck(
+            `slab-deflection-${state.shellElementId}`,
+          ),
+        };
+  fixture.diaphragmStateVerifier = ({ slab, designActions }) => ({
+    capacityChecks: [{
+      ...passingCheck(`diaphragm-${slab.id}`),
+      demand: Math.abs(designActions.Nx),
+      capacity: 1000,
+      utilizationRatio: Math.abs(designActions.Nx) / 1000,
+    }],
+  });
+  fixture.slabSystemData = Object.fromEntries(
+    ["SLAB-1", "SLAB-2"].map((slabId) => [
+      slabId,
+      {
+        detailingChecks: [passingCheck(`slab-detailing-${slabId}`)],
+        punchingRequired: false,
+        punchingNotApplicableReason:
+          "The orchestration fixture declares no concentrated slab support.",
+        diaphragmRequired: true,
+      },
+    ]),
+  );
+
+  fixture.foundationSystemData = Object.fromEntries(
+    ["A0", "B0", "C0", "D0"].map((nodeId) => [
+      `FOUNDATION-${nodeId}`,
+      { localVerificationModelId: `FOOTING-${nodeId}` },
+    ]),
+  );
+  fixture.foundationVerifier = ({ foundation }) => ({
+    assessedCombinationIds: ["ULS-1", "SLS-1"],
+    structural: passingCheck(`foundation-structural-${foundation.id}`),
+    geotechnicalUltimate: passingCheck(
+      `foundation-geotechnical-${foundation.id}`,
+    ),
+    serviceability: passingCheck(
+      `foundation-serviceability-${foundation.id}`,
+    ),
+    supportConnection: passingCheck(
+      `foundation-connection-${foundation.id}`,
+    ),
+    seismicFoundation: passingCheck(
+      `foundation-seismic-${foundation.id}`,
+    ),
+  });
+  fixture.metadata = {
+    ...(fixture.metadata ?? {}),
+    completeOrchestrationFixture: true,
+    numericalValidation: false,
+  };
+  return fixture;
 }

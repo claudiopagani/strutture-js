@@ -6,19 +6,19 @@
  * constitutive laws (domain). The `norms` layer must not depend on
  * `applications` (enforced by check-architecture).
  *
- * Method: the ultimate domain of the wall section is sampled by the fiber
- * solver at the assigned axial force N_Ed, in the direction of the demand
- * moment vector (theta = atan2(MxEd, MyEd)). The utilization is the radial
- * ratio |M_Ed| / |M_Rd(theta)| under the assumption of radial linearity of
- * the interaction domain in the demand direction (declared in assumptions).
+ * Method: the ultimate domain of the wall section is sampled by neutral-axis
+ * orientation at the assigned axial force N_Ed. The resistance in the demand
+ * direction is the first intersection between the Mx-My demand ray and the
+ * sampled closed polygon. Neutral-axis orientation and resistant-moment
+ * direction are deliberately kept distinct.
  *
  * References:
  * - D.M. 17/01/2018 (NTC 2018): § 4.1.2.3.9, § 7.4.4.5.1 (Presso-flessione)
  */
 
 import {
-    RCUltimateSectionSolver,
-} from "../reinforced-concrete-sections/analysis/RCUltimateSectionSolver.js";
+    RCBiaxialDomainBuilder,
+} from "../reinforced-concrete-sections/analysis/RCBiaxialDomainBuilder.js";
 import {
     SectionFiberDiscretizer,
 } from "../reinforced-concrete-sections/analysis/SectionFiberDiscretizer.js";
@@ -28,6 +28,7 @@ import {
 import {
     SteelElasticPerfectlyPlasticLaw,
 } from "../../domain/constitutive-laws/SteelElasticPerfectlyPlasticLaw.js";
+import { rayPolygonCapacity } from "../../domain/math/rayPolygonCapacity.js";
 
 /** @readonly */
 export const WALL_BIAXIAL_REFERENCE =
@@ -36,6 +37,20 @@ export const WALL_BIAXIAL_REFERENCE =
 function positive(value, label) {
     if (!Number.isFinite(value) || value <= 0) {
         throw new Error(`${label} must be positive; got ${value}.`);
+    }
+    return value;
+}
+
+function finite(value, label) {
+    if (!Number.isFinite(value)) {
+        throw new Error(`${label} must be finite; got ${value}.`);
+    }
+    return value;
+}
+
+function integerAtLeast(value, minimum, label) {
+    if (!Number.isInteger(value) || value < minimum) {
+        throw new Error(`${label} must be an integer >= ${minimum}; got ${value}.`);
     }
     return value;
 }
@@ -55,15 +70,18 @@ function positive(value, label) {
  * @param {number} [params.steelElasticModulus=200000] – E_s [force/length²].
  * @param {number} [params.steelUltimateStrain=0.01] – ε_su.
  * @param {number} [params.targetFiberCount=400] – Discretization density.
+ * @param {number} [params.angleCount=64] – Sample count for the closed Mx-My domain.
  * @param {string} [params.compressedSide="positive"] – Solver compressed side.
  * @returns {{
  *   ok: boolean,
- *   utilizationRatio: number,
+ *   utilizationRatio: number|null,
  *   demand: number,
- *   capacity: number,
- *   theta: number,
+ *   capacity: number|null,
+ *   theta: number|null,
  *   axialResidual: number,
  *   converged: boolean,
+ *   angleCount: number,
+ *   intersection: Object|null,
  *   check: string,
  *   reference: string,
  * }}
@@ -80,26 +98,29 @@ export function verifyWallBiaxialBending({
     steelElasticModulus = 200000,
     steelUltimateStrain = 0.01,
     targetFiberCount = 400,
+    angleCount = 64,
     compressedSide = "positive",
 }) {
     if (section == null) {
         throw new Error("section is required for wall biaxial verification.");
     }
-    const nEd = Number.isFinite(axialForce) ? axialForce : 0;
-    const mxEd = Number.isFinite(momentX) ? momentX : 0;
-    const myEd = Number.isFinite(momentY) ? momentY : 0;
+    const nEd = finite(axialForce, "axialForce");
+    const mxEd = finite(momentX, "momentX");
+    const myEd = finite(momentY, "momentY");
     const fcd = positive(concreteDesignStrength, "concreteDesignStrength");
     const fyd = positive(reinforcementDesignStrength, "reinforcementDesignStrength");
+    const resolvedFiberCount = integerAtLeast(
+        targetFiberCount,
+        1,
+        "targetFiberCount",
+    );
+    const resolvedAngleCount = integerAtLeast(angleCount, 4, "angleCount");
 
     const demand = Math.hypot(mxEd, myEd);
-
-    // Direction of the demand moment vector (solver convention: theta
-    // counter-clockwise from +z toward +y; atan2(Mx, My) matches the
-    // validation usage for the radial capacity direction).
-    const theta = Math.atan2(mxEd, myEd);
+    const theta = demand > 0 ? Math.atan2(myEd, mxEd) : null;
 
     const concreteFibers = new SectionFiberDiscretizer().discretize(section, {
-        targetCount: targetFiberCount,
+        targetCount: resolvedFiberCount,
     }).fibers;
 
     const concreteLaw = new ConcreteParabolaRectangleLaw({
@@ -113,19 +134,46 @@ export function verifyWallBiaxialBending({
         esu: steelUltimateStrain,
     });
 
-    const solved = new RCUltimateSectionSolver().solveAtAxialLoad({
+    const domain = new RCBiaxialDomainBuilder().buildAtAxialLoad({
         section,
         concreteFibers,
         concreteLaw,
         steelLaw,
         nEd,
-        theta,
+        angleCount: resolvedAngleCount,
         compressedSide,
     });
 
-    const capacity = Math.hypot(solved.MxRd ?? 0, solved.MyRd ?? 0);
-    const utilizationRatio = capacity > 0 ? demand / capacity : Infinity;
-    const ok = solved.converged !== false && utilizationRatio <= 1;
+    const converged = domain.points.every((point) =>
+        point.converged === true &&
+        Number.isFinite(point.MxRd) &&
+        Number.isFinite(point.MyRd) &&
+        Number.isFinite(point.axialResidual),
+    );
+    const maximumAbsoluteAxialResidual = Math.max(
+        ...domain.points
+            .map((point) => Math.abs(point.axialResidual))
+            .filter(Number.isFinite),
+        0,
+    );
+    const rayCapacity = rayPolygonCapacity(
+        domain.points.map((point) => ({
+            x: point.MxRd,
+            y: point.MyRd,
+        })),
+        mxEd,
+        myEd,
+    );
+    const capacity = Number.isFinite(rayCapacity.capacityNorm)
+        ? rayCapacity.capacityNorm
+        : null;
+    const utilizationRatio = Number.isFinite(rayCapacity.utilizationRatio)
+        ? rayCapacity.utilizationRatio
+        : null;
+    const ok =
+        converged &&
+        utilizationRatio != null &&
+        utilizationRatio <= 1;
 
     return {
         ok,
@@ -133,8 +181,17 @@ export function verifyWallBiaxialBending({
         demand,
         capacity,
         theta,
-        axialResidual: solved.axialResidual ?? null,
-        converged: solved.converged !== false,
+        axialResidual: maximumAbsoluteAxialResidual,
+        converged,
+        angleCount: resolvedAngleCount,
+        intersection: rayCapacity.intersection
+            ? {
+                momentX: rayCapacity.intersection.x,
+                momentY: rayCapacity.intersection.y,
+                segmentIndex: rayCapacity.intersection.segmentIndex,
+                segmentParameter: rayCapacity.intersection.segmentParameter,
+            }
+            : null,
         check: "wall-biaxial-bending",
         reference: WALL_BIAXIAL_REFERENCE,
     };

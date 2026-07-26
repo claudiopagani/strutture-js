@@ -23,6 +23,9 @@ import { ReinforcedConcreteBeamColumnJointApplication } from "./reinforced-concr
 import { ReinforcedConcreteStrutAndTieApplication } from "./reinforced-concrete-strut-and-tie/index.js";
 import {
   RcBuildingVerificationApplication,
+  runFoundationSystemVerifications,
+  runSlabSystemVerifications,
+  runWallSystemVerifications,
   verifyWallBiaxialBending,
   WALL_BIAXIAL_REFERENCE,
 } from "./rc-building-verification/index.js";
@@ -275,7 +278,14 @@ export {
   ReinforcedConcreteStrutAndTieVerification,
 } from "./reinforced-concrete-strut-and-tie/index.js";
 export {
+  NTC2018_RC_BUILDING_CAPABILITIES,
+  NTC2018_RC_COVERAGE_STATUS,
   RcBuildingVerificationApplication,
+  evaluateNTC2018RcBuildingCompleteness,
+  getNTC2018RcBuildingCoverage,
+  runFoundationSystemVerifications,
+  runSlabSystemVerifications,
+  runWallSystemVerifications,
   verifyWallBiaxialBending,
   WALL_BIAXIAL_REFERENCE,
 } from "./rc-building-verification/index.js";

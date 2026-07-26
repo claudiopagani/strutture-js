@@ -74,7 +74,12 @@ fornito ne il coefficiente di viscosita ne un momento totale, il risultato e
 
 Il contratto opzionale `shear` riusa il kernel NTC 2018 per ciascuna direzione.
 Il taglio di progetto puo essere assegnato o ottenuto dall'equilibrio dei
-momenti resistenti alle estremita e della lunghezza libera, secondo § 7.4.5.
+momenti resistenti alle estremita, gia ridotti con i rapporti di gerarchia
+pertinenti ai due nodi, e della lunghezza libera, secondo § 7.4.4.2.1,
+equazione [7.4.5]. Il fattore `gammaRd` vale 1,30 in CD"A" e 1,10 in CD"B".
+Questa pre-riduzione deve essere dichiarata esplicitamente tramite
+`endMomentsPreAdjustedForHierarchy: true`; in sua assenza il contratto viene
+rifiutato.
 
 Il contratto `detailing` controlla i limiti ordinari dei §§ 4.1.6.1.2 e, per
 elementi dissipativi, dimensioni, percentuale longitudinale, lunghezza della
@@ -111,7 +116,7 @@ consumer.
 Fonte normativa primaria:
 
 - D.M. 17 gennaio 2018, NTC 2018, §§ 4.1.2.3.9.2-3, 4.1.6.1.2,
-  7.4.5, 7.4.6.1.2 e 7.4.6.2.2,
+  7.4.4.2.1, 7.4.6.1.2 e 7.4.6.2.2,
   [Gazzetta Ufficiale](https://www.gazzettaufficiale.it/eli/id/2018/2/20/18A00716/sg).
 - EN 1992-1-1:2004, § 8.4, per aderenza e lunghezze di ancoraggio.
 

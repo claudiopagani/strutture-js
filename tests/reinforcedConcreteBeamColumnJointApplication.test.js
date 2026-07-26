@@ -12,6 +12,7 @@ import {
   classifyNTC2018JointConfinement,
   createNTC2018ConcreteMaterial,
   createNTC2018ReinforcementSteelMaterial,
+  ntc2018JointOverstrengthFactor,
 } from "../src/index.js";
 
 const units = { force: "N", length: "mm" };
@@ -53,7 +54,7 @@ function createModel(overrides = {}) {
     },
     jointHoops: {
       diameter: 8,
-      totalArea: 1000,
+      totalArea: 1500,
       areaPerSet: 220,
       spacing: 100,
     },
@@ -72,7 +73,7 @@ function createModel(overrides = {}) {
     },
     capacityHierarchy: {
       beamMomentResistanceSum: 200e6,
-      effectiveColumnMomentResistance: 250e6,
+      effectiveColumnMomentResistance: 270e6,
       preReducedForMomentSigns: true,
     },
     units,
@@ -142,6 +143,11 @@ test("NTC joint helpers reproduce independent internal-joint arithmetic", () => 
   assert.ok(Math.abs(tension.requiredHorizontalTieForce - 1071600) < 3000);
 });
 
+test("NTC joint overstrength factors reproduce Table 7.2.I", () => {
+  assert.equal(ntc2018JointOverstrengthFactor("CDA"), 1.2);
+  assert.equal(ntc2018JointOverstrengthFactor("CDB"), 1.1);
+});
+
 test("NTC joint helpers cover external demand, compression and post-cracking truss", () => {
   const demand = calculateNTC2018JointShearDemand({
     jointType: "external",
@@ -200,6 +206,14 @@ test("RC beam-column joint application verifies the supported local state", () =
   assert.ok(result.checks.some(
     (check) => check.id === "rc-joint-strong-column-weak-beam",
   ));
+  assert.equal(result.outputs.overstrengthFactors.jointShear, 1.1);
+  assert.equal(result.outputs.overstrengthFactors.columnBending, 1.3);
+  assert.equal(
+    result.checks.find(
+      (check) => check.id === "rc-joint-strong-column-weak-beam",
+    ).metadata.gammaRd,
+    1.3,
+  );
 });
 
 test("fully confined classification permits doubled spacing up to 150 mm", () => {

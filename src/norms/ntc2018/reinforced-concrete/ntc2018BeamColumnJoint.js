@@ -32,7 +32,7 @@ export function ntc2018JointOverstrengthFactor(ductilityClass) {
   }
 
   if (["CDB", "B"].includes(normalized)) {
-    return 1;
+    return 1.1;
   }
 
   throw new Error(`Unsupported NTC 2018 ductility class: ${ductilityClass}.`);

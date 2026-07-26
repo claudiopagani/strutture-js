@@ -22619,7 +22619,7 @@ var VerificationResult = class extends CalculationResult {
       return false;
     }
     if (this.checks.length > 0) {
-      return this.checks.every((check2) => check2.ok === true);
+      return this.checks.every((check4) => check4.ok === true);
     }
     return this.utilizationRatio === null || this.utilizationRatio <= 1;
   }
@@ -22956,7 +22956,7 @@ function normalizeActionVerification(raw, fallback = {}) {
   var _a, _b, _c, _d, _e, _f, _g;
   const checks = (_a = raw == null ? void 0 : raw.checks) != null ? _a : [];
   const utilizationRatio = (_b = raw == null ? void 0 : raw.utilizationRatio) != null ? _b : checks.reduce(
-    (max, check2) => isFiniteNumber(check2.utilizationRatio) && check2.utilizationRatio > max ? check2.utilizationRatio : max,
+    (max, check4) => isFiniteNumber(check4.utilizationRatio) && check4.utilizationRatio > max ? check4.utilizationRatio : max,
     null
   );
   return {
@@ -23080,17 +23080,17 @@ var BeamSectionActionVerifier = class {
         warnings.push(...normalized3.warnings);
         assumptions.push(...normalized3.assumptions);
         checks.push(
-          ...normalized3.checks.map((check2) => {
+          ...normalized3.checks.map((check4) => {
             var _a2, _b2;
             return {
-              ...check2,
+              ...check4,
               metadata: {
                 resultId: entry.id,
                 resultType: entry.resultType,
                 station: sample.station,
                 limitState: (_b2 = (_a2 = entry.context) == null ? void 0 : _a2.limitState) != null ? _b2 : null,
                 ...stationMetadata,
-                ...check2.metadata
+                ...check4.metadata
               }
             };
           })
@@ -38289,7 +38289,7 @@ function buildStageOutput({
       failure: solution.failure
     },
     checks: supportChecks,
-    utilizationRatio: supportChecks.reduce((maximum, check2) => check2.utilizationRatio == null ? maximum : Math.max(maximum != null ? maximum : 0, check2.utilizationRatio), null)
+    utilizationRatio: supportChecks.reduce((maximum, check4) => check4.utilizationRatio == null ? maximum : Math.max(maximum != null ? maximum : 0, check4.utilizationRatio), null)
   };
 }
 function validateInput({ groundModel, designSituation, wall, scenario }) {
@@ -38404,11 +38404,11 @@ function buildOutputs2({
     allDisplacements,
     "displacement"
   );
-  const checks = stageOutputs.flatMap((stage) => stage.checks.map((check2) => ({
-    ...check2,
+  const checks = stageOutputs.flatMap((stage) => stage.checks.map((check4) => ({
+    ...check4,
     stageId: stage.id
   })));
-  const utilizationRatio = checks.reduce((maximum, check2) => check2.utilizationRatio == null ? maximum : Math.max(maximum != null ? maximum : 0, check2.utilizationRatio), null);
+  const utilizationRatio = checks.reduce((maximum, check4) => check4.utilizationRatio == null ? maximum : Math.max(maximum != null ? maximum : 0, check4.utilizationRatio), null);
   return {
     schemaVersion: EMBEDDED_RETAINING_WALL_RESULT_SCHEMA_VERSION,
     groundModelId: groundModel.id,
@@ -41515,7 +41515,7 @@ var ShallowFoundationUltimateLimitStateAnalysis = class {
           ok: slidingOutput2.ok
         }] : []
       ];
-      const isVerified = checks.every((check2) => check2.ok !== false);
+      const isVerified = checks.every((check4) => check4.ok !== false);
       return result6({
         status: isVerified ? "ok" : "not-verified",
         summary: isVerified ? "Static shallow-foundation bearing capacity and base sliding analysis completed." : "The shallow-foundation analysis completed, but one or more explicit checks are not verified.",
@@ -47729,9 +47729,9 @@ var RetainingWallAnalysis = class {
         ok: overturning.ok
       }];
       if ((_l = foundation.bearing.outputs) == null ? void 0 : _l.checks) {
-        checks.push(...foundation.bearing.outputs.checks.map((check2) => ({
-          ...check2,
-          id: `foundation-${check2.id}`
+        checks.push(...foundation.bearing.outputs.checks.map((check4) => ({
+          ...check4,
+          id: `foundation-${check4.id}`
         })));
       }
       const failedCheck = checks.some(({ ok }) => ok === false);
@@ -49107,7 +49107,7 @@ function calculateShallowFoundationDifferentialMovement({
       utilizationRatio: angularDistortion / maximumAngularDistortion
     });
   }
-  for (const check2 of checks) check2.status = check2.ok ? "ok" : "failed";
+  for (const check4 of checks) check4.status = check4.ok ? "ok" : "failed";
   const ratios2 = checks.map(({ utilizationRatio }) => utilizationRatio);
   return {
     schemaVersion: "shallow-foundation-differential-movement/v1",
@@ -52863,16 +52863,16 @@ function validateBoolean(value, path, errors) {
   return false;
 }
 function validateFinite(value, path, errors, options = {}) {
-  const { positive: positive42 = false, nonNegative: nonNegative14 = false, integer: integer2 = false } = options;
+  const { positive: positive44 = false, nonNegative: nonNegative15 = false, integer: integer2 = false } = options;
   if (!Number.isFinite(value)) {
     addError(errors, "FEM_NON_FINITE_NUMBER", path, `${path} must be finite.`);
     return false;
   }
-  if (positive42 && value <= 0) {
+  if (positive44 && value <= 0) {
     addError(errors, "FEM_POSITIVE_NUMBER_REQUIRED", path, `${path} must be positive.`);
     return false;
   }
-  if (nonNegative14 && value < 0) {
+  if (nonNegative15 && value < 0) {
     addError(errors, "FEM_NON_NEGATIVE_NUMBER_REQUIRED", path, `${path} must be non-negative.`);
     return false;
   }
@@ -53878,6 +53878,39 @@ function validateRequestedOutputs(outputs, path, errors) {
     seen.add(output);
   });
 }
+function validateAccidentalEccentricities(procedure, path, model, errors) {
+  if (!validateArray(
+    procedure.accidentalEccentricities,
+    `${path}.accidentalEccentricities`,
+    errors
+  )) return;
+  procedure.accidentalEccentricities.forEach(
+    (eccentricity, eccentricityIndex) => {
+      const eccentricityPath = `${path}.accidentalEccentricities[${eccentricityIndex}]`;
+      if (!validateRecord(eccentricity, eccentricityPath, errors)) return;
+      validateId(eccentricity.id, `${eccentricityPath}.id`, errors);
+      validateString(
+        eccentricity.direction,
+        `${eccentricityPath}.direction`,
+        errors,
+        { allowed: ["X", "Y", "Z"] }
+      );
+      validateFinite(
+        eccentricity.offset,
+        `${eccentricityPath}.offset`,
+        errors
+      );
+      if (eccentricity.storeyId != null && model && !model.storeys.some((storey) => storey.id === eccentricity.storeyId)) {
+        addError(
+          errors,
+          "FEM_UNKNOWN_REFERENCE",
+          `${eccentricityPath}.storeyId`,
+          `${eccentricityPath}.storeyId references unknown storey ${eccentricity.storeyId}.`
+        );
+      }
+    }
+  );
+}
 function validateStaticProcedure(procedure, path, indices, model, errors) {
   validateIdArray(procedure.loadCaseIds, `${path}.loadCaseIds`, errors, { minLength: 1 });
   validateReferences(
@@ -53941,29 +53974,7 @@ function validateStaticProcedure(procedure, path, indices, model, errors) {
       validateString(assumption.description, `${assumptionPath}.description`, errors);
     });
   }
-  if (validateArray(
-    procedure.accidentalEccentricities,
-    `${path}.accidentalEccentricities`,
-    errors
-  )) {
-    procedure.accidentalEccentricities.forEach((eccentricity, eccentricityIndex) => {
-      const eccentricityPath = `${path}.accidentalEccentricities[${eccentricityIndex}]`;
-      if (!validateRecord(eccentricity, eccentricityPath, errors)) return;
-      validateId(eccentricity.id, `${eccentricityPath}.id`, errors);
-      validateString(eccentricity.direction, `${eccentricityPath}.direction`, errors, {
-        allowed: ["X", "Y", "Z"]
-      });
-      validateFinite(eccentricity.offset, `${eccentricityPath}.offset`, errors);
-      if (eccentricity.storeyId != null && model && !model.storeys.some((storey) => storey.id === eccentricity.storeyId)) {
-        addError(
-          errors,
-          "FEM_UNKNOWN_REFERENCE",
-          `${eccentricityPath}.storeyId`,
-          `${eccentricityPath}.storeyId references unknown storey ${eccentricity.storeyId}.`
-        );
-      }
-    });
-  }
+  validateAccidentalEccentricities(procedure, path, model, errors);
 }
 function validateModalProcedure(procedure, path, indices, errors) {
   var _a;
@@ -54008,13 +54019,13 @@ function validateProcedures(procedures, indices, options, errors) {
     });
     validateRequestedOutputs(procedure.requestedOutputs, `${path}.requestedOutputs`, errors);
     if (typeValid && options.capabilities) {
-      const capability = ANALYSIS_CAPABILITY_BY_TYPE[procedure.type];
-      if (((_a = options.capabilities.analyses) == null ? void 0 : _a[capability]) !== true) {
+      const capability2 = ANALYSIS_CAPABILITY_BY_TYPE[procedure.type];
+      if (((_a = options.capabilities.analyses) == null ? void 0 : _a[capability2]) !== true) {
         addError(
           errors,
           "FEM_CAPABILITY_REQUIRED",
           `${path}.type`,
-          `${procedure.type} requires analyses.${capability}=true.`
+          `${procedure.type} requires analyses.${capability2}=true.`
         );
       }
     }
@@ -54045,6 +54056,24 @@ function validateProcedures(procedures, indices, options, errors) {
         `${path}.spectrumIds`,
         errors,
         "response spectrum"
+      );
+      validateString(
+        procedure.modalCombinationMethod,
+        `${path}.modalCombinationMethod`,
+        errors,
+        { allowed: ["cqc"] }
+      );
+      validateString(
+        procedure.componentCombinationRule,
+        `${path}.componentCombinationRule`,
+        errors,
+        { allowed: ["100-30-30"] }
+      );
+      validateAccidentalEccentricities(
+        procedure,
+        path,
+        options.model,
+        errors
       );
     }
     if (["nonlinear-static", "time-history"].includes(procedure.type)) {
@@ -54125,7 +54154,619 @@ function createGlobalFemAnalysisContract(input, options = {}) {
   );
 }
 
+// src/domain/fem/ResistanceAxisMapping.js
+var MATRIX_TOLERANCE = 1e-9;
+var IDENTITY_RESISTANCE_AXIS_TRANSFORMATION = Object.freeze([
+  Object.freeze([1, 0, 0]),
+  Object.freeze([0, 1, 0]),
+  Object.freeze([0, 0, 1])
+]);
+function clone2(value) {
+  return value == null ? value : JSON.parse(JSON.stringify(value));
+}
+function finiteVector(values, label) {
+  if (!Array.isArray(values) || values.length !== 3 || values.some((value) => !Number.isFinite(value))) {
+    throw new Error(`${label} must contain exactly three finite components.`);
+  }
+  return [...values];
+}
+function dot4(left, right) {
+  return left.reduce((sum, value, index) => sum + value * right[index], 0);
+}
+function determinant3(matrix) {
+  return matrix[0][0] * (matrix[1][1] * matrix[2][2] - matrix[1][2] * matrix[2][1]) - matrix[0][1] * (matrix[1][0] * matrix[2][2] - matrix[1][2] * matrix[2][0]) + matrix[0][2] * (matrix[1][0] * matrix[2][1] - matrix[1][1] * matrix[2][0]);
+}
+function multiply(matrix, vector) {
+  return matrix.map((row) => dot4(row, vector));
+}
+function globalAxis(localAxes, coefficients) {
+  if (!localAxes) return null;
+  const axes = [localAxes.x, localAxes.y, localAxes.z];
+  if (axes.some((axis) => axis == null || !["x", "y", "z"].every((component) => Number.isFinite(axis[component])))) {
+    throw new Error(
+      "Source localAxes must contain finite x, y and z unit vectors."
+    );
+  }
+  return Object.fromEntries(["x", "y", "z"].map((component) => [
+    component,
+    axes.reduce(
+      (sum, axis, index) => sum + coefficients[index] * axis[component],
+      0
+    )
+  ]));
+}
+function validateResistanceAxisTransformation(sourceToResistance, { tolerance = MATRIX_TOLERANCE } = {}) {
+  if (!Array.isArray(sourceToResistance) || sourceToResistance.length !== 3) {
+    throw new Error(
+      "sourceToResistance must be a finite 3x3 transformation matrix."
+    );
+  }
+  const matrix = sourceToResistance.map((row, index) => finiteVector(row, `sourceToResistance[${index}]`));
+  for (let row = 0; row < 3; row += 1) {
+    for (let column = 0; column < 3; column += 1) {
+      const expected = row === column ? 1 : 0;
+      if (Math.abs(dot4(matrix[row], matrix[column]) - expected) > tolerance) {
+        throw new Error(
+          "sourceToResistance must be orthonormal within the declared tolerance."
+        );
+      }
+    }
+  }
+  const determinant = determinant3(matrix);
+  if (Math.abs(determinant - 1) > tolerance) {
+    throw new Error(
+      "sourceToResistance must be right-handed with determinant +1."
+    );
+  }
+  return matrix;
+}
+function validatedMapping(mapping, expectedSource, sourceIdKey) {
+  if (mapping == null || typeof mapping !== "object" || Array.isArray(mapping)) {
+    throw new Error("A resistance-axis mapping record is required.");
+  }
+  if (typeof mapping[sourceIdKey] !== "string" || mapping[sourceIdKey].length === 0) {
+    throw new Error(`${sourceIdKey} is required by the axis mapping.`);
+  }
+  if (mapping.sourceCoordinateSystem !== expectedSource) {
+    throw new Error(
+      `sourceCoordinateSystem must be "${expectedSource}".`
+    );
+  }
+  if (typeof mapping.resistanceCoordinateSystemId !== "string" || mapping.resistanceCoordinateSystemId.length === 0) {
+    throw new Error("resistanceCoordinateSystemId is required.");
+  }
+  return {
+    ...clone2(mapping),
+    sourceToResistance: validateResistanceAxisTransformation(
+      mapping.sourceToResistance
+    )
+  };
+}
+function assertCoordinateSystem(state, mapping) {
+  if (state.coordinateSystem !== mapping.sourceCoordinateSystem) {
+    throw new Error(
+      `FEM state coordinateSystem "${state.coordinateSystem}" does not match the declared source "${mapping.sourceCoordinateSystem}".`
+    );
+  }
+}
+function resistanceAxes(localAxes, matrix) {
+  if (!localAxes) return null;
+  return {
+    x: globalAxis(localAxes, matrix[0]),
+    y: globalAxis(localAxes, matrix[1]),
+    z: globalAxis(localAxes, matrix[2])
+  };
+}
+function validateSurfaceResistanceAxisTransformation(sourceToResistance, { tolerance = MATRIX_TOLERANCE } = {}) {
+  const matrix = validateResistanceAxisTransformation(
+    sourceToResistance,
+    { tolerance }
+  );
+  const outOfPlaneTerms = [
+    matrix[0][2],
+    matrix[1][2],
+    matrix[2][0],
+    matrix[2][1],
+    matrix[2][2] - 1
+  ];
+  if (outOfPlaneTerms.some((value) => Math.abs(value) > tolerance)) {
+    throw new Error(
+      "A shell-resultant mapping must preserve the positive surface normal."
+    );
+  }
+  return matrix;
+}
+function rotatePlaneTensor(matrix, xx, yy, xy, label) {
+  const q00 = matrix[0][0];
+  const q01 = matrix[0][1];
+  const q10 = matrix[1][0];
+  const q11 = matrix[1][1];
+  const [sourceXx, sourceYy, sourceXy] = finiteVector(
+    [xx, yy, xy],
+    label
+  );
+  return {
+    xx: q00 ** 2 * sourceXx + 2 * q00 * q01 * sourceXy + q01 ** 2 * sourceYy,
+    yy: q10 ** 2 * sourceXx + 2 * q10 * q11 * sourceXy + q11 ** 2 * sourceYy,
+    xy: q00 * q10 * sourceXx + (q00 * q11 + q01 * q10) * sourceXy + q01 * q11 * sourceYy
+  };
+}
+function projectLineActionStateToResistanceAxes({ state, mapping }) {
+  var _a, _b, _c, _d, _e, _f;
+  if (state == null || typeof state !== "object") {
+    throw new Error("A concurrent line-action state is required.");
+  }
+  const axisMapping = validatedMapping(
+    mapping,
+    "element-local",
+    "lineElementId"
+  );
+  if (state.lineElementId !== axisMapping.lineElementId) {
+    throw new Error(
+      `Axis mapping for ${axisMapping.lineElementId} cannot project state for ${state.lineElementId}.`
+    );
+  }
+  assertCoordinateSystem(state, axisMapping);
+  const force = multiply(
+    axisMapping.sourceToResistance,
+    finiteVector(
+      [(_a = state.actions) == null ? void 0 : _a.N, (_b = state.actions) == null ? void 0 : _b.Vy, (_c = state.actions) == null ? void 0 : _c.Vz],
+      "line action force vector"
+    )
+  );
+  const moment = multiply(
+    axisMapping.sourceToResistance,
+    finiteVector(
+      [(_d = state.actions) == null ? void 0 : _d.T, (_e = state.actions) == null ? void 0 : _e.My, (_f = state.actions) == null ? void 0 : _f.Mz],
+      "line action moment vector"
+    )
+  );
+  return {
+    ...clone2(state),
+    resistanceCoordinateSystem: {
+      id: axisMapping.resistanceCoordinateSystemId,
+      sourceCoordinateSystem: axisMapping.sourceCoordinateSystem,
+      sourceToResistance: clone2(axisMapping.sourceToResistance),
+      axes: resistanceAxes(
+        state.localAxes,
+        axisMapping.sourceToResistance
+      )
+    },
+    resistanceActions: {
+      axialForce: force[0],
+      shearY: force[1],
+      shearZ: force[2],
+      torsion: moment[0],
+      momentY: moment[1],
+      momentZ: moment[2]
+    }
+  };
+}
+function mappingIndex(mappings, idKey, label) {
+  if (!Array.isArray(mappings)) {
+    throw new Error(`${label} must be an array.`);
+  }
+  const index = /* @__PURE__ */ new Map();
+  mappings.forEach((mapping, itemIndex) => {
+    const id = mapping == null ? void 0 : mapping[idKey];
+    if (typeof id !== "string" || id.length === 0) {
+      throw new Error(`${label}[${itemIndex}].${idKey} is required.`);
+    }
+    if (index.has(id)) {
+      throw new Error(`${label} maps ${id} more than once.`);
+    }
+    index.set(id, mapping);
+  });
+  return index;
+}
+function projectMemberActionStatesToResistanceAxes({
+  member,
+  states
+} = {}) {
+  if (!member || !Array.isArray(member.lineElementIds)) {
+    throw new Error("A mapped structural member is required.");
+  }
+  if (!Array.isArray(states)) {
+    throw new Error("Concurrent member action states must be an array.");
+  }
+  const mappings = mappingIndex(
+    member.lineActionMappings,
+    "lineElementId",
+    "member.lineActionMappings"
+  );
+  for (const lineElementId of member.lineElementIds) {
+    if (!mappings.has(lineElementId)) {
+      throw new Error(
+        `Member ${member.id} has no resistance-axis mapping for ${lineElementId}.`
+      );
+    }
+  }
+  for (const lineElementId of mappings.keys()) {
+    if (!member.lineElementIds.includes(lineElementId)) {
+      throw new Error(
+        `Member ${member.id} axis mapping references unassigned element ${lineElementId}.`
+      );
+    }
+  }
+  return states.map((state) => projectLineActionStateToResistanceAxes({
+    state,
+    mapping: mappings.get(state.lineElementId)
+  }));
+}
+function projectJointActionStatesToResistanceAxes({
+  members,
+  states
+} = {}) {
+  if (!Array.isArray(members) || !Array.isArray(states)) {
+    throw new Error("Mapped members and concurrent joint states are required.");
+  }
+  const allMappings = members.flatMap((member) => {
+    var _a;
+    return (_a = member.lineActionMappings) != null ? _a : [];
+  });
+  const mappings = mappingIndex(
+    allMappings,
+    "lineElementId",
+    "members.lineActionMappings"
+  );
+  return states.map((state) => {
+    var _a;
+    return {
+      ...clone2(state),
+      elementEnds: ((_a = state.elementEnds) != null ? _a : []).map((elementEnd) => {
+        var _a2;
+        const mapping = mappings.get(elementEnd.lineElementId);
+        if (!mapping) {
+          throw new Error(
+            `No resistance-axis mapping exists for joint element ${elementEnd.lineElementId}.`
+          );
+        }
+        if (!elementEnd.station) {
+          return { ...clone2(elementEnd), resistanceActions: null };
+        }
+        const projected = projectLineActionStateToResistanceAxes({
+          state: {
+            lineElementId: elementEnd.lineElementId,
+            coordinateSystem: elementEnd.coordinateSystem,
+            localAxes: (_a2 = mapping.localAxes) != null ? _a2 : null,
+            actions: elementEnd.station.actions
+          },
+          mapping
+        });
+        return {
+          ...clone2(elementEnd),
+          resistanceCoordinateSystem: projected.resistanceCoordinateSystem,
+          resistanceActions: projected.resistanceActions
+        };
+      })
+    };
+  });
+}
+function projectSectionCutStateToResistanceAxes({ state, mapping }) {
+  var _a, _b, _c, _d, _e, _f;
+  if (state == null || typeof state !== "object") {
+    throw new Error("A concurrent section-cut state is required.");
+  }
+  const axisMapping = validatedMapping(
+    mapping,
+    "section-cut-local",
+    "sectionCutId"
+  );
+  if (state.sectionCutId !== axisMapping.sectionCutId) {
+    throw new Error(
+      `Axis mapping for ${axisMapping.sectionCutId} cannot project state for ${state.sectionCutId}.`
+    );
+  }
+  assertCoordinateSystem(state, axisMapping);
+  const force = multiply(
+    axisMapping.sourceToResistance,
+    finiteVector(
+      [(_a = state.resultants) == null ? void 0 : _a.Fx, (_b = state.resultants) == null ? void 0 : _b.Fy, (_c = state.resultants) == null ? void 0 : _c.Fz],
+      "section-cut force vector"
+    )
+  );
+  const moment = multiply(
+    axisMapping.sourceToResistance,
+    finiteVector(
+      [(_d = state.resultants) == null ? void 0 : _d.Mx, (_e = state.resultants) == null ? void 0 : _e.My, (_f = state.resultants) == null ? void 0 : _f.Mz],
+      "section-cut moment vector"
+    )
+  );
+  return {
+    ...clone2(state),
+    resistanceCoordinateSystem: {
+      id: axisMapping.resistanceCoordinateSystemId,
+      sourceCoordinateSystem: axisMapping.sourceCoordinateSystem,
+      sourceToResistance: clone2(axisMapping.sourceToResistance)
+    },
+    resistanceResultants: {
+      forceX: force[0],
+      forceY: force[1],
+      axialForce: force[2],
+      momentX: moment[0],
+      momentY: moment[1],
+      torsion: moment[2]
+    }
+  };
+}
+function projectWallSectionCutStatesToResistanceAxes({
+  wall,
+  states
+} = {}) {
+  if (!wall || !Array.isArray(wall.sectionCutIds)) {
+    throw new Error("A mapped structural wall is required.");
+  }
+  if (!Array.isArray(states)) {
+    throw new Error("Concurrent section-cut states must be an array.");
+  }
+  const mappings = mappingIndex(
+    wall.sectionCutActionMappings,
+    "sectionCutId",
+    "wall.sectionCutActionMappings"
+  );
+  for (const sectionCutId of wall.sectionCutIds) {
+    if (!mappings.has(sectionCutId)) {
+      throw new Error(
+        `Wall ${wall.id} has no resistance-axis mapping for ${sectionCutId}.`
+      );
+    }
+  }
+  for (const sectionCutId of mappings.keys()) {
+    if (!wall.sectionCutIds.includes(sectionCutId)) {
+      throw new Error(
+        `Wall ${wall.id} axis mapping references unassigned cut ${sectionCutId}.`
+      );
+    }
+  }
+  return states.map((state) => projectSectionCutStateToResistanceAxes({
+    state,
+    mapping: mappings.get(state.sectionCutId)
+  }));
+}
+function projectShellResultantStateToResistanceAxes({
+  state,
+  mapping
+}) {
+  var _a, _b, _c, _d, _e, _f, _g, _h;
+  if (state == null || typeof state !== "object") {
+    throw new Error("A concurrent shell-resultant state is required.");
+  }
+  const axisMapping = validatedMapping(
+    mapping,
+    "element-local",
+    "shellElementId"
+  );
+  axisMapping.sourceToResistance = validateSurfaceResistanceAxisTransformation(
+    axisMapping.sourceToResistance
+  );
+  if (state.shellElementId !== axisMapping.shellElementId) {
+    throw new Error(
+      `Axis mapping for ${axisMapping.shellElementId} cannot project state for ${state.shellElementId}.`
+    );
+  }
+  assertCoordinateSystem(state, axisMapping);
+  const membrane = rotatePlaneTensor(
+    axisMapping.sourceToResistance,
+    (_a = state.components) == null ? void 0 : _a.Nx,
+    (_b = state.components) == null ? void 0 : _b.Ny,
+    (_c = state.components) == null ? void 0 : _c.Nxy,
+    "shell membrane resultant tensor"
+  );
+  const bending = rotatePlaneTensor(
+    axisMapping.sourceToResistance,
+    (_d = state.components) == null ? void 0 : _d.Mx,
+    (_e = state.components) == null ? void 0 : _e.My,
+    (_f = state.components) == null ? void 0 : _f.Mxy,
+    "shell bending resultant tensor"
+  );
+  const shear = multiply(
+    axisMapping.sourceToResistance,
+    finiteVector(
+      [(_g = state.components) == null ? void 0 : _g.Vx, (_h = state.components) == null ? void 0 : _h.Vy, 0],
+      "shell transverse shear vector"
+    )
+  );
+  return {
+    ...clone2(state),
+    resistanceCoordinateSystem: {
+      id: axisMapping.resistanceCoordinateSystemId,
+      sourceCoordinateSystem: axisMapping.sourceCoordinateSystem,
+      sourceToResistance: clone2(axisMapping.sourceToResistance),
+      axes: resistanceAxes(
+        state.localAxes,
+        axisMapping.sourceToResistance
+      )
+    },
+    resistanceResultants: {
+      Nx: membrane.xx,
+      Ny: membrane.yy,
+      Nxy: membrane.xy,
+      Mx: bending.xx,
+      My: bending.yy,
+      Mxy: bending.xy,
+      Vx: shear[0],
+      Vy: shear[1]
+    }
+  };
+}
+function projectSlabResultantStatesToResistanceAxes({
+  slab,
+  states
+} = {}) {
+  if (!slab || !Array.isArray(slab.shellElementIds)) {
+    throw new Error("A mapped structural slab is required.");
+  }
+  if (!Array.isArray(states)) {
+    throw new Error("Concurrent shell-resultant states must be an array.");
+  }
+  const mappings = mappingIndex(
+    slab.shellResultantMappings,
+    "shellElementId",
+    "slab.shellResultantMappings"
+  );
+  for (const shellElementId of slab.shellElementIds) {
+    if (!mappings.has(shellElementId)) {
+      throw new Error(
+        `Slab ${slab.id} has no resistance-axis mapping for ${shellElementId}.`
+      );
+    }
+  }
+  return states.map((state) => projectShellResultantStateToResistanceAxes({
+    state,
+    mapping: mappings.get(state.shellElementId)
+  }));
+}
+function projectSupportReactionStateToResistanceAxes({
+  state,
+  mapping
+}) {
+  var _a, _b, _c, _d, _e, _f, _g;
+  if (state == null || typeof state !== "object") {
+    throw new Error("A concurrent support-reaction state is required.");
+  }
+  const axisMapping = validatedMapping(
+    mapping,
+    "global",
+    "supportNodeId"
+  );
+  if (state.nodeId !== axisMapping.supportNodeId) {
+    throw new Error(
+      `Axis mapping for support node ${axisMapping.supportNodeId} cannot project reaction at ${state.nodeId}.`
+    );
+  }
+  assertCoordinateSystem(state, axisMapping);
+  const force = multiply(
+    axisMapping.sourceToResistance,
+    finiteVector(
+      [(_a = state.forces) == null ? void 0 : _a.x, (_b = state.forces) == null ? void 0 : _b.y, (_c = state.forces) == null ? void 0 : _c.z],
+      "support reaction force vector"
+    )
+  );
+  const moment = multiply(
+    axisMapping.sourceToResistance,
+    finiteVector(
+      [(_d = state.moments) == null ? void 0 : _d.x, (_e = state.moments) == null ? void 0 : _e.y, (_f = state.moments) == null ? void 0 : _f.z],
+      "support reaction moment vector"
+    )
+  );
+  return {
+    ...clone2(state),
+    foundationId: (_g = mapping.foundationId) != null ? _g : null,
+    resistanceCoordinateSystem: {
+      id: axisMapping.resistanceCoordinateSystemId,
+      sourceCoordinateSystem: axisMapping.sourceCoordinateSystem,
+      sourceToResistance: clone2(axisMapping.sourceToResistance)
+    },
+    resistanceReaction: {
+      forceX: force[0],
+      forceY: force[1],
+      forceZ: force[2],
+      momentX: moment[0],
+      momentY: moment[1],
+      momentZ: moment[2]
+    }
+  };
+}
+function projectFoundationReactionStatesToResistanceAxes({
+  foundation,
+  states
+} = {}) {
+  if (!foundation || !Array.isArray(foundation.supportNodeIds)) {
+    throw new Error("A mapped foundation is required.");
+  }
+  if (!Array.isArray(states)) {
+    throw new Error("Concurrent support-reaction states must be an array.");
+  }
+  const mappings = mappingIndex(
+    foundation.supportReactionMappings,
+    "supportNodeId",
+    "foundation.supportReactionMappings"
+  );
+  for (const supportNodeId of foundation.supportNodeIds) {
+    if (!mappings.has(supportNodeId)) {
+      throw new Error(
+        `Foundation ${foundation.id} has no resistance-axis mapping for ${supportNodeId}.`
+      );
+    }
+  }
+  return states.map((state) => projectSupportReactionStateToResistanceAxes({
+    state,
+    mapping: {
+      ...mappings.get(state.nodeId),
+      foundationId: foundation.id
+    }
+  }));
+}
+
 // src/domain/fem/contracts/FemEntityMappingContract.js
+function validateAxisMappings({
+  mappings,
+  path,
+  sourceIdKey,
+  assignedIds,
+  sourceCoordinateSystem,
+  transformationValidator = validateResistanceAxisTransformation,
+  errors
+}) {
+  if (mappings == null) return;
+  if (!validateArray(mappings, path, errors)) return;
+  const mappedIds = /* @__PURE__ */ new Set();
+  mappings.forEach((mapping, itemIndex) => {
+    const itemPath = `${path}[${itemIndex}]`;
+    if (!validateRecord(mapping, itemPath, errors)) return;
+    if (validateId(mapping[sourceIdKey], `${itemPath}.${sourceIdKey}`, errors)) {
+      if (!assignedIds.includes(mapping[sourceIdKey])) {
+        addError(
+          errors,
+          "FEM_UNKNOWN_REFERENCE",
+          `${itemPath}.${sourceIdKey}`,
+          `${mapping[sourceIdKey]} is not assigned to the mapped structural entity.`
+        );
+      } else if (mappedIds.has(mapping[sourceIdKey])) {
+        addError(
+          errors,
+          "FEM_AMBIGUOUS_ENTITY_MAPPING",
+          `${itemPath}.${sourceIdKey}`,
+          `${mapping[sourceIdKey]} has more than one resistance-axis mapping.`
+        );
+      }
+      mappedIds.add(mapping[sourceIdKey]);
+    }
+    validateString(
+      mapping.sourceCoordinateSystem,
+      `${itemPath}.sourceCoordinateSystem`,
+      errors,
+      { allowed: [sourceCoordinateSystem] }
+    );
+    validateId(
+      mapping.resistanceCoordinateSystemId,
+      `${itemPath}.resistanceCoordinateSystemId`,
+      errors
+    );
+    try {
+      transformationValidator(mapping.sourceToResistance);
+    } catch (error) {
+      addError(
+        errors,
+        "FEM_INVALID_AXIS_TRANSFORMATION",
+        `${itemPath}.sourceToResistance`,
+        error.message
+      );
+    }
+  });
+  if (mappings.length > 0) {
+    assignedIds.forEach((id) => {
+      if (!mappedIds.has(id)) {
+        addError(
+          errors,
+          "FEM_MAPPING_INCOMPLETE",
+          path,
+          `${id} has no resistance-axis mapping.`
+        );
+      }
+    });
+  }
+}
 function registerAssignments(ids, assignmentIndex, path, errors) {
   ids == null ? void 0 : ids.forEach((id, itemIndex) => {
     if (assignmentIndex.has(id)) {
@@ -54144,6 +54785,7 @@ function validateMembers(members, modelIndices, errors) {
   const index = validateUniqueIds(members, "$.members", errors);
   const assignments = /* @__PURE__ */ new Map();
   members == null ? void 0 : members.forEach((member, itemIndex) => {
+    var _a;
     const path = `$.members[${itemIndex}]`;
     validateString(member.role, `${path}.role`, errors, {
       allowed: ["beam", "column", "brace", "other"]
@@ -54158,6 +54800,14 @@ function validateMembers(members, modelIndices, errors) {
         "line element"
       );
     }
+    validateAxisMappings({
+      mappings: member.lineActionMappings,
+      path: `${path}.lineActionMappings`,
+      sourceIdKey: "lineElementId",
+      assignedIds: (_a = member.lineElementIds) != null ? _a : [],
+      sourceCoordinateSystem: "element-local",
+      errors
+    });
     registerAssignments(member.lineElementIds, assignments, `${path}.lineElementIds`, errors);
   });
   return { index, assignments };
@@ -54166,6 +54816,7 @@ function validateWalls(walls, modelIndices, errors) {
   const index = validateUniqueIds(walls, "$.walls", errors);
   const assignments = /* @__PURE__ */ new Map();
   walls == null ? void 0 : walls.forEach((wall, itemIndex) => {
+    var _a;
     const path = `$.walls[${itemIndex}]`;
     validateIdArray(wall.shellElementIds, `${path}.shellElementIds`, errors, { minLength: 1 });
     validateIdArray(wall.sectionCutIds, `${path}.sectionCutIds`, errors);
@@ -54193,6 +54844,14 @@ function validateWalls(walls, modelIndices, errors) {
         "storey"
       );
     }
+    validateAxisMappings({
+      mappings: wall.sectionCutActionMappings,
+      path: `${path}.sectionCutActionMappings`,
+      sourceIdKey: "sectionCutId",
+      assignedIds: (_a = wall.sectionCutIds) != null ? _a : [],
+      sourceCoordinateSystem: "section-cut-local",
+      errors
+    });
     registerAssignments(wall.shellElementIds, assignments, `${path}.shellElementIds`, errors);
   });
   return { index, assignments };
@@ -54200,8 +54859,10 @@ function validateWalls(walls, modelIndices, errors) {
 function validateSlabs(slabs, modelIndices, shellAssignments, errors) {
   const index = validateUniqueIds(slabs, "$.slabs", errors);
   slabs == null ? void 0 : slabs.forEach((slab, itemIndex) => {
+    var _a;
     const path = `$.slabs[${itemIndex}]`;
     validateIdArray(slab.shellElementIds, `${path}.shellElementIds`, errors, { minLength: 1 });
+    validateIdArray(slab.diaphragmIds, `${path}.diaphragmIds`, errors);
     if (validateId(slab.storeyId, `${path}.storeyId`, errors) && modelIndices && !modelIndices.storeys.has(slab.storeyId)) {
       addError(
         errors,
@@ -54218,10 +54879,214 @@ function validateSlabs(slabs, modelIndices, shellAssignments, errors) {
         errors,
         "shell element"
       );
+      validateReferences(
+        slab.diaphragmIds,
+        modelIndices.diaphragms,
+        `${path}.diaphragmIds`,
+        errors,
+        "diaphragm"
+      );
     }
+    validateAxisMappings({
+      mappings: slab.shellResultantMappings,
+      path: `${path}.shellResultantMappings`,
+      sourceIdKey: "shellElementId",
+      assignedIds: (_a = slab.shellElementIds) != null ? _a : [],
+      sourceCoordinateSystem: "element-local",
+      transformationValidator: validateSurfaceResistanceAxisTransformation,
+      errors
+    });
     registerAssignments(slab.shellElementIds, shellAssignments, `${path}.shellElementIds`, errors);
   });
   return index;
+}
+function validatePunchingConnections({
+  connections,
+  slabIndex,
+  modelIndices,
+  errors
+}) {
+  if (connections == null) return /* @__PURE__ */ new Map();
+  const index = validateUniqueIds(
+    connections,
+    "$.punchingConnections",
+    errors
+  );
+  connections.forEach((connection, itemIndex) => {
+    var _a, _b;
+    const path = `$.punchingConnections[${itemIndex}]`;
+    const slab = slabIndex.get(connection.slabId);
+    if (validateId(connection.slabId, `${path}.slabId`, errors) && !slab) {
+      addError(
+        errors,
+        "FEM_UNKNOWN_REFERENCE",
+        `${path}.slabId`,
+        `${path}.slabId references unknown slab ${connection.slabId}.`
+      );
+    }
+    if (validateId(connection.nodeId, `${path}.nodeId`, errors) && modelIndices && !modelIndices.nodes.has(connection.nodeId)) {
+      addError(
+        errors,
+        "FEM_UNKNOWN_REFERENCE",
+        `${path}.nodeId`,
+        `${path}.nodeId references unknown node ${connection.nodeId}.`
+      );
+    }
+    validateIdArray(
+      connection.shellElementIds,
+      `${path}.shellElementIds`,
+      errors,
+      { minLength: 1 }
+    );
+    (_a = connection.shellElementIds) == null ? void 0 : _a.forEach((shellElementId, shellIndex) => {
+      var _a2;
+      if (!((_a2 = slab == null ? void 0 : slab.shellElementIds) == null ? void 0 : _a2.includes(shellElementId))) {
+        addError(
+          errors,
+          "FEM_UNKNOWN_REFERENCE",
+          `${path}.shellElementIds[${shellIndex}]`,
+          `${shellElementId} is not assigned to slab ${connection.slabId}.`
+        );
+      }
+    });
+    if (validateArray(
+      connection.supportLineElementEnds,
+      `${path}.supportLineElementEnds`,
+      errors
+    ) && connection.supportLineElementEnds.length === 0) {
+      addError(
+        errors,
+        "FEM_ARRAY_TOO_SHORT",
+        `${path}.supportLineElementEnds`,
+        "A punching connection needs at least one supporting member end."
+      );
+    }
+    (_b = connection.supportLineElementEnds) == null ? void 0 : _b.forEach((end, endIndex) => {
+      var _a2, _b2;
+      const endPath = `${path}.supportLineElementEnds[${endIndex}]`;
+      if (!validateRecord(end, endPath, errors)) return;
+      const element = modelIndices == null ? void 0 : modelIndices.lineElements.get(end.lineElementId);
+      if (validateId(
+        end.lineElementId,
+        `${endPath}.lineElementId`,
+        errors
+      ) && modelIndices && !element) {
+        addError(
+          errors,
+          "FEM_UNKNOWN_REFERENCE",
+          `${endPath}.lineElementId`,
+          `${end.lineElementId} is not a model line element.`
+        );
+      }
+      validateString(end.end, `${endPath}.end`, errors, {
+        allowed: ["start", "end"]
+      });
+      const expectedNodeId = end.end === "start" ? (_a2 = element == null ? void 0 : element.nodeIds) == null ? void 0 : _a2[0] : (_b2 = element == null ? void 0 : element.nodeIds) == null ? void 0 : _b2[1];
+      if (element && expectedNodeId !== connection.nodeId) {
+        addError(
+          errors,
+          "FEM_JOINT_END_MISMATCH",
+          endPath,
+          `${end.lineElementId}.${end.end} is not connected to punching node ${connection.nodeId}.`
+        );
+      }
+    });
+  });
+  return index;
+}
+function validateFoundations(foundations, modelIndices, errors) {
+  if (foundations == null) {
+    return { index: /* @__PURE__ */ new Map(), assignments: /* @__PURE__ */ new Map() };
+  }
+  const index = validateUniqueIds(foundations, "$.foundations", errors);
+  const assignments = /* @__PURE__ */ new Map();
+  foundations.forEach((foundation, itemIndex) => {
+    var _a, _b, _c, _d, _e, _f;
+    const path = `$.foundations[${itemIndex}]`;
+    validateString(foundation.type, `${path}.type`, errors, {
+      allowed: [
+        "isolated-footing",
+        "foundation-beam",
+        "raft",
+        "pile-cap",
+        "other"
+      ]
+    });
+    validateIdArray(
+      foundation.supportIds,
+      `${path}.supportIds`,
+      errors,
+      { minLength: 1 }
+    );
+    validateIdArray(
+      foundation.supportNodeIds,
+      `${path}.supportNodeIds`,
+      errors,
+      { minLength: 1 }
+    );
+    if (((_a = foundation.supportIds) == null ? void 0 : _a.length) !== ((_b = foundation.supportNodeIds) == null ? void 0 : _b.length)) {
+      addError(
+        errors,
+        "FEM_MAPPING_INCOMPLETE",
+        path,
+        "supportIds and supportNodeIds must have the same length."
+      );
+    }
+    (_c = foundation.supportIds) == null ? void 0 : _c.forEach((supportId, supportIndex) => {
+      var _a2;
+      const support = modelIndices == null ? void 0 : modelIndices.supports.get(supportId);
+      if (modelIndices && !support) {
+        addError(
+          errors,
+          "FEM_UNKNOWN_REFERENCE",
+          `${path}.supportIds[${supportIndex}]`,
+          `${supportId} is not a model support.`
+        );
+      } else if (support && support.nodeId !== ((_a2 = foundation.supportNodeIds) == null ? void 0 : _a2[supportIndex])) {
+        addError(
+          errors,
+          "FEM_SUPPORT_NODE_MISMATCH",
+          `${path}.supportNodeIds[${supportIndex}]`,
+          `${supportId} belongs to node ${support.nodeId}.`
+        );
+      }
+    });
+    validateAxisMappings({
+      mappings: foundation.supportReactionMappings,
+      path: `${path}.supportReactionMappings`,
+      sourceIdKey: "supportNodeId",
+      assignedIds: (_d = foundation.supportNodeIds) != null ? _d : [],
+      sourceCoordinateSystem: "global",
+      errors
+    });
+    if (!Array.isArray(foundation.supportReactionMappings) || foundation.supportReactionMappings.length !== ((_f = (_e = foundation.supportNodeIds) == null ? void 0 : _e.length) != null ? _f : 0)) {
+      addError(
+        errors,
+        "FEM_MAPPING_INCOMPLETE",
+        `${path}.supportReactionMappings`,
+        `Foundation ${foundation.id} requires one reaction-axis mapping for every support node.`
+      );
+    }
+    registerAssignments(
+      foundation.supportIds,
+      assignments,
+      `${path}.supportIds`,
+      errors
+    );
+  });
+  if (modelIndices) {
+    for (const supportId of modelIndices.supports.keys()) {
+      if (!assignments.has(supportId)) {
+        addError(
+          errors,
+          "FEM_MAPPING_INCOMPLETE",
+          "$.foundations",
+          `Support ${supportId} is not mapped to a foundation.`
+        );
+      }
+    }
+  }
+  return { index, assignments };
 }
 function validateStoreyMappings(storeys, modelIndices, errors) {
   const index = validateUniqueIds(storeys, "$.storeys", errors);
@@ -54362,6 +55227,16 @@ function validateFemEntityMappingContract(input, { model = null } = {}) {
     for (const collection of ["members", "walls", "slabs", "storeys", "joints"]) {
       validateArray(input[collection], `$.${collection}`, errors);
     }
+    if (input.punchingConnections != null) {
+      validateArray(
+        input.punchingConnections,
+        "$.punchingConnections",
+        errors
+      );
+    }
+    if (input.foundations != null) {
+      validateArray(input.foundations, "$.foundations", errors);
+    }
     if (model && (input.modelId !== model.id || input.modelHash !== model.hash)) {
       addError(
         errors,
@@ -54376,12 +55251,25 @@ function validateFemEntityMappingContract(input, { model = null } = {}) {
       shellElements: indexById(model.shellElements),
       diaphragms: indexById(model.diaphragms),
       storeys: indexById(model.storeys),
-      sectionCuts: indexById(model.sectionCuts)
+      sectionCuts: indexById(model.sectionCuts),
+      supports: indexById(model.supports)
     } : null;
     const members = validateMembers(input.members, modelIndices, errors);
     const walls = validateWalls(input.walls, modelIndices, errors);
     const shellAssignments = new Map(walls.assignments);
-    validateSlabs(input.slabs, modelIndices, shellAssignments, errors);
+    const slabs = validateSlabs(
+      input.slabs,
+      modelIndices,
+      shellAssignments,
+      errors
+    );
+    validatePunchingConnections({
+      connections: input.punchingConnections,
+      slabIndex: slabs,
+      modelIndices,
+      errors
+    });
+    validateFoundations(input.foundations, modelIndices, errors);
     const storeys = validateStoreyMappings(input.storeys, modelIndices, errors);
     validateJoints(input.joints, modelIndices, errors);
     if (model) {
@@ -54832,11 +55720,11 @@ function validateSectionCutResults(items, indices, errors) {
     validateVectorComponents(entry.resultants, SIX_COMPONENTS, `${path}.resultants`, errors);
   });
 }
-function validateModalMap(map, directions, path, errors, { ratio: ratio2 = false, nonNegative: nonNegative14 = false } = {}) {
+function validateModalMap(map, directions, path, errors, { ratio: ratio2 = false, nonNegative: nonNegative15 = false } = {}) {
   if (!validateRecord(map, path, errors)) return;
   directions == null ? void 0 : directions.forEach((direction) => {
     const valid = validateFinite(map[direction], `${path}.${direction}`, errors, {
-      nonNegative: ratio2 || nonNegative14
+      nonNegative: ratio2 || nonNegative15
     });
     if (valid && ratio2 && map[direction] > 1 + 1e-12) {
       addError(
@@ -55015,14 +55903,14 @@ function validateCapabilityCompleteness(input, context, coverage, modeCounts, er
   var _a, _b, _c, _d;
   const { capabilities, analysis, model } = context;
   if (!capabilities || !analysis || !input.results) return;
-  for (const capability of FEM_RESULT_CAPABILITY_KEYS) {
-    const collection = RESULT_COLLECTION_BY_OUTPUT[capability];
-    if (((_a = capabilities.results) == null ? void 0 : _a[capability]) === false && ((_b = input.results[collection]) == null ? void 0 : _b.length) > 0) {
+  for (const capability2 of FEM_RESULT_CAPABILITY_KEYS) {
+    const collection = RESULT_COLLECTION_BY_OUTPUT[capability2];
+    if (((_a = capabilities.results) == null ? void 0 : _a[capability2]) === false && ((_b = input.results[collection]) == null ? void 0 : _b.length) > 0) {
       addError(
         errors,
         "FEM_UNDECLARED_RESULT_CAPABILITY",
         `$.results.${collection}`,
-        `Results are present although results.${capability}=false.`
+        `Results are present although results.${capability2}=false.`
       );
     }
   }
@@ -55272,262 +56160,259 @@ function createGlobalFemContractSet(input = {}) {
   return { capabilities, model, analysis, mapping, result: result9 };
 }
 
-// src/domain/fem/globalToLocalMemberAdapter.js
-function extremeValue(demand, component, extreme) {
-  var _a, _b;
-  const env = (_b = (_a = demand.componentEnvelopes) == null ? void 0 : _a[component]) == null ? void 0 : _b[extreme];
-  return env != null ? env : null;
+// src/domain/fem/ConcurrentFemDemandStates.js
+var GLOBAL_FEM_LINE_ACTION_COMPONENTS = Object.freeze([
+  "N",
+  "Vy",
+  "Vz",
+  "T",
+  "My",
+  "Mz"
+]);
+var GLOBAL_FEM_SHELL_RESULTANT_COMPONENTS = Object.freeze([
+  "Nx",
+  "Ny",
+  "Nxy",
+  "Mx",
+  "My",
+  "Mxy",
+  "Vx",
+  "Vy"
+]);
+var GLOBAL_FEM_SECTION_CUT_COMPONENTS = Object.freeze([
+  "Fx",
+  "Fy",
+  "Fz",
+  "Mx",
+  "My",
+  "Mz"
+]);
+var REFERENCE_KEYS = Object.freeze([
+  "procedureId",
+  "loadCaseId",
+  "combinationId",
+  "modeNumber",
+  "step",
+  "time",
+  "envelopeId"
+]);
+function clone3(value) {
+  return value == null ? value : JSON.parse(JSON.stringify(value));
 }
-function collectLineElementDesignActions(demand) {
-  var _a;
-  if (!demand) return { states: [], envelopes: { min: {}, max: {} } };
-  const states = ((_a = demand.actionStates) != null ? _a : []).map((state) => {
-    var _a2, _b, _c, _d, _e, _f, _g;
-    return {
-      combinationId: (_b = (_a2 = state.reference) == null ? void 0 : _a2.combinationId) != null ? _b : null,
-      loadCaseId: (_d = (_c = state.reference) == null ? void 0 : _c.loadCaseId) != null ? _d : null,
-      procedureId: (_f = (_e = state.reference) == null ? void 0 : _e.procedureId) != null ? _f : null,
-      stations: ((_g = state.stations) != null ? _g : []).map((s) => {
-        var _a3, _b2, _c2, _d2, _e2, _f2, _g2, _h, _i, _j, _k, _l;
-        return {
-          xi: s.xi,
-          N: (_b2 = (_a3 = s.actions) == null ? void 0 : _a3.N) != null ? _b2 : 0,
-          Vy: (_d2 = (_c2 = s.actions) == null ? void 0 : _c2.Vy) != null ? _d2 : 0,
-          Vz: (_f2 = (_e2 = s.actions) == null ? void 0 : _e2.Vz) != null ? _f2 : 0,
-          My: (_h = (_g2 = s.actions) == null ? void 0 : _g2.My) != null ? _h : 0,
-          Mz: (_j = (_i = s.actions) == null ? void 0 : _i.Mz) != null ? _j : 0,
-          T: (_l = (_k = s.actions) == null ? void 0 : _k.T) != null ? _l : 0
-        };
-      })
-    };
-  });
-  const envelopes = { min: {}, max: {} };
-  for (const comp of ["N", "Vy", "Vz", "My", "Mz", "T"]) {
-    const minEntry = extremeValue(demand, comp, "minimum");
-    const maxEntry = extremeValue(demand, comp, "maximum");
-    if (minEntry) envelopes.min[comp] = minEntry;
-    if (maxEntry) envelopes.max[comp] = maxEntry;
+function finiteActions(actions, label) {
+  if (actions == null || typeof actions !== "object" || Array.isArray(actions)) {
+    throw new Error(`${label} must contain line-element actions.`);
   }
-  return { states, envelopes };
+  return Object.fromEntries(GLOBAL_FEM_LINE_ACTION_COMPONENTS.map((component) => {
+    const value = actions[component];
+    if (!Number.isFinite(value)) {
+      throw new Error(`${label}.${component} must be finite; got ${value}.`);
+    }
+    return [component, value];
+  }));
 }
-function extractMomentSamples(demand, component = "Mz") {
-  if (!(demand == null ? void 0 : demand.actionStates)) return [];
-  return demand.actionStates.flatMap(
-    (state) => {
-      var _a;
-      return ((_a = state.stations) != null ? _a : []).map((s) => {
-        var _a2, _b, _c, _d, _e, _f;
+function finiteComponents(value, components, label) {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${label} must contain numeric components.`);
+  }
+  return Object.fromEntries(components.map((component) => {
+    const componentValue = value[component];
+    if (!Number.isFinite(componentValue)) {
+      throw new Error(
+        `${label}.${component} must be finite; got ${componentValue}.`
+      );
+    }
+    return [component, componentValue];
+  }));
+}
+function finiteStation(station, label) {
+  if (!Number.isFinite(station == null ? void 0 : station.xi) || station.xi < 0 || station.xi > 1) {
+    throw new Error(`${label}.xi must be finite and lie in [0, 1].`);
+  }
+  if (station.position != null && !Number.isFinite(station.position)) {
+    throw new Error(`${label}.position must be finite when supplied.`);
+  }
+  return {
+    xi: station.xi,
+    ...station.position == null ? {} : { position: station.position },
+    ...station.side == null ? {} : { side: station.side }
+  };
+}
+function referenceMatches(reference, selector) {
+  return REFERENCE_KEYS.every((key) => selector[key] === void 0 || (reference == null ? void 0 : reference[key]) === selector[key]);
+}
+function collectConcurrentLineElementActionStates(lineElementDemand) {
+  var _a;
+  if (lineElementDemand == null) {
+    throw new Error("A lineElementDemand is required.");
+  }
+  return ((_a = lineElementDemand.actionStates) != null ? _a : []).flatMap(
+    (state, stateIndex) => {
+      var _a2;
+      return ((_a2 = state.stations) != null ? _a2 : []).map((station, stationIndex) => {
+        var _a3, _b, _c, _d, _e;
         return {
-          xi: s.xi,
-          value: (_b = (_a2 = s.actions) == null ? void 0 : _a2[component]) != null ? _b : 0,
-          combinationId: (_d = (_c = state.reference) == null ? void 0 : _c.combinationId) != null ? _d : null,
-          loadCaseId: (_f = (_e = state.reference) == null ? void 0 : _e.loadCaseId) != null ? _f : null
+          lineElementId: lineElementDemand.lineElementId,
+          sectionId: (_a3 = lineElementDemand.sectionId) != null ? _a3 : null,
+          materialId: (_b = lineElementDemand.materialId) != null ? _b : null,
+          localAxes: clone3((_c = lineElementDemand.localAxes) != null ? _c : null),
+          coordinateSystem: (_d = state.coordinateSystem) != null ? _d : null,
+          reference: clone3((_e = state.reference) != null ? _e : {}),
+          station: finiteStation(
+            station,
+            `actionStates[${stateIndex}].stations[${stationIndex}]`
+          ),
+          actions: finiteActions(
+            station.actions,
+            `actionStates[${stateIndex}].stations[${stationIndex}].actions`
+          )
         };
       });
     }
   );
 }
-function extractEndMoments(demand, endXi, component = "Mz") {
-  const samples = extractMomentSamples(demand, component).filter((s) => Math.abs(s.xi - endXi) <= 0.05);
-  if (samples.length === 0) return { positive: 0, negative: 0 };
-  let positive42 = 0;
-  let negative = 0;
-  for (const s of samples) {
-    if (s.value > positive42) positive42 = s.value;
-    if (s.value < negative) negative = s.value;
+function collectConcurrentMemberActionStates(memberDemand) {
+  var _a;
+  if (memberDemand == null) {
+    throw new Error("A memberDemand is required.");
   }
-  return { positive: positive42, negative };
-}
-function buildBeamSectionMaterial({
-  section,
-  concreteMaterial,
-  reinforcementMaterial
-}) {
-  return {
-    section: section != null ? section : null,
-    material: {
-      concrete: concreteMaterial != null ? concreteMaterial : null,
-      reinforcement: reinforcementMaterial != null ? reinforcementMaterial : null
-    }
-  };
-}
-function estimateColumnEffectiveLengths({
-  memberId,
-  jointDemands,
-  geometricLength,
-  betaX = 1,
-  betaY = 1
-}) {
-  return {
-    effectiveLengthMx: geometricLength * betaX,
-    effectiveLengthMy: geometricLength * betaY,
-    betaX,
-    betaY
-  };
-}
-function extractJointActions({
-  jointDemand,
-  memberDemands,
-  mapping
-}) {
-  var _a, _b, _c, _d, _e, _f;
-  if (!(jointDemand == null ? void 0 : jointDemand.complete)) {
-    return {
-      columnAxialForce: null,
-      columnShearAbove: null,
-      beamMomentPositive: 0,
-      beamMomentNegative: 0,
-      incomplete: true
-    };
-  }
-  let columnAxialForce = null;
-  let columnShearAbove = null;
-  let beamMomentPositive = 0;
-  let beamMomentNegative = 0;
-  for (const end of (_a = jointDemand.lineElementEnds) != null ? _a : []) {
-    const member = (_b = mapping.members) == null ? void 0 : _b.find(
-      (m) => m.lineElementIds.includes(end.lineElementId)
-    );
-    if (!member) continue;
-    const memberDemand = memberDemands == null ? void 0 : memberDemands.find((md) => md.id === member.id);
-    if (!memberDemand) continue;
-    const lineDemand = (_c = memberDemand.elementDemands) == null ? void 0 : _c.find(
-      (ld) => ld.lineElementId === end.lineElementId
-    );
-    if (!lineDemand) continue;
-    const endXi = end.end === "start" ? 0 : 1;
-    if (member.role === "column") {
-      const samples = extractMomentSamples(lineDemand, "Mz");
-      const endSamples = samples.filter((s) => Math.abs(s.xi - endXi) <= 0.05);
-      if (endSamples.length > 0) {
-        const nEnv = extremeValue(lineDemand, "N", "maximum");
-        columnAxialForce = (_d = nEnv == null ? void 0 : nEnv.value) != null ? _d : 0;
-      }
-      const vyEnv = (_e = lineDemand.componentEnvelopes) == null ? void 0 : _e.Vy;
-      if (vyEnv) {
-        const extreme = endXi === 0 ? vyEnv.minimum : vyEnv.maximum;
-        columnShearAbove = (_f = extreme == null ? void 0 : extreme.value) != null ? _f : 0;
-      }
-    }
-    if (member.role === "beam") {
-      const moments = extractEndMoments(lineDemand, endXi, "Mz");
-      beamMomentPositive = Math.max(beamMomentPositive, moments.positive);
-      beamMomentNegative = Math.min(beamMomentNegative, moments.negative);
-    }
-  }
-  return {
-    columnAxialForce,
-    columnShearAbove,
-    beamMomentPositive,
-    beamMomentNegative,
-    incomplete: false
-  };
-}
-function extractFootingActions({
-  nodeId,
-  globalResponses,
-  signConvention = "support-action-on-structure"
-}) {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u;
-  const reactions = ((_a = globalResponses == null ? void 0 : globalResponses.reactions) != null ? _a : []).filter((r) => r.nodeId === nodeId);
-  if (reactions.length === 0) {
-    return {
-      verticalForce: 0,
-      horizontalX: 0,
-      horizontalY: 0,
-      momentX: 0,
-      momentY: 0,
-      warning: `No reactions found for node ${nodeId}.`
-    };
-  }
-  let maxFz = 0, maxFx = 0, maxFy = 0, maxMx = 0, maxMy = 0;
-  for (const reaction of reactions) {
-    const fx = (_e = (_d = (_b = reaction.forces) == null ? void 0 : _b.x) != null ? _d : (_c = reaction.forces) == null ? void 0 : _c.Fx) != null ? _e : 0;
-    const fy = (_i = (_h = (_f = reaction.forces) == null ? void 0 : _f.y) != null ? _h : (_g = reaction.forces) == null ? void 0 : _g.Fy) != null ? _i : 0;
-    const fz = (_m = (_l = (_j = reaction.forces) == null ? void 0 : _j.z) != null ? _l : (_k = reaction.forces) == null ? void 0 : _k.Fz) != null ? _m : 0;
-    const mx = (_q = (_p = (_n = reaction.moments) == null ? void 0 : _n.x) != null ? _p : (_o = reaction.moments) == null ? void 0 : _o.Mx) != null ? _q : 0;
-    const my = (_u = (_t = (_r = reaction.moments) == null ? void 0 : _r.y) != null ? _t : (_s = reaction.moments) == null ? void 0 : _s.My) != null ? _u : 0;
-    if (Math.abs(fz) > Math.abs(maxFz)) maxFz = fz;
-    if (Math.abs(fx) > Math.abs(maxFx)) maxFx = fx;
-    if (Math.abs(fy) > Math.abs(maxFy)) maxFy = fy;
-    if (Math.abs(mx) > Math.abs(maxMx)) maxMx = mx;
-    if (Math.abs(my) > Math.abs(maxMy)) maxMy = my;
-  }
-  const invert = signConvention === "support-action-on-structure" ? -1 : 1;
-  return {
-    verticalForce: maxFz * invert,
-    horizontalX: maxFx * invert,
-    horizontalY: maxFy * invert,
-    momentX: maxMx * invert,
-    momentY: maxMy * invert
-  };
-}
-function extractColumnDesignActions({
-  memberDemand,
-  governingCombinationId
-} = {}) {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t;
-  if (!((_a = memberDemand == null ? void 0 : memberDemand.elementDemands) == null ? void 0 : _a.length)) {
-    return { nEd: 0, mxEd: 0, myEd: 0, vxEd: 0, vyEd: 0, combinationId: null };
-  }
-  const demand = memberDemand.elementDemands[0];
-  if (governingCombinationId) {
-    const state = ((_b = demand.actionStates) != null ? _b : []).find(
-      (s) => {
-        var _a2;
-        return ((_a2 = s.reference) == null ? void 0 : _a2.combinationId) === governingCombinationId;
-      }
-    );
-    if ((_c = state == null ? void 0 : state.stations) == null ? void 0 : _c.length) {
-      const mid = state.stations.reduce(
-        (a, b) => Math.abs(a.xi - 0.5) < Math.abs(b.xi - 0.5) ? a : b
-      );
+  return ((_a = memberDemand.elementDemands) != null ? _a : []).flatMap(
+    (elementDemand) => collectConcurrentLineElementActionStates(elementDemand).map((state) => {
+      var _a2;
       return {
-        nEd: (_e = (_d = mid.actions) == null ? void 0 : _d.N) != null ? _e : 0,
-        mxEd: (_g = (_f = mid.actions) == null ? void 0 : _f.Mz) != null ? _g : 0,
-        myEd: (_i = (_h = mid.actions) == null ? void 0 : _h.My) != null ? _i : 0,
-        vxEd: (_k = (_j = mid.actions) == null ? void 0 : _j.Vy) != null ? _k : 0,
-        vyEd: (_m = (_l = mid.actions) == null ? void 0 : _l.Vz) != null ? _m : 0,
-        combinationId: governingCombinationId
+        memberId: memberDemand.id,
+        classification: clone3((_a2 = memberDemand.classification) != null ? _a2 : null),
+        ...state
       };
-    }
-  }
-  const nMax = extremeValue(demand, "N", "maximum");
-  const mxMax = extremeValue(demand, "Mz", "maximum");
-  const myMax = extremeValue(demand, "My", "maximum");
-  const vxMax = extremeValue(demand, "Vy", "maximum");
-  const vyMax = extremeValue(demand, "Vz", "maximum");
-  return {
-    nEd: (_n = nMax == null ? void 0 : nMax.value) != null ? _n : 0,
-    mxEd: (_o = mxMax == null ? void 0 : mxMax.value) != null ? _o : 0,
-    myEd: (_p = myMax == null ? void 0 : myMax.value) != null ? _p : 0,
-    vxEd: (_q = vxMax == null ? void 0 : vxMax.value) != null ? _q : 0,
-    vyEd: (_r = vyMax == null ? void 0 : vyMax.value) != null ? _r : 0,
-    combinationId: (_t = (_s = nMax == null ? void 0 : nMax.reference) == null ? void 0 : _s.combinationId) != null ? _t : null
-  };
+    })
+  );
 }
-function extractBeamDesignActions({ memberDemand } = {}) {
-  var _a, _b;
-  if (!((_a = memberDemand == null ? void 0 : memberDemand.elementDemands) == null ? void 0 : _a.length)) return [];
-  const demand = memberDemand.elementDemands[0];
-  return ((_b = demand.actionStates) != null ? _b : []).map((state) => {
-    var _a2, _b2, _c, _d, _e, _f, _g;
+function filterConcurrentFemStates(states, selector = {}) {
+  if (!Array.isArray(states)) {
+    throw new Error("Concurrent FEM states must be an array.");
+  }
+  const unknownKeys = Object.keys(selector).filter((key) => !REFERENCE_KEYS.includes(key));
+  if (unknownKeys.length > 0) {
+    throw new Error(
+      `Unsupported FEM reference selector keys: ${unknownKeys.join(", ")}.`
+    );
+  }
+  return states.filter((state) => referenceMatches(state.reference, selector));
+}
+function collectConcurrentJointActionStates(jointDemand) {
+  var _a;
+  if (jointDemand == null) {
+    throw new Error("A jointDemand is required.");
+  }
+  return ((_a = jointDemand.demandStates) != null ? _a : []).map((state, stateIndex) => {
+    var _a2, _b, _c;
     return {
-      combinationId: (_b2 = (_a2 = state.reference) == null ? void 0 : _a2.combinationId) != null ? _b2 : "unknown",
-      loadCaseId: (_d = (_c = state.reference) == null ? void 0 : _c.loadCaseId) != null ? _d : null,
-      procedureId: (_f = (_e = state.reference) == null ? void 0 : _e.procedureId) != null ? _f : null,
-      stations: ((_g = state.stations) != null ? _g : []).map((s) => {
-        var _a3, _b3, _c2, _d2, _e2, _f2, _g2, _h, _i, _j, _k, _l;
+      jointId: jointDemand.jointId,
+      nodeId: jointDemand.nodeId,
+      reference: clone3((_a2 = state.reference) != null ? _a2 : {}),
+      complete: state.complete === true,
+      missingElementEnds: clone3((_b = state.missingElementEnds) != null ? _b : []),
+      elementEnds: ((_c = state.elementEnds) != null ? _c : []).map((elementEnd, endIndex) => {
+        var _a3;
         return {
-          xi: s.xi,
-          N: (_b3 = (_a3 = s.actions) == null ? void 0 : _a3.N) != null ? _b3 : 0,
-          Vy: (_d2 = (_c2 = s.actions) == null ? void 0 : _c2.Vy) != null ? _d2 : 0,
-          Vz: (_f2 = (_e2 = s.actions) == null ? void 0 : _e2.Vz) != null ? _f2 : 0,
-          My: (_h = (_g2 = s.actions) == null ? void 0 : _g2.My) != null ? _h : 0,
-          Mz: (_j = (_i = s.actions) == null ? void 0 : _i.Mz) != null ? _j : 0,
-          T: (_l = (_k = s.actions) == null ? void 0 : _k.T) != null ? _l : 0
+          lineElementId: elementEnd.lineElementId,
+          end: elementEnd.end,
+          coordinateSystem: (_a3 = elementEnd.coordinateSystem) != null ? _a3 : null,
+          atElementEnd: elementEnd.atElementEnd === true,
+          station: elementEnd.station == null ? null : {
+            ...finiteStation(
+              elementEnd.station,
+              `demandStates[${stateIndex}].elementEnds[${endIndex}].station`
+            ),
+            actions: finiteActions(
+              elementEnd.station.actions,
+              `demandStates[${stateIndex}].elementEnds[${endIndex}].station.actions`
+            )
+          }
         };
       })
+    };
+  });
+}
+function collectConcurrentSurfaceResultantStates(surfaceDemand) {
+  var _a;
+  if (surfaceDemand == null) {
+    throw new Error("A surfaceDemand is required.");
+  }
+  return ((_a = surfaceDemand.elementDemands) != null ? _a : []).flatMap(
+    (elementDemand) => {
+      var _a2;
+      return ((_a2 = elementDemand.resultantStates) != null ? _a2 : []).map((state, stateIndex) => {
+        var _a3, _b, _c, _d, _e, _f, _g, _h;
+        return {
+          surfaceId: surfaceDemand.id,
+          classification: clone3((_a3 = surfaceDemand.classification) != null ? _a3 : null),
+          shellElementId: elementDemand.shellElementId,
+          sectionId: (_b = elementDemand.sectionId) != null ? _b : null,
+          materialId: (_c = elementDemand.materialId) != null ? _c : null,
+          localAxes: clone3((_d = elementDemand.localAxes) != null ? _d : null),
+          coordinateSystem: (_e = state.coordinateSystem) != null ? _e : null,
+          face: (_f = state.face) != null ? _f : null,
+          location: clone3((_g = state.location) != null ? _g : null),
+          reference: clone3((_h = state.reference) != null ? _h : {}),
+          components: finiteComponents(
+            state.components,
+            GLOBAL_FEM_SHELL_RESULTANT_COMPONENTS,
+            `resultantStates[${stateIndex}].components`
+          )
+        };
+      });
+    }
+  );
+}
+function collectConcurrentSectionCutStates({
+  sectionCutIds,
+  globalResponses
+} = {}) {
+  var _a;
+  if (!Array.isArray(sectionCutIds)) {
+    throw new Error("sectionCutIds must be an array.");
+  }
+  const selectedIds = new Set(sectionCutIds);
+  return ((_a = globalResponses == null ? void 0 : globalResponses.sectionCuts) != null ? _a : []).filter((state) => selectedIds.has(state.sectionCutId)).map((state, stateIndex) => {
+    var _a2, _b;
+    return {
+      sectionCutId: state.sectionCutId,
+      coordinateSystem: (_a2 = state.coordinateSystem) != null ? _a2 : null,
+      position: clone3((_b = state.position) != null ? _b : null),
+      reference: Object.fromEntries(REFERENCE_KEYS.filter((key) => state[key] !== void 0).map((key) => [key, state[key]])),
+      resultants: finiteComponents(
+        state.resultants,
+        GLOBAL_FEM_SECTION_CUT_COMPONENTS,
+        `sectionCuts[${stateIndex}].resultants`
+      )
+    };
+  });
+}
+function collectConcurrentSupportReactionStates({
+  nodeId,
+  globalResponses
+} = {}) {
+  var _a;
+  if (typeof nodeId !== "string" || nodeId.length === 0) {
+    throw new Error("A support nodeId is required.");
+  }
+  return ((_a = globalResponses == null ? void 0 : globalResponses.reactions) != null ? _a : []).filter((reaction) => reaction.nodeId === nodeId).map((reaction, reactionIndex) => {
+    var _a2;
+    return {
+      nodeId,
+      coordinateSystem: (_a2 = reaction.coordinateSystem) != null ? _a2 : null,
+      reference: Object.fromEntries(REFERENCE_KEYS.filter((key) => reaction[key] !== void 0).map((key) => [key, reaction[key]])),
+      forces: finiteComponents(
+        reaction.forces,
+        ["x", "y", "z"],
+        `reactions[${reactionIndex}].forces`
+      ),
+      moments: finiteComponents(
+        reaction.moments,
+        ["x", "y", "z"],
+        `reactions[${reactionIndex}].moments`
+      )
     };
   });
 }
@@ -55538,7 +56423,7 @@ function cloneSymmetricMatrix(matrix, symmetryTolerance) {
     throw new Error("BandedLinearSolver requires a non-empty matrix.");
   }
   const size = matrix.length;
-  const clone10 = matrix.map((row, rowIndex) => {
+  const clone12 = matrix.map((row, rowIndex) => {
     if (!Array.isArray(row) || row.length !== size) {
       throw new Error("BandedLinearSolver requires a square matrix.");
     }
@@ -55555,15 +56440,15 @@ function cloneSymmetricMatrix(matrix, symmetryTolerance) {
     for (let column = 0; column < row; column += 1) {
       const scale2 = Math.max(
         1,
-        Math.abs(clone10[row][column]),
-        Math.abs(clone10[column][row])
+        Math.abs(clone12[row][column]),
+        Math.abs(clone12[column][row])
       );
-      if (Math.abs(clone10[row][column] - clone10[column][row]) > symmetryTolerance * scale2) {
+      if (Math.abs(clone12[row][column] - clone12[column][row]) > symmetryTolerance * scale2) {
         throw new Error("BandedLinearSolver requires a symmetric matrix.");
       }
     }
   }
-  return clone10;
+  return clone12;
 }
 function cloneVector2(vector, size) {
   if (!Array.isArray(vector) || vector.length !== size) {
@@ -56533,12 +57418,12 @@ function utilizationCheck({
   };
 }
 function governingCheck(checks) {
-  return checks.reduce((selected, check2) => {
-    if (!Number.isFinite(check2.utilizationRatio)) {
+  return checks.reduce((selected, check4) => {
+    if (!Number.isFinite(check4.utilizationRatio)) {
       return selected;
     }
-    if (!selected || check2.utilizationRatio > selected.utilizationRatio) {
-      return check2;
+    if (!selected || check4.utilizationRatio > selected.utilizationRatio) {
+      return check4;
     }
     return selected;
   }, null);
@@ -56897,7 +57782,7 @@ function normalizeGlobalFemClassificationPolicy(input = {}) {
 
 // src/applications/global-fem-postprocessing/GlobalFemDemandExtractor.js
 var GLOBAL_FEM_DEMAND_SET_VERSION = 0;
-var REFERENCE_KEYS = Object.freeze([
+var REFERENCE_KEYS2 = Object.freeze([
   "procedureId",
   "loadCaseId",
   "combinationId",
@@ -56906,16 +57791,16 @@ var REFERENCE_KEYS = Object.freeze([
   "time",
   "envelopeId"
 ]);
-function clone2(value) {
+function clone4(value) {
   return JSON.parse(JSON.stringify(value));
 }
 function resultReference(entry) {
   return Object.fromEntries(
-    REFERENCE_KEYS.filter((key) => entry[key] !== void 0).map((key) => [key, entry[key]])
+    REFERENCE_KEYS2.filter((key) => entry[key] !== void 0).map((key) => [key, entry[key]])
   );
 }
 function referenceKey(reference) {
-  return JSON.stringify(REFERENCE_KEYS.map((key) => {
+  return JSON.stringify(REFERENCE_KEYS2.map((key) => {
     var _a;
     return (_a = reference[key]) != null ? _a : null;
   }));
@@ -56936,8 +57821,8 @@ function componentEnvelopes(samples) {
       }
       const candidate = {
         value,
-        reference: clone2(sample.reference),
-        location: clone2(sample.location)
+        reference: clone4(sample.reference),
+        location: clone4(sample.location)
       };
       updateExtreme(envelopes[component], "minimum", candidate);
       updateExtreme(envelopes[component], "maximum", candidate);
@@ -56956,7 +57841,7 @@ function extractLineElementDemands(model, result9) {
     const states = ((_a2 = resultByElement.get(element.id)) != null ? _a2 : []).map((entry) => ({
       reference: resultReference(entry),
       coordinateSystem: entry.coordinateSystem,
-      stations: clone2(entry.stations)
+      stations: clone4(entry.stations)
     }));
     const samples = states.flatMap((state) => state.stations.map((station) => ({
       reference: state.reference,
@@ -56972,7 +57857,7 @@ function extractLineElementDemands(model, result9) {
       nodeIds: [...element.nodeIds],
       sectionId: element.sectionId,
       materialId: element.materialId,
-      localAxes: clone2(element.localAxes),
+      localAxes: clone4(element.localAxes),
       actionStates: states,
       componentEnvelopes: componentEnvelopes(samples)
     };
@@ -56990,15 +57875,15 @@ function extractShellElementDemands(model, result9) {
       reference: resultReference(entry),
       coordinateSystem: entry.coordinateSystem,
       face: entry.face,
-      location: clone2(entry.location),
-      components: clone2(entry.components)
+      location: clone4(entry.location),
+      components: clone4(entry.components)
     }));
     return {
       shellElementId: element.id,
       nodeIds: [...element.nodeIds],
       sectionId: element.sectionId,
       materialId: element.materialId,
-      localAxes: clone2(element.localAxes),
+      localAxes: clone4(element.localAxes),
       resultantStates: states,
       componentEnvelopes: componentEnvelopes(states.map((state) => ({
         reference: state.reference,
@@ -57011,9 +57896,9 @@ function extractShellElementDemands(model, result9) {
 function groupDemands(classifications, idKey, demandIndex) {
   return classifications.map((entity) => ({
     id: entity.id,
-    classification: clone2(entity.classification),
+    classification: clone4(entity.classification),
     [idKey]: [...entity[idKey]],
-    elementDemands: entity[idKey].map((id) => demandIndex.get(id)).filter(Boolean).map(clone2)
+    elementDemands: entity[idKey].map((id) => demandIndex.get(id)).filter(Boolean).map(clone4)
   }));
 }
 function closestEndStation(actionState, end) {
@@ -57031,7 +57916,7 @@ function extractJointDemands(joints, lineDemandIndex) {
         const key = referenceKey(actionState.reference);
         if (!states.has(key)) {
           states.set(key, {
-            reference: clone2(actionState.reference),
+            reference: clone4(actionState.reference),
             elementEnds: []
           });
         }
@@ -57041,7 +57926,7 @@ function extractJointDemands(joints, lineDemandIndex) {
           lineElementId: elementEnd.lineElementId,
           end: elementEnd.end,
           coordinateSystem: actionState.coordinateSystem,
-          station: clone2(station),
+          station: clone4(station),
           atElementEnd: station != null && Math.abs(station.xi - targetXi) <= 1e-8
         });
       }
@@ -57052,14 +57937,14 @@ function extractJointDemands(joints, lineDemandIndex) {
       return {
         ...state,
         complete: missingElementEnds.length === 0,
-        missingElementEnds: clone2(missingElementEnds)
+        missingElementEnds: clone4(missingElementEnds)
       };
     });
     return {
       jointId: joint.id,
       nodeId: joint.nodeId,
-      classification: clone2(joint.classification),
-      lineElementEnds: clone2(joint.lineElementEnds),
+      classification: clone4(joint.classification),
+      lineElementEnds: clone4(joint.lineElementEnds),
       demandStates,
       complete: demandStates.length > 0 && demandStates.every((state) => state.complete)
     };
@@ -57082,9 +57967,9 @@ function extractGlobalFemDemands({ model, analysis, result: result9, classificat
     model: { id: model.id, hash: model.hash },
     analysis: { id: analysis.id, hash: analysis.hash },
     resultId: result9.id,
-    units: clone2(result9.units),
-    signConventions: clone2(result9.signConventions),
-    provenance: clone2(result9.provenance),
+    units: clone4(result9.units),
+    signConventions: clone4(result9.signConventions),
+    provenance: clone4(result9.provenance),
     lineElementDemands,
     shellElementDemands,
     memberDemands: groupDemands(
@@ -57099,14 +57984,14 @@ function extractGlobalFemDemands({ model, analysis, result: result9, classificat
     ),
     jointDemands: extractJointDemands(classification2.joints, lineDemandIndex),
     globalResponses: {
-      nodalDisplacements: clone2((_a = result9.results.nodalDisplacements) != null ? _a : []),
-      reactions: clone2((_b = result9.results.reactions) != null ? _b : []),
-      modes: clone2((_c = result9.results.modes) != null ? _c : []),
-      sectionCuts: clone2((_d = result9.results.sectionCuts) != null ? _d : []),
-      storeyResults: clone2((_e = result9.results.storeyResults) != null ? _e : []),
-      equilibriumResiduals: clone2((_f = result9.results.equilibriumResiduals) != null ? _f : []),
-      envelopes: clone2((_g = result9.results.envelopes) != null ? _g : []),
-      qualityIndicators: clone2((_h = result9.qualityIndicators) != null ? _h : {})
+      nodalDisplacements: clone4((_a = result9.results.nodalDisplacements) != null ? _a : []),
+      reactions: clone4((_b = result9.results.reactions) != null ? _b : []),
+      modes: clone4((_c = result9.results.modes) != null ? _c : []),
+      sectionCuts: clone4((_d = result9.results.sectionCuts) != null ? _d : []),
+      storeyResults: clone4((_e = result9.results.storeyResults) != null ? _e : []),
+      equilibriumResiduals: clone4((_f = result9.results.equilibriumResiduals) != null ? _f : []),
+      envelopes: clone4((_g = result9.results.envelopes) != null ? _g : []),
+      qualityIndicators: clone4((_h = result9.qualityIndicators) != null ? _h : {})
     },
     metadata: {
       noCrossElementAxisAggregation: true,
@@ -57117,7 +58002,7 @@ function extractGlobalFemDemands({ model, analysis, result: result9, classificat
 
 // src/applications/global-fem-postprocessing/GlobalFemStructuralClassifier.js
 var DEGREES = 180 / Math.PI;
-function clone3(value) {
+function clone5(value) {
   return JSON.parse(JSON.stringify(value));
 }
 function clamp8(value, minimum2 = -1, maximum = 1) {
@@ -57130,7 +58015,7 @@ function subtract(left, right) {
     z: left.z - right.z
   };
 }
-function dot4(left, right) {
+function dot5(left, right) {
   return left.x * right.x + left.y * right.y + left.z * right.z;
 }
 function norm3(vector) {
@@ -57159,11 +58044,11 @@ function angleBetweenDirections(left, right, { unoriented = false } = {}) {
   const normalizedLeft = normalized2(left);
   const normalizedRight = normalized2(right);
   if (!normalizedLeft || !normalizedRight) return null;
-  const cosine = unoriented ? Math.abs(dot4(normalizedLeft, normalizedRight)) : dot4(normalizedLeft, normalizedRight);
+  const cosine = unoriented ? Math.abs(dot5(normalizedLeft, normalizedRight)) : dot5(normalizedLeft, normalizedRight);
   return Math.acos(clamp8(cosine)) * DEGREES;
 }
 function verticalCoordinate(point4, origin, upward) {
-  return dot4(subtract(point4, origin), upward);
+  return dot5(subtract(point4, origin), upward);
 }
 function classification({ role, status, source, confidence, evidence, requiresConfirmation }) {
   return {
@@ -57337,7 +58222,7 @@ function shellPairIsCompatible(first, second, geometries, nodeIndex, policy, tol
   }
   const firstOrigin = nodeIndex.get(first.nodeIds[0]).coordinates;
   const secondOrigin = nodeIndex.get(second.nodeIds[0]).coordinates;
-  return secondGeometry.points.every((point4) => Math.abs(dot4(subtract(point4, firstOrigin), firstGeometry.normal)) <= tolerance) && firstGeometry.points.every((point4) => Math.abs(dot4(subtract(point4, secondOrigin), secondGeometry.normal)) <= tolerance);
+  return secondGeometry.points.every((point4) => Math.abs(dot5(subtract(point4, firstOrigin), firstGeometry.normal)) <= tolerance) && firstGeometry.points.every((point4) => Math.abs(dot5(subtract(point4, secondOrigin), secondGeometry.normal)) <= tolerance);
 }
 function connectedShellComponents(elements, geometries, nodeIndex, policy, tolerance) {
   const edgeOwners = /* @__PURE__ */ new Map();
@@ -57416,7 +58301,7 @@ function confirmedMembers(mapping, coveredLineElements, validLineElementIds, dia
       id: member.id,
       lineElementIds: accepted,
       classification: confirmedClassification(member.role),
-      metadata: clone3((_c = member.metadata) != null ? _c : {})
+      metadata: clone5((_c = member.metadata) != null ? _c : {})
     });
   }
   return members;
@@ -57452,7 +58337,7 @@ function confirmedSurfaces(mapping, coveredShellElements, validShellElementIds, 
         shellElementIds: accepted,
         classification: confirmedClassification(role),
         storeyIds: role === "wall" ? [...(_d = surface.storeyIds) != null ? _d : []] : [surface.storeyId].filter(Boolean),
-        metadata: clone3((_e = surface.metadata) != null ? _e : {})
+        metadata: clone5((_e = surface.metadata) != null ? _e : {})
       });
     }
   }
@@ -57522,7 +58407,7 @@ function proposeSurfaces(model, mapping, nodeIndex, gravityDirection, policy, to
         ]
       },
       centroid: averagePoints(nodeIds.map((nodeId) => nodeIndex.get(nodeId).coordinates)),
-      normal: clone3(representativeNormal),
+      normal: clone5(representativeNormal),
       metadata: {
         sectionIds: [...new Set(component.map((id) => elementIndex.get(id).sectionId))],
         materialIds: [...new Set(component.map((id) => elementIndex.get(id).materialId))]
@@ -57670,7 +58555,7 @@ function proposeJoints(model, mapping, members, policy) {
     return {
       id: joint.id,
       nodeId: joint.nodeId,
-      lineElementEnds: clone3((_a2 = joint.lineElementEnds) != null ? _a2 : []),
+      lineElementEnds: clone5((_a2 = joint.lineElementEnds) != null ? _a2 : []),
       classification: confirmedClassification("beam-column-joint")
     };
   });
@@ -57804,7 +58689,7 @@ function classifyGlobalFemStructuralEntities({
     modelId: model.id,
     modelHash: model.hash,
     policy: {
-      ...clone3(policy),
+      ...clone5(policy),
       resolved: {
         characteristicLength,
         coplanarityTolerance,
@@ -59759,7 +60644,7 @@ var NTC2018MasonryPierAnalysis = class {
         "The elastic yield displacement is not below the normative ultimate displacement. No artificial stiffness or displacement cap was introduced."
       );
     }
-    const status = checks.every((check2) => check2.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED;
+    const status = checks.every((check4) => check4.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED;
     return new VerificationResult({
       applicationId: "masonry-piers",
       status,
@@ -60050,11 +60935,11 @@ var MasonryPierVerticalVerification = class {
     }
     const governing = governingCheck(checks);
     const hasCompressionCheck = checks.some(
-      (check2) => check2.id === "masonry-pier-compression-stage-1" || check2.id === "masonry-pier-compression-stage-2"
+      (check4) => check4.id === "masonry-pier-compression-stage-1" || check4.id === "masonry-pier-compression-stage-2"
     );
     return new VerificationResult({
       applicationId: "masonry-piers",
-      status: hasCompressionCheck && checks.every((check2) => check2.ok === true) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+      status: hasCompressionCheck && checks.every((check4) => check4.ok === true) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       summary: "Vertical NTC 2018 verification of a masonry pier under axial load, eccentricities and in-plane bending moment.",
       utilizationRatio: (_a = governing == null ? void 0 : governing.utilizationRatio) != null ? _a : null,
       demand: (_b = governing == null ? void 0 : governing.demand) != null ? _b : null,
@@ -64412,7 +65297,7 @@ var NTC2018_TOPOGRAPHIC_AMPLIFICATION_MAXIMA = freezeDefinitions({
     maximumCoefficient: 1.4
   }
 });
-function clone4(value) {
+function clone6(value) {
   return JSON.parse(JSON.stringify(value));
 }
 function finitePositive2(value, label) {
@@ -64485,13 +65370,13 @@ function normalizeSource2(source) {
   };
 }
 function getNTC2018SeismicLimitStateDefinition(limitState) {
-  return clone4(limitStateDefinition(limitState));
+  return clone6(limitStateDefinition(limitState));
 }
 function getNTC2018SubsoilSpectrumCoefficientDefinition(subsoilCategory) {
-  return clone4(subsoilDefinition(subsoilCategory));
+  return clone6(subsoilDefinition(subsoilCategory));
 }
 function getNTC2018TopographicAmplificationDefinition(topographicCategory) {
-  return clone4(topographicDefinition(topographicCategory));
+  return clone6(topographicDefinition(topographicCategory));
 }
 function normalizeNTC2018SiteHazardParameters({
   siteReference,
@@ -65781,7 +66666,7 @@ var NTC2018_SNOW_EXPOSURE_CLASSES = freezeDefinitions2({
     value: 1.1
   }
 });
-function clone5(value) {
+function clone7(value) {
   return JSON.parse(JSON.stringify(value));
 }
 function finiteNonNegative2(value, label) {
@@ -65823,10 +66708,10 @@ function exposureClassDefinition(exposureClass) {
   return definition;
 }
 function getNTC2018SnowGroundZoneDefinition(zone) {
-  return clone5(groundZoneDefinition(zone));
+  return clone7(groundZoneDefinition(zone));
 }
 function getNTC2018SnowExposureClassDefinition(exposureClass) {
-  return clone5(exposureClassDefinition(exposureClass));
+  return clone7(exposureClassDefinition(exposureClass));
 }
 function calculateNTC2018GroundSnowLoad({
   zone,
@@ -66214,7 +67099,7 @@ function calculateNTC2018SnowAreaLoad({
     outputs: {
       schemaVersion: "ntc2018-snow-area-load/v1",
       units: { ...INTERNAL_UNITS29 },
-      zone: clone5(groundZoneDefinition(zone)),
+      zone: clone7(groundZoneDefinition(zone)),
       siteAltitude: altitude,
       groundSnowLoad: groundResolution.groundSnowLoad,
       shapeCoefficient: shape,
@@ -66388,7 +67273,7 @@ var SOLAR_INCREMENTS = Object.freeze({
   })
 });
 var NTC2018_SUMMER_SOLAR_TEMPERATURE_INCREMENTS = SOLAR_INCREMENTS;
-function clone6(value) {
+function clone8(value) {
   return JSON.parse(JSON.stringify(value));
 }
 function finiteNumber(value, label) {
@@ -66445,13 +67330,13 @@ function expansionCoefficientDefinition(materialId) {
   return definition;
 }
 function getNTC2018ExternalAirTemperatureZoneDefinition(zone) {
-  return clone6(externalTemperatureZone(zone));
+  return clone8(externalTemperatureZone(zone));
 }
 function getNTC2018SimplifiedBuildingTemperatureChange(buildingType) {
-  return clone6(simplifiedBuildingDefinition(buildingType));
+  return clone8(simplifiedBuildingDefinition(buildingType));
 }
 function getNTC2018ThermalExpansionCoefficientDefinition(materialId) {
-  return clone6(expansionCoefficientDefinition(materialId));
+  return clone8(expansionCoefficientDefinition(materialId));
 }
 function resolveNTC2018ThermalExpansionCoefficient({
   materialId,
@@ -66465,7 +67350,7 @@ function resolveNTC2018ThermalExpansionCoefficient({
       );
     }
     return {
-      ...clone6(definition),
+      ...clone8(definition),
       selectedValue: definition.value,
       selection: "tabulated-fixed"
     };
@@ -66477,7 +67362,7 @@ function resolveNTC2018ThermalExpansionCoefficient({
     );
   }
   return {
-    ...clone6(definition),
+    ...clone8(definition),
     selectedValue: value,
     selection: "explicit-within-tabulated-range"
   };
@@ -66700,7 +67585,7 @@ function resolveThermalCases({
     const definition = simplifiedBuildingDefinition(simplifiedBuildingType);
     return {
       method: "ntc2018-simplified-building-values",
-      definition: clone6(definition),
+      definition: clone8(definition),
       initialTemperature: null,
       cases: [
         {
@@ -66935,7 +67820,7 @@ var NTC2018_WIND_EXPOSURE_CATEGORIES = freezeDefinitions4({
     minimumHeight: 12
   }
 });
-function clone7(value) {
+function clone9(value) {
   return JSON.parse(JSON.stringify(value));
 }
 function finiteNumber2(value, label) {
@@ -66991,10 +67876,10 @@ function exposureCategoryDefinition(exposureCategory) {
   return definition;
 }
 function getNTC2018WindZoneDefinition(zone) {
-  return clone7(windZoneDefinition(zone));
+  return clone9(windZoneDefinition(zone));
 }
 function getNTC2018WindExposureCategoryDefinition(exposureCategory) {
-  return clone7(exposureCategoryDefinition(exposureCategory));
+  return clone9(exposureCategoryDefinition(exposureCategory));
 }
 function zonalBaseWindSpeed(definition, altitude) {
   const altitudeFactor = altitude <= definition.referenceAltitude ? 1 : 1 + definition.altitudeCoefficient * (altitude / definition.referenceAltitude - 1);
@@ -67396,7 +68281,7 @@ function calculateNTC2018WindAreaLoad({
       summary: "The NTC 2018 zonal formula does not determine base wind speed above 1500 m.",
       warning: "Provide a documented local base wind speed not lower than the NTC 2018 value evaluated at 1500 m.",
       outputs: {
-        zone: clone7(windZoneDefinition(zone)),
+        zone: clone9(windZoneDefinition(zone)),
         siteAltitude: altitude,
         minimumBaseWindSpeedAt1500m: minimumBaseWindSpeed
       },
@@ -67435,7 +68320,7 @@ function calculateNTC2018WindAreaLoad({
       summary: "The NTC 2018 nominal exposure formula is limited to heights not exceeding 200 m.",
       warning: "Provide a documented exposure coefficient for the evaluation height.",
       outputs: {
-        zone: clone7(windZoneDefinition(zone)),
+        zone: clone9(windZoneDefinition(zone)),
         siteAltitude: altitude,
         heightAboveGround: evaluationHeight,
         baseWindSpeed: base,
@@ -67456,7 +68341,7 @@ function calculateNTC2018WindAreaLoad({
       summary: "The nominal dynamic coefficient is not applicable to the declared construction.",
       warning: "Provide a dynamic coefficient from a documented analysis or reliable source.",
       outputs: {
-        zone: clone7(windZoneDefinition(zone)),
+        zone: clone9(windZoneDefinition(zone)),
         siteAltitude: altitude,
         constructionHeight: normalizedConstructionHeight,
         dynamicCoefficientReason: dynamicResolution.reason,
@@ -67517,7 +68402,7 @@ function calculateNTC2018WindAreaLoad({
       schemaVersion: "ntc2018-wind-area-load/v1",
       units: { ...INTERNAL_UNITS30 },
       velocityUnit: VELOCITY_UNIT,
-      zone: clone7(windZoneDefinition(zone)),
+      zone: clone9(windZoneDefinition(zone)),
       siteAltitude: altitude,
       heightAboveGround: evaluationHeight,
       constructionHeight: normalizedConstructionHeight,
@@ -67586,7 +68471,7 @@ function deepFreeze(value) {
   }
   return value;
 }
-function clone8(value) {
+function clone10(value) {
   return JSON.parse(JSON.stringify(value));
 }
 function fixed(value, unit, extra = {}) {
@@ -68073,10 +68958,10 @@ function resolveInheritedLoads({ definition, servedDefinitionId, documentedValue
 }
 function listNTC2018ImposedLoadDefinitions({ category = null } = {}) {
   const definitions = category == null ? NTC2018_IMPOSED_LOAD_CATALOG : NTC2018_IMPOSED_LOAD_CATALOG.filter((entry) => entry.category === category);
-  return definitions.map(clone8);
+  return definitions.map(clone10);
 }
 function getNTC2018ImposedLoadDefinition(definitionId) {
-  return clone8(definitionById(definitionId));
+  return clone10(definitionById(definitionId));
 }
 function resolveNTC2018ImposedLoadDefinition({
   definitionId,
@@ -68133,15 +69018,15 @@ function resolveNTC2018ImposedLoadDefinition({
     Qk: values.Qk,
     Hk: values.Hk,
     units: { ...INTERNAL_UNITS31 },
-    loads: clone8(definition.loads),
-    application: clone8(definition.application),
+    loads: clone10(definition.loads),
+    application: clone10(definition.application),
     combinationFactors: resolveCombinationFactors({
       definition,
       inheritedDefinition,
       documentedCombinationFactors: documentedCombinationFactors2
     }),
     resolution,
-    documentation: documentation == null ? null : clone8(documentation),
+    documentation: documentation == null ? null : clone10(documentation),
     notes: [...(_a = definition.notes) != null ? _a : []],
     metadata: {
       normativePreset: "NTC2018",
@@ -68196,7 +69081,7 @@ function calculateNTC2018ImposedLoadAreaReduction({
     units: { ...INTERNAL_UNITS31 },
     cannotCombineWith: "alphaN",
     reference: NTC2018_IMPOSED_LOAD_REFERENCES.areaReduction,
-    documentation: documentation == null ? null : clone8(documentation),
+    documentation: documentation == null ? null : clone10(documentation),
     metadata: {
       sourceUnitSystem: sourceUnits,
       unitSystem: { ...INTERNAL_UNITS31 }
@@ -68851,7 +69736,7 @@ var NTC2018_UNIT_WEIGHT_CATALOG = freezeCatalog([
   unit: "kN/m^3",
   reference: NTC2018_PERMANENT_LOAD_REFERENCES.unitWeights
 })));
-function clone9(value) {
+function clone11(value) {
   return JSON.parse(JSON.stringify(value));
 }
 function finiteNonNegative6(value, label) {
@@ -68875,10 +69760,10 @@ function unitWeightDefinition(materialId) {
 }
 function listNTC2018UnitWeightDefinitions({ category = null } = {}) {
   const definitions = category == null ? NTC2018_UNIT_WEIGHT_CATALOG : NTC2018_UNIT_WEIGHT_CATALOG.filter((entry) => entry.category === category);
-  return definitions.map(clone9);
+  return definitions.map(clone11);
 }
 function getNTC2018UnitWeightDefinition(materialId) {
-  return clone9(unitWeightDefinition(materialId));
+  return clone11(unitWeightDefinition(materialId));
 }
 function resolveNTC2018UnitWeight({ materialId, value = null } = {}) {
   const definition = unitWeightDefinition(materialId);
@@ -68889,7 +69774,7 @@ function resolveNTC2018UnitWeight({ materialId, value = null } = {}) {
       );
     }
     return {
-      ...clone9(definition),
+      ...clone11(definition),
       selectedValue: definition.value,
       selection: "tabulated-fixed"
     };
@@ -68901,7 +69786,7 @@ function resolveNTC2018UnitWeight({ materialId, value = null } = {}) {
     );
   }
   return {
-    ...clone9(definition),
+    ...clone11(definition),
     selectedValue: value,
     selection: "explicit-within-tabulated-range"
   };
@@ -69758,7 +70643,7 @@ function ntc2018JointOverstrengthFactor(ductilityClass2) {
     return 1.2;
   }
   if (["CDB", "B"].includes(normalized3)) {
-    return 1;
+    return 1.1;
   }
   throw new Error(`Unsupported NTC 2018 ductility class: ${ductilityClass2}.`);
 }
@@ -69937,7 +70822,8 @@ var NTC2018_STRUCTURAL_TYPE = Object.freeze({
   DUAL: "dual",
   CORE: "core",
   TORSIONALLY_FLEXIBLE: "torsionally-flexible",
-  INVERTED_PENDULUM: "inverted-pendulum"
+  INVERTED_PENDULUM: "inverted-pendulum",
+  SINGLE_STOREY_FRAMED_INVERTED_PENDULUM: "single-storey-framed-inverted-pendulum"
 });
 var NTC2018_PLAN_REGULARITY = Object.freeze({
   REGULAR: "regular",
@@ -69954,18 +70840,14 @@ var NTC2018_ANALYSIS_METHOD = Object.freeze({
   NONLINEAR_DYNAMIC: "nonlinear-dynamic"
 });
 var NTC2018_STRUCTURAL_BEHAVIOR_REFERENCES = Object.freeze([
-  {
+  Object.freeze({
     source: "NTC 2018",
-    citation: "D.M. 17/01/2018, \xA7\xA7 7.2.3, 7.3.1, 7.3.2, 7.3.2.1, 7.4.4, 7.8"
-  },
-  {
-    source: "Circolare 2019",
-    citation: "Circ. 21/01/2019 n. 7, C7.2.3, C7.3.2, C7.4.4, C7.8"
-  },
-  {
-    source: "D.M. 52/2023",
-    citation: "Emendamenti NTC 2018, \xA7\xA7 7.3-7.4"
-  }
+    citation: "\xA7\xA7 7.2.2, 7.3.1, 7.3.2, 7.3.3.2, 7.4.1, 7.4.3.1 e 7.4.3.2; Tab. 7.3.II"
+  }),
+  Object.freeze({
+    source: "Circolare 21 gennaio 2019, n. 7 C.S.LL.PP.",
+    citation: "\xA7\xA7 C7.2.2, C7.3.1, C7.3.2 e C7.4.3"
+  })
 ]);
 var NTC2018_OVERSTRENGTH_FACTORS = Object.freeze({
   "cd-a": Object.freeze({
@@ -69981,53 +70863,38 @@ var NTC2018_OVERSTRENGTH_FACTORS = Object.freeze({
     columnShear: 1.1,
     jointShear: 1.1,
     wallShear: null
-    // Tab. 7.2.I: "—" (not applicable for CD"B")
   })
 });
-var Q0_CDB = Object.freeze({
-  // Tab. 7.3.II, costruzioni di calcestruzzo (CD"B")
-  frame: 3,
-  // telaio (× α_u/α₁)
-  wall: 3,
-  // pareti non accoppiate
-  "coupled-wall": 3,
-  // pareti accoppiate (× α_u/α₁)
-  dual: 3,
-  // miste (× α_u/α₁)
-  core: 3,
-  // pareti non accoppiate (nucleo)
-  "torsionally-flexible": 2,
-  // deformabili torsionalmente
-  "inverted-pendulum": 1.5
-  // pendolo inverso
-});
 var Q0_CDA = Object.freeze({
-  // Tab. 7.3.II, costruzioni di calcestruzzo (CD"A")
   frame: 4.5,
-  // telaio (× α_u/α₁)
   wall: 4,
-  // pareti non accoppiate
   "coupled-wall": 4.5,
-  // pareti accoppiate (× α_u/α₁)
   dual: 4.5,
-  // miste (× α_u/α₁)
   core: 4,
-  // pareti non accoppiate (nucleo)
   "torsionally-flexible": 3,
-  // deformabili torsionalmente
-  "inverted-pendulum": 2
-  // pendolo inverso
+  "inverted-pendulum": 2,
+  "single-storey-framed-inverted-pendulum": 3.5
+});
+var Q0_CDB = Object.freeze({
+  frame: 3,
+  wall: 3,
+  "coupled-wall": 3,
+  dual: 3,
+  core: 3,
+  "torsionally-flexible": 2,
+  "inverted-pendulum": 1.5,
+  "single-storey-framed-inverted-pendulum": 2.5
 });
 var NTC2018_BASE_Q_FACTORS = Object.freeze({
   "cd-a": Q0_CDA,
   "cd-b": Q0_CDB
 });
-var Q0_ALPHA_RATIO_TYPES = /* @__PURE__ */ new Set(["frame", "coupled-wall", "dual"]);
 var NTC2018_Q_LIMITS = Object.freeze({
   SLO: Object.freeze({ max: 1 }),
   SLD: Object.freeze({ max: 1.5 }),
   SLV: Object.freeze({
     dissipativeMin: 1.5,
+    nonDissipativeMin: 1,
     nonDissipativeMax: 1.5
   })
 });
@@ -70035,22 +70902,37 @@ var NTC2018_REGULARITY_REDUCTION = Object.freeze({
   regular: 1,
   "non-regular": 0.8
 });
-var NTC2018_DEFAULT_FRAME_ALPHA_RATIO = 1.3;
-var NTC2018_DEFAULT_WALL_ALPHA_RATIO = 1;
 var VALID_BEHAVIORS = new Set(Object.values(NTC2018_STRUCTURAL_BEHAVIOR));
 var VALID_TYPES = new Set(Object.values(NTC2018_STRUCTURAL_TYPE));
+var VALID_PLAN_REGULARITY = new Set(Object.values(NTC2018_PLAN_REGULARITY));
+var VALID_ELEVATION_REGULARITY = new Set(
+  Object.values(NTC2018_ELEVATION_REGULARITY)
+);
 function validateEnum(value, allowed, label) {
   const raw = String(value != null ? value : "").trim();
-  const key = raw.replaceAll("\u201C", "").replaceAll("\u201D", "").replaceAll("\u2018", "").replaceAll("\u2019", "").replaceAll('"', "").replaceAll("'", "").replaceAll("-", "").toLowerCase();
+  const key = raw.replaceAll("\u201C", "").replaceAll("\u201D", "").replaceAll("\u2018", "").replaceAll("\u2019", "").replaceAll('"', "").replaceAll("'", "").replaceAll("-", "").replaceAll(/\s/g, "").toLowerCase();
   for (const candidate of allowed) {
-    const stripped = candidate.replaceAll("-", "").toLowerCase();
-    if (stripped === key) {
+    if (candidate.replaceAll("-", "").toLowerCase() === key) {
       return candidate;
     }
   }
   throw new Error(
     `${label} must be one of [${[...allowed].join(", ")}]; got "${raw}".`
   );
+}
+function positive25(value, label) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) {
+    throw new Error(`${label} must be a positive number; got ${value}.`);
+  }
+  return number;
+}
+function positiveInteger3(value, label) {
+  const number = Number(value);
+  if (!Number.isInteger(number) || number <= 0) {
+    throw new Error(`${label} must be a positive integer; got ${value}.`);
+  }
+  return number;
 }
 function normalizeNTC2018StructuralBehavior(value) {
   return validateEnum(value, VALID_BEHAVIORS, "structuralBehavior");
@@ -70059,43 +70941,38 @@ function normalizeNTC2018StructuralType(value) {
   return validateEnum(value, VALID_TYPES, "structuralType");
 }
 function checkNonDissipativeAdmissibility({
-  seismicZone,
-  ag
+  ag,
+  amplificationFactor,
+  soilAmplification = 1,
+  topographicAmplification = 1
 } = {}) {
-  if (seismicZone !== void 0) {
-    const z = Number(seismicZone);
-    if (!Number.isFinite(z) || z < 1 || z > 4 || !Number.isInteger(z)) {
-      throw new Error(
-        `seismicZone must be an integer between 1 and 4; got ${seismicZone}.`
-      );
-    }
-    if (z >= 3) {
-      return { admissible: true };
-    }
-  }
+  let agSOverG = null;
+  let simplifiedRegimeEligible = null;
+  const warnings = [];
   if (ag !== void 0) {
-    const a = Number(ag);
-    if (!Number.isFinite(a) || a < 0) {
-      throw new Error(`ag must be a non-negative number; got ${ag}.`);
+    const acceleration = Number(ag);
+    if (!Number.isFinite(acceleration) || acceleration < 0) {
+      throw new Error(`ag must be a non-negative number in units of g; got ${ag}.`);
     }
-    if (a < 0.075) {
-      return { admissible: true };
-    }
-  }
-  if (seismicZone !== void 0 && ag !== void 0) {
-    return {
-      admissible: false,
-      reason: "Non-dissipative behavior requires seismic zone \u2265 3 or ag < 0.075 g (\xA7 7.8.1)."
-    };
+    const amplification = amplificationFactor !== void 0 ? positive25(amplificationFactor, "amplificationFactor") : positive25(soilAmplification, "soilAmplification") * positive25(topographicAmplification, "topographicAmplification");
+    agSOverG = acceleration * amplification;
+    simplifiedRegimeEligible = agSOverG <= 0.075 + Number.EPSILON * 10;
+  } else {
+    warnings.push(
+      "ag was not supplied; eligibility for the simplified \xA7 7.0 regime was not assessed."
+    );
   }
   return {
     admissible: true,
-    warning: "Non-dissipative admissibility cannot be fully verified without seismic zone or ag."
+    simplifiedRegimeEligible,
+    agSOverG,
+    warnings,
+    reference: "NTC 2018 \xA7\xA7 7.0 e 7.2.2"
   };
 }
 function selectNTC2018OverstrengthFactors({ behavior }) {
-  const b = normalizeNTC2018StructuralBehavior(behavior);
-  if (b === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE) {
+  const normalized3 = normalizeNTC2018StructuralBehavior(behavior);
+  if (normalized3 === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE) {
     return Object.freeze({
       beamShear: 1,
       columnBending: 1,
@@ -70104,51 +70981,99 @@ function selectNTC2018OverstrengthFactors({ behavior }) {
       wallShear: 1
     });
   }
-  return NTC2018_OVERSTRENGTH_FACTORS[b];
+  return NTC2018_OVERSTRENGTH_FACTORS[normalized3];
+}
+function resolveNTC2018AlphaRatio({
+  structuralType,
+  alphaRatio,
+  frameStoreyCount,
+  frameBayCount,
+  uncoupledWallCount
+} = {}) {
+  const type = normalizeNTC2018StructuralType(structuralType);
+  if (alphaRatio !== void 0) {
+    return positive25(alphaRatio, "alphaRatio");
+  }
+  if (type === NTC2018_STRUCTURAL_TYPE.FRAME) {
+    const storeys = positiveInteger3(frameStoreyCount, "frameStoreyCount");
+    const bays = positiveInteger3(frameBayCount, "frameBayCount");
+    if (storeys === 1) return 1.1;
+    return bays === 1 ? 1.2 : 1.3;
+  }
+  if (type === NTC2018_STRUCTURAL_TYPE.WALL || type === NTC2018_STRUCTURAL_TYPE.CORE) {
+    const walls = positiveInteger3(uncoupledWallCount, "uncoupledWallCount");
+    return walls === 2 ? 1 : 1.1;
+  }
+  if (type === NTC2018_STRUCTURAL_TYPE.COUPLED_WALL) {
+    return 1.2;
+  }
+  if (type === NTC2018_STRUCTURAL_TYPE.DUAL) {
+    throw new Error(
+      "alphaRatio is required for a generic dual system; classify its topology or provide a justified value."
+    );
+  }
+  return 1;
+}
+function appliesAlphaRatio(behavior, structuralType) {
+  if (structuralType === NTC2018_STRUCTURAL_TYPE.FRAME || structuralType === NTC2018_STRUCTURAL_TYPE.COUPLED_WALL || structuralType === NTC2018_STRUCTURAL_TYPE.DUAL) {
+    return true;
+  }
+  return behavior === NTC2018_STRUCTURAL_BEHAVIOR.CD_A && (structuralType === NTC2018_STRUCTURAL_TYPE.WALL || structuralType === NTC2018_STRUCTURAL_TYPE.CORE);
 }
 function selectNTC2018BaseQFactor({
   behavior,
   structuralType,
-  alphaRatio
+  alphaRatio,
+  frameStoreyCount,
+  frameBayCount,
+  uncoupledWallCount
 }) {
-  const b = normalizeNTC2018StructuralBehavior(behavior);
+  const normalizedBehavior = normalizeNTC2018StructuralBehavior(behavior);
   const type = normalizeNTC2018StructuralType(structuralType);
-  if (b === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE) {
-    return 1;
+  if (normalizedBehavior === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE) {
+    const cdBMinimum = NTC2018_BASE_Q_FACTORS["cd-b"][type];
+    return Math.min(1.5, Math.max(1, 2 / 3 * cdBMinimum));
   }
-  const q0 = NTC2018_BASE_Q_FACTORS[b][type];
-  if (Q0_ALPHA_RATIO_TYPES.has(type)) {
-    const ar = alphaRatio !== void 0 ? Number(alphaRatio) : NTC2018_DEFAULT_FRAME_ALPHA_RATIO;
-    if (!Number.isFinite(ar) || ar <= 0) {
-      throw new Error(
-        `alphaRatio must be a positive number; got ${alphaRatio}.`
-      );
-    }
-    return q0 * ar;
+  const tableValue = NTC2018_BASE_Q_FACTORS[normalizedBehavior][type];
+  if (!appliesAlphaRatio(normalizedBehavior, type)) {
+    return tableValue;
   }
-  return q0;
+  const resolvedAlphaRatio = resolveNTC2018AlphaRatio({
+    structuralType: type,
+    alphaRatio,
+    frameStoreyCount,
+    frameBayCount,
+    uncoupledWallCount
+  });
+  return tableValue * resolvedAlphaRatio;
 }
 function computeNTC2018EffectiveQFactor({
   behavior,
   structuralType,
   elevationRegularity,
-  alphaRatio
+  alphaRatio,
+  frameStoreyCount,
+  frameBayCount,
+  uncoupledWallCount
 }) {
-  const b = normalizeNTC2018StructuralBehavior(behavior);
-  if (b === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE) {
-    return 1;
-  }
-  const kr = NTC2018_REGULARITY_REDUCTION[validateEnum(
-    elevationRegularity,
-    new Set(Object.values(NTC2018_ELEVATION_REGULARITY)),
-    "elevationRegularity"
-  )];
+  const normalizedBehavior = normalizeNTC2018StructuralBehavior(behavior);
   const q0 = selectNTC2018BaseQFactor({
-    behavior: b,
+    behavior: normalizedBehavior,
     structuralType,
-    alphaRatio
+    alphaRatio,
+    frameStoreyCount,
+    frameBayCount,
+    uncoupledWallCount
   });
-  return q0 * kr;
+  if (normalizedBehavior === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE) {
+    return q0;
+  }
+  const regularity = validateEnum(
+    elevationRegularity,
+    VALID_ELEVATION_REGULARITY,
+    "elevationRegularity"
+  );
+  return q0 * NTC2018_REGULARITY_REDUCTION[regularity];
 }
 function selectNTC2018AllowedAnalysisMethods({
   behavior,
@@ -70158,79 +71083,52 @@ function selectNTC2018AllowedAnalysisMethods({
   tc,
   td
 } = {}) {
-  const b = normalizeNTC2018StructuralBehavior(behavior);
-  const plan = validateEnum(
-    planRegularity,
-    new Set(Object.values(NTC2018_PLAN_REGULARITY)),
-    "planRegularity"
-  );
-  const elev = validateEnum(
+  normalizeNTC2018StructuralBehavior(behavior);
+  if (planRegularity !== void 0) {
+    validateEnum(planRegularity, VALID_PLAN_REGULARITY, "planRegularity");
+  }
+  const elevation = validateEnum(
     elevationRegularity,
-    new Set(Object.values(NTC2018_ELEVATION_REGULARITY)),
+    VALID_ELEVATION_REGULARITY,
     "elevationRegularity"
   );
+  const allowed = /* @__PURE__ */ new Set([
+    NTC2018_ANALYSIS_METHOD.LINEAR_DYNAMIC,
+    NTC2018_ANALYSIS_METHOD.NONLINEAR_STATIC,
+    NTC2018_ANALYSIS_METHOD.NONLINEAR_DYNAMIC
+  ]);
   const checks = [];
-  const allowed = /* @__PURE__ */ new Set();
-  allowed.add(NTC2018_ANALYSIS_METHOD.LINEAR_DYNAMIC);
-  if (b === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE) {
-    allowed.add(NTC2018_ANALYSIS_METHOD.LINEAR_STATIC);
-    return {
-      allowed: [...allowed],
-      recommended: NTC2018_ANALYSIS_METHOD.LINEAR_DYNAMIC,
-      linearStaticAllowed: true,
-      checks: [{
-        check: "non-dissipative-methods",
-        ok: true,
-        reference: "NTC 2018 \xA7 7.8"
-      }]
-    };
+  let periodLimit = null;
+  let periodCheck = false;
+  if (t1 !== void 0 && tc !== void 0 && td !== void 0) {
+    const fundamentalPeriod = positive25(t1, "t1");
+    const cornerPeriod = positive25(tc, "tc");
+    const displacementPeriod = positive25(td, "td");
+    periodLimit = Math.min(2.5 * cornerPeriod, displacementPeriod);
+    periodCheck = fundamentalPeriod <= periodLimit;
   }
-  let linearStaticAllowed = false;
-  if (elev === NTC2018_ELEVATION_REGULARITY.REGULAR) {
-    if (t1 !== void 0 && tc !== void 0) {
-      const t1Val = Number(t1);
-      const tcVal = Number(tc);
-      if (!Number.isFinite(t1Val) || t1Val <= 0) {
-        throw new Error(`t1 must be a positive number; got ${t1}.`);
-      }
-      if (!Number.isFinite(tcVal) || tcVal <= 0) {
-        throw new Error(`tc must be a positive number; got ${tc}.`);
-      }
-      const limit = td !== void 0 ? Math.min(2.5 * tcVal, Number(td)) : 2.5 * tcVal;
-      linearStaticAllowed = t1Val <= limit;
-      checks.push({
-        check: "linear-static-period",
-        ok: linearStaticAllowed,
-        reference: "NTC 2018 \xA7 7.2.3, Eq. [7.2.1]",
-        t1: t1Val,
-        limit
-      });
-    } else {
-      linearStaticAllowed = true;
-      checks.push({
-        check: "linear-static-period",
-        ok: true,
-        reference: "NTC 2018 \xA7 7.2.3",
-        warning: "T\u2081 not provided; linear static admissibility assumed."
-      });
-    }
+  const elevationCheck = elevation === NTC2018_ELEVATION_REGULARITY.REGULAR;
+  const linearStaticAllowed = elevationCheck && periodCheck;
+  if (linearStaticAllowed) {
+    allowed.add(NTC2018_ANALYSIS_METHOD.LINEAR_STATIC);
   }
   checks.push({
-    check: "linear-static-regularity",
-    ok: elev === NTC2018_ELEVATION_REGULARITY.REGULAR,
-    reference: "NTC 2018 \xA7 7.2.3 (regularit\xE0 in altezza richiesta)"
+    check: "linear-static-elevation-regularity",
+    ok: elevationCheck,
+    reference: "NTC 2018 \xA7 7.3.3.2"
   });
-  if (linearStaticAllowed && elev === NTC2018_ELEVATION_REGULARITY.REGULAR) {
-    allowed.add(NTC2018_ANALYSIS_METHOD.LINEAR_STATIC);
-  }
-  let recommended = NTC2018_ANALYSIS_METHOD.LINEAR_DYNAMIC;
-  if (!linearStaticAllowed && elev === NTC2018_ELEVATION_REGULARITY.NON_REGULAR) {
-    recommended = NTC2018_ANALYSIS_METHOD.LINEAR_DYNAMIC;
-  }
+  checks.push({
+    check: "linear-static-period",
+    ok: periodCheck,
+    evaluated: periodLimit != null,
+    t1: t1 != null ? t1 : null,
+    limit: periodLimit,
+    reference: "NTC 2018 \xA7 7.3.3.2"
+  });
   return {
     allowed: [...allowed],
-    recommended,
-    linearStaticAllowed: linearStaticAllowed && elev === NTC2018_ELEVATION_REGULARITY.REGULAR,
+    recommended: NTC2018_ANALYSIS_METHOD.LINEAR_DYNAMIC,
+    linearStaticAllowed,
     checks
   };
 }
@@ -70238,28 +71136,40 @@ function createNTC2018StructuralBehavior({
   behavior,
   structuralType,
   regularity = {},
-  alphaRatio
+  alphaRatio,
+  frameStoreyCount,
+  frameBayCount,
+  uncoupledWallCount
 }) {
-  var _a;
-  const b = normalizeNTC2018StructuralBehavior(behavior);
+  const normalizedBehavior = normalizeNTC2018StructuralBehavior(behavior);
   const type = normalizeNTC2018StructuralType(structuralType);
-  const overstrengthFactors = selectNTC2018OverstrengthFactors({ behavior: b });
-  const q0 = selectNTC2018BaseQFactor({ behavior: b, structuralType: type, alphaRatio });
-  const elev = (_a = regularity.elevation) != null ? _a : NTC2018_ELEVATION_REGULARITY.REGULAR;
-  const kr = NTC2018_REGULARITY_REDUCTION[validateEnum(
-    elev,
-    new Set(Object.values(NTC2018_ELEVATION_REGULARITY)),
-    "regularity.elevation"
-  )];
-  const q = b === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE ? 1 : q0 * kr;
-  return {
-    behavior: b,
+  const q0 = selectNTC2018BaseQFactor({
+    behavior: normalizedBehavior,
     structuralType: type,
-    isDissipative: b !== NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE,
-    ductilityClass: b === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE ? null : b === NTC2018_STRUCTURAL_BEHAVIOR.CD_A ? 'CD"A"' : 'CD"B"',
-    overstrengthFactors: { ...overstrengthFactors },
+    alphaRatio,
+    frameStoreyCount,
+    frameBayCount,
+    uncoupledWallCount
+  });
+  let kr = 1;
+  if (normalizedBehavior !== NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE) {
+    const elevation = validateEnum(
+      regularity.elevation,
+      VALID_ELEVATION_REGULARITY,
+      "regularity.elevation"
+    );
+    kr = NTC2018_REGULARITY_REDUCTION[elevation];
+  }
+  return {
+    behavior: normalizedBehavior,
+    structuralType: type,
+    isDissipative: normalizedBehavior !== NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE,
+    ductilityClass: normalizedBehavior === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE ? null : normalizedBehavior === NTC2018_STRUCTURAL_BEHAVIOR.CD_A ? 'CD"A"' : 'CD"B"',
+    overstrengthFactors: {
+      ...selectNTC2018OverstrengthFactors({ behavior: normalizedBehavior })
+    },
     q0,
-    q,
+    q: normalizedBehavior === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE ? q0 : q0 * kr,
     kr,
     references: NTC2018_STRUCTURAL_BEHAVIOR_REFERENCES
   };
@@ -70267,229 +71177,308 @@ function createNTC2018StructuralBehavior({
 
 // src/norms/ntc2018/reinforced-concrete/structuralRegularity.js
 var NTC2018_REGULARITY_REFERENCES = Object.freeze([
-  {
+  Object.freeze({
     source: "NTC 2018",
-    citation: "D.M. 17/01/2018, \xA7\xA7 7.2.2, 7.2.3, 7.3.1, Tab. 7.2.I, Tab. 7.2.II"
-  },
-  {
-    source: "Circolare 2019",
-    citation: "Circ. 21/01/2019 n. 7, C7.2.2"
-  }
+    citation: "\xA7 7.2.1 (regolarit\xE0 in pianta e in altezza) e \xA7 7.3.1 (fattore \u03B7R)"
+  }),
+  Object.freeze({
+    source: "Circolare 21 gennaio 2019, n. 7 C.S.LL.PP.",
+    citation: "\xA7 C7.2.1"
+  })
 ]);
-function finiteNonNegative7(value, label) {
-  if (!Number.isFinite(value) || value < 0) {
-    throw new Error(`${label} must be finite and non-negative; got ${value}.`);
-  }
-  return value;
-}
-function finitePositive7(value, label) {
-  if (!Number.isFinite(value) || value <= 0) {
+function positive26(value, label) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) {
     throw new Error(`${label} must be finite and positive; got ${value}.`);
   }
+  return number;
+}
+function ratio01(value, label) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 0 || number > 1) {
+    throw new Error(`${label} must be between 0 and 1; got ${value}.`);
+  }
+  return number;
+}
+function requiredBoolean(value, label) {
+  if (typeof value !== "boolean") {
+    throw new Error(`${label} must be explicitly true or false.`);
+  }
   return value;
 }
-function evaluateNTC2018PlanRegularity({
-  planLengthX,
-  planLengthY,
-  maxReentrantX = 0,
-  maxReentrantY = 0,
-  eccentricityX,
-  eccentricityY,
-  torsionalRadiusX,
-  torsionalRadiusY,
-  floorOpeningRatio,
-  hasRigidDiaphragms = true
-} = {}) {
-  const Lx = finitePositive7(planLengthX, "planLengthX");
-  const Ly = finitePositive7(planLengthY, "planLengthY");
-  const rx = finiteNonNegative7(maxReentrantX, "maxReentrantX");
-  const ry = finiteNonNegative7(maxReentrantY, "maxReentrantY");
-  const checks = [];
-  let allOk = true;
-  const Lmax = Math.max(Lx, Ly);
-  const Lmin = Math.min(Lx, Ly);
-  const slenderness = Lmax / Lmin;
-  const slendernessOk = slenderness <= 4;
-  checks.push({
-    check: "plan-slenderness",
-    ok: slendernessOk,
-    reference: "NTC 2018 Tab. 7.2.I (snellezza Lmax/Lmin \u2264 4)",
-    detail: `Lmax/Lmin = ${Lmax}/${Lmin} = ${slenderness.toFixed(2)}`
-  });
-  if (!slendernessOk) allOk = false;
-  let reentrantRatioX = null;
-  let reentrantRatioY = null;
-  if (rx > 0) {
-    reentrantRatioX = rx / Lx;
-    const reentrantOkX = reentrantRatioX <= 0.25;
-    checks.push({
-      check: "plan-reentrant-x",
-      ok: reentrantOkX,
-      reference: "NTC 2018 Tab. 7.2.I (rientranze \u2264 25%)",
-      detail: `rientranza X/Lx = ${rx}/${Lx} = ${(reentrantRatioX * 100).toFixed(1)}%`
-    });
-    if (!reentrantOkX) allOk = false;
+function normalizeFloorPlans(input) {
+  var _a;
+  if (Array.isArray(input.floors) && input.floors.length > 0) {
+    return input.floors;
   }
-  if (ry > 0) {
-    reentrantRatioY = ry / Ly;
-    const reentrantOkY = reentrantRatioY <= 0.25;
-    checks.push({
-      check: "plan-reentrant-y",
-      ok: reentrantOkY,
-      reference: "NTC 2018 Tab. 7.2.I (rientranze \u2264 25%)",
-      detail: `rientranza Y/Ly = ${ry}/${Ly} = ${(reentrantRatioY * 100).toFixed(1)}%`
-    });
-    if (!reentrantOkY) allOk = false;
+  if (input.planLengthX !== void 0 || input.planLengthY !== void 0) {
+    return [{
+      storeyId: (_a = input.storeyId) != null ? _a : "plan",
+      planLengthX: input.planLengthX,
+      planLengthY: input.planLengthY,
+      contourConvex: input.contourConvex,
+      reentrantAreaRatios: input.reentrantAreaRatios,
+      reentrantInfluenceNegligible: input.reentrantInfluenceNegligible,
+      diaphragmInPlaneRigidityAdequate: input.diaphragmInPlaneRigidityAdequate,
+      diaphragmInPlaneStrengthAdequate: input.diaphragmInPlaneStrengthAdequate
+    }];
   }
-  let eccentricityRatioX = null;
-  let eccentricityRatioY = null;
-  if (eccentricityX !== void 0 && torsionalRadiusX !== void 0) {
-    const ex = finiteNonNegative7(eccentricityX, "eccentricityX");
-    const trx = finitePositive7(torsionalRadiusX, "torsionalRadiusX");
-    eccentricityRatioX = ex / trx;
-    const eccOkX = eccentricityRatioX <= 0.3;
-    checks.push({
-      check: "plan-eccentricity-x",
-      ok: eccOkX,
-      reference: "NTC 2018 Tab. 7.2.I (eccentricit\xE0 masse-rigidezze \u2264 0.3 r)",
-      detail: `ex/rx = ${ex}/${trx} = ${eccentricityRatioX.toFixed(3)}`
+  throw new Error("At least one floor plan is required.");
+}
+function evaluateNTC2018PlanRegularity(input = {}) {
+  var _a, _b;
+  const symmetry = requiredBoolean(
+    input.massAndStiffnessApproximatelySymmetric,
+    "massAndStiffnessApproximatelySymmetric"
+  );
+  const floors = normalizeFloorPlans(input);
+  const checks = [{
+    check: "plan-mass-stiffness-symmetry",
+    ok: symmetry,
+    reference: "NTC 2018 \xA7 7.2.1, lettera a)"
+  }];
+  const floorDetails = [];
+  for (let index = 0; index < floors.length; index++) {
+    const floor = floors[index];
+    const storeyId = (_a = floor.storeyId) != null ? _a : `floor-${index + 1}`;
+    const lengthX = positive26(
+      floor.planLengthX,
+      `floors[${index}].planLengthX`
+    );
+    const lengthY = positive26(
+      floor.planLengthY,
+      `floors[${index}].planLengthY`
+    );
+    const slenderness = Math.max(lengthX, lengthY) / Math.min(lengthX, lengthY);
+    const slendernessOk = slenderness < 4;
+    const contourConvex = requiredBoolean(
+      floor.contourConvex,
+      `floors[${index}].contourConvex`
+    );
+    let maximumReentrantAreaRatio = 0;
+    let compactnessOk = contourConvex;
+    if (!contourConvex) {
+      if (!Array.isArray(floor.reentrantAreaRatios) || floor.reentrantAreaRatios.length === 0) {
+        throw new Error(
+          `floors[${index}].reentrantAreaRatios is required for a non-convex plan.`
+        );
+      }
+      maximumReentrantAreaRatio = Math.max(
+        ...floor.reentrantAreaRatios.map((value, reentrantIndex) => ratio01(
+          value,
+          `floors[${index}].reentrantAreaRatios[${reentrantIndex}]`
+        ))
+      );
+      compactnessOk = maximumReentrantAreaRatio <= 0.05 && requiredBoolean(
+        floor.reentrantInfluenceNegligible,
+        `floors[${index}].reentrantInfluenceNegligible`
+      );
+    }
+    const rigidityOk = requiredBoolean(
+      floor.diaphragmInPlaneRigidityAdequate,
+      `floors[${index}].diaphragmInPlaneRigidityAdequate`
+    );
+    const strengthOk = requiredBoolean(
+      floor.diaphragmInPlaneStrengthAdequate,
+      `floors[${index}].diaphragmInPlaneStrengthAdequate`
+    );
+    const floorChecks = [
+      {
+        check: "plan-compactness",
+        storeyId,
+        ok: compactnessOk,
+        maximumReentrantAreaRatio,
+        reference: "NTC 2018 \xA7 7.2.1, lettera a)"
+      },
+      {
+        check: "plan-bounding-rectangle-ratio",
+        storeyId,
+        ok: slendernessOk,
+        value: slenderness,
+        limit: 4,
+        comparison: "<",
+        reference: "NTC 2018 \xA7 7.2.1, lettera b)"
+      },
+      {
+        check: "plan-diaphragm-in-plane-rigidity",
+        storeyId,
+        ok: rigidityOk,
+        reference: "NTC 2018 \xA7 7.2.1, lettera c)"
+      },
+      {
+        check: "plan-diaphragm-in-plane-strength",
+        storeyId,
+        ok: strengthOk,
+        reference: "NTC 2018 \xA7 7.2.1, lettera c)"
+      }
+    ];
+    checks.push(...floorChecks);
+    floorDetails.push({
+      storeyId,
+      slenderness,
+      maximumReentrantAreaRatio,
+      checks: floorChecks
     });
-    if (!eccOkX) allOk = false;
   }
-  if (eccentricityY !== void 0 && torsionalRadiusY !== void 0) {
-    const ey = finiteNonNegative7(eccentricityY, "eccentricityY");
-    const trY = finitePositive7(torsionalRadiusY, "torsionalRadiusY");
-    eccentricityRatioY = ey / trY;
-    const eccOkY = eccentricityRatioY <= 0.3;
-    checks.push({
-      check: "plan-eccentricity-y",
-      ok: eccOkY,
-      reference: "NTC 2018 Tab. 7.2.I (eccentricit\xE0 masse-rigidezze \u2264 0.3 r)",
-      detail: `ey/ry = ${ey}/${trY} = ${eccentricityRatioY.toFixed(3)}`
-    });
-    if (!eccOkY) allOk = false;
-  }
-  const floorContinuityOk = floorOpeningRatio === void 0 || floorOpeningRatio <= 0.25;
-  checks.push({
-    check: "plan-floor-continuity",
-    ok: floorContinuityOk,
-    reference: "NTC 2018 Tab. 7.2.I (assenza discontinuit\xE0 significative nei solai)",
-    detail: floorOpeningRatio !== void 0 ? `rapporto aperture = ${(floorOpeningRatio * 100).toFixed(1)}%` : "non valutato (dati non forniti)"
-  });
-  if (!floorContinuityOk) allOk = false;
-  checks.push({
-    check: "plan-rigid-diaphragms",
-    ok: hasRigidDiaphragms,
-    reference: "NTC 2018 Tab. 7.2.I (solai infinitamente rigidi nel piano)",
-    detail: hasRigidDiaphragms ? "diaframmi rigidi dichiarati" : "diaframmi non rigidi"
-  });
-  if (!hasRigidDiaphragms) allOk = false;
+  const allChecksOk = checks.every((check4) => check4.ok === true);
+  const governingFloor = floorDetails.reduce(
+    (governing, floor) => governing == null || floor.slenderness > governing.slenderness ? floor : governing,
+    null
+  );
   return {
-    regularity: allOk ? NTC2018_PLAN_REGULARITY.REGULAR : NTC2018_PLAN_REGULARITY.NON_REGULAR,
+    regularity: allChecksOk ? NTC2018_PLAN_REGULARITY.REGULAR : NTC2018_PLAN_REGULARITY.NON_REGULAR,
+    allChecksOk,
     checks,
-    slenderness,
-    reentrantRatioX,
-    reentrantRatioY,
-    eccentricityRatioX,
-    eccentricityRatioY
+    floors: floorDetails,
+    slenderness: (_b = governingFloor == null ? void 0 : governingFloor.slenderness) != null ? _b : null,
+    maximumReentrantAreaRatio: Math.max(
+      ...floorDetails.map((floor) => floor.maximumReentrantAreaRatio)
+    ),
+    reentrantRatioX: null,
+    reentrantRatioY: null,
+    eccentricityRatioX: null,
+    eccentricityRatioY: null
   };
+}
+function pairCheck({
+  check: check4,
+  storeyId,
+  comparedTo,
+  value,
+  minimum: minimum2,
+  maximum,
+  reference
+}) {
+  return {
+    check: check4,
+    storeyId,
+    comparedTo,
+    ok: value >= minimum2 && value <= maximum,
+    value,
+    minimum: minimum2,
+    maximum,
+    reference
+  };
+}
+function positiveStoreyValue(storey, key, index) {
+  return positive26(storey[key], `storeys[${index}].${key}`);
 }
 function evaluateNTC2018ElevationRegularity({
   storeys,
-  continuousVerticalSystems = true,
-  hasInclinedElements = false
+  continuousVerticalSystems,
+  stiffnessCriterionExempt = false,
+  isFrameStructure = false
 } = {}) {
   if (!Array.isArray(storeys) || storeys.length < 2) {
     throw new Error(
-      "At least two storeys are required for elevation regularity evaluation."
+      "At least two storeys ordered from base to top are required."
     );
   }
-  const checks = [];
-  const storeyDetails = [];
-  let allOk = true;
-  checks.push({
-    check: "elevation-continuous-systems",
-    ok: continuousVerticalSystems,
-    reference: "NTC 2018 Tab. 7.2.II (sistemi resistenti verticali continui)",
-    detail: continuousVerticalSystems ? "sistemi verticali continui" : "sistemi verticali non continui"
+  requiredBoolean(continuousVerticalSystems, "continuousVerticalSystems");
+  requiredBoolean(stiffnessCriterionExempt, "stiffnessCriterionExempt");
+  requiredBoolean(isFrameStructure, "isFrameStructure");
+  const normalized3 = storeys.map((storey, index) => {
+    var _a;
+    const topResistanceException = isFrameStructure && storeys.length >= 3 && index === storeys.length - 1;
+    return {
+      ...storey,
+      storeyId: (_a = storey.storeyId) != null ? _a : `storey-${index + 1}`,
+      mass: positiveStoreyValue(storey, "mass", index),
+      planLengthX: positiveStoreyValue(storey, "planLengthX", index),
+      planLengthY: positiveStoreyValue(storey, "planLengthY", index),
+      stiffnessX: stiffnessCriterionExempt ? null : positiveStoreyValue(storey, "stiffnessX", index),
+      stiffnessY: stiffnessCriterionExempt ? null : positiveStoreyValue(storey, "stiffnessY", index),
+      capacityDemandRatioX: topResistanceException ? null : positiveStoreyValue(storey, "capacityDemandRatioX", index),
+      capacityDemandRatioY: topResistanceException ? null : positiveStoreyValue(storey, "capacityDemandRatioY", index)
+    };
   });
-  if (!continuousVerticalSystems) allOk = false;
-  for (let i = 1; i < storeys.length; i++) {
-    const current = storeys[i];
-    const below = storeys[i - 1];
-    const storeyChecks = [];
-    if (below.mass > 0) {
-      const massRatio = current.mass / below.mass;
-      const massOk = massRatio >= 0.75 && massRatio <= 1.25;
-      storeyChecks.push({
-        check: "elevation-mass-variation",
-        ok: massOk,
-        reference: "NTC 2018 Tab. 7.2.II (variazione massa \u2264 25%)",
-        detail: `massa ${current.storeyId}/${below.storeyId} = ${massRatio.toFixed(3)}`
-      });
-      if (!massOk) allOk = false;
+  const checks = [{
+    check: "elevation-continuous-horizontal-resisting-systems",
+    ok: continuousVerticalSystems,
+    reference: "NTC 2018 \xA7 7.2.1, lettera d)"
+  }];
+  const storeyDetails = [];
+  const first = normalized3[0];
+  for (let index = 1; index < normalized3.length; index++) {
+    const current = normalized3[index];
+    const below = normalized3[index - 1];
+    const pairChecks = [];
+    pairChecks.push(pairCheck({
+      check: "elevation-mass-variation",
+      storeyId: current.storeyId,
+      comparedTo: below.storeyId,
+      value: current.mass / below.mass,
+      minimum: 0.75,
+      maximum: 1.25,
+      reference: "NTC 2018 \xA7 7.2.1, lettera e)"
+    }));
+    if (!stiffnessCriterionExempt) {
+      for (const direction of ["X", "Y"]) {
+        pairChecks.push(pairCheck({
+          check: `elevation-stiffness-${direction.toLowerCase()}`,
+          storeyId: current.storeyId,
+          comparedTo: below.storeyId,
+          value: current[`stiffness${direction}`] / below[`stiffness${direction}`],
+          minimum: 0.7,
+          maximum: 1.1,
+          reference: "NTC 2018 \xA7 7.2.1, lettera e)"
+        }));
+      }
     }
-    if (current.stiffnessX !== void 0 && below.stiffnessX !== void 0 && below.stiffnessX > 0) {
-      const stiffRatioX = current.stiffnessX / below.stiffnessX;
-      const stiffOkX = stiffRatioX >= 0.7;
-      storeyChecks.push({
-        check: "elevation-stiffness-x",
-        ok: stiffOkX,
-        reference: "NTC 2018 Tab. 7.2.II (riduzione rigidezza non brusca)",
-        detail: `rigidezza X ${current.storeyId}/${below.storeyId} = ${stiffRatioX.toFixed(3)}`
-      });
-      if (!stiffOkX) allOk = false;
+    const topResistanceException = isFrameStructure && normalized3.length >= 3 && index === normalized3.length - 1;
+    if (!topResistanceException) {
+      for (const direction of ["X", "Y"]) {
+        pairChecks.push(pairCheck({
+          check: `elevation-capacity-demand-${direction.toLowerCase()}`,
+          storeyId: current.storeyId,
+          comparedTo: below.storeyId,
+          value: current[`capacityDemandRatio${direction}`] / below[`capacityDemandRatio${direction}`],
+          minimum: 0.7,
+          maximum: 1.3,
+          reference: "NTC 2018 \xA7 7.2.1, lettera f)"
+        }));
+      }
     }
-    if (current.resistanceX !== void 0 && below.resistanceX !== void 0 && below.resistanceX > 0) {
-      const resRatioX = current.resistanceX / below.resistanceX;
-      const resOkX = resRatioX >= 0.8;
-      storeyChecks.push({
-        check: "elevation-resistance-x",
-        ok: resOkX,
-        reference: "NTC 2018 Tab. 7.2.II, Eq. [7.2.1] (rapporto resistenze \u2265 0.8)",
-        detail: `resistenza X ${current.storeyId}/${below.storeyId} = ${resRatioX.toFixed(3)}`
-      });
-      if (!resOkX) allOk = false;
+    const topSetbackException = normalized3.length >= 4 && index === normalized3.length - 1;
+    if (!topSetbackException) {
+      for (const direction of ["X", "Y"]) {
+        const dimensionKey = `planLength${direction}`;
+        const immediateSetback = current[`setback${direction}`] !== void 0 ? Number(current[`setback${direction}`]) : Math.max(0, below[dimensionKey] - current[dimensionKey]);
+        const firstSetback = current[`setbackFromFirst${direction}`] !== void 0 ? Number(current[`setbackFromFirst${direction}`]) : Math.max(0, first[dimensionKey] - current[dimensionKey]);
+        if (!Number.isFinite(immediateSetback) || immediateSetback < 0 || !Number.isFinite(firstSetback) || firstSetback < 0) {
+          throw new Error(
+            `Storey ${current.storeyId} setbacks in ${direction} must be finite and non-negative.`
+          );
+        }
+        pairChecks.push({
+          check: `elevation-setback-${direction.toLowerCase()}`,
+          storeyId: current.storeyId,
+          comparedTo: below.storeyId,
+          ok: immediateSetback / below[dimensionKey] <= 0.1 && firstSetback / first[dimensionKey] <= 0.3,
+          immediateRatio: immediateSetback / below[dimensionKey],
+          fromFirstRatio: firstSetback / first[dimensionKey],
+          immediateLimit: 0.1,
+          fromFirstLimit: 0.3,
+          reference: "NTC 2018 \xA7 7.2.1, lettera g)"
+        });
+      }
     }
-    if (current.resistanceY !== void 0 && below.resistanceY !== void 0 && below.resistanceY > 0) {
-      const resRatioY = current.resistanceY / below.resistanceY;
-      const resOkY = resRatioY >= 0.8;
-      storeyChecks.push({
-        check: "elevation-resistance-y",
-        ok: resOkY,
-        reference: "NTC 2018 Tab. 7.2.II, Eq. [7.2.1] (rapporto resistenze \u2265 0.8)",
-        detail: `resistenza Y ${current.storeyId}/${below.storeyId} = ${resRatioY.toFixed(3)}`
-      });
-      if (!resOkY) allOk = false;
-    }
-    if (current.setbackX !== void 0 && current.planLengthX !== void 0 && current.planLengthX > 0) {
-      const setbackRatioX = current.setbackX / current.planLengthX;
-      const setbackOkX = setbackRatioX <= 0.2;
-      storeyChecks.push({
-        check: "elevation-setback-x",
-        ok: setbackOkX,
-        reference: "NTC 2018 Tab. 7.2.II (arretramenti \u2264 20%)",
-        detail: `arretramento X = ${(setbackRatioX * 100).toFixed(1)}%`
-      });
-      if (!setbackOkX) allOk = false;
-    }
+    checks.push(...pairChecks);
     storeyDetails.push({
       storeyId: current.storeyId,
       comparedTo: below.storeyId,
-      checks: storeyChecks
+      checks: pairChecks,
+      topResistanceException,
+      topSetbackException
     });
   }
-  checks.push({
-    check: "elevation-no-inclined-elements",
-    ok: !hasInclinedElements,
-    reference: "NTC 2018 Tab. 7.2.II (assenza elementi inclinati significativi)",
-    detail: hasInclinedElements ? "presenti elementi inclinati significativi" : "nessun elemento inclinato significativo"
-  });
-  if (hasInclinedElements) allOk = false;
+  const allChecksOk = checks.every((check4) => check4.ok === true);
   return {
-    regularity: allOk ? NTC2018_ELEVATION_REGULARITY.REGULAR : NTC2018_ELEVATION_REGULARITY.NON_REGULAR,
+    regularity: allChecksOk ? NTC2018_ELEVATION_REGULARITY.REGULAR : NTC2018_ELEVATION_REGULARITY.NON_REGULAR,
+    allChecksOk,
     checks,
-    storeyDetails
+    storeyDetails,
+    stiffnessCriterionExempt
   };
 }
 function createNTC2018RegularityAssessment({
@@ -70502,140 +71491,241 @@ function createNTC2018RegularityAssessment({
   td
 }) {
   const planResult = evaluateNTC2018PlanRegularity(planInput);
-  const elevResult = evaluateNTC2018ElevationRegularity(elevationInput);
-  const kr = NTC2018_REGULARITY_REDUCTION[elevResult.regularity];
-  const analysisX = selectNTC2018AllowedAnalysisMethods({
+  const elevationResult = evaluateNTC2018ElevationRegularity(elevationInput);
+  const reductionFactorKr = NTC2018_REGULARITY_REDUCTION[elevationResult.regularity];
+  const analysisMethodsX = selectNTC2018AllowedAnalysisMethods({
     behavior,
     planRegularity: planResult.regularity,
-    elevationRegularity: elevResult.regularity,
+    elevationRegularity: elevationResult.regularity,
     t1: t1X,
     tc,
     td
   });
-  const analysisY = selectNTC2018AllowedAnalysisMethods({
+  const analysisMethodsY = selectNTC2018AllowedAnalysisMethods({
     behavior,
     planRegularity: planResult.regularity,
-    elevationRegularity: elevResult.regularity,
+    elevationRegularity: elevationResult.regularity,
     t1: t1Y,
     tc,
     td
   });
-  const allChecks = [
-    ...planResult.checks.map((c) => ({ ...c, scope: "plan" })),
-    ...elevResult.checks.map((c) => ({ ...c, scope: "elevation" }))
+  const checks = [
+    ...planResult.checks.map((check4) => ({ ...check4, scope: "plan" })),
+    ...elevationResult.checks.map((check4) => ({
+      ...check4,
+      scope: "elevation"
+    }))
   ];
   return {
     planRegularity: planResult.regularity,
-    elevationRegularity: elevResult.regularity,
-    reductionFactorKr: kr,
-    analysisMethodsX: {
-      allowed: analysisX.allowed,
-      recommended: analysisX.recommended,
-      linearStaticAllowed: analysisX.linearStaticAllowed,
-      checks: analysisX.checks
-    },
-    analysisMethodsY: {
-      allowed: analysisY.allowed,
-      recommended: analysisY.recommended,
-      linearStaticAllowed: analysisY.linearStaticAllowed,
-      checks: analysisY.checks
-    },
+    elevationRegularity: elevationResult.regularity,
+    reductionFactorKr,
+    analysisMethodsX,
+    analysisMethodsY,
     planDetails: {
       slenderness: planResult.slenderness,
-      reentrantRatioX: planResult.reentrantRatioX,
-      reentrantRatioY: planResult.reentrantRatioY,
-      eccentricityRatioX: planResult.eccentricityRatioX,
-      eccentricityRatioY: planResult.eccentricityRatioY
+      maximumReentrantAreaRatio: planResult.maximumReentrantAreaRatio,
+      floors: planResult.floors
     },
-    elevationDetails: elevResult.storeyDetails,
-    checks: allChecks,
+    elevationDetails: elevationResult.storeyDetails,
+    allChecksOk: checks.every((check4) => check4.ok === true),
+    checks,
     references: NTC2018_REGULARITY_REFERENCES
   };
 }
 
 // src/norms/ntc2018/reinforced-concrete/capacityDesign.js
 var NTC2018_CAPACITY_DESIGN_REFERENCES = Object.freeze([
-  {
+  Object.freeze({
     source: "NTC 2018",
-    citation: "D.M. 17/01/2018, \xA7\xA7 7.4.4, 7.4.5, 7.4.6, 7.4.6.1, 7.4.7"
-  },
-  {
-    source: "Circolare 2019",
-    citation: "Circ. 21/01/2019 n. 7, C7.4.4, C7.4.5, C7.4.6"
-  }
+    citation: "\xA7\xA7 7.4.4.1.1, 7.4.4.2.1 e 7.4.4.3.1; Eqs. [7.4.4]-[7.4.7]"
+  }),
+  Object.freeze({
+    source: "Circolare 21 gennaio 2019, n. 7 C.S.LL.PP.",
+    citation: "\xA7 C7.4.4"
+  })
 ]);
-function positive25(value, label) {
-  if (!Number.isFinite(value) || value <= 0) {
+function finite35(value, label) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    throw new Error(`${label} must be finite; got ${value}.`);
+  }
+  return number;
+}
+function positive27(value, label) {
+  const number = finite35(value, label);
+  if (number <= 0) {
     throw new Error(`${label} must be positive; got ${value}.`);
   }
-  return value;
+  return number;
 }
 function nonNegative9(value, label) {
-  if (!Number.isFinite(value) || value < 0) {
+  const number = finite35(value, label);
+  if (number < 0) {
     throw new Error(`${label} must be non-negative; got ${value}.`);
   }
-  return value;
+  return number;
+}
+function finiteArray(values, label, { minimumLength = 1, maximumLength } = {}) {
+  if (!Array.isArray(values) || values.length < minimumLength || maximumLength !== void 0 && values.length > maximumLength) {
+    const maximumText = maximumLength === void 0 ? "" : ` and at most ${maximumLength}`;
+    throw new Error(
+      `${label} must contain at least ${minimumLength}${maximumText} values.`
+    );
+  }
+  return values.map((value, index) => finite35(value, `${label}[${index}]`));
 }
 function verifyBeamColumnHierarchy({
-  beamMomentResistancePositive,
-  beamMomentResistanceNegative,
-  columnMomentResistance,
-  behavior
+  beamMomentResistances,
+  columnMomentResistances,
+  behavior,
+  isTopStoreyColumnJoint = false
 }) {
-  const mrbPos = nonNegative9(beamMomentResistancePositive, "beamMomentResistancePositive");
-  const mrbNeg = nonNegative9(beamMomentResistanceNegative, "beamMomentResistanceNegative");
-  const mrc = nonNegative9(columnMomentResistance, "columnMomentResistance");
-  const { beamShear: gammaRd } = selectNTC2018OverstrengthFactors({ behavior });
-  const sumMRb = mrbPos + mrbNeg;
-  const demand = gammaRd * sumMRb;
+  const normalizedBehavior = normalizeNTC2018StructuralBehavior(behavior);
+  if (typeof isTopStoreyColumnJoint !== "boolean") {
+    throw new Error("isTopStoreyColumnJoint must be boolean.");
+  }
+  if (normalizedBehavior === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE || isTopStoreyColumnJoint) {
+    return {
+      applicable: false,
+      ok: true,
+      demand: null,
+      capacity: null,
+      utilizationRatio: null,
+      gammaRd: null,
+      discordantColumns: false,
+      check: "capacity-design-beam-column-hierarchy",
+      reference: "NTC 2018 \xA7 7.4.4.2.1, Eq. [7.4.4]"
+    };
+  }
+  const beams = finiteArray(
+    beamMomentResistances,
+    "beamMomentResistances"
+  );
+  const columns = finiteArray(
+    columnMomentResistances,
+    "columnMomentResistances",
+    { maximumLength: 2 }
+  );
+  const gammaRd = selectNTC2018OverstrengthFactors({
+    behavior: normalizedBehavior
+  }).columnBending;
+  const beamSum = beams.reduce((sum, value) => sum + Math.abs(value), 0);
+  const columnMagnitudes = columns.map(Math.abs);
+  const discordantColumns = columns.length === 2 && columns[0] * columns[1] < 0;
+  let capacity = columnMagnitudes.reduce((sum, value) => sum + value, 0);
+  let transferredColumnMoment = 0;
+  if (discordantColumns) {
+    capacity = Math.max(...columnMagnitudes);
+    transferredColumnMoment = Math.min(...columnMagnitudes);
+  }
+  const demand = gammaRd * beamSum + transferredColumnMoment;
   return {
+    applicable: true,
     demand,
-    capacity: mrc,
-    utilizationRatio: mrc > 0 ? demand / mrc : Infinity,
-    ok: demand <= mrc,
+    capacity,
+    utilizationRatio: capacity > 0 ? demand / capacity : Infinity,
+    ok: capacity > 0 && demand <= capacity,
     gammaRd,
+    beamMomentResistanceSum: beamSum,
+    columnMomentResistanceSum: columnMagnitudes.reduce(
+      (sum, value) => sum + value,
+      0
+    ),
+    transferredColumnMoment,
+    discordantColumns,
     check: "capacity-design-beam-column-hierarchy",
-    reference: "NTC 2018 \xA7 7.4.4, Eq. [7.4.4]"
+    reference: "NTC 2018 \xA7 7.4.4.2.1, Eq. [7.4.4]"
   };
 }
 function computeBeamCapacityShear({
-  momentResistancePositive,
-  momentResistanceNegative,
+  momentResistanceLeft,
+  momentResistanceRight,
   clearLength,
-  gravityShear = 0,
+  gravityShearLeft,
+  gravityShearRight,
   behavior
 }) {
-  const mPos = nonNegative9(momentResistancePositive, "momentResistancePositive");
-  const mNeg = nonNegative9(momentResistanceNegative, "momentResistanceNegative");
-  const lcl = positive25(clearLength, "clearLength");
-  const vgq = Number.isFinite(gravityShear) ? gravityShear : 0;
-  const { beamShear: gammaRd } = selectNTC2018OverstrengthFactors({ behavior });
-  const shearFromMoments = gammaRd * (mPos + mNeg) / lcl;
-  const shearDemand = Math.abs(shearFromMoments + vgq);
+  const leftMoment = finite35(momentResistanceLeft, "momentResistanceLeft");
+  const rightMoment = finite35(momentResistanceRight, "momentResistanceRight");
+  const length = positive27(clearLength, "clearLength");
+  const leftGravityShear = finite35(gravityShearLeft, "gravityShearLeft");
+  const rightGravityShear = finite35(gravityShearRight, "gravityShearRight");
+  const normalizedBehavior = normalizeNTC2018StructuralBehavior(behavior);
+  if (normalizedBehavior === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE) {
+    throw new Error("Beam capacity-design shear is not applicable to non-dissipative behaviour.");
+  }
+  const gammaRd = selectNTC2018OverstrengthFactors({
+    behavior: normalizedBehavior
+  }).beamShear;
+  const shearFromEndMoments = gammaRd * (rightMoment - leftMoment) / length;
+  const signedShearLeft = leftGravityShear + shearFromEndMoments;
+  const signedShearRight = rightGravityShear + shearFromEndMoments;
   return {
-    shearDemand,
+    shearDemand: Math.max(
+      Math.abs(signedShearLeft),
+      Math.abs(signedShearRight)
+    ),
+    shearDemandLeft: Math.abs(signedShearLeft),
+    shearDemandRight: Math.abs(signedShearRight),
+    signedShearLeft,
+    signedShearRight,
+    shearFromEndMoments,
     gammaRd,
-    shearFromMoments,
     check: "capacity-design-beam-shear",
-    reference: "NTC 2018 \xA7 7.4.5, Eq. [7.4.14-15]"
+    reference: "NTC 2018 \xA7 7.4.4.1.1 (Taglio)"
+  };
+}
+function columnEndDesignMoment({
+  columnMomentResistance,
+  beamMomentResistanceSum,
+  columnMomentResistanceSum,
+  label
+}) {
+  const columnResistance = nonNegative9(
+    columnMomentResistance,
+    `${label}.columnMomentResistance`
+  );
+  const beamSum = nonNegative9(
+    beamMomentResistanceSum,
+    `${label}.beamMomentResistanceSum`
+  );
+  const columnSum = positive27(
+    columnMomentResistanceSum,
+    `${label}.columnMomentResistanceSum`
+  );
+  const hierarchyFactor = Math.min(1, beamSum / columnSum);
+  return {
+    designMoment: columnResistance * hierarchyFactor,
+    hierarchyFactor
   };
 }
 function computeColumnCapacityShear({
-  momentResistanceTop,
-  momentResistanceBottom,
+  top,
+  bottom,
   clearLength,
   behavior
 }) {
-  const mTop = nonNegative9(momentResistanceTop, "momentResistanceTop");
-  const mBot = nonNegative9(momentResistanceBottom, "momentResistanceBottom");
-  const lcl = positive25(clearLength, "clearLength");
-  const { columnShear: gammaRd } = selectNTC2018OverstrengthFactors({ behavior });
-  const shearDemand = gammaRd * (mTop + mBot) / lcl;
+  const normalizedBehavior = normalizeNTC2018StructuralBehavior(behavior);
+  if (normalizedBehavior === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE) {
+    throw new Error("Column capacity-design shear is not applicable to non-dissipative behaviour.");
+  }
+  const topEnd = columnEndDesignMoment({ ...top, label: "top" });
+  const bottomEnd = columnEndDesignMoment({ ...bottom, label: "bottom" });
+  const length = positive27(clearLength, "clearLength");
+  const gammaRd = selectNTC2018OverstrengthFactors({
+    behavior: normalizedBehavior
+  }).columnShear;
+  const shearDemand = gammaRd * (topEnd.designMoment + bottomEnd.designMoment) / length;
   return {
     shearDemand,
     gammaRd,
+    designMomentTop: topEnd.designMoment,
+    designMomentBottom: bottomEnd.designMoment,
+    hierarchyFactorTop: topEnd.hierarchyFactor,
+    hierarchyFactorBottom: bottomEnd.hierarchyFactor,
     check: "capacity-design-column-shear",
-    reference: "NTC 2018 \xA7 7.4.6.1, Eq. [7.4.16-17]"
+    reference: "NTC 2018 \xA7 7.4.4.2.1, Eq. [7.4.5]"
   };
 }
 function computeJointCapacityShear({
@@ -70643,31 +71733,49 @@ function computeJointCapacityShear({
   topReinforcementArea,
   bottomReinforcementArea,
   reinforcementDesignStrength,
-  columnShearAbove = 0,
+  columnShearAbove,
   jointType
 }) {
-  const as1 = nonNegative9(topReinforcementArea, "topReinforcementArea");
-  const as2 = nonNegative9(bottomReinforcementArea, "bottomReinforcementArea");
-  const fyd = positive25(reinforcementDesignStrength, "reinforcementDesignStrength");
-  const vc = Number.isFinite(columnShearAbove) ? columnShearAbove : 0;
+  const normalizedBehavior = normalizeNTC2018StructuralBehavior(behavior);
+  const factors = selectNTC2018OverstrengthFactors({
+    behavior: normalizedBehavior === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE ? NTC2018_STRUCTURAL_BEHAVIOR.CD_B : normalizedBehavior
+  });
+  const topArea = nonNegative9(
+    topReinforcementArea,
+    "topReinforcementArea"
+  );
+  const bottomArea = nonNegative9(
+    bottomReinforcementArea,
+    "bottomReinforcementArea"
+  );
+  const designStrength5 = positive27(
+    reinforcementDesignStrength,
+    "reinforcementDesignStrength"
+  );
+  const columnShear = finite35(columnShearAbove, "columnShearAbove");
   if (jointType !== "internal" && jointType !== "external") {
-    throw new Error(
-      `jointType must be "internal" or "external"; got "${jointType}".`
-    );
+    throw new Error(`jointType must be "internal" or "external"; got ${jointType}.`);
   }
-  const { jointShear: gammaRd } = selectNTC2018OverstrengthFactors({ behavior });
-  let shearDemand;
-  if (jointType === "external") {
-    shearDemand = Math.abs(gammaRd * as1 * fyd - vc);
-  } else {
-    shearDemand = Math.abs(gammaRd * (as1 + as2) * fyd - vc);
-  }
+  const reinforcementForce = jointType === "internal" ? (topArea + bottomArea) * designStrength5 : topArea * designStrength5;
+  const signedShearDemand = factors.jointShear * reinforcementForce - columnShear;
   return {
-    shearDemand,
-    gammaRd,
+    shearDemand: Math.abs(signedShearDemand),
+    signedShearDemand,
+    gammaRd: factors.jointShear,
     jointType,
     check: "capacity-design-joint-shear",
-    reference: "NTC 2018 \xA7 7.4.7, Eq. [7.4.6-7]"
+    reference: jointType === "internal" ? "NTC 2018 \xA7 7.4.4.3.1, Eq. [7.4.7]" : "NTC 2018 \xA7 7.4.4.3.1, Eq. [7.4.6]"
+  };
+}
+function resistanceCheck(result9, resistance, check4) {
+  const capacity = positive27(resistance, `${check4}.shearResistance`);
+  return {
+    ...result9,
+    check: check4,
+    demand: result9.shearDemand,
+    capacity,
+    utilizationRatio: result9.shearDemand / capacity,
+    ok: result9.shearDemand <= capacity
   };
 }
 function createCapacityDesignAssessment({
@@ -70678,89 +71786,56 @@ function createCapacityDesignAssessment({
   columnShear,
   jointShear
 }) {
-  const isDissipative = behavior !== NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE;
+  const normalizedBehavior = normalizeNTC2018StructuralBehavior(behavior);
   const checks = [];
-  if (!isDissipative) {
-    return {
-      jointId,
-      behavior,
-      isDissipative: false,
-      checks: [{
-        check: "capacity-design-not-applicable",
-        ok: true,
-        demand: null,
-        capacity: null,
-        utilizationRatio: null,
-        reference: "NTC 2018 \xA7 7.8 (struttura non dissipativa)"
-      }],
-      references: NTC2018_CAPACITY_DESIGN_REFERENCES
-    };
-  }
-  if (hierarchy) {
-    const result9 = verifyBeamColumnHierarchy({
+  if (hierarchy != null) {
+    checks.push(verifyBeamColumnHierarchy({
       ...hierarchy,
-      behavior
-    });
-    checks.push({
-      ...result9,
-      demand: result9.demand,
-      capacity: result9.capacity
-    });
+      behavior: normalizedBehavior
+    }));
   }
-  if (beamShear) {
-    const result9 = computeBeamCapacityShear({
-      ...beamShear,
-      behavior
-    });
-    checks.push({
-      check: result9.check,
-      ok: null,
-      // shear resistance must be verified separately
-      demand: result9.shearDemand,
-      capacity: null,
-      // V_Rd from local verifier
-      utilizationRatio: null,
-      reference: result9.reference,
-      metadata: { gammaRd: result9.gammaRd }
-    });
+  if (beamShear != null) {
+    const { shearResistance, ...demandInput } = beamShear;
+    checks.push(resistanceCheck(
+      computeBeamCapacityShear({
+        ...demandInput,
+        behavior: normalizedBehavior
+      }),
+      shearResistance,
+      "capacity-design-beam-shear"
+    ));
   }
-  if (columnShear) {
-    const result9 = computeColumnCapacityShear({
-      ...columnShear,
-      behavior
-    });
-    checks.push({
-      check: result9.check,
-      ok: null,
-      demand: result9.shearDemand,
-      capacity: null,
-      utilizationRatio: null,
-      reference: result9.reference,
-      metadata: { gammaRd: result9.gammaRd }
-    });
+  if (columnShear != null) {
+    const { shearResistance, ...demandInput } = columnShear;
+    checks.push(resistanceCheck(
+      computeColumnCapacityShear({
+        ...demandInput,
+        behavior: normalizedBehavior
+      }),
+      shearResistance,
+      "capacity-design-column-shear"
+    ));
   }
-  if (jointShear) {
-    const result9 = computeJointCapacityShear({
-      ...jointShear,
-      behavior
-    });
-    checks.push({
-      check: result9.check,
-      ok: null,
-      demand: result9.shearDemand,
-      capacity: null,
-      utilizationRatio: null,
-      reference: result9.reference,
-      metadata: {
-        gammaRd: result9.gammaRd,
-        jointType: result9.jointType
-      }
-    });
+  if (jointShear != null) {
+    const { shearResistance, ...demandInput } = jointShear;
+    checks.push(resistanceCheck(
+      computeJointCapacityShear({
+        ...demandInput,
+        behavior: normalizedBehavior
+      }),
+      shearResistance,
+      "capacity-design-joint-shear"
+    ));
   }
+  const isDissipative = normalizedBehavior !== NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE;
+  const complete = checks.length > 0 && (!isDissipative || hierarchy != null);
   return {
     jointId,
-    behavior,
-    isDissipative: true,
+    behavior: normalizedBehavior,
+    isDissipative,
+    complete,
+    status: complete ? checks.every((check4) => check4.ok === true) ? "ok" : "not-verified" : "not-implemented",
+    allChecksOk: complete && checks.every((check4) => check4.ok === true),
     checks,
     references: NTC2018_CAPACITY_DESIGN_REFERENCES
   };
@@ -70768,102 +71843,147 @@ function createCapacityDesignAssessment({
 
 // src/norms/ntc2018/reinforced-concrete/displacementChecks.js
 var NTC2018_DISPLACEMENT_REFERENCES = Object.freeze([
-  {
+  Object.freeze({
     source: "NTC 2018",
-    citation: "D.M. 17/01/2018, \xA7\xA7 7.2.2, 7.3.5, 7.3.7, 7.9"
-  },
-  {
-    source: "Circolare 2019",
-    citation: "Circ. 21/01/2019 n. 7, C7.3.5, C7.3.7, C7.9"
-  }
+    citation: "\xA7 7.2.1 (distanza tra costruzioni contigue)"
+  }),
+  Object.freeze({
+    source: "NTC 2018",
+    citation: "\xA7 7.3.1, Eq. [7.3.3] (non linearit\xE0 geometriche)"
+  }),
+  Object.freeze({
+    source: "NTC 2018",
+    citation: "\xA7 7.3.6.1, Eqs. [7.3.11a], [7.3.11b] e [7.3.12] (spostamenti di interpiano)"
+  })
 ]);
 var NTC2018_DRIFT_INFILL_CATEGORY = Object.freeze({
-  /** Rigidly connected infill panels (tamponamenti collegati rigidamente) */
+  RIGIDLY_CONNECTED_FRAGILE: "rigidly-connected-fragile",
+  RIGIDLY_CONNECTED_DUCTILE: "rigidly-connected-ductile",
+  DAMAGE_AVOIDING: "damage-avoiding",
+  // Deprecated input aliases retained for one compatibility cycle.
   RIGIDLY_CONNECTED: "rigidly-connected",
-  /** Non-structural infill not rigidly connected */
   NON_RIGIDLY_CONNECTED: "non-rigidly-connected",
-  /** No infill panels */
   NO_INFILL: "no-infill"
 });
 var NTC2018_DRIFT_LIMITS = Object.freeze({
-  /** SLE (SLO/SLD) drift limits by infill category */
-  sle: Object.freeze({
-    "rigidly-connected": 5e-3,
-    "non-rigidly-connected": 0.01,
-    "no-infill": 0.01
-  }),
-  /** SLU (SLV) drift limit for dissipative structures */
-  slu: 0.01
+  "rigidly-connected-fragile": 5e-3,
+  "rigidly-connected-ductile": 75e-4,
+  "damage-avoiding": 0.01,
+  classIIIAndIVFactor: 2 / 3
 });
 var NTC2018_PDELTA_THRESHOLDS = Object.freeze({
-  /** θ ≤ 0.1: P-Delta effects negligible */
   negligible: 0.1,
-  /** 0.1 < θ ≤ 0.2: amplify displacements by 1/(1-θ) */
-  moderate: 0.2,
-  /** θ > 0.2: nonlinear analysis required */
-  nonlinearRequired: 0.2
+  amplificationUpper: 0.2,
+  nonlinearUpper: 0.3,
+  forbidden: 0.3
 });
-function positive26(value, label) {
-  if (!Number.isFinite(value) || value <= 0) {
+function finite36(value, label) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    throw new Error(`${label} must be finite; got ${value}.`);
+  }
+  return number;
+}
+function positive28(value, label) {
+  const number = finite36(value, label);
+  if (number <= 0) {
     throw new Error(`${label} must be positive; got ${value}.`);
   }
-  return value;
+  return number;
 }
 function nonNegative10(value, label) {
-  if (!Number.isFinite(value) || value < 0) {
+  const number = finite36(value, label);
+  if (number < 0) {
     throw new Error(`${label} must be non-negative; got ${value}.`);
   }
-  return value;
+  return number;
+}
+function normalizeUseClass(value) {
+  const normalized3 = String(value != null ? value : "").trim().toUpperCase().replace(/^CU[-\s]*/, "");
+  if (!["I", "II", "III", "IV"].includes(normalized3)) {
+    throw new Error(`useClass must be I, II, III or IV; got ${value}.`);
+  }
+  return normalized3;
+}
+function normalizeInfillCategory(value) {
+  if (value === "rigidly-connected") return "rigidly-connected-fragile";
+  if (value === "non-rigidly-connected") return "damage-avoiding";
+  if (value === "no-infill") {
+    throw new Error(
+      "NTC 2018 \xA7 7.3.6.1 does not define a generic no-infill drift limit; select the applicable non-structural system."
+    );
+  }
+  if (value === "rigidly-connected-fragile" || value === "rigidly-connected-ductile" || value === "damage-avoiding") {
+    return value;
+  }
+  throw new Error(`Unsupported infillCategory: ${value}.`);
 }
 function computeStoreyDrift({
   displacementTop,
   displacementBottom,
   storeyHeight
 }) {
-  const dTop = Number.isFinite(displacementTop) ? displacementTop : 0;
-  const dBot = Number.isFinite(displacementBottom) ? displacementBottom : 0;
-  const h = positive26(storeyHeight, "storeyHeight");
-  const drift = Math.abs(dTop - dBot);
-  const driftRatio = drift / h;
-  return { drift, driftRatio };
+  const top = finite36(displacementTop, "displacementTop");
+  const bottom = finite36(displacementBottom, "displacementBottom");
+  const height = positive28(storeyHeight, "storeyHeight");
+  const drift = Math.abs(top - bottom);
+  return { drift, driftRatio: drift / height };
 }
 function verifyStoreyDrift({
   driftRatio,
   limitState,
-  behavior,
-  infillCategory = "no-infill"
+  useClass,
+  q,
+  infillCategory,
+  nonStructuralDisplacementCapacityRatio
 }) {
-  const dr = nonNegative10(driftRatio, "driftRatio");
-  let limit;
-  let check2;
-  let reference;
-  if (limitState === "SLE") {
-    const validCategories = new Set(Object.values(NTC2018_DRIFT_INFILL_CATEGORY));
-    const cat = validCategories.has(infillCategory) ? infillCategory : "no-infill";
-    limit = NTC2018_DRIFT_LIMITS.sle[cat];
-    check2 = "drift-sle";
-    reference = `NTC 2018 \xA7 7.3.7.1, Eq. [7.3.6] (${cat})`;
-  } else if (limitState === "SLU") {
-    if (behavior === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE) {
-      limit = NTC2018_DRIFT_LIMITS.sle["no-infill"];
-      check2 = "drift-non-dissipative";
-      reference = "NTC 2018 \xA7 7.9 (limiti SLE per strutture non dissipative)";
-    } else {
-      limit = NTC2018_DRIFT_LIMITS.slu;
-      check2 = "drift-slu";
-      reference = "NTC 2018 \xA7 7.3.7.2, Eq. [7.3.7]";
-    }
-  } else {
+  const elasticDriftRatio = nonNegative10(driftRatio, "driftRatio");
+  const behaviorFactor = positive28(q, "q");
+  const normalizedUseClass = normalizeUseClass(useClass);
+  const category = normalizeInfillCategory(infillCategory);
+  const requiredLimitState = ["I", "II"].includes(normalizedUseClass) ? "SLD" : "SLO";
+  if (limitState !== requiredLimitState) {
     throw new Error(
-      `limitState must be "SLE" or "SLU"; got "${limitState}".`
+      `Use class ${normalizedUseClass} requires ${requiredLimitState} for the \xA7 7.3.6.1 drift check; got ${limitState}.`
     );
   }
+  const classFactor = ["III", "IV"].includes(normalizedUseClass) ? NTC2018_DRIFT_LIMITS.classIIIAndIVFactor : 1;
+  const limit = NTC2018_DRIFT_LIMITS[category] * classFactor;
+  const designDriftRatio = behaviorFactor * elasticDriftRatio;
+  const checks = [{
+    check: "storey-drift-height-limit",
+    ok: designDriftRatio <= limit,
+    demand: designDriftRatio,
+    capacity: limit,
+    reference: category === "rigidly-connected-fragile" ? "NTC 2018 \xA7 7.3.6.1, Eq. [7.3.11a]" : category === "rigidly-connected-ductile" ? "NTC 2018 \xA7 7.3.6.1, Eq. [7.3.11b]" : "NTC 2018 \xA7 7.3.6.1, Eq. [7.3.12]"
+  }];
+  let nonStructuralCapacity = null;
+  if (category === "damage-avoiding") {
+    nonStructuralCapacity = nonNegative10(
+      nonStructuralDisplacementCapacityRatio,
+      "nonStructuralDisplacementCapacityRatio"
+    ) * classFactor;
+    checks.push({
+      check: "storey-drift-non-structural-capacity",
+      ok: designDriftRatio <= nonStructuralCapacity,
+      demand: designDriftRatio,
+      capacity: nonStructuralCapacity,
+      reference: "NTC 2018 \xA7 7.3.6.1, Eq. [7.3.12]"
+    });
+  }
   return {
-    ok: dr <= limit,
-    driftRatio: dr,
+    ok: checks.every((check4) => check4.ok),
+    driftRatio: elasticDriftRatio,
+    designDriftRatio,
+    q: behaviorFactor,
+    useClass: normalizedUseClass,
+    limitState,
+    infillCategory: category,
     limit,
-    check: check2,
-    reference
+    nonStructuralDisplacementCapacityRatio: nonStructuralCapacity,
+    checks,
+    check: "storey-drift",
+    reference: checks[0].reference
   };
 }
 function computePDeltaCoefficient({
@@ -70872,225 +71992,194 @@ function computePDeltaCoefficient({
   storeyShear,
   storeyHeight
 }) {
-  const P = nonNegative10(storeyWeight, "storeyWeight");
-  const dr = nonNegative10(drift, "drift");
-  const V = positive26(storeyShear, "storeyShear");
-  const h = positive26(storeyHeight, "storeyHeight");
-  const theta = P * dr / (V * h);
+  const weight = nonNegative10(storeyWeight, "storeyWeight");
+  const interstoreyDisplacement = nonNegative10(drift, "drift");
+  const shear = positive28(Math.abs(finite36(storeyShear, "storeyShear")), "storeyShear");
+  const height = positive28(storeyHeight, "storeyHeight");
+  const theta = weight * interstoreyDisplacement / (shear * height);
   let status;
   let amplificationFactor = null;
-  if (theta <= NTC2018_PDELTA_THRESHOLDS.negligible) {
+  if (theta < NTC2018_PDELTA_THRESHOLDS.negligible) {
     status = "negligible";
-  } else if (theta <= NTC2018_PDELTA_THRESHOLDS.moderate) {
-    status = "moderate";
+  } else if (theta <= NTC2018_PDELTA_THRESHOLDS.amplificationUpper) {
+    status = "amplification-required";
     amplificationFactor = 1 / (1 - theta);
+  } else if (theta <= NTC2018_PDELTA_THRESHOLDS.nonlinearUpper) {
+    status = "nonlinear-analysis-required";
   } else {
-    status = "nonlinear-required";
+    status = "forbidden";
   }
   return { theta, status, amplificationFactor };
 }
-function verifyPDelta({
-  storeyWeight,
-  drift,
-  storeyShear,
-  storeyHeight
-}) {
-  const { theta, status, amplificationFactor } = computePDeltaCoefficient({
-    storeyWeight,
-    drift,
-    storeyShear,
-    storeyHeight
-  });
-  const ok = status !== "nonlinear-required";
+function verifyPDelta(params) {
+  const result9 = computePDeltaCoefficient(params);
   return {
-    ok,
-    theta,
-    status,
-    amplificationFactor,
+    ...result9,
+    ok: result9.status === "negligible" || result9.status === "amplification-required",
     check: "pdelta",
-    reference: "NTC 2018 \xA7 7.3.5, Eq. [7.3.2]"
+    reference: "NTC 2018 \xA7 7.3.1, Eq. [7.3.3]"
   };
 }
 function computeSeismicJointWidth({
   buildingHeightA,
   buildingHeightB,
+  facingPointElevation,
   slvDisplacementA,
   slvDisplacementB,
-  behavior
+  relativeFoundationDisplacement,
+  agSOverG
 }) {
-  const hA = positive26(buildingHeightA, "buildingHeightA");
-  const hB = nonNegative10(buildingHeightB, "buildingHeightB");
-  const isDissipative = behavior !== NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE;
-  const minA = isDissipative ? 0.01 * hA : 0;
-  const minB = isDissipative ? 0.01 * hB : 0;
-  const dA = slvDisplacementA !== void 0 ? Math.max(minA, nonNegative10(slvDisplacementA, "slvDisplacementA")) : minA;
-  const dB = slvDisplacementB !== void 0 ? Math.max(minB, nonNegative10(slvDisplacementB, "slvDisplacementB")) : minB;
-  const jointWidth = dA + dB;
+  const heightA = positive28(buildingHeightA, "buildingHeightA");
+  const heightB = nonNegative10(buildingHeightB, "buildingHeightB");
+  const hazard = nonNegative10(agSOverG, "agSOverG");
+  const foundationDisplacement = nonNegative10(
+    relativeFoundationDisplacement,
+    "relativeFoundationDisplacement"
+  );
+  const pointElevation = facingPointElevation === void 0 ? heightB > 0 ? Math.min(heightA, heightB) : heightA : positive28(facingPointElevation, "facingPointElevation");
+  const usedEstimatedDisplacementA = slvDisplacementA === void 0;
+  const usedEstimatedDisplacementB = heightB > 0 && slvDisplacementB === void 0;
+  const displacementA = usedEstimatedDisplacementA ? 0.01 * heightA * hazard : nonNegative10(slvDisplacementA, "slvDisplacementA");
+  const displacementB = heightB === 0 ? 0 : usedEstimatedDisplacementB ? 0.01 * heightB * hazard : nonNegative10(slvDisplacementB, "slvDisplacementB");
+  const displacementRequirement = displacementA + displacementB + foundationDisplacement;
+  const geometricMinimum = 0.01 * pointElevation * Math.max(2 * hazard, 1);
+  const jointWidth = Math.max(displacementRequirement, geometricMinimum);
   return {
     jointWidth,
-    dA,
-    dB,
-    isDissipative,
+    displacementA,
+    displacementB,
+    relativeFoundationDisplacement: foundationDisplacement,
+    displacementRequirement,
+    geometricMinimum,
+    usedEstimatedDisplacements: usedEstimatedDisplacementA || usedEstimatedDisplacementB,
     check: "seismic-joint",
-    reference: "NTC 2018 \xA7 7.2.2, Eq. [7.2.1]"
+    reference: "NTC 2018 \xA7 7.2.1, distanza tra costruzioni contigue"
+  };
+}
+function directionDisplacements(storey, direction, prefix) {
+  const suffix = direction.toUpperCase();
+  const topKey = `${prefix}Displacement${suffix}`;
+  const bottomKey = `${prefix}Displacement${suffix}Below`;
+  if (storey[topKey] === void 0 && storey[bottomKey] === void 0) {
+    return null;
+  }
+  return {
+    top: finite36(storey[topKey], `storey.${topKey}`),
+    bottom: finite36(storey[bottomKey], `storey.${bottomKey}`)
   };
 }
 function verifyStoreyDisplacements({
   storey,
   limitState,
-  behavior,
+  useClass,
+  q,
   infillCategory,
-  checkPDelta
+  nonStructuralDisplacementCapacityRatio,
+  checkPDelta = false
 }) {
-  var _a, _b, _c, _d, _e, _f, _g, _h;
-  const shouldCheckPDelta = checkPDelta != null ? checkPDelta : limitState === "SLU";
-  const driftX = verifyStoreyDrift({
-    driftRatio: Math.abs(
-      ((_a = storey.displacementX) != null ? _a : 0) - ((_b = storey.displacementXBelow) != null ? _b : 0)
-    ) / positive26(storey.height, "storey.height"),
-    limitState,
-    behavior,
-    infillCategory
-  });
-  let driftY = null;
-  if (storey.displacementY !== void 0) {
-    driftY = verifyStoreyDrift({
-      driftRatio: Math.abs(
-        ((_c = storey.displacementY) != null ? _c : 0) - ((_d = storey.displacementYBelow) != null ? _d : 0)
-      ) / storey.height,
-      limitState,
-      behavior,
-      infillCategory
-    });
-  }
-  let pDeltaX = null;
-  let pDeltaY = null;
-  const canCheckPDeltaX = shouldCheckPDelta && Number.isFinite(storey.shearX) && storey.shearX > 0 && Number.isFinite(storey.weight) && storey.weight > 0;
-  if (canCheckPDeltaX) {
-    const driftValueX = Math.abs(
-      ((_e = storey.displacementX) != null ? _e : 0) - ((_f = storey.displacementXBelow) != null ? _f : 0)
-    );
-    pDeltaX = verifyPDelta({
-      storeyWeight: storey.weight,
-      drift: driftValueX,
-      storeyShear: storey.shearX,
-      storeyHeight: storey.height
-    });
-  }
-  const canCheckPDeltaY = shouldCheckPDelta && Number.isFinite(storey.shearY) && storey.shearY > 0 && Number.isFinite(storey.weight) && storey.weight > 0;
-  if (canCheckPDeltaY) {
-    const driftValueY = Math.abs(
-      ((_g = storey.displacementY) != null ? _g : 0) - ((_h = storey.displacementYBelow) != null ? _h : 0)
-    );
-    pDeltaY = verifyPDelta({
-      storeyWeight: storey.weight,
-      drift: driftValueY,
-      storeyShear: storey.shearY,
-      storeyHeight: storey.height
-    });
-  }
-  const checks = [
-    {
-      check: driftX.check,
-      direction: "x",
-      ok: driftX.ok,
-      driftRatio: driftX.driftRatio,
-      limit: driftX.limit,
-      reference: driftX.reference
+  const height = positive28(storey.height, "storey.height");
+  const results = {};
+  const checks = [];
+  for (const direction of ["x", "y"]) {
+    const service = directionDisplacements(storey, direction, "service");
+    if (service == null) {
+      if (direction === "x") {
+        throw new Error("Service displacements in direction X are required.");
+      }
+      results[`drift${direction.toUpperCase()}`] = null;
+    } else {
+      const drift = computeStoreyDrift({
+        displacementTop: service.top,
+        displacementBottom: service.bottom,
+        storeyHeight: height
+      });
+      const verification = verifyStoreyDrift({
+        driftRatio: drift.driftRatio,
+        limitState,
+        useClass,
+        q,
+        infillCategory,
+        nonStructuralDisplacementCapacityRatio
+      });
+      results[`drift${direction.toUpperCase()}`] = {
+        ...verification,
+        drift: drift.drift
+      };
+      checks.push(...verification.checks.map((check4) => ({
+        ...check4,
+        direction
+      })));
     }
-  ];
-  if (driftY) {
-    checks.push({
-      check: driftY.check,
-      direction: "y",
-      ok: driftY.ok,
-      driftRatio: driftY.driftRatio,
-      limit: driftY.limit,
-      reference: driftY.reference
-    });
-  }
-  if (pDeltaX) {
-    checks.push({
-      check: pDeltaX.check,
-      direction: "x",
-      ok: pDeltaX.ok,
-      theta: pDeltaX.theta,
-      status: pDeltaX.status,
-      reference: pDeltaX.reference
-    });
-  }
-  if (pDeltaY) {
-    checks.push({
-      check: pDeltaY.check,
-      direction: "y",
-      ok: pDeltaY.ok,
-      theta: pDeltaY.theta,
-      status: pDeltaY.status,
-      reference: pDeltaY.reference
-    });
+    let pDelta = null;
+    if (checkPDelta) {
+      const slv = directionDisplacements(storey, direction, "slv");
+      if (slv == null) {
+        throw new Error(
+          `SLV displacements in direction ${direction.toUpperCase()} are required for P-Delta.`
+        );
+      }
+      pDelta = verifyPDelta({
+        storeyWeight: storey.weight,
+        drift: Math.abs(slv.top - slv.bottom),
+        storeyShear: storey[`shear${direction.toUpperCase()}`],
+        storeyHeight: height
+      });
+      checks.push({ ...pDelta, direction });
+    }
+    results[`pDelta${direction.toUpperCase()}`] = pDelta;
   }
   return {
     storeyId: storey.storeyId,
-    driftX,
-    driftY,
-    pDeltaX,
-    pDeltaY,
+    ...results,
+    allChecksOk: checks.every((check4) => check4.ok === true),
     checks
   };
 }
 function createDisplacementAssessment({
   storeys,
   limitState,
-  behavior,
-  infillCategory
+  useClass,
+  q,
+  infillCategory,
+  nonStructuralDisplacementCapacityRatio,
+  checkPDelta = false
 }) {
   if (!Array.isArray(storeys) || storeys.length === 0) {
     throw new Error("At least one storey is required.");
   }
-  const storeyResults = storeys.map(
-    (storey) => verifyStoreyDisplacements({
-      storey,
-      limitState,
-      behavior,
-      infillCategory
-    })
-  );
-  let governingDriftX = null;
-  let governingDriftY = null;
-  let governingThetaX = null;
-  let governingThetaY = null;
-  for (const result9 of storeyResults) {
-    if (!governingDriftX || result9.driftX.driftRatio > governingDriftX.driftRatio) {
-      governingDriftX = {
-        storeyId: result9.storeyId,
-        driftRatio: result9.driftX.driftRatio
-      };
-    }
-    if (result9.driftY) {
-      if (!governingDriftY || result9.driftY.driftRatio > governingDriftY.driftRatio) {
-        governingDriftY = {
+  const storeyResults = storeys.map((storey) => verifyStoreyDisplacements({
+    storey,
+    limitState,
+    useClass,
+    q,
+    infillCategory,
+    nonStructuralDisplacementCapacityRatio,
+    checkPDelta
+  }));
+  const allChecks = storeyResults.flatMap((result9) => result9.checks);
+  function governing(resultKey, valueKey) {
+    let current = null;
+    for (const result9 of storeyResults) {
+      const candidate = result9[resultKey];
+      if (candidate != null && (current == null || candidate[valueKey] > current[valueKey])) {
+        current = {
           storeyId: result9.storeyId,
-          driftRatio: result9.driftY.driftRatio
+          [valueKey]: candidate[valueKey]
         };
       }
     }
-    if (result9.pDeltaX && (!governingThetaX || result9.pDeltaX.theta > governingThetaX.theta)) {
-      governingThetaX = { storeyId: result9.storeyId, theta: result9.pDeltaX.theta };
-    }
-    if (result9.pDeltaY && (!governingThetaY || result9.pDeltaY.theta > governingThetaY.theta)) {
-      governingThetaY = { storeyId: result9.storeyId, theta: result9.pDeltaY.theta };
-    }
+    return current;
   }
-  const allChecks = storeyResults.flatMap((r) => r.checks);
-  const allChecksOk = allChecks.every((c) => c.ok !== false);
   return {
     limitState,
+    useClass: normalizeUseClass(useClass),
+    q: positive28(q, "q"),
     storeyResults,
-    governingDriftX,
-    governingDriftY,
-    governingThetaX,
-    governingThetaY,
-    allChecksOk,
+    governingDriftX: governing("driftX", "designDriftRatio"),
+    governingDriftY: governing("driftY", "designDriftRatio"),
+    governingThetaX: governing("pDeltaX", "theta"),
+    governingThetaY: governing("pDeltaY", "theta"),
+    allChecksOk: allChecks.length > 0 && allChecks.every((check4) => check4.ok === true),
     checks: allChecks,
     references: NTC2018_DISPLACEMENT_REFERENCES
   };
@@ -71098,610 +72187,992 @@ function createDisplacementAssessment({
 
 // src/norms/ntc2018/reinforced-concrete/dm522023.js
 var DM522023_REFERENCES = Object.freeze([
-  {
-    source: "D.M. 52/2023",
-    citation: "D.M. 7 marzo 2023 \u2013 Emendamenti alle Norme Tecniche per le Costruzioni 2018"
-  },
-  {
-    source: "NTC 2018",
-    citation: "D.M. 17/01/2018 \u2013 testo base con sovrascritture"
-  }
+  Object.freeze({
+    source: "D.M. 9 marzo 2023, n. 52",
+    publication: "G.U. Serie Generale n. 69 del 22 marzo 2023",
+    url: "https://www.gazzettaufficiale.it/eli/id/2023/03/22/23A01847/sg"
+  }),
+  Object.freeze({
+    source: "D.M. 17 gennaio 2018",
+    provision: "articolo 2, come modificato dal D.M. 52/2023",
+    url: "https://www.gazzettaufficiale.it/eli/id/2018/02/20/18A00716/sg"
+  })
 ]);
-var DM522023_REINFORCEMENT_STEEL_GRADES = Object.freeze({
-  B450C: Object.freeze({
-    fyk: 450,
-    ftk: 540,
-    ductilityClass: "C",
-    elongationCharacteristic: 0.075,
-    dm522023Note: "Confermato da NTC 2018; invariato dal D.M. 52/2023."
-  }),
-  B600: Object.freeze({
-    fyk: 600,
-    ftk: 720,
-    ductilityClass: "C",
-    elongationCharacteristic: 0.075,
-    dm522023Note: "Nuovo grado introdotto dal D.M. 52/2023."
-  })
+var DM522023_AMENDMENTS = Object.freeze({
+  decreeDate: "2023-03-09",
+  publicationDate: "2023-03-22",
+  effectiveDate: "2023-03-23",
+  transitionalDeliveryDeadlineYears: 7,
+  temporarySuspensions: Object.freeze([
+    Object.freeze({
+      ntc2018Clause: "11.4.2",
+      scope: "entire-clause",
+      suspendedUntil: "2025-03-22"
+    }),
+    Object.freeze({
+      ntc2018Clause: "11.5.2",
+      scope: "passive-geotechnical-anchors-only",
+      suspendedUntil: "2025-03-22"
+    })
+  ]),
+  reinforcedConcreteChapter4Overrides: Object.freeze([]),
+  reinforcedConcreteChapter7Overrides: Object.freeze([])
 });
-var DM522023_MATERIAL_PARTIAL_FACTORS = Object.freeze({
-  concrete: Object.freeze({
-    /** Partial factor for concrete in ULS (persistent/transient) */
-    gammaC: 1.5,
-    /** Partial factor for concrete in accidental/seismic */
-    gammaCAccidental: 1.2
-  }),
-  reinforcement: Object.freeze({
-    /** Partial factor for reinforcing steel in ULS */
-    gammaS: 1.15,
-    /** Partial factor for reinforcing steel in accidental/seismic */
-    gammaSAccidental: 1
-  })
-});
-var DM522023_COLUMN_MIN_LONGITUDINAL_RATIO = Object.freeze({
-  "cd-a": 0.01,
-  // unchanged from NTC 2018 base
-  "cd-b": 0.01,
-  // unchanged
-  "non-dissipative": 8e-3
-});
-var DM522023_COLUMN_MAX_LONGITUDINAL_RATIO = 0.04;
-var DM522023_COLUMN_MIN_HOOP_DIAMETER = Object.freeze({
-  "cd-a": 8,
-  // mm
-  "cd-b": 6,
-  // mm
-  "non-dissipative": 6
-  // mm
-});
-var DM522023_COLUMN_MAX_HOOP_SPACING = Object.freeze({
-  "cd-a": Object.freeze({
-    baseFormula: "min(6 \xD7 \u03C6_long, 0.25 \xD7 min(b, h), 175 mm)",
-    absoluteMax: 175
-    // mm
-  }),
-  "cd-b": Object.freeze({
-    baseFormula: "min(8 \xD7 \u03C6_long, 0.25 \xD7 min(b, h), 225 mm)",
-    absoluteMax: 225
-    // mm
-  })
-});
-function computeDM522023ConfinementOmegaWd({
-  behavior,
-  normalizedAxialForce,
-  requiredCurvatureDuctility
-}) {
-  const nu = Number(normalizedAxialForce);
-  if (!Number.isFinite(nu) || nu < 0) {
-    throw new Error(
-      `normalizedAxialForce must be non-negative; got ${normalizedAxialForce}.`
-    );
+function describeDM522023Amendment(ntc2018Clause) {
+  var _a;
+  const clause = String(ntc2018Clause != null ? ntc2018Clause : "").trim();
+  if (clause.length === 0) {
+    throw new Error("ntc2018Clause is required.");
   }
-  if (behavior === "cd-a") {
-    const muPhi = requiredCurvatureDuctility !== void 0 ? Number(requiredCurvatureDuctility) : 2 * 5 - 1;
-    if (!Number.isFinite(muPhi) || muPhi < 0) {
-      throw new Error(
-        `requiredCurvatureDuctility must be non-negative; got ${requiredCurvatureDuctility}.`
-      );
-    }
-    const epsSyDesign = 2e-3;
-    const computed = 30 * muPhi * nu * epsSyDesign - 0.035;
-    const omegaWd = Math.max(0.08, computed);
-    return {
-      omegaWd,
-      reference: "D.M. 52/2023, NTC 2018 \xA7 7.4.6.2.2, Eq. [7.4.29]"
-    };
-  }
-  if (behavior === "cd-b") {
-    const omegaWd = Math.max(0.04, 0.08 * nu);
-    return {
-      omegaWd,
-      reference: 'D.M. 52/2023, NTC 2018 \xA7 7.4.6.2.2 (CD"B")'
-    };
-  }
+  const amendment = (_a = DM522023_AMENDMENTS.temporarySuspensions.find(
+    (entry) => entry.ntc2018Clause === clause
+  )) != null ? _a : null;
   return {
-    omegaWd: 0,
-    reference: "D.M. 52/2023 \u2013 nessun requisito di confinamento per strutture non dissipative"
+    amended: amendment != null,
+    amendment,
+    references: DM522023_REFERENCES
   };
-}
-function applyDM522023SteelGrades(baseGrades) {
-  return Object.freeze({
-    ...baseGrades,
-    ...DM522023_REINFORCEMENT_STEEL_GRADES
-  });
-}
-function selectDM522023PartialFactor({
-  material,
-  designSituation = "persistent",
-  useDM522023 = true
-}) {
-  var _a, _b;
-  if (!useDM522023) {
-    if (material === "concrete") return 1.5;
-    if (material === "reinforcement") return 1.15;
-    throw new Error(`Unknown material: ${material}.`);
-  }
-  const factors = DM522023_MATERIAL_PARTIAL_FACTORS[material];
-  if (!factors) {
-    throw new Error(`Unknown material: ${material}.`);
-  }
-  if (designSituation === "accidental" || designSituation === "seismic") {
-    return (_a = factors.gammaCAccidental) != null ? _a : factors.gammaSAccidental;
-  }
-  return (_b = factors.gammaC) != null ? _b : factors.gammaS;
 }
 
 // src/norms/ntc2018/reinforced-concrete/ntc2018Diaphragm.js
+var NTC2018_DIAPHRAGM_FORCE_FACTOR = 1.3;
 var NTC2018_DIAPHRAGM_REFERENCES = Object.freeze([
-  {
+  Object.freeze({
     source: "NTC 2018",
-    citation: "D.M. 17/01/2018, \xA7\xA7 4.1.2.3.5, 7.4.8.5"
-  },
-  {
-    source: "Circolare 2019",
-    citation: "Circ. 21/01/2019 n. 7, C7.4.8.5"
-  }
+    citation: "\xA7 7.4.4.4.1 (Verifiche di resistenza dei diaframmi orizzontali)"
+  })
 ]);
-function positive27(value, label) {
-  if (!Number.isFinite(value) || value <= 0) {
-    throw new Error(`${label} must be positive; got ${value}.`);
+function finite37(value, label) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    throw new Error(`${label} must be finite; got ${value}.`);
   }
-  return value;
+  return number;
 }
-function verifyDiaphragmDiagonalTension({
-  storeyShear,
-  thickness,
-  depth,
-  concreteTensileStrength
-}) {
-  const V = Math.abs(storeyShear != null ? storeyShear : 0);
-  const b = positive27(thickness, "thickness");
-  const h = positive27(depth, "depth");
-  const fctd = positive27(concreteTensileStrength, "concreteTensileStrength");
-  const tensileStress = V / (b * h);
+function amplifyNTC2018DiaphragmActions({ analysisActions } = {}) {
+  if (analysisActions == null || typeof analysisActions !== "object" || Array.isArray(analysisActions)) {
+    throw new Error("analysisActions must be a component object.");
+  }
+  const entries3 = Object.entries(analysisActions);
+  if (entries3.length === 0) {
+    throw new Error("analysisActions must contain at least one component.");
+  }
+  const designActions = Object.fromEntries(
+    entries3.map(([component, value]) => [
+      component,
+      NTC2018_DIAPHRAGM_FORCE_FACTOR * finite37(value, `analysisActions.${component}`)
+    ])
+  );
   return {
-    ok: tensileStress <= fctd,
-    tensileStress,
-    capacity: fctd,
-    utilizationRatio: fctd > 0 ? tensileStress / fctd : Infinity,
-    check: "diaphragm-diagonal-tension",
-    reference: "NTC 2018 \xA7 4.1.2.3.5, \xA7 7.4.8.5"
-  };
-}
-function verifyDiaphragmCompression({
-  storeyShear,
-  thickness,
-  depth,
-  concreteDesignStrength
-}) {
-  const V = Math.abs(storeyShear != null ? storeyShear : 0);
-  const b = positive27(thickness, "thickness");
-  const h = positive27(depth, "depth");
-  const fcd = positive27(concreteDesignStrength, "concreteDesignStrength");
-  const compressiveStress = 2 * V / (b * h);
-  const capacity = 0.5 * fcd;
-  return {
-    ok: compressiveStress <= capacity,
-    compressiveStress,
-    capacity,
-    utilizationRatio: capacity > 0 ? compressiveStress / capacity : Infinity,
-    check: "diaphragm-compression",
-    reference: "NTC 2018 \xA7 4.1.2.3.5, \xA7 7.4.8.5"
-  };
-}
-function computeDiaphragmChordReinforcement({
-  storeyShear,
-  concreteArea,
-  reinforcementDesignStrength
-}) {
-  const V = Math.abs(storeyShear != null ? storeyShear : 0);
-  const Ac = positive27(concreteArea, "concreteArea");
-  const fyd = positive27(reinforcementDesignStrength, "reinforcementDesignStrength");
-  const requiredArea = V / fyd;
-  const minimumArea = 3e-3 * Ac;
-  return {
-    requiredArea: Math.max(requiredArea, minimumArea),
-    minimumArea,
-    check: "diaphragm-chord-reinforcement",
-    reference: "NTC 2018 \xA7 7.4.8.5"
-  };
-}
-function verifyDiaphragmShearConnection({
-  storeyShear,
-  thickness,
-  leverArm,
-  concreteDesignStrength
-}) {
-  const V = Math.abs(storeyShear != null ? storeyShear : 0);
-  const b = positive27(thickness, "thickness");
-  const z = positive27(leverArm, "leverArm");
-  const fcd = positive27(concreteDesignStrength, "concreteDesignStrength");
-  const shearStress = V / (b * z);
-  const capacity = 0.3 * fcd;
-  return {
-    ok: shearStress <= capacity,
-    shearStress,
-    capacity,
-    utilizationRatio: capacity > 0 ? shearStress / capacity : Infinity,
-    check: "diaphragm-shear-connection",
-    reference: "NTC 2018 \xA7 7.4.8.5 (taglio connessione giunti di ripresa)"
+    analysisActions: { ...analysisActions },
+    designActions,
+    amplificationFactor: NTC2018_DIAPHRAGM_FORCE_FACTOR,
+    reference: "NTC 2018 \xA7 7.4.4.4.1"
   };
 }
 function createDiaphragmAssessment({
-  storeyId,
-  storeyShearX,
-  storeyShearY,
-  thickness,
-  depthX,
-  depthY,
-  materials,
-  chordConcreteArea,
-  leverArm
-}) {
-  const checks = [];
-  if (materials.fctd !== void 0) {
-    const tensionX = verifyDiaphragmDiagonalTension({
-      storeyShear: storeyShearX,
-      thickness,
-      depth: depthX,
-      concreteTensileStrength: materials.fctd
-    });
-    checks.push({ ...tensionX, direction: "x" });
+  diaphragmId,
+  analysisActions,
+  capacityChecks = []
+} = {}) {
+  const demand = amplifyNTC2018DiaphragmActions({ analysisActions });
+  if (!Array.isArray(capacityChecks)) {
+    throw new Error("capacityChecks must be an array.");
   }
-  const compX = verifyDiaphragmCompression({
-    storeyShear: storeyShearX,
-    thickness,
-    depth: depthX,
-    concreteDesignStrength: materials.fcd
-  });
-  checks.push({ ...compX, direction: "x" });
-  if (storeyShearY !== void 0 && depthY !== void 0) {
-    if (materials.fctd !== void 0) {
-      const tensionY = verifyDiaphragmDiagonalTension({
-        storeyShear: storeyShearY,
-        thickness,
-        depth: depthY,
-        concreteTensileStrength: materials.fctd
-      });
-      checks.push({ ...tensionY, direction: "y" });
+  const checks = capacityChecks.map((check4, index) => {
+    if (check4 == null || typeof check4 !== "object") {
+      throw new Error(`capacityChecks[${index}] must be an object.`);
     }
-    const compY = verifyDiaphragmCompression({
-      storeyShear: storeyShearY,
-      thickness,
-      depth: depthY,
-      concreteDesignStrength: materials.fcd
-    });
-    checks.push({ ...compY, direction: "y" });
-  }
-  if (materials.fyd !== void 0 && chordConcreteArea !== void 0) {
-    const maxShear = Math.max(
-      Math.abs(storeyShearX != null ? storeyShearX : 0),
-      Math.abs(storeyShearY != null ? storeyShearY : 0)
-    );
-    const chord = computeDiaphragmChordReinforcement({
-      storeyShear: maxShear,
-      concreteArea: chordConcreteArea,
-      reinforcementDesignStrength: materials.fyd
-    });
-    checks.push(chord);
-  }
-  if (leverArm !== void 0) {
-    const maxShear = Math.max(
-      Math.abs(storeyShearX != null ? storeyShearX : 0),
-      Math.abs(storeyShearY != null ? storeyShearY : 0)
-    );
-    const connection = verifyDiaphragmShearConnection({
-      storeyShear: maxShear,
-      thickness,
-      leverArm,
-      concreteDesignStrength: materials.fcd
-    });
-    checks.push(connection);
-  }
+    if (typeof check4.ok !== "boolean") {
+      throw new Error(`capacityChecks[${index}].ok must be boolean.`);
+    }
+    return { ...check4 };
+  });
+  const complete = checks.length > 0;
+  const allChecksOk = complete && checks.every((check4) => check4.ok);
   return {
-    storeyId,
-    checks
+    diaphragmId,
+    ...demand,
+    complete,
+    status: complete ? allChecksOk ? "ok" : "not-verified" : "not-implemented",
+    allChecksOk,
+    checks,
+    warnings: complete ? [] : [
+      "No chapter-4 in-plane resistance checks were supplied; only the \xA7 7.4.4.4.1 demand amplification was performed."
+    ],
+    references: NTC2018_DIAPHRAGM_REFERENCES
   };
 }
 
 // src/norms/ntc2018/reinforced-concrete/ntc2018ShearWall.js
 var NTC2018_SHEAR_WALL_REFERENCES = Object.freeze([
-  {
+  Object.freeze({
     source: "NTC 2018",
-    citation: "D.M. 17/01/2018, \xA7\xA7 4.1.2.3.9, 7.4.8, 7.4.8.1-7.4.8.4"
-  },
-  {
-    source: "Circolare 2019",
-    citation: "Circ. 21/01/2019 n. 7, C7.4.8"
-  }
+    citation: "\xA7\xA7 7.4.4.5.1, 7.4.4.5.2 e 7.4.6.2.4; Eqs. [7.4.13]-[7.4.22] e [7.4.32]-[7.4.33]"
+  })
 ]);
-function positive28(value, label) {
-  if (!Number.isFinite(value) || value <= 0) {
+function finite38(value, label) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    throw new Error(`${label} must be finite; got ${value}.`);
+  }
+  return number;
+}
+function positive29(value, label) {
+  const number = finite38(value, label);
+  if (number <= 0) {
     throw new Error(`${label} must be positive; got ${value}.`);
   }
-  return value;
+  return number;
 }
 function nonNegative11(value, label) {
-  if (!Number.isFinite(value) || value < 0) {
+  const number = finite38(value, label);
+  if (number < 0) {
     throw new Error(`${label} must be non-negative; got ${value}.`);
   }
-  return value;
+  return number;
+}
+function positiveInteger4(value, label) {
+  const number = Number(value);
+  if (!Number.isInteger(number) || number <= 0) {
+    throw new Error(`${label} must be a positive integer; got ${value}.`);
+  }
+  return number;
 }
 function computeWallCriticalZoneHeight({
   wallLength,
   wallHeight,
-  storeyHeight
+  storeyHeight,
+  storeyCount
 }) {
-  const lw = positive28(wallLength, "wallLength");
-  const Hw = positive28(wallHeight, "wallHeight");
-  let hCr = Math.max(lw, Hw / 6);
-  hCr = Math.min(hCr, 2 * lw);
-  if (storeyHeight !== void 0) {
-    const hs = positive28(storeyHeight, "storeyHeight");
-    hCr = Math.min(hCr, hs);
-  }
+  const length = positive29(wallLength, "wallLength");
+  const height = positive29(wallHeight, "wallHeight");
+  const clearStoreyHeight = positive29(storeyHeight, "storeyHeight");
+  const storeys = positiveInteger4(storeyCount, "storeyCount");
+  const uncapped = Math.max(length, height / 6);
+  const storeyCap = storeys <= 6 ? clearStoreyHeight : 2 * clearStoreyHeight;
+  const hCr = Math.min(uncapped, 2 * length, storeyCap);
   return {
     hCr,
+    uncapped,
+    caps: {
+      twoWallLengths: 2 * length,
+      storeyHeight: storeyCap
+    },
     reference: "NTC 2018 \xA7 7.4.4.5.1, Eq. [7.4.13]"
   };
 }
 function computeWallMomentShift({
   wallLength,
-  criticalZoneHeight,
+  wallHeight,
+  storeyHeight,
+  storeyCount,
   behavior
 }) {
-  positive28(wallLength, "wallLength");
-  const hCr = positive28(criticalZoneHeight, "criticalZoneHeight");
-  let shiftLength;
-  let reference;
-  if (behavior === NTC2018_STRUCTURAL_BEHAVIOR.CD_A || behavior === NTC2018_STRUCTURAL_BEHAVIOR.CD_B) {
-    shiftLength = hCr;
-    reference = "NTC 2018 \xA7 7.4.4.5.1 (traslazione = h_cr)";
-  } else {
-    shiftLength = 0;
-    reference = "NTC 2018 \xA7 7.8 (non dissipativo: nessuna traslazione)";
-  }
-  return { shiftLength, reference };
+  const length = positive29(wallLength, "wallLength");
+  const height = positive29(wallHeight, "wallHeight");
+  const normalizedBehavior = normalizeNTC2018StructuralBehavior(behavior);
+  const slender = height / length > 2;
+  const applicable = slender && normalizedBehavior !== NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE;
+  const criticalZone = computeWallCriticalZoneHeight({
+    wallLength: length,
+    wallHeight: height,
+    storeyHeight,
+    storeyCount
+  });
+  return {
+    shift: applicable ? criticalZone.hCr : 0,
+    applicable,
+    slender,
+    hCr: criticalZone.hCr,
+    reference: "NTC 2018 \xA7 7.4.4.5.1 (Presso-flessione)"
+  };
 }
 function computeWallCapacityShear({
-  baseMomentResistance,
-  baseMomentDemand,
   analysisShear,
-  qFactor,
-  cornerPeriod,
-  fundamentalPeriod,
-  spectrumAtCorner,
-  spectrumAtT1,
-  behavior
+  momentResistance,
+  momentDemand,
+  q,
+  behavior,
+  wallLength,
+  wallHeight,
+  elasticSpectrumTc,
+  elasticSpectrumT1
 }) {
-  const mRd = positive28(baseMomentResistance, "baseMomentResistance");
-  const mEd = positive28(baseMomentDemand, "baseMomentDemand");
-  const vAnalysis = nonNegative11(analysisShear, "analysisShear");
-  const q = positive28(qFactor, "qFactor");
-  const tc = positive28(cornerPeriod, "cornerPeriod");
-  const t1 = positive28(fundamentalPeriod, "fundamentalPeriod");
-  const seTc = positive28(spectrumAtCorner, "spectrumAtCorner");
-  const seT1 = positive28(spectrumAtT1, "spectrumAtT1");
-  void tc;
-  const { wallShear: gammaRdWall } = selectNTC2018OverstrengthFactors({ behavior });
-  const gammaRd = gammaRdWall != null ? gammaRdWall : 1;
-  const amplificationFactor = 1.5 * q * (gammaRd * mRd / mEd) * Math.pow(seTc / seT1, 2);
-  const shearDemand = Math.max(amplificationFactor * vAnalysis, vAnalysis);
+  const baseShear = Math.abs(finite38(analysisShear, "analysisShear"));
+  const resistance = positive29(momentResistance, "momentResistance");
+  const demandMoment = positive29(Math.abs(finite38(momentDemand, "momentDemand")), "momentDemand");
+  if (resistance < demandMoment) {
+    throw new Error(
+      "momentResistance must be at least momentDemand before applying the wall capacity-shear rule."
+    );
+  }
+  const behaviorFactor = positive29(q, "q");
+  const length = positive29(wallLength, "wallLength");
+  const height = positive29(wallHeight, "wallHeight");
+  const normalizedBehavior = normalizeNTC2018StructuralBehavior(behavior);
+  if (normalizedBehavior === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE) {
+    return {
+      shearDemand: baseShear,
+      amplificationFactor: 1,
+      rawAmplificationFactor: 1,
+      gammaRd: null,
+      slender: height / length > 2,
+      reference: "NTC 2018 \xA7 7.4.1"
+    };
+  }
+  if (behaviorFactor < 1.5) {
+    throw new Error("Dissipative wall q must be at least 1.5.");
+  }
+  const slender = height / length > 2;
+  const gammaRd = normalizedBehavior === NTC2018_STRUCTURAL_BEHAVIOR.CD_A ? 1.2 : 1;
+  let rawAmplificationFactor;
+  let amplificationFactor;
+  if (slender) {
+    const spectrumTc = positive29(elasticSpectrumTc, "elasticSpectrumTc");
+    const spectrumT1 = positive29(elasticSpectrumT1, "elasticSpectrumT1");
+    rawAmplificationFactor = behaviorFactor * Math.sqrt(
+      (gammaRd / behaviorFactor * (resistance / demandMoment)) ** 2 + 0.1 * (spectrumTc / spectrumT1) ** 2
+    );
+    amplificationFactor = Math.min(
+      behaviorFactor,
+      Math.max(1.5, rawAmplificationFactor)
+    );
+  } else {
+    rawAmplificationFactor = gammaRd * resistance / demandMoment;
+    amplificationFactor = Math.min(behaviorFactor, rawAmplificationFactor);
+  }
   return {
-    shearDemand,
+    shearDemand: baseShear * amplificationFactor,
     amplificationFactor,
+    rawAmplificationFactor,
     gammaRd,
-    reference: "NTC 2018 \xA7 7.4.4.5.1 (Taglio), pareti snelle"
+    slender,
+    reference: slender ? "NTC 2018 \xA7 7.4.4.5.1, Eq. [7.4.14]" : "NTC 2018 \xA7 7.4.4.5.1, Eq. [7.4.15]"
   };
 }
 function verifyWallShear({
   shearDemand,
-  wallThickness,
-  wallLength,
-  concreteDesignStrength,
-  concreteTensileStrength,
-  horizontalReinforcementArea = 0,
-  reinforcementDesignStrength = 0,
-  behavior,
-  wallHeight
+  chapter4ConcreteCompressionResistance,
+  wallWebTensionResistance,
+  slidingResistance,
+  inclinedReinforcementContribution,
+  isDissipativeZone,
+  isSquatWall
 }) {
-  const vEd = nonNegative11(shearDemand, "shearDemand");
-  const bw = positive28(wallThickness, "wallThickness");
-  const lw = positive28(wallLength, "wallLength");
-  const fcd = positive28(concreteDesignStrength, "concreteDesignStrength");
-  const d = 0.8 * lw;
-  const fctd = concreteTensileStrength !== void 0 ? nonNegative11(concreteTensileStrength, "concreteTensileStrength") : 0.27 * Math.pow(fcd, 2 / 3);
-  const isSquat = wallHeight !== void 0 && wallHeight / lw <= 2;
-  const alphaC = 1;
-  const cotTheta = behavior === NTC2018_STRUCTURAL_BEHAVIOR.CD_A ? 1 : 2.5;
-  const vRdc = alphaC * 0.28 * fctd * bw * d;
-  let vRds = 0;
-  if (horizontalReinforcementArea > 0 && reinforcementDesignStrength > 0) {
-    const fywd = positive28(reinforcementDesignStrength, "reinforcementDesignStrength");
-    const asw = nonNegative11(horizontalReinforcementArea, "horizontalReinforcementArea");
-    vRds = asw * d * fywd * cotTheta;
+  const demand = nonNegative11(Math.abs(finite38(shearDemand, "shearDemand")), "shearDemand");
+  if (typeof isDissipativeZone !== "boolean") {
+    throw new Error("isDissipativeZone must be boolean.");
   }
-  const vRd = vRdc + vRds;
-  const reduction = behavior === NTC2018_STRUCTURAL_BEHAVIOR.CD_A ? 0.15 : 1;
-  const vRdMax = reduction * 0.8 * fcd * bw * d * 0.8 * cotTheta / (1 + cotTheta * cotTheta);
-  const compressionOk = vEd <= vRdMax;
-  const ok = vEd <= vRd && compressionOk;
-  return {
-    ok,
-    vRd,
-    vRdc,
-    vRds,
-    utilizationRatio: vRd > 0 ? vEd / vRd : Infinity,
-    alphaC,
-    cotTheta,
-    vRdMax,
-    compressionOk,
-    check: "wall-shear",
-    reference: "NTC 2018 \xA7 7.4.8.2, Eq. [7.4.22-24]"
-  };
-}
-function verifyWallBoundaryConfinement({
-  axialForce,
-  bendingMoment,
-  wallLength,
-  wallThickness,
-  concreteDesignStrength
-}) {
-  const N = Number.isFinite(axialForce) ? axialForce : 0;
-  const M = Math.abs(Number.isFinite(bendingMoment) ? bendingMoment : 0);
-  const lw = positive28(wallLength, "wallLength");
-  const bw = positive28(wallThickness, "wallThickness");
-  const fcd = positive28(concreteDesignStrength, "concreteDesignStrength");
-  const area = lw * bw;
-  const sectionModulus = bw * lw * lw / 6;
-  const stressN = N / area;
-  const stressM = M / sectionModulus;
-  const extremeFiberStress = stressN + stressM;
-  const threshold = 0.2 * fcd;
-  const confinementRequired = extremeFiberStress > threshold;
-  return {
-    confinementRequired,
-    extremeFiberStress,
-    stressRatio: fcd > 0 ? extremeFiberStress / fcd : 0,
-    threshold,
-    check: "wall-boundary-confinement",
-    reference: "NTC 2018 \xA7 7.4.8.4, Eq. [7.4.25]"
-  };
-}
-function computeWallBoundaryLength({
-  normalizedAxialForce,
-  mechanicalReinforcementRatio = 0,
-  wallLength,
-  wallThickness,
-  confinedWidthRatio = 1
-}) {
-  const nu = nonNegative11(normalizedAxialForce, "normalizedAxialForce");
-  const omegaV = nonNegative11(mechanicalReinforcementRatio, "mechanicalReinforcementRatio");
-  const lw = positive28(wallLength, "wallLength");
-  const bw = positive28(wallThickness, "wallThickness");
-  const xu = (nu + omegaV) * lw * confinedWidthRatio;
-  const boundaryLength = Math.max(lw / 6, xu * (1 - xu / lw), bw);
-  return {
-    boundaryLength,
-    xu,
-    reference: "NTC 2018 \xA7 7.4.8.4, Eq. [7.4.26]"
-  };
-}
-function computeWallConfinementOmegaWd({
-  behavior,
-  normalizedAxialForce,
-  curvatureDuctility,
-  confinedWidthRatio = 1,
-  steelYieldStrain = 2e-3
-}) {
-  const nu = nonNegative11(normalizedAxialForce, "normalizedAxialForce");
-  if (behavior === NTC2018_STRUCTURAL_BEHAVIOR.CD_A) {
-    const muPhi = curvatureDuctility !== void 0 ? nonNegative11(curvatureDuctility, "curvatureDuctility") : 9;
-    const epsSy = positive28(steelYieldStrain, "steelYieldStrain");
-    const computed = 30 * muPhi * nu * epsSy * confinedWidthRatio - 0.035;
-    const omegaWd = Math.max(0.08, computed);
-    return {
-      omegaWd,
-      reference: 'NTC 2018 \xA7 7.4.8.4, Eq. [7.4.29] (CD"A")'
-    };
+  if (typeof isSquatWall !== "boolean") {
+    throw new Error("isSquatWall must be boolean.");
   }
-  if (behavior === NTC2018_STRUCTURAL_BEHAVIOR.CD_B) {
-    return {
-      omegaWd: 0.04,
-      reference: 'NTC 2018 \xA7 7.4.8.4 (CD"B": \u03C9_wd \u2265 0.04)'
-    };
-  }
-  return {
-    omegaWd: 0,
-    reference: "NTC 2018 \xA7 7.8 (non dissipativo: nessun requisito)"
-  };
-}
-function createWallSectionAssessment({
-  sectionId,
-  elevation,
-  behavior,
-  actions,
-  geometry,
-  materials,
-  horizontalReinforcementArea = 0,
-  isBase = false
-}) {
-  var _a, _b, _c, _d, _e, _f, _g, _h, _i;
-  const checks = [];
-  const isDissipative = behavior !== NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE;
-  const shearX = verifyWallShear({
-    shearDemand: Math.abs((_a = actions.shearX) != null ? _a : 0),
-    wallThickness: geometry.wallThickness,
-    wallLength: geometry.wallLength,
-    concreteDesignStrength: materials.fcd,
-    concreteTensileStrength: materials.fctd,
-    horizontalReinforcementArea,
-    reinforcementDesignStrength: (_b = materials.fywd) != null ? _b : 0,
-    behavior,
-    wallHeight: geometry.wallHeight
-  });
-  checks.push({ ...shearX, direction: "x" });
-  if (((_c = actions.shearY) != null ? _c : 0) !== 0 || isBase) {
-    const shearY = verifyWallShear({
-      shearDemand: Math.abs((_d = actions.shearY) != null ? _d : 0),
-      wallThickness: geometry.wallThickness,
-      wallLength: geometry.wallThickness,
-      // in-plane shear along Y uses thickness
-      concreteDesignStrength: materials.fcd,
-      concreteTensileStrength: materials.fctd,
-      horizontalReinforcementArea,
-      reinforcementDesignStrength: (_e = materials.fywd) != null ? _e : 0,
-      behavior
+  const chapter4Compression = positive29(
+    chapter4ConcreteCompressionResistance,
+    "chapter4ConcreteCompressionResistance"
+  );
+  const concreteCompressionResistance = chapter4Compression * (isDissipativeZone ? 0.4 : 1);
+  const webTensionResistance = positive29(
+    wallWebTensionResistance,
+    "wallWebTensionResistance"
+  );
+  const checks = [
+    {
+      check: "wall-shear-compression",
+      demand,
+      capacity: concreteCompressionResistance,
+      utilizationRatio: demand / concreteCompressionResistance,
+      ok: demand <= concreteCompressionResistance,
+      reference: "NTC 2018 \xA7 7.4.4.5.1 (taglio-compressione)"
+    },
+    {
+      check: "wall-shear-web-tension",
+      demand,
+      capacity: webTensionResistance,
+      utilizationRatio: demand / webTensionResistance,
+      ok: demand <= webTensionResistance,
+      reference: "NTC 2018 \xA7 7.4.4.5.1 (taglio-trazione)"
+    }
+  ];
+  if (isDissipativeZone) {
+    const sliding = positive29(slidingResistance, "slidingResistance");
+    checks.push({
+      check: "wall-shear-sliding",
+      demand,
+      capacity: sliding,
+      utilizationRatio: demand / sliding,
+      ok: demand <= sliding,
+      reference: "NTC 2018 \xA7 7.4.4.5.1, Eqs. [7.4.18]-[7.4.22]"
     });
-    checks.push({ ...shearY, direction: "y" });
-  }
-  if (isBase && isDissipative) {
-    const confinement = verifyWallBoundaryConfinement({
-      axialForce: (_f = actions.axialForce) != null ? _f : 0,
-      bendingMoment: Math.max(
-        Math.abs((_g = actions.momentX) != null ? _g : 0),
-        Math.abs((_h = actions.momentY) != null ? _h : 0)
-      ),
-      wallLength: geometry.wallLength,
-      wallThickness: geometry.wallThickness,
-      concreteDesignStrength: materials.fcd
-    });
-    checks.push(confinement);
-    if (confinement.confinementRequired) {
-      const area = geometry.wallLength * geometry.wallThickness;
-      const nuVal = Math.abs((_i = actions.axialForce) != null ? _i : 0) / (area * materials.fcd);
-      const boundary = computeWallBoundaryLength({
-        normalizedAxialForce: Math.min(nuVal, 0.4),
-        wallLength: geometry.wallLength,
-        wallThickness: geometry.wallThickness
-      });
+    if (isSquatWall) {
+      const inclined = nonNegative11(
+        inclinedReinforcementContribution,
+        "inclinedReinforcementContribution"
+      );
       checks.push({
-        check: "wall-boundary-length",
-        boundaryLength: boundary.boundaryLength,
-        xu: boundary.xu,
-        reference: boundary.reference
-      });
-      const omegaWd = computeWallConfinementOmegaWd({
-        behavior,
-        normalizedAxialForce: nuVal
-      });
-      checks.push({
-        check: "wall-confinement-omega-wd",
-        omegaWd: omegaWd.omegaWd,
-        reference: omegaWd.reference
+        check: "wall-squat-inclined-reinforcement",
+        demand: demand / 2,
+        capacity: inclined,
+        utilizationRatio: inclined > 0 ? demand / 2 / inclined : Infinity,
+        ok: inclined > demand / 2,
+        comparison: ">",
+        reference: "NTC 2018 \xA7 7.4.4.5.1 (Vid > VEd/2)"
       });
     }
   }
   return {
+    ok: checks.every((check4) => check4.ok),
+    shearDemand: demand,
+    concreteCompressionResistance,
+    webTensionResistance,
+    checks,
+    reference: "NTC 2018 \xA7 7.4.4.5.1"
+  };
+}
+function verifyWallBoundaryConfinement({
+  maximumConcreteCompressiveStrain
+}) {
+  const strain = nonNegative11(
+    maximumConcreteCompressiveStrain,
+    "maximumConcreteCompressiveStrain"
+  );
+  return {
+    confinementRequired: strain > 35e-4,
+    maximumConcreteCompressiveStrain: strain,
+    threshold: 35e-4,
+    check: "wall-boundary-confinement-region",
+    reference: "NTC 2018 \xA7 7.4.4.5.2"
+  };
+}
+function computeWallBoundaryLength({
+  wallLength,
+  wallThickness,
+  strainDerivedLength = 0,
+  simplifiedDetailing = false
+}) {
+  const length = positive29(wallLength, "wallLength");
+  const thickness = positive29(wallThickness, "wallThickness");
+  const strainLength = nonNegative11(strainDerivedLength, "strainDerivedLength");
+  if (typeof simplifiedDetailing !== "boolean") {
+    throw new Error("simplifiedDetailing must be boolean.");
+  }
+  const minimumLength = simplifiedDetailing ? Math.max(0.2 * length, 1.5 * thickness) : Math.max(0.15 * length, 0.15 * thickness);
+  return {
+    boundaryLength: Math.max(strainLength, minimumLength),
+    strainDerivedLength: strainLength,
+    minimumLength,
+    simplifiedDetailing,
+    reference: simplifiedDetailing ? "NTC 2018 \xA7\xA7 7.4.4.5.2 e 7.4.6.2.4" : "NTC 2018 \xA7 7.4.4.5.2"
+  };
+}
+function computeWallConfinementOmegaWd({
+  behavior,
+  confinementEffectiveness,
+  curvatureDuctilityDemand,
+  normalizedAxialForce,
+  verticalWebMechanicalRatio,
+  reinforcementYieldStrain,
+  grossSectionDepth,
+  confinedCoreDepth
+}) {
+  const normalizedBehavior = normalizeNTC2018StructuralBehavior(behavior);
+  if (normalizedBehavior === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE) {
+    return {
+      omegaWd: 0,
+      equationValue: 0,
+      minimumValue: 0,
+      reference: "NTC 2018 \xA7 7.4.1"
+    };
+  }
+  const alpha = positive29(confinementEffectiveness, "confinementEffectiveness");
+  const muPhi = positive29(curvatureDuctilityDemand, "curvatureDuctilityDemand");
+  const nuD = nonNegative11(normalizedAxialForce, "normalizedAxialForce");
+  const omegaV = nonNegative11(
+    verticalWebMechanicalRatio,
+    "verticalWebMechanicalRatio"
+  );
+  const epsSy = positive29(reinforcementYieldStrain, "reinforcementYieldStrain");
+  const bc = positive29(grossSectionDepth, "grossSectionDepth");
+  const b0 = positive29(confinedCoreDepth, "confinedCoreDepth");
+  const equationValue = (30 * muPhi * (nuD + omegaV) * epsSy * (bc / b0) - 0.035) / alpha;
+  const minimumValue = normalizedBehavior === NTC2018_STRUCTURAL_BEHAVIOR.CD_A ? 0.12 : 0.08;
+  return {
+    omegaWd: Math.max(minimumValue, equationValue),
+    equationValue,
+    minimumValue,
+    reference: "NTC 2018 \xA7 7.4.6.2.4, Eq. [7.4.32]"
+  };
+}
+function createWallSectionAssessment({
+  sectionId,
+  behavior,
+  wallLength,
+  wallThickness,
+  axialCompressionRatio,
+  flexuralCheck,
+  shearCheckInput
+}) {
+  var _a;
+  const normalizedBehavior = normalizeNTC2018StructuralBehavior(behavior);
+  const length = positive29(wallLength, "wallLength");
+  const thickness = positive29(wallThickness, "wallThickness");
+  const checks = [{
+    check: "wall-geometric-classification",
+    demand: length / thickness,
+    capacity: 4,
+    comparison: ">",
+    ok: length / thickness > 4,
+    reference: "NTC 2018 \xA7 7.4.4.5"
+  }];
+  if (normalizedBehavior !== NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE) {
+    const axialRatio = nonNegative11(
+      axialCompressionRatio,
+      "axialCompressionRatio"
+    );
+    const limit = normalizedBehavior === NTC2018_STRUCTURAL_BEHAVIOR.CD_A ? 0.35 : 0.4;
+    checks.push({
+      check: "wall-axial-compression-ratio",
+      demand: axialRatio,
+      capacity: limit,
+      utilizationRatio: axialRatio / limit,
+      ok: axialRatio <= limit,
+      reference: "NTC 2018 \xA7 7.4.4.5.1"
+    });
+  }
+  if (flexuralCheck != null) {
+    if (typeof flexuralCheck.ok !== "boolean") {
+      throw new Error("flexuralCheck.ok must be boolean.");
+    }
+    checks.push({ ...flexuralCheck, check: (_a = flexuralCheck.check) != null ? _a : "wall-flexure" });
+  }
+  if (shearCheckInput != null) {
+    checks.push(...verifyWallShear(shearCheckInput).checks);
+  }
+  const complete = flexuralCheck != null && shearCheckInput != null;
+  const allChecksOk = complete && checks.every((check4) => check4.ok === true);
+  return {
     sectionId,
-    elevation,
-    isBase,
-    checks
+    behavior: normalizedBehavior,
+    complete,
+    status: complete ? allChecksOk ? "ok" : "not-verified" : "not-implemented",
+    allChecksOk,
+    checks,
+    references: NTC2018_SHEAR_WALL_REFERENCES
+  };
+}
+
+// src/norms/ntc2018/reinforced-concrete/wallSystemChecks.js
+var NTC2018_WALL_SYSTEM_REFERENCES = Object.freeze([
+  Object.freeze({
+    source: "NTC 2018",
+    citation: "\xA7\xA7 7.4.4.5, 7.4.4.6, 7.4.6.1.4, 7.4.6.2.4 e 7.4.6.2.5"
+  })
+]);
+function finite39(value, label) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    throw new Error(`${label} must be finite; got ${value}.`);
+  }
+  return number;
+}
+function positive30(value, label) {
+  const number = finite39(value, label);
+  if (number <= 0) {
+    throw new Error(`${label} must be positive; got ${value}.`);
+  }
+  return number;
+}
+function nonNegative12(value, label) {
+  const number = finite39(value, label);
+  if (number < 0) {
+    throw new Error(`${label} must be non-negative; got ${value}.`);
+  }
+  return number;
+}
+function requiredBoolean2(value, label) {
+  if (typeof value !== "boolean") {
+    throw new Error(`${label} must be boolean.`);
+  }
+  return value;
+}
+function check2(id, demand, capacity, ok, extra = {}) {
+  return {
+    id,
+    demand,
+    capacity,
+    utilizationRatio: Number.isFinite(demand) && Number.isFinite(capacity) && capacity > 0 ? demand / capacity : null,
+    ok,
+    ...extra
+  };
+}
+function computeWallEffectiveFlangeWidth({
+  actualFlangeWidth,
+  wallHeightAbove,
+  adjacentWebSpacing
+}) {
+  const actual = nonNegative12(actualFlangeWidth, "actualFlangeWidth");
+  const height = nonNegative12(wallHeightAbove, "wallHeightAbove");
+  const spacing = nonNegative12(adjacentWebSpacing, "adjacentWebSpacing");
+  const limits = {
+    actualFlangeWidth: actual,
+    quarterWallHeightAbove: 0.25 * height,
+    halfAdjacentWebSpacing: 0.5 * spacing
+  };
+  return {
+    effectiveFlangeWidth: Math.min(...Object.values(limits)),
+    limits,
+    reference: "NTC 2018 \xA7 7.4.4.5.1"
+  };
+}
+function computeMixedSystemWallShearEnvelope({
+  wallHeight,
+  baseAmplifiedShear,
+  analysisShearAtOneThird,
+  elevations
+}) {
+  const height = positive30(wallHeight, "wallHeight");
+  const va = Math.abs(finite39(baseAmplifiedShear, "baseAmplifiedShear"));
+  const analysisVb = Math.abs(finite39(
+    analysisShearAtOneThird,
+    "analysisShearAtOneThird"
+  ));
+  if (!Array.isArray(elevations) || elevations.length === 0) {
+    throw new Error("elevations must be a non-empty array.");
+  }
+  const transitionElevation = height / 3;
+  const vb = Math.max(analysisVb, va / 2);
+  const points = elevations.map((value, index) => {
+    const elevation = nonNegative12(value, `elevations[${index}]`);
+    if (elevation > height) {
+      throw new Error(`elevations[${index}] must not exceed wallHeight.`);
+    }
+    const shearDemand = elevation <= transitionElevation ? va + (vb - va) * elevation / transitionElevation : vb;
+    return { elevation, shearDemand };
+  });
+  return {
+    baseShear: va,
+    shearAtOneThird: vb,
+    analysisShearAtOneThird: analysisVb,
+    minimumShearAtOneThird: va / 2,
+    transitionElevation,
+    points,
+    reference: "NTC 2018 \xA7 7.4.4.5.1, Fig. 7.4.5"
+  };
+}
+function computeWeaklyReinforcedWallShearDemand({
+  analysisShear,
+  q
+}) {
+  const shear = Math.abs(finite39(analysisShear, "analysisShear"));
+  const behaviorFactor = positive30(q, "q");
+  const amplificationFactor = (behaviorFactor + 1) / 2;
+  return {
+    shearDemand: shear * amplificationFactor,
+    amplificationFactor,
+    reference: "NTC 2018 \xA7 7.4.4.5.1"
+  };
+}
+function computeWeaklyReinforcedWallAxialDemandRange({
+  gravityAxialDemand,
+  q
+}) {
+  const gravity = finite39(gravityAxialDemand, "gravityAxialDemand");
+  const behaviorFactor = positive30(q, "q");
+  const additionalDynamicDemand = behaviorFactor > 2 ? 0.5 * Math.abs(gravity) : 0;
+  return {
+    minimumAxialDemand: gravity - additionalDynamicDemand,
+    maximumAxialDemand: gravity + additionalDynamicDemand,
+    additionalDynamicDemand,
+    applicable: behaviorFactor > 2,
+    reference: "NTC 2018 \xA7 7.4.4.5.1"
+  };
+}
+function verifyWallCurvatureDuctility({
+  curvatureDuctilityDemand,
+  curvatureDuctilityCapacity
+}) {
+  const demand = positive30(
+    curvatureDuctilityDemand,
+    "curvatureDuctilityDemand"
+  );
+  const capacity = positive30(
+    curvatureDuctilityCapacity,
+    "curvatureDuctilityCapacity"
+  );
+  return {
+    ...check2(
+      "wall-curvature-ductility",
+      demand,
+      capacity,
+      demand <= capacity
+    ),
+    reference: "NTC 2018 \xA7 7.4.4.5.2"
+  };
+}
+function verifyWallGeneralDetailing({
+  wallThickness,
+  clearStoreyHeight,
+  diagonalCouplingReinforcementRequired = false,
+  supportedFromFoundationOrRigidBox,
+  irregularOpeningsIncludedInAnalysis,
+  verticalReinforcementRatio,
+  horizontalReinforcementRatio,
+  maximumConcreteCompressiveStrain = 0,
+  maximumBarDiameter,
+  barsOnBothFaces,
+  maximumBarSpacing,
+  tiesPerSquareMetre
+}) {
+  const thickness = positive30(wallThickness, "wallThickness");
+  const storeyHeight = positive30(
+    clearStoreyHeight,
+    "clearStoreyHeight"
+  );
+  const diagonalRequired = requiredBoolean2(
+    diagonalCouplingReinforcementRequired,
+    "diagonalCouplingReinforcementRequired"
+  );
+  const minimumThickness = Math.max(
+    diagonalRequired ? 0.2 : 0.15,
+    storeyHeight / 20
+  );
+  const verticalRatio = nonNegative12(
+    verticalReinforcementRatio,
+    "verticalReinforcementRatio"
+  );
+  const horizontalRatio = nonNegative12(
+    horizontalReinforcementRatio,
+    "horizontalReinforcementRatio"
+  );
+  const strain = nonNegative12(
+    maximumConcreteCompressiveStrain,
+    "maximumConcreteCompressiveStrain"
+  );
+  const barDiameter = positive30(maximumBarDiameter, "maximumBarDiameter");
+  const barSpacing = positive30(maximumBarSpacing, "maximumBarSpacing");
+  const ties = nonNegative12(tiesPerSquareMetre, "tiesPerSquareMetre");
+  const supported2 = requiredBoolean2(
+    supportedFromFoundationOrRigidBox,
+    "supportedFromFoundationOrRigidBox"
+  );
+  const openingsModelled = requiredBoolean2(
+    irregularOpeningsIncludedInAnalysis,
+    "irregularOpeningsIncludedInAnalysis"
+  );
+  const bothFaces = requiredBoolean2(barsOnBothFaces, "barsOnBothFaces");
+  const checks = [
+    check2(
+      "wall-supported-without-transfer-beam-or-slab",
+      supported2 ? 0 : 1,
+      0,
+      supported2,
+      { reference: "NTC 2018 \xA7 7.4.6.1.4" }
+    ),
+    check2(
+      "wall-irregular-openings-modelled",
+      openingsModelled ? 0 : 1,
+      0,
+      openingsModelled,
+      { reference: "NTC 2018 \xA7 7.4.6.1.4" }
+    ),
+    check2(
+      "wall-minimum-thickness",
+      minimumThickness,
+      thickness,
+      thickness >= minimumThickness,
+      { reference: "NTC 2018 \xA7 7.4.6.1.4" }
+    ),
+    check2(
+      "wall-minimum-vertical-reinforcement",
+      2e-3,
+      verticalRatio,
+      verticalRatio >= 2e-3,
+      { reference: "NTC 2018 \xA7 7.4.6.2.4" }
+    ),
+    check2(
+      "wall-minimum-horizontal-reinforcement",
+      2e-3,
+      horizontalRatio,
+      horizontalRatio >= 2e-3,
+      { reference: "NTC 2018 \xA7 7.4.6.2.4" }
+    ),
+    check2(
+      "wall-maximum-bar-diameter",
+      barDiameter,
+      thickness / 10,
+      barDiameter <= thickness / 10,
+      { reference: "NTC 2018 \xA7 7.4.6.2.4" }
+    ),
+    check2(
+      "wall-reinforcement-on-both-faces",
+      bothFaces ? 0 : 1,
+      0,
+      bothFaces,
+      { reference: "NTC 2018 \xA7 7.4.6.2.4" }
+    ),
+    check2(
+      "wall-maximum-bar-spacing",
+      barSpacing,
+      0.3,
+      barSpacing <= 0.3,
+      { reference: "NTC 2018 \xA7 7.4.6.2.4" }
+    ),
+    check2(
+      "wall-minimum-tie-density",
+      9,
+      ties,
+      ties >= 9,
+      { reference: "NTC 2018 \xA7 7.4.6.2.4" }
+    )
+  ];
+  const recommendation = {
+    id: "wall-compressed-zone-recommended-vertical-reinforcement",
+    applicable: strain > 2e-3,
+    demand: strain,
+    recommendedMinimum: 5e-3,
+    satisfied: strain <= 2e-3 || verticalRatio >= 5e-3,
+    mandatory: false,
+    reference: "NTC 2018 \xA7 7.4.6.2.4"
+  };
+  return {
+    status: checks.every((item) => item.ok) ? "ok" : "not-verified",
+    ok: checks.every((item) => item.ok),
+    minimumThickness,
+    checks,
+    recommendations: [recommendation],
+    references: NTC2018_WALL_SYSTEM_REFERENCES
+  };
+}
+function createCouplingBeamAssessment({
+  beamId,
+  clearSpan,
+  sectionHeight,
+  slabThickness,
+  width,
+  effectiveDepth,
+  shearDemand,
+  concreteTensileDesignStrength,
+  chapter4FlexuralVerification,
+  ordinaryBeamVerification,
+  diagonalReinforcement
+}) {
+  var _a, _b;
+  const span = positive30(clearSpan, "clearSpan");
+  const height = positive30(sectionHeight, "sectionHeight");
+  const slab = positive30(slabThickness, "slabThickness");
+  const beamWidth = positive30(width, "width");
+  const depth = positive30(effectiveDepth, "effectiveDepth");
+  const shear = Math.abs(finite39(shearDemand, "shearDemand"));
+  const fctd = positive30(
+    concreteTensileDesignStrength,
+    "concreteTensileDesignStrength"
+  );
+  if (chapter4FlexuralVerification != null && typeof chapter4FlexuralVerification.ok !== "boolean") {
+    throw new Error("chapter4FlexuralVerification.ok must be boolean.");
+  }
+  if (ordinaryBeamVerification != null && typeof ordinaryBeamVerification.ok !== "boolean") {
+    throw new Error("ordinaryBeamVerification.ok must be boolean.");
+  }
+  const spanToHeightRatio = span / height;
+  const ordinaryShearLimit = fctd * beamWidth * depth;
+  const ordinaryProcedureAllowed = spanToHeightRatio >= 3 || shear <= ordinaryShearLimit;
+  const effectiveForCoupling = Math.abs(height - slab) > 1e-9 * Math.max(1, height, slab);
+  const checks = [
+    check2(
+      "coupling-beam-effective-depth-beyond-slab",
+      height,
+      slab,
+      effectiveForCoupling,
+      {
+        comparison: "!=",
+        reference: "NTC 2018 \xA7 7.4.4.6"
+      }
+    )
+  ];
+  const missing2 = [];
+  if (chapter4FlexuralVerification == null) {
+    missing2.push("chapter4FlexuralVerification");
+  } else {
+    checks.push({
+      ...chapter4FlexuralVerification,
+      id: (_a = chapter4FlexuralVerification.id) != null ? _a : "coupling-beam-chapter4-flexure"
+    });
+  }
+  if (ordinaryProcedureAllowed) {
+    if (ordinaryBeamVerification == null) {
+      missing2.push("ordinaryBeamVerification");
+    } else {
+      checks.push({
+        ...ordinaryBeamVerification,
+        id: (_b = ordinaryBeamVerification.id) != null ? _b : "coupling-beam-ordinary-procedure"
+      });
+    }
+  } else if (diagonalReinforcement == null) {
+    missing2.push("diagonalReinforcement");
+  } else {
+    const area = positive30(
+      diagonalReinforcement.areaPerDiagonal,
+      "diagonalReinforcement.areaPerDiagonal"
+    );
+    const fyd = positive30(
+      diagonalReinforcement.designYieldStrength,
+      "diagonalReinforcement.designYieldStrength"
+    );
+    const angle2 = positive30(
+      diagonalReinforcement.minimumAngle,
+      "diagonalReinforcement.minimumAngle"
+    );
+    if (angle2 >= Math.PI / 2) {
+      throw new Error(
+        "diagonalReinforcement.minimumAngle must be below pi/2 radians."
+      );
+    }
+    const diagonalCapacity = 2 * area * fyd * Math.sin(angle2);
+    const confinementSpacing = positive30(
+      diagonalReinforcement.confinementSpacing,
+      "diagonalReinforcement.confinementSpacing"
+    );
+    const distributedBarDiameter = positive30(
+      diagonalReinforcement.distributedBarDiameter,
+      "diagonalReinforcement.distributedBarDiameter"
+    );
+    const distributedBarSpacing = positive30(
+      diagonalReinforcement.distributedBarSpacing,
+      "diagonalReinforcement.distributedBarSpacing"
+    );
+    const edgeBarCount = nonNegative12(
+      diagonalReinforcement.edgeBarCountPerEdge,
+      "diagonalReinforcement.edgeBarCountPerEdge"
+    );
+    const edgeBarDiameter = positive30(
+      diagonalReinforcement.edgeBarDiameter,
+      "diagonalReinforcement.edgeBarDiameter"
+    );
+    const providedAnchorage = positive30(
+      diagonalReinforcement.providedAnchorageLength,
+      "diagonalReinforcement.providedAnchorageLength"
+    );
+    const ordinaryAnchorage = positive30(
+      diagonalReinforcement.nonSeismicAnchorageLength,
+      "diagonalReinforcement.nonSeismicAnchorageLength"
+    );
+    checks.push(
+      check2(
+        "coupling-beam-diagonal-shear",
+        shear,
+        diagonalCapacity,
+        shear <= diagonalCapacity,
+        { reference: "NTC 2018 \xA7 7.4.4.6, Eq. [7.4.24]" }
+      ),
+      check2(
+        "coupling-beam-diagonal-confinement-spacing",
+        confinementSpacing,
+        0.1,
+        confinementSpacing <= 0.1,
+        { reference: "NTC 2018 \xA7 7.4.6.2.5" }
+      ),
+      check2(
+        "coupling-beam-distributed-bar-diameter",
+        0.01,
+        distributedBarDiameter,
+        distributedBarDiameter >= 0.01,
+        { reference: "NTC 2018 \xA7 7.4.6.2.5" }
+      ),
+      check2(
+        "coupling-beam-distributed-bar-spacing",
+        distributedBarSpacing,
+        0.1,
+        distributedBarSpacing <= 0.1,
+        { reference: "NTC 2018 \xA7 7.4.6.2.5" }
+      ),
+      check2(
+        "coupling-beam-edge-bars",
+        edgeBarCount,
+        2,
+        edgeBarCount >= 2 && edgeBarDiameter >= 0.016,
+        {
+          edgeBarDiameter,
+          reference: "NTC 2018 \xA7 7.4.6.2.5"
+        }
+      ),
+      check2(
+        "coupling-beam-seismic-anchorage",
+        providedAnchorage,
+        1.5 * ordinaryAnchorage,
+        providedAnchorage >= 1.5 * ordinaryAnchorage,
+        { reference: "NTC 2018 \xA7 7.4.6.2.5" }
+      )
+    );
+  }
+  const complete = missing2.length === 0;
+  const ok = complete && checks.every((item) => item.ok === true);
+  return {
+    beamId,
+    status: complete ? ok ? "ok" : "not-verified" : "not-implemented",
+    complete,
+    ok,
+    procedure: ordinaryProcedureAllowed ? "ordinary-beam" : "diagonal-X",
+    effectiveForCoupling,
+    spanToHeightRatio,
+    ordinaryShearLimit,
+    missing: missing2,
+    checks,
+    references: NTC2018_WALL_SYSTEM_REFERENCES
+  };
+}
+function createWallHeightSystemAssessment({
+  wallId,
+  expectedSectionCutIds,
+  sectionStateAssessments,
+  detailingAssessment,
+  couplingBeamAssessments = [],
+  additionalChecks = []
+}) {
+  var _a;
+  if (!Array.isArray(expectedSectionCutIds) || expectedSectionCutIds.length === 0) {
+    throw new Error("expectedSectionCutIds must be a non-empty array.");
+  }
+  const assessments = Array.isArray(sectionStateAssessments) ? sectionStateAssessments : [];
+  const assessedCutIds = new Set(assessments.map((item) => item.sectionCutId));
+  const missing2 = [
+    ...expectedSectionCutIds.filter((id) => !assessedCutIds.has(id)).map((id) => `sectionCut:${id}`),
+    ...detailingAssessment == null ? ["detailingAssessment"] : [],
+    ...couplingBeamAssessments.filter((item) => (item == null ? void 0 : item.complete) !== true).map((item) => {
+      var _a2;
+      return `couplingBeam:${(_a2 = item == null ? void 0 : item.beamId) != null ? _a2 : "unknown"}`;
+    })
+  ];
+  const complete = missing2.length === 0 && assessments.length > 0 && assessments.every((item) => (item == null ? void 0 : item.complete) === true);
+  const checks = [
+    ...assessments.flatMap((item) => {
+      var _a2;
+      return (_a2 = item.checks) != null ? _a2 : [];
+    }),
+    ...(_a = detailingAssessment == null ? void 0 : detailingAssessment.checks) != null ? _a : [],
+    ...couplingBeamAssessments.flatMap((item) => {
+      var _a2;
+      return (_a2 = item.checks) != null ? _a2 : [];
+    }),
+    ...additionalChecks
+  ];
+  const ok = complete && checks.every((item) => item.ok === true);
+  return {
+    wallId,
+    status: complete ? ok ? "ok" : "not-verified" : "not-implemented",
+    complete,
+    ok,
+    missing: missing2,
+    sectionStateAssessments: assessments,
+    detailingAssessment,
+    couplingBeamAssessments,
+    checks,
+    references: NTC2018_WALL_SYSTEM_REFERENCES
   };
 }
 
 // src/norms/ntc2018/geotechnics/ntc2018RetainingWallSeismic.js
 var NTC2018_RETAINING_WALL_REFERENCE = "D.M. 17/01/2018, NTC 2018, section 7.11.6.2.1";
-function finiteNonNegative8(value, label) {
+function finiteNonNegative7(value, label) {
   if (!Number.isFinite(value) || value < 0) {
     throw new Error(`${label} must be non-negative.`);
   }
@@ -71712,11 +73183,11 @@ function calculateNTC2018RetainingWallSeismicCoefficients({
   maximumSiteAccelerationRatio,
   betaM
 } = {}) {
-  const accelerationRatio = finiteNonNegative8(
+  const accelerationRatio = finiteNonNegative7(
     Number(maximumSiteAccelerationRatio),
     "maximumSiteAccelerationRatio"
   );
-  const reduction = finiteNonNegative8(Number(betaM), "betaM");
+  const reduction = finiteNonNegative7(Number(betaM), "betaM");
   if (reduction > 1) {
     throw new Error("betaM must not exceed 1.");
   }
@@ -71770,6 +73241,276 @@ function createNTC2018MononobeOkabeSeismicInput({
       verticalCase: selected.id,
       verticalConvention: selected.convention
     }
+  };
+}
+
+// src/norms/ntc2018/seismicAnalysisChecks.js
+var HORIZONTAL_DIRECTIONS = Object.freeze(["X", "Y"]);
+var MASS_SIGNIFICANCE_THRESHOLD = 0.05;
+var MASS_TOTAL_THRESHOLD = 0.85;
+var RATIO_COMPARISON_TOLERANCE = 1e-12;
+var ACCIDENTAL_ECCENTRICITY_FACTOR = 0.05;
+var NTC2018_LINEAR_DYNAMIC_REFERENCES = Object.freeze([
+  Object.freeze({
+    source: "NTC 2018",
+    citation: "\xA7\xA7 7.2.6, 7.3.3, 7.3.3.1 e 7.3.5"
+  })
+]);
+function finitePositive7(value, label) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) {
+    throw new Error(`${label} must be a positive finite number.`);
+  }
+  return number;
+}
+function normalizedDirections(directions) {
+  if (!Array.isArray(directions) || directions.length === 0) {
+    throw new Error("At least one seismic direction is required.");
+  }
+  const values = directions.map((direction) => String(direction).toUpperCase());
+  if (new Set(values).size !== values.length || values.some((direction) => !["X", "Y", "Z"].includes(direction))) {
+    throw new Error("Seismic directions must be unique X, Y or Z values.");
+  }
+  return values;
+}
+function check3(id, ok, details = {}) {
+  return {
+    id,
+    status: ok ? "ok" : "not-verified",
+    ok,
+    ...details
+  };
+}
+function verifyNTC2018ModalMassParticipation({
+  modes,
+  directions = HORIZONTAL_DIRECTIONS
+} = {}) {
+  if (!Array.isArray(modes) || modes.length === 0) {
+    return {
+      status: "not-implemented",
+      ok: false,
+      directions: [],
+      reason: "Modal results are required.",
+      reference: "NTC 2018 \xA7 7.3.3.1"
+    };
+  }
+  const seismicDirections = normalizedDirections(directions);
+  const assessments = seismicDirections.map((direction) => {
+    const ratios2 = modes.map((mode, modeIndex) => {
+      var _a;
+      const ratio2 = (_a = mode == null ? void 0 : mode.participatingMassRatios) == null ? void 0 : _a[direction];
+      if (!Number.isFinite(ratio2) || ratio2 < 0 || ratio2 > 1) {
+        throw new Error(
+          `modes[${modeIndex}].participatingMassRatios.${direction} must lie in [0, 1].`
+        );
+      }
+      return {
+        modeNumber: mode.modeNumber,
+        ratio: ratio2
+      };
+    });
+    const significantModes = ratios2.filter((item) => item.ratio > MASS_SIGNIFICANCE_THRESHOLD);
+    const totalParticipatingMassRatio = ratios2.reduce(
+      (sum, item) => sum + item.ratio,
+      0
+    );
+    const totalOk = totalParticipatingMassRatio > MASS_TOTAL_THRESHOLD + RATIO_COMPARISON_TOLERANCE;
+    return {
+      direction,
+      significantThreshold: MASS_SIGNIFICANCE_THRESHOLD,
+      totalThreshold: MASS_TOTAL_THRESHOLD,
+      significantModeNumbers: significantModes.map((item) => item.modeNumber),
+      totalParticipatingMassRatio,
+      totalOk,
+      ok: totalOk
+    };
+  });
+  return {
+    status: assessments.every((item) => item.ok) ? "ok" : "not-verified",
+    ok: assessments.every((item) => item.ok),
+    directions: assessments,
+    reference: "NTC 2018 \xA7 7.3.3.1"
+  };
+}
+function verifyNTC2018AccidentalEccentricities({
+  eccentricities,
+  storeyIds,
+  meanPlanDimensions,
+  directions = HORIZONTAL_DIRECTIONS
+} = {}) {
+  var _a, _b, _c;
+  if (!Array.isArray(eccentricities) || !Array.isArray(storeyIds) || storeyIds.length === 0 || meanPlanDimensions == null) {
+    return {
+      status: "not-implemented",
+      ok: false,
+      checks: [],
+      reason: "Accidental eccentricities, storeys and mean plan dimensions are required.",
+      reference: "NTC 2018 \xA7\xA7 7.2.6 e 7.3.3"
+    };
+  }
+  const seismicDirections = normalizedDirections(directions);
+  const dimensionX = finitePositive7(
+    meanPlanDimensions.X,
+    "meanPlanDimensions.X"
+  );
+  const dimensionY = finitePositive7(
+    meanPlanDimensions.Y,
+    "meanPlanDimensions.Y"
+  );
+  const checks = [];
+  for (const direction of seismicDirections) {
+    if (!HORIZONTAL_DIRECTIONS.includes(direction)) {
+      continue;
+    }
+    const perpendicularDimension = direction === "X" ? dimensionY : dimensionX;
+    const minimumAbsoluteOffset = ACCIDENTAL_ECCENTRICITY_FACTOR * perpendicularDimension;
+    const directionEntries = eccentricities.filter((item) => item.direction === direction);
+    const absoluteOffsets = [];
+    for (const storeyId of storeyIds) {
+      const entries3 = directionEntries.filter((item) => item.storeyId === storeyId);
+      const positive44 = entries3.find((item) => Number.isFinite(item.offset) && item.offset >= minimumAbsoluteOffset);
+      const negative = entries3.find((item) => Number.isFinite(item.offset) && item.offset <= -minimumAbsoluteOffset);
+      if (positive44) absoluteOffsets.push(Math.abs(positive44.offset));
+      if (negative) absoluteOffsets.push(Math.abs(negative.offset));
+      checks.push(check3(
+        `accidental-eccentricity-${direction}-${storeyId}`,
+        Boolean(positive44 && negative),
+        {
+          direction,
+          storeyId,
+          minimumAbsoluteOffset,
+          positiveOffset: (_a = positive44 == null ? void 0 : positive44.offset) != null ? _a : null,
+          negativeOffset: (_b = negative == null ? void 0 : negative.offset) != null ? _b : null
+        }
+      ));
+    }
+    const firstOffset = (_c = absoluteOffsets[0]) != null ? _c : null;
+    const constant = firstOffset != null && absoluteOffsets.length === 2 * storeyIds.length && absoluteOffsets.every((offset) => Math.abs(offset - firstOffset) <= 1e-9);
+    checks.push(check3(
+      `accidental-eccentricity-${direction}-constant-over-height`,
+      constant,
+      {
+        direction,
+        absoluteOffset: constant ? firstOffset : null
+      }
+    ));
+  }
+  return {
+    status: checks.length > 0 && checks.every((item) => item.ok) ? "ok" : "not-verified",
+    ok: checks.length > 0 && checks.every((item) => item.ok),
+    factor: ACCIDENTAL_ECCENTRICITY_FACTOR,
+    checks,
+    reference: "NTC 2018 \xA7\xA7 7.2.6 e 7.3.3"
+  };
+}
+function createNTC2018LinearDynamicAssessment({
+  analysis,
+  result: result9,
+  modalProcedureId,
+  responseSpectrumProcedureId,
+  storeyIds,
+  meanPlanDimensions,
+  horizontalDirections = HORIZONTAL_DIRECTIONS,
+  verticalComponentRequired = false
+} = {}) {
+  var _a, _b, _c, _d, _e, _f, _g;
+  const modalProcedure = (_a = analysis == null ? void 0 : analysis.procedures) == null ? void 0 : _a.find((procedure) => procedure.id === modalProcedureId && procedure.type === "modal");
+  const responseSpectrumProcedure = (_b = analysis == null ? void 0 : analysis.procedures) == null ? void 0 : _b.find((procedure) => procedure.id === responseSpectrumProcedureId && procedure.type === "response-spectrum");
+  const missing2 = [
+    ...!modalProcedure ? ["modalProcedure"] : [],
+    ...!responseSpectrumProcedure ? ["responseSpectrumProcedure"] : [],
+    ...!Array.isArray((_c = result9 == null ? void 0 : result9.results) == null ? void 0 : _c.modes) || result9.results.modes.length === 0 ? ["modalResults"] : [],
+    ...!Array.isArray(storeyIds) || storeyIds.length === 0 ? ["storeyIds"] : [],
+    ...meanPlanDimensions == null ? ["meanPlanDimensions"] : []
+  ];
+  if (missing2.length > 0) {
+    return {
+      status: "not-implemented",
+      complete: false,
+      ok: false,
+      missing: missing2,
+      checks: [],
+      reference: "NTC 2018 \xA7\xA7 7.2.6, 7.3.3, 7.3.3.1 e 7.3.5"
+    };
+  }
+  const modalDirections = normalizedDirections(horizontalDirections);
+  const modes = result9.results.modes.filter((mode) => mode.procedureId === modalProcedure.id);
+  const massParticipation = verifyNTC2018ModalMassParticipation({
+    modes,
+    directions: modalDirections
+  });
+  const requiredSpectrumDirections = [
+    ...modalDirections,
+    ...verticalComponentRequired ? ["Z"] : []
+  ];
+  const spectraById = new Map(((_d = analysis.spectra) != null ? _d : []).map((spectrum) => [
+    spectrum.id,
+    spectrum
+  ]));
+  const suppliedSpectrumDirections = ((_e = responseSpectrumProcedure.spectrumIds) != null ? _e : []).map((id) => {
+    var _a2;
+    return (_a2 = spectraById.get(id)) == null ? void 0 : _a2.direction;
+  }).filter(Boolean);
+  const eccentricity = verifyNTC2018AccidentalEccentricities({
+    eccentricities: responseSpectrumProcedure.accidentalEccentricities,
+    storeyIds,
+    meanPlanDimensions,
+    directions: modalDirections
+  });
+  const checks = [
+    check3(
+      "modal-result-count",
+      modes.length >= modalProcedure.requestedModes,
+      {
+        provided: modes.length,
+        requested: modalProcedure.requestedModes
+      }
+    ),
+    check3(
+      "modal-mass-participation",
+      massParticipation.ok,
+      { directions: massParticipation.directions }
+    ),
+    check3(
+      "modal-combination-cqc",
+      responseSpectrumProcedure.modalCombinationMethod === "cqc",
+      {
+        provided: (_f = responseSpectrumProcedure.modalCombinationMethod) != null ? _f : null,
+        required: "cqc"
+      }
+    ),
+    check3(
+      "seismic-component-combination",
+      responseSpectrumProcedure.componentCombinationRule === "100-30-30",
+      {
+        provided: (_g = responseSpectrumProcedure.componentCombinationRule) != null ? _g : null,
+        required: "100-30-30"
+      }
+    ),
+    check3(
+      "response-spectrum-direction-coverage",
+      requiredSpectrumDirections.every((direction) => suppliedSpectrumDirections.includes(direction)),
+      {
+        requiredDirections: requiredSpectrumDirections,
+        suppliedDirections: suppliedSpectrumDirections
+      }
+    ),
+    check3(
+      "accidental-eccentricity",
+      eccentricity.ok,
+      { eccentricityChecks: eccentricity.checks }
+    )
+  ];
+  return {
+    status: checks.every((item) => item.ok) ? "ok" : "not-verified",
+    complete: true,
+    ok: checks.every((item) => item.ok),
+    modalProcedureId,
+    responseSpectrumProcedureId,
+    massParticipation,
+    accidentalEccentricity: eccentricity,
+    checks,
+    reference: "NTC 2018 \xA7\xA7 7.2.6, 7.3.3, 7.3.3.1 e 7.3.5"
   };
 }
 
@@ -74010,7 +75751,7 @@ function steelMemberFem3DToLegacyAnalysisResult(contract) {
 // src/applications/steel-frames/checks/SteelAdvancedMemberChecks.js
 var I_H_FAMILIES5 = /* @__PURE__ */ new Set(["IPE", "HEA", "HEB", "HEM"]);
 var round5 = (value, decimals = 6) => Number.isFinite(value) ? Number(value.toFixed(decimals)) : value;
-var positive29 = (value) => Number.isFinite(value) && value > 0;
+var positive31 = (value) => Number.isFinite(value) && value > 0;
 function familyOf(section) {
   var _a, _b, _c;
   return String((_c = (_b = section == null ? void 0 : section.family) != null ? _b : (_a = section == null ? void 0 : section.catalogProperties) == null ? void 0 : _a.family) != null ? _c : "").toUpperCase();
@@ -74020,7 +75761,7 @@ function gamma(material, key, fallback = 1.05) {
   return (_d = (_c = (_a = material == null ? void 0 : material.metadata) == null ? void 0 : _a[key]) != null ? _c : (_b = material == null ? void 0 : material.metadata) == null ? void 0 : _b.gammaM1) != null ? _d : fallback;
 }
 function uniformCheck({ id, description, demand, capacity, metadata = {}, warnings = [], assumptions = [] }) {
-  const ratio2 = positive29(capacity) ? Math.abs(demand) / capacity : null;
+  const ratio2 = positive31(capacity) ? Math.abs(demand) / capacity : null;
   return {
     status: Number.isFinite(ratio2) && ratio2 <= 1 ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
     check: {
@@ -74086,7 +75827,7 @@ function webGeometry(section) {
   const tw = section == null ? void 0 : section.webThickness;
   const tf = section == null ? void 0 : section.flangeThickness;
   const r = (_a = section == null ? void 0 : section.rootRadius) != null ? _a : 0;
-  return { h, tw, tf, hw: positive29(h) && positive29(tf) ? h - 2 * tf - 2 * r : null };
+  return { h, tw, tf, hw: positive31(h) && positive31(tf) ? h - 2 * tf - 2 * r : null };
 }
 function verifySteelWebShearBuckling({ section, material, vEd = 0, panel = {}, gammaM1 = null } = {}) {
   var _a, _b, _c, _d, _e;
@@ -74096,7 +75837,7 @@ function verifySteelWebShearBuckling({ section, material, vEd = 0, panel = {}, g
   const E = (_b = (_a = material == null ? void 0 : material.E) != null ? _a : material == null ? void 0 : material.elasticModulus) != null ? _b : 21e4;
   const a = (_c = panel.length) != null ? _c : Number.isFinite(panel.to) && Number.isFinite(panel.from) ? panel.to - panel.from : null;
   const resolvedGamma = gammaM1 != null ? gammaM1 : gamma(material, "gammaM1");
-  if (!I_H_FAMILIES5.has(family) || ![hw, tw, fy, E, a, resolvedGamma].every(positive29)) {
+  if (!I_H_FAMILIES5.has(family) || ![hw, tw, fy, E, a, resolvedGamma].every(positive31)) {
     return { status: RESULT_STATUS.NOT_SUPPORTED, check: steelNotSupportedCheck({
       id: "steel-web-shear-buckling",
       description: "Web shear buckling",
@@ -74139,7 +75880,7 @@ function verifySteelConcentratedWebLoad({ section, material, load = {}, panel = 
   const force = (_e = (_d = load.force) != null ? _d : load.FEd) != null ? _e : 0;
   const a = (_f = panel.length) != null ? _f : load.panelLength;
   const resolvedGamma = gammaM1 != null ? gammaM1 : gamma(material, "gammaM1");
-  if (!I_H_FAMILIES5.has(family) || ![hw, tw, tf, b, fyw, E, ss, a, resolvedGamma].every(positive29)) {
+  if (!I_H_FAMILIES5.has(family) || ![hw, tw, tf, b, fyw, E, ss, a, resolvedGamma].every(positive31)) {
     return { status: RESULT_STATUS.NOT_SUPPORTED, check: steelNotSupportedCheck({
       id: "steel-concentrated-web-load",
       description: "Transverse concentrated load on web",
@@ -74173,7 +75914,7 @@ function verifySteelBendingShearInteraction({ section, material, mEd = 0, vEd = 
   const fy = material == null ? void 0 : material.fyk;
   const Wpl = section == null ? void 0 : section.plasticSectionModulusY;
   const resolvedGamma = gammaM0 != null ? gammaM0 : gamma(material, "gammaM0");
-  if (![bendingCapacity, shearCapacity].every(positive29)) {
+  if (![bendingCapacity, shearCapacity].every(positive31)) {
     return { status: RESULT_STATUS.NOT_SUPPORTED, check: steelNotSupportedCheck({ id: "steel-bending-shear-interaction", description: "Bending-shear interaction", missingInputs: ["plastic bending resistance", "shear resistance"], reference: "NTC 2018 \xA74.2.4.1.2.5; UNI EN 1993-1-1 \xA76.2.8" }), warnings: [] };
   }
   const shearRatio = Math.abs(vEd) / shearCapacity;
@@ -74181,7 +75922,7 @@ function verifySteelBendingShearInteraction({ section, material, mEd = 0, vEd = 
   let rho = 0;
   if (shearRatio > 0.5) {
     rho = Math.min(1, (2 * shearRatio - 1) ** 2);
-    if (I_H_FAMILIES5.has(familyOf(section)) && positive29(Wpl) && positive29(tw) && positive29(fy)) {
+    if (I_H_FAMILIES5.has(familyOf(section)) && positive31(Wpl) && positive31(tw) && positive31(fy)) {
       const webArea = (_a = section == null ? void 0 : section.shearAreaY) != null ? _a : tw * webGeometry(section).hw;
       capacity = Math.min(bendingCapacity, Math.max(0, (Wpl - rho * webArea ** 2 / (4 * tw)) * fy / resolvedGamma));
     } else {
@@ -74194,7 +75935,7 @@ function verifySteelShearTorsionInteraction({ section, material, vEd = 0, tEd = 
   const WT = section == null ? void 0 : section.torsionalSectionModulus;
   const fy = material == null ? void 0 : material.fyk;
   const resolvedGamma = gamma(material, "gammaM0");
-  if (![WT, fy, shearCapacity].every(positive29)) {
+  if (![WT, fy, shearCapacity].every(positive31)) {
     return { status: RESULT_STATUS.NOT_SUPPORTED, check: steelNotSupportedCheck({ id: "steel-shear-torsion-interaction", description: "Shear-Saint-Venant torsion interaction", missingInputs: ["torsional section modulus WT", "shear resistance", "steel fyk"], reference: "NTC 2018 \xA74.2.4.1.2.7; UNI EN 1993-1-1 \xA76.2.7" }), warnings: [] };
   }
   const tauT = Math.abs(tEd) / WT;
@@ -74212,10 +75953,10 @@ function inSegment(station, segment) {
 function maxSample(samples, selector, segment = null) {
   return samples.filter((sample) => !segment || inSegment(sample.station, segment)).reduce((selected, sample) => !selected || Math.abs(selector(sample)) > Math.abs(selector(selected)) ? sample : selected, null);
 }
-function decorate(check2, combination, station = null, segment = null, restraintAssumptions = {}) {
+function decorate(check4, combination, station = null, segment = null, restraintAssumptions = {}) {
   var _a, _b, _c, _d, _e, _f;
   return {
-    ...check2,
+    ...check4,
     metadata: {
       norm: "NTC 2018 / Circolare 2019",
       combinationId: (_a = combination == null ? void 0 : combination.id) != null ? _a : null,
@@ -74224,10 +75965,10 @@ function decorate(check2, combination, station = null, segment = null, restraint
       coordinates: (station == null ? void 0 : station.coordinates) ? { ...station.coordinates } : null,
       governingSegment: (_d = segment == null ? void 0 : segment.id) != null ? _d : null,
       restraintAssumptions: { ...restraintAssumptions },
-      ...check2.metadata
+      ...check4.metadata
     },
-    warnings: [...(_e = check2.warnings) != null ? _e : []],
-    assumptions: [...(_f = check2.assumptions) != null ? _f : []]
+    warnings: [...(_e = check4.warnings) != null ? _e : []],
+    assumptions: [...(_f = check4.assumptions) != null ? _f : []]
   };
 }
 function steelUnsupportedFeatureCatalog() {
@@ -74252,12 +75993,12 @@ function verifySteelFem3DAdvanced({ contract, section, material, resultToSection
   const shearArea = (_e = section == null ? void 0 : section.shearAreaY) != null ? _e : section == null ? void 0 : section.area;
   const shearCapacity = sectionToResultUnits.force(shearArea * fy / (Math.sqrt(3) * gammaM0));
   const member = contract.member;
-  const activateUnsupported = (check2) => {
+  const activateUnsupported = (check4) => {
     var _a2;
-    if (!activeNotSupported.some((item) => item.id === check2.id)) {
-      activeNotSupported.push(check2);
-      checks.push(check2);
-      warnings.push(...(_a2 = check2.warnings) != null ? _a2 : []);
+    if (!activeNotSupported.some((item) => item.id === check4.id)) {
+      activeNotSupported.push(check4);
+      checks.push(check4);
+      warnings.push(...(_a2 = check4.warnings) != null ? _a2 : []);
     }
   };
   const restraintAssumptions = {
@@ -74372,7 +76113,7 @@ function verifySteelFem3DAdvanced({ contract, section, material, resultToSection
     activeNotSupported,
     unsupportedFeatures: steelUnsupportedFeatureCatalog(),
     vibration,
-    status: activeNotSupported.length > 0 ? RESULT_STATUS.NOT_SUPPORTED : checks.every((check2) => check2.ok !== false) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED
+    status: activeNotSupported.length > 0 ? RESULT_STATUS.NOT_SUPPORTED : checks.every((check4) => check4.ok !== false) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED
   };
 }
 
@@ -74415,9 +76156,9 @@ function classificationSeverity(classificationResult) {
     0
   );
 }
-function classificationActionMagnitude(check2) {
+function classificationActionMagnitude(check4) {
   var _a, _b, _c, _d, _e, _f, _g, _h;
-  return Math.abs((_d = (_c = (_a = check2.metadata) == null ? void 0 : _a.nEdSectionUnits) != null ? _c : (_b = check2.metadata) == null ? void 0 : _b.nEd) != null ? _d : 0) + Math.abs((_h = (_g = (_e = check2.metadata) == null ? void 0 : _e.mEdSectionUnits) != null ? _g : (_f = check2.metadata) == null ? void 0 : _f.mEd) != null ? _h : 0);
+  return Math.abs((_d = (_c = (_a = check4.metadata) == null ? void 0 : _a.nEdSectionUnits) != null ? _c : (_b = check4.metadata) == null ? void 0 : _b.nEd) != null ? _d : 0) + Math.abs((_h = (_g = (_e = check4.metadata) == null ? void 0 : _e.mEdSectionUnits) != null ? _g : (_f = check4.metadata) == null ? void 0 : _f.mEd) != null ? _h : 0);
 }
 function isMoreSevereGroupedCheck(candidate, current) {
   var _a, _b, _c, _d, _e, _f, _g, _h;
@@ -74897,7 +76638,7 @@ function createLateralTorsionalBucklingChecks({
     checks,
     warnings: uniqueStrings(warnings),
     assumptions,
-    status: checks.length > 0 && checks.every((check2) => check2.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED
+    status: checks.length > 0 && checks.every((check4) => check4.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED
   };
 }
 function createCompressionBucklingChecks({
@@ -75026,7 +76767,7 @@ function createCompressionBucklingChecks({
     checks,
     warnings: uniqueStrings(warnings),
     assumptions,
-    status: checks.length > 0 && checks.every((check2) => check2.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED
+    status: checks.length > 0 && checks.every((check4) => check4.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED
   };
 }
 function ltbReductionForInteraction({
@@ -75301,7 +77042,7 @@ function createBeamColumnInteractionChecks({
     checks,
     warnings: uniqueStrings(warnings),
     assumptions,
-    status: checks.length > 0 && checks.every((check2) => check2.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED
+    status: checks.length > 0 && checks.every((check4) => check4.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED
   };
 }
 function createSteelActionVerifier({
@@ -75551,7 +77292,7 @@ function createSteelActionVerifier({
       ];
       const governing = governingCheck(checks);
       return {
-        status: checks.every((check2) => check2.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+        status: checks.every((check4) => check4.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
         utilizationRatio: (_E = governing == null ? void 0 : governing.utilizationRatio) != null ? _E : null,
         demand: (_F = governing == null ? void 0 : governing.demand) != null ? _F : null,
         capacity: (_G = governing == null ? void 0 : governing.capacity) != null ? _G : null,
@@ -75760,9 +77501,9 @@ var SteelMemberVerification = class {
       classification: classification2
     });
     const class4Detected = actionVerification.checks.some(
-      (check2) => {
+      (check4) => {
         var _a3;
-        return check2.id === "steel-section-classification" && ((_a3 = check2.metadata) == null ? void 0 : _a3.sectionClass) > 3;
+        return check4.id === "steel-section-classification" && ((_a3 = check4.metadata) == null ? void 0 : _a3.sectionClass) > 3;
       }
     );
     const advanced = verifySteelFem3DAdvanced({
@@ -75783,14 +77524,14 @@ var SteelMemberVerification = class {
       ...deflectionChecks,
       ...advanced.checks,
       ...class4Detected ? advanced.unsupportedFeatures.filter(
-        (check2) => check2.id === "steel-class-4-effective-properties"
+        (check4) => check4.id === "steel-class-4-effective-properties"
       ) : []
     ];
     const groupedChecks = Object.values(
-      allChecks.reduce((acc, check2) => {
-        const current = acc[check2.id];
-        if (isMoreSevereGroupedCheck(check2, current)) {
-          acc[check2.id] = check2;
+      allChecks.reduce((acc, check4) => {
+        const current = acc[check4.id];
+        if (isMoreSevereGroupedCheck(check4, current)) {
+          acc[check4.id] = check4;
         }
         return acc;
       }, {})
@@ -75800,27 +77541,27 @@ var SteelMemberVerification = class {
     const ltbOk = lateralTorsionalBuckling.status === RESULT_STATUS.OK;
     const compressionBucklingOk = compressionBuckling.status === RESULT_STATUS.OK;
     const beamColumnInteractionOk = beamColumnInteraction.status === RESULT_STATUS.OK;
-    const sleOk = deflectionChecks.length === 0 || deflectionChecks.every((check2) => check2.ok);
-    const hasNotSupported = class4Detected || advanced.status === RESULT_STATUS.NOT_SUPPORTED || groupedChecks.some((check2) => check2.status === RESULT_STATUS.NOT_SUPPORTED);
-    const uniformChecks = groupedChecks.map((check2) => {
+    const sleOk = deflectionChecks.length === 0 || deflectionChecks.every((check4) => check4.ok);
+    const hasNotSupported = class4Detected || advanced.status === RESULT_STATUS.NOT_SUPPORTED || groupedChecks.some((check4) => check4.status === RESULT_STATUS.NOT_SUPPORTED);
+    const uniformChecks = groupedChecks.map((check4) => {
       var _a3, _b3, _c3, _d2, _e2, _f2, _g2, _h2, _i2, _j2, _k2, _l, _m, _n, _o;
       return {
-        ...check2,
+        ...check4,
         metadata: {
           norm: "NTC 2018 / Circolare 2019",
-          combinationId: (_d2 = (_c3 = (_a3 = check2.metadata) == null ? void 0 : _a3.combinationId) != null ? _c3 : (_b3 = check2.metadata) == null ? void 0 : _b3.resultId) != null ? _d2 : null,
-          station: (_f2 = (_e2 = check2.metadata) == null ? void 0 : _e2.station) != null ? _f2 : null,
-          governingSegment: (_j2 = (_i2 = (_g2 = check2.metadata) == null ? void 0 : _g2.governingSegment) != null ? _i2 : (_h2 = check2.metadata) == null ? void 0 : _h2.segmentId) != null ? _j2 : null,
-          restraintAssumptions: (_l = (_k2 = check2.metadata) == null ? void 0 : _k2.restraintAssumptions) != null ? _l : {
+          combinationId: (_d2 = (_c3 = (_a3 = check4.metadata) == null ? void 0 : _a3.combinationId) != null ? _c3 : (_b3 = check4.metadata) == null ? void 0 : _b3.resultId) != null ? _d2 : null,
+          station: (_f2 = (_e2 = check4.metadata) == null ? void 0 : _e2.station) != null ? _f2 : null,
+          governingSegment: (_j2 = (_i2 = (_g2 = check4.metadata) == null ? void 0 : _g2.governingSegment) != null ? _i2 : (_h2 = check4.metadata) == null ? void 0 : _h2.segmentId) != null ? _j2 : null,
+          restraintAssumptions: (_l = (_k2 = check4.metadata) == null ? void 0 : _k2.restraintAssumptions) != null ? _l : {
             sway: contractMember.frameClassification.sway,
             nonSway: contractMember.frameClassification.nonSway,
             effectiveLengths: { ...contractMember.effectiveLengths },
             effectiveLengthFactors: { ...contractMember.effectiveLengthFactors }
           },
-          ...(_m = check2.metadata) != null ? _m : {}
+          ...(_m = check4.metadata) != null ? _m : {}
         },
-        warnings: [...(_n = check2.warnings) != null ? _n : []],
-        assumptions: [...(_o = check2.assumptions) != null ? _o : []]
+        warnings: [...(_n = check4.warnings) != null ? _n : []],
+        assumptions: [...(_o = check4.assumptions) != null ? _o : []]
       };
     });
     return new VerificationResult({
@@ -75843,42 +77584,42 @@ var SteelMemberVerification = class {
         serviceability: {
           deflectionLimitRatio,
           checkCount: deflectionChecks.length,
-          checks: deflectionChecks.map((check2) => ({
-            ...check2,
-            metadata: { ...check2.metadata }
+          checks: deflectionChecks.map((check4) => ({
+            ...check4,
+            metadata: { ...check4.metadata }
           }))
         },
         stability: {
           lateralTorsionalBuckling: {
             status: lateralTorsionalBuckling.status,
             checkCount: lateralTorsionalBuckling.checks.length,
-            checks: lateralTorsionalBuckling.checks.map((check2) => ({
-              ...check2,
-              metadata: { ...check2.metadata }
+            checks: lateralTorsionalBuckling.checks.map((check4) => ({
+              ...check4,
+              metadata: { ...check4.metadata }
             }))
           },
           compressionBuckling: {
             status: compressionBuckling.status,
             checkCount: compressionBuckling.checks.length,
-            checks: compressionBuckling.checks.map((check2) => ({
-              ...check2,
-              metadata: { ...check2.metadata }
+            checks: compressionBuckling.checks.map((check4) => ({
+              ...check4,
+              metadata: { ...check4.metadata }
             }))
           },
           beamColumnInteraction: {
             status: beamColumnInteraction.status,
             checkCount: beamColumnInteraction.checks.length,
-            checks: beamColumnInteraction.checks.map((check2) => ({
-              ...check2,
-              metadata: { ...check2.metadata }
+            checks: beamColumnInteraction.checks.map((check4) => ({
+              ...check4,
+              metadata: { ...check4.metadata }
             }))
           }
         },
         advanced: {
           status: advanced.status,
-          checks: advanced.checks.map((check2) => ({
-            ...check2,
-            metadata: { ...check2.metadata }
+          checks: advanced.checks.map((check4) => ({
+            ...check4,
+            metadata: { ...check4.metadata }
           }))
         },
         vibration: advanced.vibration,
@@ -75894,9 +77635,9 @@ var SteelMemberVerification = class {
         ...deflectionChecks.length === 0 ? ["No SLE steel deflection check was generated because no SLE combination was found."] : [],
         "Section classification is included for supported catalog steel profiles, but effective class-4 section properties are not implemented yet.",
         ...groupedChecks.some(
-          (check2) => {
+          (check4) => {
             var _a3;
-            return check2.id === "steel-section-classification" && ((_a3 = check2.metadata) == null ? void 0 : _a3.sectionClass) === 4;
+            return check4.id === "steel-section-classification" && ((_a3 = check4.metadata) == null ? void 0 : _a3.sectionClass) === 4;
           }
         ) ? [
           "Steel section class 4 detected: effective section properties are required and are not implemented yet."
@@ -80356,45 +82097,45 @@ function signedPercentText(value) {
   const roundedValue = round3(value, 3);
   return `${roundedValue >= 0 ? "+" : ""}${roundedValue}%`;
 }
-function buildCheckReading(check2) {
-  if (!check2) {
+function buildCheckReading(check4) {
+  if (!check4) {
     return null;
   }
-  if (check2.id === "stiffness-variation") {
-    if (!Number.isFinite(check2.variationPercent)) {
+  if (check4.id === "stiffness-variation") {
+    if (!Number.isFinite(check4.variationPercent)) {
       return "La variazione di rigidezza non e valutabile con i dati attuali.";
     }
-    if (!check2.ok) {
-      return `La rigidezza equivalente varia di ${signedPercentText(check2.variationPercent)} e supera la banda di confronto ammessa.`;
+    if (!check4.ok) {
+      return `La rigidezza equivalente varia di ${signedPercentText(check4.variationPercent)} e supera la banda di confronto ammessa.`;
     }
-    if (Math.abs(check2.variationPercent) <= EPS13) {
+    if (Math.abs(check4.variationPercent) <= EPS13) {
       return "La rigidezza equivalente resta sostanzialmente invariata rispetto allo stato di fatto.";
     }
-    return `La rigidezza equivalente varia di ${signedPercentText(check2.variationPercent)} e resta entro la banda di confronto configurata.`;
+    return `La rigidezza equivalente varia di ${signedPercentText(check4.variationPercent)} e resta entro la banda di confronto configurata.`;
   }
-  if (check2.id === "strength-non-decreasing") {
-    if (!Number.isFinite(check2.variationPercent)) {
+  if (check4.id === "strength-non-decreasing") {
+    if (!Number.isFinite(check4.variationPercent)) {
       return "La variazione di resistenza equivalente non e valutabile con i dati attuali.";
     }
-    if (!check2.ok) {
-      return `La resistenza laterale equivalente si riduce di ${signedPercentText(check2.variationPercent)} rispetto allo stato di fatto.`;
+    if (!check4.ok) {
+      return `La resistenza laterale equivalente si riduce di ${signedPercentText(check4.variationPercent)} rispetto allo stato di fatto.`;
     }
-    if (Math.abs(check2.variationPercent) <= EPS13) {
+    if (Math.abs(check4.variationPercent) <= EPS13) {
       return "La resistenza laterale equivalente resta invariata.";
     }
-    return `La resistenza laterale equivalente aumenta di ${signedPercentText(check2.variationPercent)}.`;
+    return `La resistenza laterale equivalente aumenta di ${signedPercentText(check4.variationPercent)}.`;
   }
-  if (check2.id === "deformability-non-decreasing") {
-    if (!Number.isFinite(check2.variationPercent)) {
+  if (check4.id === "deformability-non-decreasing") {
+    if (!Number.isFinite(check4.variationPercent)) {
       return "La variazione di deformabilita equivalente non e valutabile con i dati attuali.";
     }
-    if (!check2.ok) {
-      return `La deformabilita equivalente si riduce di ${signedPercentText(check2.variationPercent)} rispetto allo stato di fatto.`;
+    if (!check4.ok) {
+      return `La deformabilita equivalente si riduce di ${signedPercentText(check4.variationPercent)} rispetto allo stato di fatto.`;
     }
-    if (Math.abs(check2.variationPercent) <= EPS13) {
+    if (Math.abs(check4.variationPercent) <= EPS13) {
       return "La deformabilita equivalente resta invariata.";
     }
-    return `La deformabilita equivalente aumenta di ${signedPercentText(check2.variationPercent)}.`;
+    return `La deformabilita equivalente aumenta di ${signedPercentText(check4.variationPercent)}.`;
   }
   return null;
 }
@@ -80405,7 +82146,7 @@ function buildComparisonReading({
   designStatus
 }) {
   var _a, _b;
-  const failedChecks = checks.filter((check2) => !check2.ok);
+  const failedChecks = checks.filter((check4) => !check4.ok);
   let outcome = "accepted";
   let headline = "Il progetto rispetta i criteri ante/post configurati per rigidezza, resistenza e deformabilita.";
   if (stateOfFactStatus !== RESULT_STATUS.OK || designStatus !== RESULT_STATUS.OK) {
@@ -80415,7 +82156,7 @@ function buildComparisonReading({
     outcome = "attention-required";
     headline = "Il progetto non rispetta tutti i criteri ante/post configurati e richiede una lettura ingegneristica mirata.";
   }
-  const messages = checks.map((check2) => buildCheckReading(check2)).filter(Boolean);
+  const messages = checks.map((check4) => buildCheckReading(check4)).filter(Boolean);
   if (outcome === "provisional") {
     messages.unshift(
       `Stato analisi di base: stato di fatto ${stateOfFactStatus}, progetto ${designStatus}.`
@@ -80426,7 +82167,7 @@ function buildComparisonReading({
     status,
     headline,
     governingCheckId: (_b = (_a = failedChecks[0]) == null ? void 0 : _a.id) != null ? _b : null,
-    failedCheckIds: failedChecks.map((check2) => check2.id),
+    failedCheckIds: failedChecks.map((check4) => check4.id),
     messages
   };
 }
@@ -80486,7 +82227,7 @@ var AlignmentStateComparisonAnalysis = class {
         candidateValue: designBilinearization.du
       })
     ];
-    const allChecksOk = checks.every((check2) => check2.ok);
+    const allChecksOk = checks.every((check4) => check4.ok);
     if (stateOfFactResult.status !== RESULT_STATUS.OK) {
       warnings.push(
         `The state-of-fact aggregated seismic analysis returned status ${stateOfFactResult.status}, so the ante/post comparison should be interpreted as provisional.`
@@ -80497,22 +82238,22 @@ var AlignmentStateComparisonAnalysis = class {
         `The design aggregated seismic analysis returned status ${designResult.status}, so the ante/post comparison should be interpreted as provisional.`
       );
     }
-    for (const check2 of checks.filter((candidate) => !candidate.ok)) {
-      if (check2.id === "stiffness-variation") {
+    for (const check4 of checks.filter((candidate) => !candidate.ok)) {
+      if (check4.id === "stiffness-variation") {
         warnings.push(
-          `The project-stage stiffness changes by ${round3(Math.abs(check2.variationPercent))}% relative to the state-of-fact result, beyond the configured +/-${round3(stiffnessToleranceRatio * 100)}% comparison band.`
+          `The project-stage stiffness changes by ${round3(Math.abs(check4.variationPercent))}% relative to the state-of-fact result, beyond the configured +/-${round3(stiffnessToleranceRatio * 100)}% comparison band.`
         );
         continue;
       }
-      if (check2.id === "strength-non-decreasing") {
+      if (check4.id === "strength-non-decreasing") {
         warnings.push(
-          `The project-stage equivalent strength Vy (${round3(check2.designValue)}) is lower than the state-of-fact value (${round3(check2.stateOfFactValue)}).`
+          `The project-stage equivalent strength Vy (${round3(check4.designValue)}) is lower than the state-of-fact value (${round3(check4.stateOfFactValue)}).`
         );
         continue;
       }
-      if (check2.id === "deformability-non-decreasing") {
+      if (check4.id === "deformability-non-decreasing") {
         warnings.push(
-          `The project-stage ultimate displacement du (${round3(check2.designValue)}) is lower than the state-of-fact value (${round3(check2.stateOfFactValue)}).`
+          `The project-stage ultimate displacement du (${round3(check4.designValue)}) is lower than the state-of-fact value (${round3(check4.stateOfFactValue)}).`
         );
       }
     }
@@ -80540,15 +82281,15 @@ var AlignmentStateComparisonAnalysis = class {
           topRotation: (_h = (_g = (_e = designResult.outputs) == null ? void 0 : _e.topRotation) != null ? _g : (_f = stateOfFactResult.outputs) == null ? void 0 : _f.topRotation) != null ? _h : null,
           includeSpandrels: Boolean((_i = stateOfFactResult.outputs) == null ? void 0 : _i.includeSpandrels) || Boolean((_j = designResult.outputs) == null ? void 0 : _j.includeSpandrels),
           checks,
-          ks: checks.find((check2) => check2.id === "stiffness-variation"),
-          Vy: checks.find((check2) => check2.id === "strength-non-decreasing"),
+          ks: checks.find((check4) => check4.id === "stiffness-variation"),
+          Vy: checks.find((check4) => check4.id === "strength-non-decreasing"),
           du: checks.find(
-            (check2) => check2.id === "deformability-non-decreasing"
+            (check4) => check4.id === "deformability-non-decreasing"
           ),
           overall: {
             ok: allChecksOk,
             status,
-            failedCheckIds: checks.filter((check2) => !check2.ok).map((check2) => check2.id)
+            failedCheckIds: checks.filter((check4) => !check4.ok).map((check4) => check4.id)
           }
         },
         reading
@@ -80619,17 +82360,17 @@ function criteriaRows(report) {
     [
       "Rigidezza ks",
       `variazione entro +/-${formatNumber(criteria.stiffnessTolerancePercent, 2)}%`,
-      ((_e = checks.find((check2) => check2.id === "stiffness-variation")) == null ? void 0 : _e.ok) ? "si" : "no"
+      ((_e = checks.find((check4) => check4.id === "stiffness-variation")) == null ? void 0 : _e.ok) ? "si" : "no"
     ],
     [
       "Resistenza Vy",
       "il progetto non deve ridurre Vy",
-      ((_f = checks.find((check2) => check2.id === "strength-non-decreasing")) == null ? void 0 : _f.ok) ? "si" : "no"
+      ((_f = checks.find((check4) => check4.id === "strength-non-decreasing")) == null ? void 0 : _f.ok) ? "si" : "no"
     ],
     [
       "Deformabilita du",
       "il progetto non deve ridurre du",
-      ((_g = checks.find((check2) => check2.id === "deformability-non-decreasing")) == null ? void 0 : _g.ok) ? "si" : "no"
+      ((_g = checks.find((check4) => check4.id === "deformability-non-decreasing")) == null ? void 0 : _g.ok) ? "si" : "no"
     ]
   ];
 }
@@ -80662,17 +82403,17 @@ function stageRows(report) {
 }
 function checkRows(report) {
   var _a, _b;
-  return ((_b = (_a = report.comparison) == null ? void 0 : _a.checks) != null ? _b : []).map((check2) => {
+  return ((_b = (_a = report.comparison) == null ? void 0 : _a.checks) != null ? _b : []).map((check4) => {
     var _a2, _b2, _c;
     return [
-      check2.id,
-      check2.description,
-      formatNumber(check2.stateOfFactValue),
-      formatNumber(check2.designValue),
-      formatNumber(check2.delta),
-      formatPercent(check2.variationPercent),
-      ((_a2 = check2.criterion) == null ? void 0 : _a2.type) === "variation-band" ? `+/-${formatNumber(((_c = (_b2 = check2.criterion) == null ? void 0 : _b2.toleranceRatio) != null ? _c : 0) * 100, 2)}%` : ">= stato di fatto",
-      check2.ok ? "si" : "no"
+      check4.id,
+      check4.description,
+      formatNumber(check4.stateOfFactValue),
+      formatNumber(check4.designValue),
+      formatNumber(check4.delta),
+      formatPercent(check4.variationPercent),
+      ((_a2 = check4.criterion) == null ? void 0 : _a2.type) === "variation-band" ? `+/-${formatNumber(((_c = (_b2 = check4.criterion) == null ? void 0 : _b2.toleranceRatio) != null ? _c : 0) * 100, 2)}%` : ">= stato di fatto",
+      check4.ok ? "si" : "no"
     ];
   });
 }
@@ -83269,12 +85010,12 @@ function isPointOnSegment(point4, start, end, tolerance = 1e-9) {
   if (Math.abs(cross5) > tolerance) {
     return false;
   }
-  const dot5 = (point4.y - start.y) * (end.y - start.y) + (point4.z - start.z) * (end.z - start.z);
-  if (dot5 < -tolerance) {
+  const dot6 = (point4.y - start.y) * (end.y - start.y) + (point4.z - start.z) * (end.z - start.z);
+  if (dot6 < -tolerance) {
     return false;
   }
   const squaredLength = (end.y - start.y) ** 2 + (end.z - start.z) ** 2;
-  return dot5 <= squaredLength + tolerance;
+  return dot6 <= squaredLength + tolerance;
 }
 function isPointInsidePolygon(point4, polygon) {
   let inside = false;
@@ -83593,7 +85334,7 @@ function resolveRcSleModularRatio(...candidates) {
 }
 
 // src/norms/en1992/reinforced-concrete/en1992Detailing2004.js
-function positive30(value, label) {
+function positive32(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be positive.`);
   }
@@ -83610,8 +85351,8 @@ function calculateEn1992DesignBondStrength({
   barDiameter,
   bondConditionFactor = 1
 } = {}) {
-  positive30(fctd, "fctd");
-  positive30(barDiameter, "barDiameter");
+  positive32(fctd, "fctd");
+  positive32(barDiameter, "barDiameter");
   factor(bondConditionFactor, "bondConditionFactor");
   const diameterFactor = barDiameter <= 32 ? 1 : (132 - barDiameter) / 100;
   if (diameterFactor <= 0) {
@@ -83637,9 +85378,9 @@ function calculateEn1992AnchorageLength({
   nationalMinimumDiameterMultiple = null,
   nationalMinimumLength = null
 } = {}) {
-  positive30(barDiameter, "barDiameter");
-  positive30(designSteelStress, "designSteelStress");
-  positive30(fbd, "fbd");
+  positive32(barDiameter, "barDiameter");
+  positive32(designSteelStress, "designSteelStress");
+  positive32(fbd, "fbd");
   const alphas = [alpha1, alpha2, alpha3, alpha4, alpha5].map((value, index) => factor(value, `alpha${index + 1}`));
   const basicRequiredLength = barDiameter / 4 * (designSteelStress / fbd);
   const minimumLength = tension ? Math.max(0.3 * basicRequiredLength, 10 * barDiameter, 100) : Math.max(0.6 * basicRequiredLength, 10 * barDiameter, 100);
@@ -83648,8 +85389,8 @@ function calculateEn1992AnchorageLength({
     alphas.reduce((value, alpha) => value * alpha, basicRequiredLength)
   );
   const nationalMinimum = Math.max(
-    nationalMinimumDiameterMultiple == null ? 0 : positive30(nationalMinimumDiameterMultiple, "nationalMinimumDiameterMultiple") * barDiameter,
-    nationalMinimumLength == null ? 0 : positive30(nationalMinimumLength, "nationalMinimumLength")
+    nationalMinimumDiameterMultiple == null ? 0 : positive32(nationalMinimumDiameterMultiple, "nationalMinimumDiameterMultiple") * barDiameter,
+    nationalMinimumLength == null ? 0 : positive32(nationalMinimumLength, "nationalMinimumLength")
   );
   return {
     basicRequiredLength,
@@ -83673,9 +85414,9 @@ function calculateEn1992LocalBearingResistance({
   fcd,
   resistanceReductionFactor = 1
 } = {}) {
-  positive30(loadedArea, "loadedArea");
-  positive30(distributionArea, "distributionArea");
-  positive30(fcd, "fcd");
+  positive32(loadedArea, "loadedArea");
+  positive32(distributionArea, "distributionArea");
+  positive32(fcd, "fcd");
   factor(resistanceReductionFactor, "resistanceReductionFactor");
   if (distributionArea < loadedArea) {
     throw new Error("distributionArea must not be smaller than loadedArea.");
@@ -83698,12 +85439,12 @@ function calculateEn1992ShrinkageCurvature({
   if (!Number.isFinite(freeShrinkageStrain)) {
     throw new Error("freeShrinkageStrain must be finite.");
   }
-  positive30(reinforcementElasticModulus, "reinforcementElasticModulus");
-  positive30(effectiveConcreteModulus, "effectiveConcreteModulus");
+  positive32(reinforcementElasticModulus, "reinforcementElasticModulus");
+  positive32(effectiveConcreteModulus, "effectiveConcreteModulus");
   if (!Number.isFinite(reinforcementFirstMoment)) {
     throw new Error("reinforcementFirstMoment must be finite.");
   }
-  positive30(sectionSecondMoment, "sectionSecondMoment");
+  positive32(sectionSecondMoment, "sectionSecondMoment");
   const effectiveModularRatio = reinforcementElasticModulus / effectiveConcreteModulus;
   return {
     curvature: freeShrinkageStrain * effectiveModularRatio * reinforcementFirstMoment / sectionSecondMoment,
@@ -85602,7 +87343,7 @@ var CrackedSectionDeflectionAnalysis = class {
     const governing = governingCheck(checks);
     return new VerificationResult({
       applicationId: "rc-cracked-deflection",
-      status: checks.length > 0 && checks.every((check2) => check2.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+      status: checks.length > 0 && checks.every((check4) => check4.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       summary: "RC service deflection from cracked/uncracked curvature integration.",
       utilizationRatio: (_sa = governing == null ? void 0 : governing.utilizationRatio) != null ? _sa : null,
       demand: (_ta = governing == null ? void 0 : governing.demand) != null ? _ta : null,
@@ -86062,7 +87803,7 @@ var RC_PLATE_ANALYSIS_TYPES = Object.freeze({
   SLS_SIMPLIFIED_DEFLECTION: "SLS_SIMPLIFIED_DEFLECTION"
 });
 var ANALYSIS_TYPES = new Set(Object.values(RC_PLATE_ANALYSIS_TYPES));
-function positive31(value, label) {
+function positive33(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be positive.`);
   }
@@ -86100,15 +87841,15 @@ function normalizeLayer({ input, face, direction, thickness, resolver }) {
   if (!input) {
     throw new Error(`reinforcement.${face}.${direction} is required.`);
   }
-  const barsPerMeter = positive31(
+  const barsPerMeter = positive33(
     Number(input.barsPerMeter),
     `reinforcement.${face}.${direction}.barsPerMeter`
   );
-  const diameter = positive31(
+  const diameter = positive33(
     resolver.length(Number(input.diameter)),
     `reinforcement.${face}.${direction}.diameter`
   );
-  const clearCover = positive31(
+  const clearCover = positive33(
     resolver.length(Number(input.clearCover)),
     `reinforcement.${face}.${direction}.clearCover`
   );
@@ -86131,15 +87872,15 @@ function normalizeShearReinforcement({ input, thickness, resolver }) {
   if (input == null) {
     return null;
   }
-  const diameter = positive31(
+  const diameter = positive33(
     resolver.length(Number(input.diameter)),
     "reinforcement.shear.diameter"
   );
-  const spacingX = positive31(
+  const spacingX = positive33(
     resolver.length(Number(input.spacingX)),
     "reinforcement.shear.spacingX"
   );
-  const spacingY = positive31(
+  const spacingY = positive33(
     resolver.length(Number(input.spacingY)),
     "reinforcement.shear.spacingY"
   );
@@ -86208,7 +87949,7 @@ var ReinforcedConcretePlateModel = class {
     }
     assertExplicitUnitSystem(units, "ReinforcedConcretePlateModel");
     const resolver = createUnitResolver(units, INTERNAL_UNITS36);
-    const thickness = positive31(
+    const thickness = positive33(
       resolver.length(Number(geometry.thickness)),
       "geometry.thickness"
     );
@@ -86271,8 +88012,8 @@ var ReinforcedConcretePlateModel = class {
     }];
     const deflection = normalizeDeflection(analysis.deflection, resolver);
     if (type === RC_PLATE_ANALYSIS_TYPES.SLS_SIMPLIFIED_DEFLECTION) {
-      positive31(deflection.spanX, "analysis.deflection.spanX");
-      positive31(deflection.spanY, "analysis.deflection.spanY");
+      positive33(deflection.spanX, "analysis.deflection.spanX");
+      positive33(deflection.spanY, "analysis.deflection.spanY");
     }
     this.id = id;
     this.units = INTERNAL_UNITS36;
@@ -86324,7 +88065,7 @@ var ReinforcedConcretePlateModel = class {
 
 // src/applications/reinforced-concrete-plates/actions/rotatePlateMoments.js
 var ZERO_TOLERANCE = 1e-12;
-function finite35(value, name) {
+function finite40(value, name) {
   if (!Number.isFinite(value)) {
     throw new Error(`rotatePlateMoments requires a finite ${name}.`);
   }
@@ -86334,10 +88075,10 @@ function clean(value) {
   return Math.abs(value) <= ZERO_TOLERANCE ? 0 : value;
 }
 function rotatePlateMoments({ mxx, myy, mxy, angle: angle2 = 0 } = {}) {
-  finite35(mxx, "mxx");
-  finite35(myy, "myy");
-  finite35(mxy, "mxy");
-  finite35(angle2, "angle");
+  finite40(mxx, "mxx");
+  finite40(myy, "myy");
+  finite40(mxy, "mxy");
+  finite40(angle2, "angle");
   const angleRadians = angle2 * Math.PI / 180;
   const c = Math.cos(angleRadians);
   const s = Math.sin(angleRadians);
@@ -86763,10 +88504,10 @@ function resolveLimitState({
     }));
   }
   const governing = checks.reduce(
-    (current, check2) => current == null || check2.utilizationRatio > current.utilizationRatio ? check2 : current,
+    (current, check4) => current == null || check4.utilizationRatio > current.utilizationRatio ? check4 : current,
     null
   );
-  const reachedChecks = checks.filter((check2) => check2.reached);
+  const reachedChecks = checks.filter((check4) => check4.reached);
   return {
     reached: reachedChecks.length > 0,
     governing,
@@ -86818,10 +88559,10 @@ function resolveFirstYieldState({
     }));
   }
   const governing = checks.reduce(
-    (current, check2) => current == null || check2.utilizationRatio > current.utilizationRatio ? check2 : current,
+    (current, check4) => current == null || check4.utilizationRatio > current.utilizationRatio ? check4 : current,
     null
   );
-  const reachedChecks = checks.filter((check2) => check2.reached);
+  const reachedChecks = checks.filter((check4) => check4.reached);
   return {
     reached: reachedChecks.length > 0,
     governing,
@@ -86831,7 +88572,7 @@ function resolveFirstYieldState({
 }
 function getStateCheck(point4, stateKey, checkId) {
   var _a, _b, _c;
-  return (_c = (_b = (_a = point4 == null ? void 0 : point4[stateKey]) == null ? void 0 : _a.checks) == null ? void 0 : _b.find((check2) => check2.id === checkId)) != null ? _c : null;
+  return (_c = (_b = (_a = point4 == null ? void 0 : point4[stateKey]) == null ? void 0 : _a.checks) == null ? void 0 : _b.find((check4) => check4.id === checkId)) != null ? _c : null;
 }
 function annotateEventPoint(point4, stateKey, checkId) {
   const event = getStateCheck(point4, stateKey, checkId);
@@ -87137,18 +88878,18 @@ function defaultCurvatureMax({
   }
   return 2.5 * resolveConcreteUltimateCompressionStrain(concreteLaw) / height;
 }
-function summarizeStateCheck(check2) {
-  if (check2 == null) {
+function summarizeStateCheck(check4) {
+  if (check4 == null) {
     return null;
   }
   return {
-    id: check2.id,
-    material: check2.material,
-    mode: check2.mode,
-    demand: round7(check2.demand),
-    limit: round7(check2.limit),
-    utilizationRatio: round7(check2.utilizationRatio, 9),
-    reached: check2.reached
+    id: check4.id,
+    material: check4.material,
+    mode: check4.mode,
+    demand: round7(check4.demand),
+    limit: round7(check4.limit),
+    utilizationRatio: round7(check4.utilizationRatio, 9),
+    reached: check4.reached
   };
 }
 
@@ -87511,10 +89252,10 @@ var RCMomentCurvatureEventLocator = class {
       var _a2;
       const lowerCheck = getStateCheck(lowerPoint, stateKey, upperCheck.id);
       return upperCheck.utilizationRatio >= 1 && ((_a2 = lowerCheck == null ? void 0 : lowerCheck.utilizationRatio) != null ? _a2 : 0) < 1;
-    }).map((check2) => check2.id);
+    }).map((check4) => check4.id);
     if (candidateIds.length === 0) {
       const alreadyReached = lowerPoint[stateKey].checks.find(
-        (check2) => check2.utilizationRatio >= 1
+        (check4) => check4.utilizationRatio >= 1
       );
       if (alreadyReached) {
         return annotateEventPoint(lowerPoint, stateKey, alreadyReached.id);
@@ -89944,7 +91685,7 @@ function createPlateStripSection({ model, direction } = {}) {
 }
 
 // src/applications/reinforced-concrete-plates/checks/plateCheckUtils.js
-function enrichPlateCheck(check2, {
+function enrichPlateCheck(check4, {
   id,
   direction,
   face,
@@ -89955,16 +91696,16 @@ function enrichPlateCheck(check2, {
 } = {}) {
   var _a, _b, _c, _d;
   return {
-    ...check2,
-    id: id != null ? id : check2.id,
+    ...check4,
+    id: id != null ? id : check4.id,
     direction,
     face,
     analysisType,
     combinationType,
     method,
     metadata: {
-      ...(_a = check2.metadata) != null ? _a : {},
-      sourceMethod: (_d = (_c = (_b = check2.metadata) == null ? void 0 : _b.method) != null ? _c : check2.method) != null ? _d : null,
+      ...(_a = check4.metadata) != null ? _a : {},
+      sourceMethod: (_d = (_c = (_b = check4.metadata) == null ? void 0 : _b.method) != null ? _c : check4.method) != null ? _d : null,
       direction,
       face,
       analysisType,
@@ -90018,7 +91759,7 @@ function verifyPlateBending({ model, transformedState } = {}) {
       utilizationRatio: sectionResult.utilizationRatio,
       ok: sectionResult.status === "ok"
     };
-    const check2 = enrichPlateCheck(baseCheck, {
+    const check4 = enrichPlateCheck(baseCheck, {
       id: `rc-plate-uls-bending-${transformedState.id}-${face}-${direction}`,
       direction,
       face,
@@ -90037,9 +91778,9 @@ function verifyPlateBending({ model, transformedState } = {}) {
       method: METHOD,
       mEd,
       mRd: sectionResult.outputs.MxRd,
-      demand: check2.demand,
-      capacity: check2.capacity,
-      utilizationRatio: check2.utilizationRatio,
+      demand: check4.demand,
+      capacity: check4.capacity,
+      utilizationRatio: check4.utilizationRatio,
       governingReinforcement: `${face}-${direction}`,
       neutralAxisDepth: sectionResult.outputs.neutralAxisDepth,
       failureMode: sectionResult.outputs.failureMode,
@@ -90048,7 +91789,7 @@ function verifyPlateBending({ model, transformedState } = {}) {
       ultimateStrains: sectionResult.outputs.extremes,
       strainField: sectionResult.outputs.strainField,
       status: sectionResult.status,
-      check: check2,
+      check: check4,
       warnings: sectionResult.warnings,
       assumptions: sectionResult.assumptions
     });
@@ -90125,7 +91866,7 @@ function verifyCosenzaCircularShear({ vEd, params }) {
   const amplificationFactor = params.mode === "with-transverse-reinforcement" ? 1 + transverseCoefficient * params.rhoW : 1;
   const capacity = vRdWithoutTransverseReinforcement * amplificationFactor;
   const equation = params.mode === "with-transverse-reinforcement" ? 5 : 3;
-  const check2 = utilizationCheck3({
+  const check4 = utilizationCheck3({
     id: params.mode === "with-transverse-reinforcement" ? "rc-shear-resistance" : "rc-shear-without-transverse-reinforcement",
     description: params.mode === "with-transverse-reinforcement" ? "Circular-section shear resistance with transverse reinforcement according to Cosenza et al. (2016)" : "Circular-section shear resistance without transverse reinforcement according to Cosenza et al. (2016)",
     demand: vEd,
@@ -90151,11 +91892,11 @@ function verifyCosenzaCircularShear({ vEd, params }) {
     "Cosenza et al. (2016) is an empirical research formulation and does not introduce a partial safety factor in Equations (3) and (5)."
   );
   return {
-    status: check2.ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
-    utilizationRatio: check2.utilizationRatio,
-    demand: check2.demand,
-    capacity: check2.capacity,
-    checks: [check2],
+    status: check4.ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+    utilizationRatio: check4.utilizationRatio,
+    demand: check4.demand,
+    capacity: check4.capacity,
+    checks: [check4],
     warnings,
     assumptions: [
       "Equation (3) is evaluated as VR = 0.232 D^2 (100 rhoL f'c)^(1/3), with rhoL = Asl / Ac.",
@@ -90179,7 +91920,7 @@ function verifyCosenzaCircularShear({ vEd, params }) {
     },
     metadata: {
       method: `${COSENZA_METHOD}-eq-${equation}`,
-      governingCheckId: check2.id
+      governingCheckId: check4.id
     }
   };
 }
@@ -90259,7 +92000,7 @@ function verifyWithoutTransverseReinforcement({ vEd, params }) {
       }
     };
   }
-  const check2 = utilizationCheck3({
+  const check4 = utilizationCheck3({
     id: "rc-shear-without-transverse-reinforcement",
     description: "Shear resistance without transverse reinforcement",
     demand: vEd,
@@ -90267,11 +92008,11 @@ function verifyWithoutTransverseReinforcement({ vEd, params }) {
     metadata: resistance.metadata
   });
   return {
-    status: check2.ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
-    utilizationRatio: check2.utilizationRatio,
-    demand: check2.demand,
-    capacity: check2.capacity,
-    checks: [check2],
+    status: check4.ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+    utilizationRatio: check4.utilizationRatio,
+    demand: check4.demand,
+    capacity: check4.capacity,
+    checks: [check4],
     warnings,
     assumptions: [
       "NTC 2018 4.1.2.3.5.1 is evaluated with bw, d, Asl and compression stress resolved before formula evaluation.",
@@ -90287,7 +92028,7 @@ function verifyWithoutTransverseReinforcement({ vEd, params }) {
     },
     metadata: {
       method: "ntc2018-4.1.2.3.5.1",
-      governingCheckId: check2.id
+      governingCheckId: check4.id
     }
   };
 }
@@ -90488,7 +92229,7 @@ function verifyWithTransverseReinforcement({ vEd, params, shear, units }) {
     withoutCapacity != null ? withoutCapacity : Number.NEGATIVE_INFINITY
   );
   const selectedMechanism = withoutCapacity != null && withoutCapacity > withResistance.capacity ? "without-transverse-reinforcement" : "with-transverse-reinforcement";
-  const check2 = utilizationCheck3({
+  const check4 = utilizationCheck3({
     id: "rc-shear-resistance",
     description: "Shear resistance as maximum between stirrup and no-stirrup mechanisms",
     demand: vEd,
@@ -90520,11 +92261,11 @@ function verifyWithTransverseReinforcement({ vEd, params, shear, units }) {
     shear.torsionHandled === true ? "Minimum shear reinforcement detailing, spacing limits and anchorage are not included in this MVP check." : "Minimum shear reinforcement detailing, spacing limits, anchorage and torsion are not included in this MVP check."
   );
   return {
-    status: check2.ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
-    utilizationRatio: check2.utilizationRatio,
-    demand: check2.demand,
-    capacity: check2.capacity,
-    checks: [check2],
+    status: check4.ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+    utilizationRatio: check4.utilizationRatio,
+    demand: check4.demand,
+    capacity: check4.capacity,
+    checks: [check4],
     warnings,
     assumptions: [
       "NTC 2018 4.1.2.3.5.2 is evaluated with the variable-angle truss model for vertical stirrups and cotTheta selected to maximize min(VRsd, VRcd).",
@@ -90557,7 +92298,7 @@ function verifyWithTransverseReinforcement({ vEd, params, shear, units }) {
     },
     metadata: {
       method: "ntc2018-4.1.2.3.5.2",
-      governingCheckId: check2.id
+      governingCheckId: check4.id
     }
   };
 }
@@ -91315,7 +93056,7 @@ function verifyPlateShear({ model, transformedState } = {}) {
     const sourceCheck = (_c = (_b = governing == null ? void 0 : governing.result.checks) == null ? void 0 : _b[0]) != null ? _c : {};
     const reinforced = model.reinforcement.shear != null;
     const method = reinforced ? METHOD_WITH : METHOD_WITHOUT;
-    const check2 = enrichPlateCheck({
+    const check4 = enrichPlateCheck({
       ...sourceCheck,
       id: reinforced ? "rc-shear-resistance" : "rc-shear-without-transverse-reinforcement",
       description: `Shear resistance of the ${direction.toUpperCase()} Wood-Armer equivalent strip`,
@@ -91340,14 +93081,14 @@ function verifyPlateShear({ model, transformedState } = {}) {
     return {
       stateId: transformedState.id,
       direction,
-      face: check2.face,
+      face: check4.face,
       analysisType: model.analysis.type,
       combinationType: transformedState.combinationType,
       method,
       vEd,
       capacity,
       utilizationRatio,
-      status: check2.ok ? "ok" : "not-verified",
+      status: check4.ok ? "ok" : "not-verified",
       evaluatedFaces: selection.faces,
       governingFace: (_e = governing == null ? void 0 : governing.face) != null ? _e : null,
       shearReinforcement: reinforced ? {
@@ -91368,7 +93109,7 @@ function verifyPlateShear({ model, transformedState } = {}) {
         status: result9.status,
         outputs: result9.outputs
       })),
-      check: check2,
+      check: check4,
       warnings: [
         ambiguityWarning,
         ...candidates.flatMap(({ result: result9 }) => {
@@ -92008,7 +93749,7 @@ var ReinforcedConcreteServiceabilityVerification = class {
     }
     const governing = governingCheck(checks);
     return {
-      status: solvedState.converged && !crackControlNotVerified && checks.every((check2) => check2.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+      status: solvedState.converged && !crackControlNotVerified && checks.every((check4) => check4.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       utilizationRatio: (_g = governing == null ? void 0 : governing.utilizationRatio) != null ? _g : null,
       demand: (_h = governing == null ? void 0 : governing.demand) != null ? _h : null,
       capacity: (_i = governing == null ? void 0 : governing.capacity) != null ? _i : null,
@@ -92149,8 +93890,8 @@ function verifyPlateServiceability({ model, transformedState } = {}) {
       mesh,
       solver: model.analysis.solver
     });
-    const checks = serviceResult.checks.map((check2, index) => enrichPlateCheck(check2, {
-      id: `rc-plate-sle-${transformedState.id}-${face}-${direction}-${check2.id}-${index + 1}`,
+    const checks = serviceResult.checks.map((check4, index) => enrichPlateCheck(check4, {
+      id: `rc-plate-sle-${transformedState.id}-${face}-${direction}-${check4.id}-${index + 1}`,
       direction,
       face,
       analysisType: model.analysis.type,
@@ -92179,8 +93920,8 @@ function verifyPlateServiceability({ model, transformedState } = {}) {
       concreteStripCount: serviceResult.outputs.fiberCount,
       concreteDiscretization: "uniaxial-strips",
       checks,
-      serviceStressChecks: checks.filter((check2) => !check2.id.includes("rc-sle-crack")),
-      crackingChecks: checks.filter((check2) => check2.id.includes("rc-sle-crack")),
+      serviceStressChecks: checks.filter((check4) => !check4.id.includes("rc-sle-crack")),
+      crackingChecks: checks.filter((check4) => check4.id.includes("rc-sle-crack")),
       warnings: serviceResult.warnings,
       assumptions: serviceResult.assumptions
     });
@@ -92214,7 +93955,7 @@ function faceSlendernessCheck({ model, transformedState, direction, face }) {
       }
     }
   });
-  const check2 = enrichPlateCheck({
+  const check4 = enrichPlateCheck({
     ...base,
     description: "Controllo semplificato di deformabilit\xE0 mediante snellezza"
   }, {
@@ -92237,12 +93978,12 @@ function faceSlendernessCheck({ model, transformedState, direction, face }) {
     effectiveDepth: ratio2.effectiveDepth,
     reinforcementRatio: ratio2.value,
     reinforcementRatioPercent: 100 * ratio2.value,
-    stressLevel: check2.metadata.stressLevel,
-    demand: check2.demand,
-    capacity: check2.capacity,
-    utilizationRatio: check2.utilizationRatio,
-    status: check2.ok ? "ok" : "not-verified",
-    check: check2
+    stressLevel: check4.metadata.stressLevel,
+    demand: check4.demand,
+    capacity: check4.capacity,
+    utilizationRatio: check4.utilizationRatio,
+    status: check4.ok ? "ok" : "not-verified",
+    check: check4
   };
 }
 function selectGoverningFace(faceChecks) {
@@ -92339,11 +94080,11 @@ function incompatibleCombination(model, transformedStates) {
   return null;
 }
 function governingCheck2(checks) {
-  return checks.reduce((governing, check2) => {
-    if (!Number.isFinite(check2.utilizationRatio)) {
+  return checks.reduce((governing, check4) => {
+    if (!Number.isFinite(check4.utilizationRatio)) {
       return governing;
     }
-    return governing == null || check2.utilizationRatio > governing.utilizationRatio ? check2 : governing;
+    return governing == null || check4.utilizationRatio > governing.utilizationRatio ? check4 : governing;
   }, null);
 }
 function baseOutputs(model, transformedStates) {
@@ -92485,7 +94226,7 @@ var ReinforcedConcretePlateVerification = class {
     }
     const governing = governingCheck2(atomicChecks);
     outputs.governingCheck = governing;
-    const status = childStatuses.every((statusValue) => statusValue === RESULT_STATUS.OK) && atomicChecks.every((check2) => check2.ok === true) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED;
+    const status = childStatuses.every((statusValue) => statusValue === RESULT_STATUS.OK) && atomicChecks.every((check4) => check4.ok === true) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED;
     return new VerificationResult({
       applicationId: "reinforced-concrete-plates",
       status,
@@ -92706,13 +94447,13 @@ var PunchingVerificationRequest = class {
 };
 
 // src/norms/en1992/punching/en1992Punching2004.js
-function positive32(value, label) {
+function positive34(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be finite and positive.`);
   }
   return value;
 }
-function finite36(value, label) {
+function finite41(value, label) {
   if (!Number.isFinite(value)) {
     throw new Error(`${label} must be finite.`);
   }
@@ -92729,15 +94470,15 @@ function calculateEn1992Punching2004WithoutShearReinforcement({
   k1 = 0.1,
   sigmaCp = 0
 }) {
-  const resolvedFck = positive32(fck, "fck");
-  const d = positive32(effectiveDepth, "effectiveDepth");
-  const rhoX = positive32(reinforcementRatioX, "reinforcementRatioX");
-  const rhoY = positive32(reinforcementRatioY, "reinforcementRatioY");
-  const resolvedGammaC = positive32(gammaC, "gammaC");
-  const resolvedAlphaCc = positive32(alphaCc, "alphaCc");
-  const resolvedCRdc = positive32(cRdc, "cRdc");
-  const resolvedK1 = finite36(k1, "k1");
-  const resolvedSigmaCp = finite36(sigmaCp, "sigmaCp");
+  const resolvedFck = positive34(fck, "fck");
+  const d = positive34(effectiveDepth, "effectiveDepth");
+  const rhoX = positive34(reinforcementRatioX, "reinforcementRatioX");
+  const rhoY = positive34(reinforcementRatioY, "reinforcementRatioY");
+  const resolvedGammaC = positive34(gammaC, "gammaC");
+  const resolvedAlphaCc = positive34(alphaCc, "alphaCc");
+  const resolvedCRdc = positive34(cRdc, "cRdc");
+  const resolvedK1 = finite41(k1, "k1");
+  const resolvedSigmaCp = finite41(sigmaCp, "sigmaCp");
   const rawRhoL = Math.sqrt(rhoX * rhoY);
   const rhoL = Math.min(rawRhoL, 0.02);
   const k = Math.min(1 + Math.sqrt(200 / d), 2);
@@ -92787,12 +94528,12 @@ function calculateEn1992Punching2004WithShearReinforcement({
   areaPerPerimeter,
   fywd
 }) {
-  const vRdc = positive32(concreteResistance, "concreteResistance");
-  const d = positive32(effectiveDepth, "effectiveDepth");
-  const u1 = positive32(controlPerimeter, "controlPerimeter");
-  const sr = positive32(radialSpacing, "radialSpacing");
-  const asw = positive32(areaPerPerimeter, "areaPerPerimeter");
-  const resolvedFywd = positive32(fywd, "fywd");
+  const vRdc = positive34(concreteResistance, "concreteResistance");
+  const d = positive34(effectiveDepth, "effectiveDepth");
+  const u1 = positive34(controlPerimeter, "controlPerimeter");
+  const sr = positive34(radialSpacing, "radialSpacing");
+  const asw = positive34(areaPerPerimeter, "areaPerPerimeter");
+  const resolvedFywd = positive34(fywd, "fywd");
   const fywdEffective = Math.min(250 + 0.25 * d, resolvedFywd);
   const concreteContribution = 0.75 * vRdc;
   const reinforcementContribution = 1.5 * d / sr * asw * fywdEffective / (u1 * d);
@@ -92816,7 +94557,7 @@ function calculateEn1992Punching2004WithShearReinforcement({
 }
 
 // src/norms/en1992/punching/en1992Punching2023.js
-function positive33(value, label) {
+function positive35(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be finite and positive.`);
   }
@@ -92835,14 +94576,14 @@ function calculateEn1992Punching2023WithoutShearReinforcement({
   controlPerimeter,
   gammaV
 }) {
-  const resolvedFck = positive33(fck, "fck");
-  const dv = positive33(shearEffectiveDepth, "shearEffectiveDepth");
-  const rhoX = positive33(reinforcementRatioX, "reinforcementRatioX");
-  const rhoY = positive33(reinforcementRatioY, "reinforcementRatioY");
-  const dLower = positive33(lowerAggregateSize, "lowerAggregateSize");
-  const b0 = positive33(supportPerimeter, "supportPerimeter");
-  const b05 = positive33(controlPerimeter, "controlPerimeter");
-  const resolvedGammaV = positive33(gammaV, "gammaV");
+  const resolvedFck = positive35(fck, "fck");
+  const dv = positive35(shearEffectiveDepth, "shearEffectiveDepth");
+  const rhoX = positive35(reinforcementRatioX, "reinforcementRatioX");
+  const rhoY = positive35(reinforcementRatioY, "reinforcementRatioY");
+  const dLower = positive35(lowerAggregateSize, "lowerAggregateSize");
+  const b0 = positive35(supportPerimeter, "supportPerimeter");
+  const b05 = positive35(controlPerimeter, "controlPerimeter");
+  const resolvedGammaV = positive35(gammaV, "gammaV");
   if (b05 <= b0) {
     throw new Error("controlPerimeter must be greater than supportPerimeter.");
   }
@@ -92897,17 +94638,17 @@ function calculateEn1992Punching2023WithShearReinforcement({
   system,
   supportPerimeter
 }) {
-  const tauRdc = positive33(concreteResistance, "concreteResistance");
-  const tauEd = positive33(actingStress, "actingStress");
-  const dv = positive33(shearEffectiveDepth, "shearEffectiveDepth");
-  const resolvedDdg = positive33(dDg, "dDg");
-  const resolvedKpb = positive33(kpb, "kpb");
-  const asw = positive33(legArea, "legArea");
-  const sr = positive33(radialSpacing, "radialSpacing");
-  const st = positive33(tangentialSpacing, "tangentialSpacing");
-  const diameter = positive33(legDiameter, "legDiameter");
-  const resolvedFywd = positive33(fywd, "fywd");
-  const b0 = positive33(supportPerimeter, "supportPerimeter");
+  const tauRdc = positive35(concreteResistance, "concreteResistance");
+  const tauEd = positive35(actingStress, "actingStress");
+  const dv = positive35(shearEffectiveDepth, "shearEffectiveDepth");
+  const resolvedDdg = positive35(dDg, "dDg");
+  const resolvedKpb = positive35(kpb, "kpb");
+  const asw = positive35(legArea, "legArea");
+  const sr = positive35(radialSpacing, "radialSpacing");
+  const st = positive35(tangentialSpacing, "tangentialSpacing");
+  const diameter = positive35(legDiameter, "legDiameter");
+  const resolvedFywd = positive35(fywd, "fywd");
+  const b0 = positive35(supportPerimeter, "supportPerimeter");
   if (!["studs", "links"].includes(system)) {
     throw new Error("system must be studs or links.");
   }
@@ -92949,7 +94690,7 @@ function calculateEn1992Punching2023WithShearReinforcement({
 }
 
 // src/norms/en1992/punching/en1992PunchingConcentration.js
-function positive34(value, label) {
+function positive36(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be finite and positive.`);
   }
@@ -92982,15 +94723,15 @@ function calculateEn1992PunchingBeta2004({
   controlPerimeter,
   lineOfAction
 }) {
-  const d = positive34(effectiveDepth, "effectiveDepth");
-  const u1 = positive34(controlPerimeter, "controlPerimeter");
+  const d = positive36(effectiveDepth, "effectiveDepth");
+  const u1 = positive36(controlPerimeter, "controlPerimeter");
   const point4 = finitePoint(lineOfAction, "lineOfAction");
   const center = finitePoint(footprint == null ? void 0 : footprint.center, "footprint.center");
   const ex = point4.x - center.x;
   const ey = point4.y - center.y;
   if (position === "interior" && footprint.shape === "circle") {
     const eccentricity = Math.hypot(ex, ey);
-    const beta = 1 + 0.6 * Math.PI * eccentricity / (positive34(footprint.diameter, "footprint.diameter") + 4 * d);
+    const beta = 1 + 0.6 * Math.PI * eccentricity / (positive36(footprint.diameter, "footprint.diameter") + 4 * d);
     return {
       beta,
       method: "equation-6.42-circular-interior",
@@ -93001,8 +94742,8 @@ function calculateEn1992PunchingBeta2004({
   if ((footprint == null ? void 0 : footprint.shape) !== "rectangle") {
     throw new Error("Automatic beta requires a rectangular support, except for interior circular supports.");
   }
-  const c1 = positive34(footprint.sizeX, "footprint.sizeX");
-  const c2 = positive34(footprint.sizeY, "footprint.sizeY");
+  const c1 = positive36(footprint.sizeX, "footprint.sizeX");
+  const c2 = positive36(footprint.sizeY, "footprint.sizeY");
   if (position === "interior") {
     const widthX = c1 + 4 * d;
     const widthY = c2 + 4 * d;
@@ -93057,8 +94798,8 @@ function calculateEn1992PunchingBetaE2023({
 }) {
   const centroid = finitePoint(controlPerimeterCentroid, "controlPerimeterCentroid");
   const point4 = finitePoint(lineOfAction, "lineOfAction");
-  const widthX = positive34(controlPerimeterWidths == null ? void 0 : controlPerimeterWidths.x, "controlPerimeterWidths.x");
-  const widthY = positive34(controlPerimeterWidths == null ? void 0 : controlPerimeterWidths.y, "controlPerimeterWidths.y");
+  const widthX = positive36(controlPerimeterWidths == null ? void 0 : controlPerimeterWidths.x, "controlPerimeterWidths.x");
+  const widthY = positive36(controlPerimeterWidths == null ? void 0 : controlPerimeterWidths.y, "controlPerimeterWidths.y");
   const ebx = point4.x - centroid.x;
   const eby = point4.y - centroid.y;
   let eb;
@@ -94356,7 +96097,7 @@ function verify2023(request, parameters) {
   };
 }
 function governingCheck3(checks) {
-  return checks.reduce((governing, check2) => governing == null || check2.utilizationRatio > governing.utilizationRatio ? check2 : governing, null);
+  return checks.reduce((governing, check4) => governing == null || check4.utilizationRatio > governing.utilizationRatio ? check4 : governing, null);
 }
 var PunchingVerification = class {
   verify(input) {
@@ -94379,7 +96120,7 @@ var PunchingVerification = class {
     }
     const checks = calculated.stateResults.flatMap((state) => state.checks);
     const governing = governingCheck3(checks);
-    const status = checks.every((check2) => check2.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED;
+    const status = checks.every((check4) => check4.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED;
     return new VerificationResult({
       applicationId: APPLICATION_ID2,
       status,
@@ -94523,7 +96264,7 @@ var ReinforcedConcreteColumnModel = class {
     units = null,
     metadata = {}
   } = {}) {
-    var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w;
+    var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y;
     if (!id) {
       throw new Error("A reinforced concrete column model id is required.");
     }
@@ -94572,16 +96313,39 @@ var ReinforcedConcreteColumnModel = class {
       vxEd: resolver.force((_s = actions.vxEd) != null ? _s : 0),
       vyEd: resolver.force((_t = actions.vyEd) != null ? _t : 0)
     };
+    const capacityDesign = (_u = shear == null ? void 0 : shear.capacityDesign) != null ? _u : null;
+    if (capacityDesign) {
+      if (((_v = detailing == null ? void 0 : detailing.seismic) == null ? void 0 : _v.enabled) !== true) {
+        throw new Error(
+          "shear.capacityDesign requires an explicit dissipative detailing.seismic contract."
+        );
+      }
+      if (capacityDesign.endMomentsPreAdjustedForHierarchy !== true) {
+        throw new Error(
+          "shear.capacityDesign.endMomentsPreAdjustedForHierarchy must be true: Eq. [7.4.5] requires each end resistance to be reduced by its beam/column hierarchy ratio before applying gammaRd."
+        );
+      }
+      for (const [axisId, endMoments] of [
+        ["x", capacityDesign.endMomentsX],
+        ["y", capacityDesign.endMomentsY]
+      ]) {
+        if ((shear == null ? void 0 : shear[axisId]) && (!Array.isArray(endMoments) || endMoments.length !== 2 || endMoments.some((value) => !Number.isFinite(Number(value))))) {
+          throw new Error(
+            `shear.capacityDesign.endMoments${axisId.toUpperCase()} must contain the two finite, hierarchy-adjusted end resistances.`
+          );
+        }
+      }
+    }
     this.shear = shear ? {
       x: convertShearAxis(shear.x, resolver, "x"),
       y: convertShearAxis(shear.y, resolver, "y"),
-      capacityDesign: shear.capacityDesign ? {
-        ...shear.capacityDesign,
+      capacityDesign: capacityDesign ? {
+        ...capacityDesign,
         clearLength: resolver.length(
-          Number((_u = shear.capacityDesign.clearLength) != null ? _u : length)
+          Number((_w = capacityDesign.clearLength) != null ? _w : length)
         ),
-        endMomentsX: ((_v = shear.capacityDesign.endMomentsX) != null ? _v : []).map((value) => resolver.moment(Number(value))),
-        endMomentsY: ((_w = shear.capacityDesign.endMomentsY) != null ? _w : []).map((value) => resolver.moment(Number(value)))
+        endMomentsX: ((_x = capacityDesign.endMomentsX) != null ? _x : []).map((value) => resolver.moment(Number(value))),
+        endMomentsY: ((_y = capacityDesign.endMomentsY) != null ? _y : []).map((value) => resolver.moment(Number(value)))
       } : null
     } : null;
     this.detailing = convertDetailing(detailing, resolver);
@@ -94597,7 +96361,7 @@ var ReinforcedConcreteColumnModel = class {
 };
 
 // src/applications/reinforced-concrete-columns/ReinforcedConcreteColumnDetailingVerification.js
-function positive35(value, label) {
+function positive37(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be positive.`);
   }
@@ -94632,32 +96396,32 @@ var ReinforcedConcreteColumnDetailingVerification = class {
       });
     }
     const concrete = (_a = model.section.concreteSection) != null ? _a : model.section;
-    const width = positive35(Number(concrete.width), "column width");
-    const depth = positive35(Number(concrete.height), "column depth");
-    const area = positive35(Number(concrete.area), "column concrete area");
+    const width = positive37(Number(concrete.width), "column width");
+    const depth = positive37(Number(concrete.height), "column depth");
+    const area = positive37(Number(concrete.area), "column concrete area");
     const longitudinal = (_b = detailing.longitudinal) != null ? _b : {};
     const transverse = (_c = detailing.transverse) != null ? _c : {};
-    const reinforcementArea = positive35(
+    const reinforcementArea = positive37(
       Number((_f = longitudinal.area) != null ? _f : (_e = (_d = model.section).totalReinforcementArea) == null ? void 0 : _e.call(_d)),
       "detailing.longitudinal.area"
     );
-    const minBarDiameter = positive35(
+    const minBarDiameter = positive37(
       Number(longitudinal.minimumBarDiameter),
       "detailing.longitudinal.minimumBarDiameter"
     );
-    const maxBarDiameter = positive35(
+    const maxBarDiameter = positive37(
       Number((_g = longitudinal.maximumBarDiameter) != null ? _g : minBarDiameter),
       "detailing.longitudinal.maximumBarDiameter"
     );
-    const maxBarSpacing = positive35(
+    const maxBarSpacing = positive37(
       Number(longitudinal.maximumBarSpacing),
       "detailing.longitudinal.maximumBarSpacing"
     );
-    const hoopDiameter = positive35(Number(transverse.diameter), "detailing.transverse.diameter");
-    const hoopSpacing = positive35(Number(transverse.spacing), "detailing.transverse.spacing");
-    const fyd = positive35(Number((_h = model.reinforcementMaterial) == null ? void 0 : _h.fyd), "reinforcement fyd");
-    const fyk = positive35(Number((_i = model.reinforcementMaterial) == null ? void 0 : _i.fyk), "reinforcement fyk");
-    const fywd = positive35(
+    const hoopDiameter = positive37(Number(transverse.diameter), "detailing.transverse.diameter");
+    const hoopSpacing = positive37(Number(transverse.spacing), "detailing.transverse.spacing");
+    const fyd = positive37(Number((_h = model.reinforcementMaterial) == null ? void 0 : _h.fyd), "reinforcement fyd");
+    const fyk = positive37(Number((_i = model.reinforcementMaterial) == null ? void 0 : _i.fyk), "reinforcement fyk");
+    const fywd = positive37(
       Number((_k = transverse.designStrength) != null ? _k : (_j = model.reinforcementMaterial) == null ? void 0 : _j.fyd),
       "transverse design strength"
     );
@@ -94677,11 +96441,11 @@ var ReinforcedConcreteColumnDetailingVerification = class {
     if (((_l = detailing.seismic) == null ? void 0 : _l.enabled) === true) {
       const dc = ductilityClass(detailing.seismic.ductilityClass);
       const isCda = dc === "CDA";
-      const clearHeight = positive35(
+      const clearHeight = positive37(
         Number((_m = detailing.seismic.clearHeight) != null ? _m : model.length),
         "detailing.seismic.clearHeight"
       );
-      const sectionDepthInBending = positive35(
+      const sectionDepthInBending = positive37(
         Number((_n = detailing.seismic.sectionDepthInBending) != null ? _n : Math.max(width, depth)),
         "detailing.seismic.sectionDepthInBending"
       );
@@ -94695,9 +96459,9 @@ var ReinforcedConcreteColumnDetailingVerification = class {
       );
       const restrainedSpacingLimit = isCda ? 150 : 200;
       const confinement = (_o = detailing.confinement) != null ? _o : {};
-      const coreWidth = positive35(Number(confinement.coreWidth), "confinement.coreWidth");
-      const coreDepth = positive35(Number(confinement.coreDepth), "confinement.coreDepth");
-      const volumePerSet = positive35(Number(confinement.volumePerSet), "confinement.volumePerSet");
+      const coreWidth = positive37(Number(confinement.coreWidth), "confinement.coreWidth");
+      const coreDepth = positive37(Number(confinement.coreDepth), "confinement.coreDepth");
+      const volumePerSet = positive37(Number(confinement.volumePerSet), "confinement.volumePerSet");
       const restrainedSpacings = (_p = confinement.restrainedBarSpacings) != null ? _p : [];
       if (restrainedSpacings.length === 0) {
         throw new Error("confinement.restrainedBarSpacings must not be empty.");
@@ -94710,11 +96474,11 @@ var ReinforcedConcreteColumnDetailingVerification = class {
       const alpha = alphaN * alphaS;
       const volumetricRatio = volumePerSet / (coreWidth * coreDepth * hoopSpacing);
       const omegaWd = volumetricRatio * fywd / model.concreteMaterial.fcd;
-      const epsilonSyD = fyd / positive35(
+      const epsilonSyD = fyd / positive37(
         Number(model.reinforcementMaterial.elasticModulus),
         "reinforcement elastic modulus"
       );
-      const muPhi = positive35(
+      const muPhi = positive37(
         Number(detailing.seismic.curvatureDuctilityDemand),
         "detailing.seismic.curvatureDuctilityDemand"
       );
@@ -94753,7 +96517,7 @@ var ReinforcedConcreteColumnDetailingVerification = class {
     let anchorageOutput = null;
     if (detailing.anchorage) {
       const anchor = detailing.anchorage;
-      const fctd = positive35(
+      const fctd = positive37(
         Number((_q = anchor.fctd) != null ? _q : 0.7 * model.concreteMaterial.fctm / model.concreteMaterial.metadata.gammaC),
         "anchorage.fctd"
       );
@@ -94776,7 +96540,7 @@ var ReinforcedConcreteColumnDetailingVerification = class {
       anchorageOutput = { ...base, requiredLength, fbd: bond.fbd };
     }
     const governing = governingCheck(checks);
-    const ok = checks.every((check2) => check2.ok === true);
+    const ok = checks.every((check4) => check4.ok === true);
     return new VerificationResult({
       applicationId: "reinforced-concrete-columns",
       status: ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
@@ -94803,6 +96567,12 @@ var ReinforcedConcreteColumnDetailingVerification = class {
 // src/applications/reinforced-concrete-columns/ReinforcedConcreteColumnVerification.js
 var INTERNAL_UNITS42 = Object.freeze({ force: "N", length: "mm" });
 var EPS14 = 1e-9;
+function seismicBehavior(ductilityClass2) {
+  const normalized3 = String(ductilityClass2 != null ? ductilityClass2 : "").toUpperCase().replaceAll('"', "").replaceAll("-", "");
+  if (normalized3 === "CDA" || normalized3 === "A") return "cd-a";
+  if (normalized3 === "CDB" || normalized3 === "B") return "cd-b";
+  throw new Error(`Unsupported NTC 2018 ductility class: ${ductilityClass2}.`);
+}
 function concreteSectionFrom2(section) {
   var _a;
   return (_a = section == null ? void 0 : section.concreteSection) != null ? _a : section;
@@ -95056,7 +96826,7 @@ var ReinforcedConcreteColumnVerification = class {
       axisMx.designMoment,
       axisMy.designMoment
     );
-    const resistanceCheck = {
+    const resistanceCheck2 = {
       id: "rc-column-biaxial-resistance",
       description: "Column biaxial bending resistance at the assigned axial force",
       demand: round3(capacity.demandNorm),
@@ -95075,7 +96845,9 @@ var ReinforcedConcreteColumnVerification = class {
       }
     };
     const capacityDesign = (_i = model.shear) == null ? void 0 : _i.capacityDesign;
-    const seismicGammaRd = ((_k = (_j = model.detailing) == null ? void 0 : _j.seismic) == null ? void 0 : _k.enabled) ? String(model.detailing.seismic.ductilityClass).toUpperCase().includes("A") ? 1.2 : 1 : 1;
+    const seismicGammaRd = ((_k = (_j = model.detailing) == null ? void 0 : _j.seismic) == null ? void 0 : _k.enabled) ? selectNTC2018OverstrengthFactors({
+      behavior: seismicBehavior(model.detailing.seismic.ductilityClass)
+    }).columnShear : 1;
     const shearResults = Object.fromEntries(
       [
         ["x", (_l = model.shear) == null ? void 0 : _l.x, model.actions.vxEd, axisMx.designMoment],
@@ -95100,18 +96872,18 @@ var ReinforcedConcreteColumnVerification = class {
           shear,
           units: INTERNAL_UNITS42
         });
-        result9.checks = result9.checks.map((check2) => {
+        result9.checks = result9.checks.map((check4) => {
           var _a3, _b3, _c3;
           return {
-            ...check2,
-            id: `${check2.id}-${axisId}`,
+            ...check4,
+            id: `${check4.id}-${axisId}`,
             metadata: {
-              ...check2.metadata,
+              ...check4.metadata,
               axis: axisId,
               analysisShear: round3(Math.abs((_b3 = (_a3 = shear.vEd) != null ? _a3 : action) != null ? _b3 : 0)),
               capacityDesignShear: round3(capacityDesignShear),
               gammaRd: seismicGammaRd,
-              reference: capacityDesignShear > 0 ? "NTC2018-7.4.5" : (_c3 = check2.metadata) == null ? void 0 : _c3.reference
+              reference: capacityDesignShear > 0 ? "NTC2018-7.4.5" : (_c3 = check4.metadata) == null ? void 0 : _c3.reference
             }
           };
         });
@@ -95123,7 +96895,7 @@ var ReinforcedConcreteColumnVerification = class {
     }).verify({ model, compression: compression2, normalizedAxialForce }) : null;
     const checks = [
       ...axes.map((axis) => axis.check),
-      resistanceCheck,
+      resistanceCheck2,
       ...Object.values(shearResults).flatMap((result9) => result9.checks),
       ...(_n = detailingResult == null ? void 0 : detailingResult.checks) != null ? _n : []
     ];
@@ -95133,7 +96905,7 @@ var ReinforcedConcreteColumnVerification = class {
       ...Object.values(shearResults).map((result9) => result9.status),
       ...detailingResult ? [detailingResult.status] : []
     ];
-    const ok = checks.every((check2) => check2.ok === true) && componentStatuses.every((status) => status === RESULT_STATUS.OK);
+    const ok = checks.every((check4) => check4.ok === true) && componentStatuses.every((status) => status === RESULT_STATUS.OK);
     return new VerificationResult({
       applicationId: "reinforced-concrete-columns",
       status: ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
@@ -95172,6 +96944,9 @@ var ReinforcedConcreteColumnVerification = class {
         ...sectionResult.assumptions,
         ...Object.values(shearResults).flatMap((result9) => result9.assumptions),
         ...(_t = detailingResult == null ? void 0 : detailingResult.assumptions) != null ? _t : [],
+        ...capacityDesign ? [
+          "The two capacity-design end moments for each checked axis are explicitly declared as already reduced by the beam/column hierarchy ratios at the corresponding joints, as required before applying Eq. [7.4.5]."
+        ] : [],
         "Compression is negative by default; change stability.compressionSignConvention explicitly when required.",
         "mxEd is paired with concreteSection.inertiaY and myEd with concreteSection.inertiaZ, following the existing RC section action convention.",
         "Explicit total moments are assumed to include imperfections, cracking, creep and second-order effects; generated moments use the documented NTC nominal-stiffness isolated-member method."
@@ -95221,13 +96996,13 @@ var ReinforcedConcreteColumnApplication = class extends StructuralApplication {
 
 // src/applications/reinforced-concrete-isolated-footings/ReinforcedConcreteIsolatedFootingModel.js
 var INTERNAL_UNITS43 = Object.freeze({ force: "N", length: "mm" });
-function positive36(value, label) {
+function positive38(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be positive.`);
   }
   return value;
 }
-function nonNegative12(value, label) {
+function nonNegative13(value, label) {
   if (!Number.isFinite(value) || value < 0) {
     throw new Error(`${label} must be non-negative.`);
   }
@@ -95238,19 +97013,19 @@ function normalizeLayer2(input, resolver, label) {
   if (!input) {
     throw new Error(`${label} is required.`);
   }
-  const diameter = positive36(
+  const diameter = positive38(
     resolver.length(Number(input.diameter)),
     `${label}.diameter`
   );
-  const spacing = positive36(
+  const spacing = positive38(
     resolver.length(Number(input.spacing)),
     `${label}.spacing`
   );
-  const clearCover = positive36(
+  const clearCover = positive38(
     resolver.length(Number(input.clearCover)),
     `${label}.clearCover`
   );
-  const layerOffset = nonNegative12(
+  const layerOffset = nonNegative13(
     resolver.length(Number((_a = input.layerOffset) != null ? _a : 0)),
     `${label}.layerOffset`
   );
@@ -95288,23 +97063,23 @@ var ReinforcedConcreteIsolatedFootingModel = class {
     }
     assertExplicitUnitSystem(units, "ReinforcedConcreteIsolatedFootingModel");
     const resolver = createUnitResolver(units, INTERNAL_UNITS43);
-    const widthX = positive36(
+    const widthX = positive38(
       resolver.length(Number(geometry.widthX)),
       "geometry.widthX"
     );
-    const widthY = positive36(
+    const widthY = positive38(
       resolver.length(Number(geometry.widthY)),
       "geometry.widthY"
     );
-    const thickness = positive36(
+    const thickness = positive38(
       resolver.length(Number(geometry.thickness)),
       "geometry.thickness"
     );
-    const columnWidthX = positive36(
+    const columnWidthX = positive38(
       resolver.length(Number(column.widthX)),
       "column.widthX"
     );
-    const columnWidthY = positive36(
+    const columnWidthY = positive38(
       resolver.length(Number(column.widthY)),
       "column.widthY"
     );
@@ -95330,15 +97105,15 @@ var ReinforcedConcreteIsolatedFootingModel = class {
     if (bottomX.axisFromBottom >= thickness || bottomY.axisFromBottom >= thickness) {
       throw new Error("Bottom reinforcement axes must lie inside the footing thickness.");
     }
-    const columnVerticalForce = positive36(
+    const columnVerticalForce = positive38(
       resolver.force(Number((_c = actions.columnVerticalForce) != null ? _c : actions.nEd)),
       "actions.columnVerticalForce"
     );
-    const uniformDownwardPressure = nonNegative12(
+    const uniformDownwardPressure = nonNegative13(
       resolver.stress(Number((_d = actions.uniformDownwardPressure) != null ? _d : 0)),
       "actions.uniformDownwardPressure"
     );
-    const designBearingResistance = positive36(
+    const designBearingResistance = positive38(
       resolver.stress(Number(soil.designBearingResistance)),
       "soil.designBearingResistance"
     );
@@ -95346,7 +97121,7 @@ var ReinforcedConcreteIsolatedFootingModel = class {
     const horizontalY = resolver.force(Number((_f = actions.horizontalY) != null ? _f : 0));
     const momentX = resolver.moment(Number((_h = (_g = actions.momentX) != null ? _g : actions.mxEd) != null ? _h : 0));
     const momentY = resolver.moment(Number((_j = (_i = actions.momentY) != null ? _i : actions.myEd) != null ? _j : 0));
-    const designSlidingResistance = soil.designSlidingResistance == null ? null : nonNegative12(
+    const designSlidingResistance = soil.designSlidingResistance == null ? null : nonNegative13(
       resolver.force(Number(soil.designSlidingResistance)),
       "soil.designSlidingResistance"
     );
@@ -95386,7 +97161,7 @@ var ReinforcedConcreteIsolatedFootingModel = class {
     };
     this.punching = structuredClone(punching != null ? punching : {});
     this.localBearing = {
-      distributionArea: localBearing.distributionArea == null ? null : positive36(
+      distributionArea: localBearing.distributionArea == null ? null : positive38(
         resolver.area(Number(localBearing.distributionArea)),
         "localBearing.distributionArea"
       ),
@@ -95394,19 +97169,19 @@ var ReinforcedConcreteIsolatedFootingModel = class {
     };
     const normalizeAnchor3 = (input, label) => input == null ? null : {
       ...input,
-      diameter: positive36(
+      diameter: positive38(
         resolver.length(Number(input.diameter)),
         `${label}.diameter`
       ),
-      availableLength: positive36(
+      availableLength: positive38(
         resolver.length(Number(input.availableLength)),
         `${label}.availableLength`
       ),
-      designSteelStress: input.designSteelStress == null ? null : positive36(
+      designSteelStress: input.designSteelStress == null ? null : positive38(
         resolver.stress(Number(input.designSteelStress)),
         `${label}.designSteelStress`
       ),
-      fctd: input.fctd == null ? null : positive36(resolver.stress(Number(input.fctd)), `${label}.fctd`)
+      fctd: input.fctd == null ? null : positive38(resolver.stress(Number(input.fctd)), `${label}.fctd`)
     };
     this.anchorage = {
       columnBars: normalizeAnchor3(anchorage.columnBars, "anchorage.columnBars"),
@@ -95858,7 +97633,7 @@ function verifyLocalBearing(model) {
   });
   const eccentric = Math.abs(model.actions.momentX) > 1e-9 || Math.abs(model.actions.momentY) > 1e-9 || Math.hypot(model.actions.horizontalX, model.actions.horizontalY) > 1e-9;
   const maximumInterfacePressure = model.actions.columnVerticalForce / loadedArea + 6 * Math.abs(model.actions.momentX) / (model.column.widthX * model.column.widthY ** 2) + 6 * Math.abs(model.actions.momentY) / (model.column.widthY * model.column.widthX ** 2);
-  const check2 = eccentric ? {
+  const check4 = eccentric ? {
     id: "rc-footing-column-interface-crushing",
     description: "Conservative local crushing at eccentric column-footing interface",
     demand: round3(maximumInterfacePressure),
@@ -95889,7 +97664,7 @@ function verifyLocalBearing(model) {
     }
   };
   return {
-    check: check2,
+    check: check4,
     outputs: {
       loadedArea,
       distributionArea,
@@ -96076,7 +97851,7 @@ var ReinforcedConcreteIsolatedFootingVerification = class {
     const unsupported = structuralStatuses.some(
       (status) => [RESULT_STATUS.NOT_SUPPORTED, RESULT_STATUS.NOT_ANALYZED].includes(status)
     );
-    const ok = checks.every((check2) => check2.ok === true) && structuralStatuses.every((status) => status === RESULT_STATUS.OK);
+    const ok = checks.every((check4) => check4.ok === true) && structuralStatuses.every((status) => status === RESULT_STATUS.OK);
     const governing = governingCheck(checks);
     return new VerificationResult({
       applicationId: "reinforced-concrete-isolated-footings",
@@ -96517,7 +98292,7 @@ function verifyTorsionActions({
   }
   const combinedMissing = convertedVEd > 1e-9 && !(shearAtCotTheta == null ? void 0 : shearAtCotTheta.available);
   const governing = governingCheck(torsionChecks);
-  const allChecksPass = torsionChecks.every((check2) => check2.ok === true);
+  const allChecksPass = torsionChecks.every((check4) => check4.ok === true);
   const torsionCapacity = Math.min(trcd, trsd, trld);
   warnings.push(
     "Longitudinal torsion reinforcement is checked as an explicitly assigned area; its additive placement with flexural reinforcement is not detailed by this MVP."
@@ -96664,7 +98439,7 @@ var ReinforcedConcreteTorsionVerification = class {
 };
 
 // src/applications/reinforced-concrete-sections/checks/ReinforcedConcreteBeamDetailingVerification.js
-function positive37(value, label) {
+function positive39(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be positive.`);
   }
@@ -96675,15 +98450,15 @@ function layer(input, label) {
   if (!input) {
     throw new Error(`${label} is required.`);
   }
-  const diameter = positive37(Number(input.diameter), `${label}.diameter`);
-  const barCount = positive37(Number(input.barCount), `${label}.barCount`);
-  const area = input.area == null ? barCount * Math.PI * diameter ** 2 / 4 : positive37(Number(input.area), `${label}.area`);
+  const diameter = positive39(Number(input.diameter), `${label}.diameter`);
+  const barCount = positive39(Number(input.barCount), `${label}.barCount`);
+  const area = input.area == null ? barCount * Math.PI * diameter ** 2 / 4 : positive39(Number(input.area), `${label}.area`);
   return {
     ...input,
     diameter,
     barCount,
     area,
-    continuousArea: positive37(
+    continuousArea: positive39(
       Number((_a = input.continuousArea) != null ? _a : area),
       `${label}.continuousArea`
     )
@@ -96717,12 +98492,12 @@ function anchorageChecks({ anchors, fctd, fyk, seismic }) {
   return (anchors != null ? anchors : []).map((anchor, index) => {
     var _a, _b, _c, _d, _e, _f, _g, _h;
     const id = (_a = anchor.id) != null ? _a : `anchor-${index + 1}`;
-    const diameter = positive37(Number(anchor.diameter), `${id}.diameter`);
-    const availableLength = positive37(
+    const diameter = positive39(Number(anchor.diameter), `${id}.diameter`);
+    const availableLength = positive39(
       Number(anchor.availableLength),
       `${id}.availableLength`
     );
-    const designSteelStress = positive37(
+    const designSteelStress = positive39(
       Number((_b = anchor.designSteelStress) != null ? _b : seismic ? 1.25 * fyk : anchor.fyd),
       `${id}.designSteelStress`
     );
@@ -96787,19 +98562,19 @@ var ReinforcedConcreteBeamDetailingVerification = class {
       });
     }
     const concrete = (_a = section == null ? void 0 : section.concreteSection) != null ? _a : section;
-    const width = positive37(
+    const width = positive39(
       Number((_c = (_b = detailing.geometry) == null ? void 0 : _b.width) != null ? _c : concrete == null ? void 0 : concrete.width),
       "detailing.geometry.width"
     );
-    const height = positive37(
+    const height = positive39(
       Number((_e = (_d = detailing.geometry) == null ? void 0 : _d.height) != null ? _e : concrete == null ? void 0 : concrete.height),
       "detailing.geometry.height"
     );
-    const effectiveDepth = positive37(
+    const effectiveDepth = positive39(
       Number((_f = detailing.geometry) == null ? void 0 : _f.effectiveDepth),
       "detailing.geometry.effectiveDepth"
     );
-    const tensionZoneWidth = positive37(
+    const tensionZoneWidth = positive39(
       Number((_h = (_g = detailing.geometry) == null ? void 0 : _g.tensionZoneWidth) != null ? _h : width),
       "detailing.geometry.tensionZoneWidth"
     );
@@ -96809,25 +98584,25 @@ var ReinforcedConcreteBeamDetailingVerification = class {
       "detailing.longitudinal.bottom"
     );
     const transverse = (_k = detailing.transverse) != null ? _k : {};
-    const hoopDiameter = positive37(
+    const hoopDiameter = positive39(
       Number(transverse.diameter),
       "detailing.transverse.diameter"
     );
-    const hoopSpacing = positive37(
+    const hoopSpacing = positive39(
       Number(transverse.spacing),
       "detailing.transverse.spacing"
     );
-    const hoopAreaPerSet = positive37(
+    const hoopAreaPerSet = positive39(
       Number(transverse.areaPerSet),
       "detailing.transverse.areaPerSet"
     );
-    const fctm = positive37(Number(concreteMaterial == null ? void 0 : concreteMaterial.fctm), "concreteMaterial.fctm");
-    const fctd = positive37(
+    const fctm = positive39(Number(concreteMaterial == null ? void 0 : concreteMaterial.fctm), "concreteMaterial.fctm");
+    const fctd = positive39(
       Number((_m = detailing.fctd) != null ? _m : (concreteMaterial == null ? void 0 : concreteMaterial.fctm) && ((_l = concreteMaterial == null ? void 0 : concreteMaterial.metadata) == null ? void 0 : _l.gammaC) ? 0.7 * concreteMaterial.fctm / concreteMaterial.metadata.gammaC : NaN),
       "detailing.fctd"
     );
-    const fyk = positive37(Number(reinforcementMaterial == null ? void 0 : reinforcementMaterial.fyk), "reinforcementMaterial.fyk");
-    const concreteArea = positive37(Number((_n = concrete == null ? void 0 : concrete.area) != null ? _n : width * height), "concrete area");
+    const fyk = positive39(Number(reinforcementMaterial == null ? void 0 : reinforcementMaterial.fyk), "reinforcementMaterial.fyk");
+    const concreteArea = positive39(Number((_n = concrete == null ? void 0 : concrete.area) != null ? _n : width * height), "concrete area");
     const minimumLongitudinalArea = Math.max(
       0.26 * fctm / fyk * tensionZoneWidth * effectiveDepth,
       13e-4 * tensionZoneWidth * effectiveDepth
@@ -96862,15 +98637,15 @@ var ReinforcedConcreteBeamDetailingVerification = class {
         (isCda ? 6 : 8) * Math.min(top.diameter, bottom.diameter),
         24 * hoopDiameter
       );
-      const firstHoopDistance = positive37(
+      const firstHoopDistance = positive39(
         Number(detailing.seismic.firstHoopDistance),
         "detailing.seismic.firstHoopDistance"
       );
-      const hookAngle = positive37(
+      const hookAngle = positive39(
         Number(transverse.hookAngle),
         "detailing.transverse.hookAngle"
       );
-      const hookExtension = positive37(
+      const hookExtension = positive39(
         Number(transverse.hookExtension),
         "detailing.transverse.hookExtension"
       );
@@ -96910,7 +98685,7 @@ var ReinforcedConcreteBeamDetailingVerification = class {
       seismic
     }));
     const governing = governingCheck(checks);
-    const ok = checks.every((check2) => check2.ok === true);
+    const ok = checks.every((check4) => check4.ok === true);
     return new VerificationResult({
       applicationId: "reinforced-concrete-beams",
       status: ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
@@ -96947,12 +98722,12 @@ var ReinforcedConcreteBeamDetailingVerification = class {
 // src/applications/reinforced-concrete-sections/checks/ReinforcedConcreteBeamVerification.js
 var DEFAULT_SECTION_UNITS2 = Object.freeze({ force: "N", length: "mm" });
 function governingCheck4(checks) {
-  return checks.reduce((selected, check2) => {
-    if (!Number.isFinite(check2.utilizationRatio)) {
+  return checks.reduce((selected, check4) => {
+    if (!Number.isFinite(check4.utilizationRatio)) {
       return selected;
     }
-    if (!selected || check2.utilizationRatio > selected.utilizationRatio) {
-      return check2;
+    if (!selected || check4.utilizationRatio > selected.utilizationRatio) {
+      return check4;
     }
     return selected;
   }, null);
@@ -97054,12 +98829,12 @@ function createRcActionVerifier({
             }
           }
         ];
-      })() : result9.checks.map((check2) => ({
-        ...check2,
-        id: `rc-${check2.id}`,
+      })() : result9.checks.map((check4) => ({
+        ...check4,
+        id: `rc-${check4.id}`,
         metadata: {
           compressedEdge: model.analysisSettings.compressedEdge,
-          ...check2.metadata
+          ...check4.metadata
         }
       }));
       const torsionResult = torsionVerification == null ? void 0 : torsionVerification.verifySectionActions({
@@ -97429,10 +99204,10 @@ var ReinforcedConcreteBeamVerification = class {
       actionVerification.outputs.detailing = detailingVerification.toJSON();
     }
     const groupedChecks = Object.values(
-      actionVerification.checks.reduce((acc, check2) => {
-        const current = acc[check2.id];
-        if (!current || check2.utilizationRatio > current.utilizationRatio) {
-          acc[check2.id] = check2;
+      actionVerification.checks.reduce((acc, check4) => {
+        const current = acc[check4.id];
+        if (!current || check4.utilizationRatio > current.utilizationRatio) {
+          acc[check4.id] = check4;
         }
         return acc;
       }, {})
@@ -97722,19 +99497,19 @@ var ReinforcedConcreteFoundationBeamApplication = class extends StructuralApplic
 
 // src/applications/reinforced-concrete-beam-column-joints/ReinforcedConcreteBeamColumnJointModel.js
 var INTERNAL_UNITS46 = Object.freeze({ force: "N", length: "mm" });
-function positive38(value, label) {
+function positive40(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be positive.`);
   }
   return value;
 }
-function nonNegative13(value, label) {
+function nonNegative14(value, label) {
   if (!Number.isFinite(value) || value < 0) {
     throw new Error(`${label} must be non-negative.`);
   }
   return value;
 }
-function finite37(value, label) {
+function finite42(value, label) {
   if (!Number.isFinite(value)) {
     throw new Error(`${label} must be finite.`);
   }
@@ -97744,7 +99519,7 @@ function ratios(input = {}) {
   return Object.fromEntries(
     Object.entries(input).map(([key, value]) => [
       key,
-      nonNegative13(Number(value), `confinement.${key}`)
+      nonNegative14(Number(value), `confinement.${key}`)
     ])
   );
 }
@@ -97752,19 +99527,19 @@ function normalizeAnchor2(input, resolver, label) {
   if (!input) return null;
   return {
     ...input,
-    diameter: positive38(
+    diameter: positive40(
       resolver.length(Number(input.diameter)),
       `${label}.diameter`
     ),
-    availableLength: positive38(
+    availableLength: positive40(
       resolver.length(Number(input.availableLength)),
       `${label}.availableLength`
     ),
-    designSteelStress: input.designSteelStress == null ? null : positive38(
+    designSteelStress: input.designSteelStress == null ? null : positive40(
       resolver.stress(Number(input.designSteelStress)),
       `${label}.designSteelStress`
     ),
-    fctd: input.fctd == null ? null : positive38(resolver.stress(Number(input.fctd)), `${label}.fctd`)
+    fctd: input.fctd == null ? null : positive40(resolver.stress(Number(input.fctd)), `${label}.fctd`)
   };
 }
 var ReinforcedConcreteBeamColumnJointModel = class {
@@ -97800,27 +99575,27 @@ var ReinforcedConcreteBeamColumnJointModel = class {
         "Concrete, longitudinal reinforcement and transverse reinforcement materials are required."
       );
     }
-    const columnWidth = positive38(
+    const columnWidth = positive40(
       resolver.length(Number(geometry.columnWidth)),
       "geometry.columnWidth"
     );
-    const columnDepth = positive38(
+    const columnDepth = positive40(
       resolver.length(Number(geometry.columnDepth)),
       "geometry.columnDepth"
     );
-    const beamWidth = positive38(
+    const beamWidth = positive40(
       resolver.length(Number(geometry.beamWidth)),
       "geometry.beamWidth"
     );
-    const beamHeight = positive38(
+    const beamHeight = positive40(
       resolver.length(Number(geometry.beamHeight)),
       "geometry.beamHeight"
     );
-    const columnLongitudinalLayerDistance = positive38(
+    const columnLongitudinalLayerDistance = positive40(
       resolver.length(Number(geometry.columnLongitudinalLayerDistance)),
       "geometry.columnLongitudinalLayerDistance"
     );
-    const beamLongitudinalLayerDistance = positive38(
+    const beamLongitudinalLayerDistance = positive40(
       resolver.length(Number(geometry.beamLongitudinalLayerDistance)),
       "geometry.beamLongitudinalLayerDistance"
     );
@@ -97857,14 +99632,14 @@ var ReinforcedConcreteBeamColumnJointModel = class {
       concreteMaterial,
       reinforcementMaterial,
       transverseReinforcementMaterial,
-      fctd: materials.fctd == null ? null : positive38(resolver.stress(Number(materials.fctd)), "materials.fctd")
+      fctd: materials.fctd == null ? null : positive40(resolver.stress(Number(materials.fctd)), "materials.fctd")
     };
     this.actions = {
-      columnAxialForce: nonNegative13(
+      columnAxialForce: nonNegative14(
         resolver.force(Number((_c = (_b = actions.columnAxialForce) != null ? _b : actions.nEd) != null ? _c : 0)),
         "actions.columnAxialForce"
       ),
-      columnShearAbove: finite37(
+      columnShearAbove: finite42(
         resolver.force(Number((_e = (_d = actions.columnShearAbove) != null ? _d : actions.vc) != null ? _e : 0)),
         "actions.columnShearAbove"
       ),
@@ -97872,29 +99647,29 @@ var ReinforcedConcreteBeamColumnJointModel = class {
       columnShearConvention: "signed in the same direction as the beam reinforcement resultant and subtracted from it"
     };
     this.beamReinforcement = {
-      topArea: nonNegative13(
+      topArea: nonNegative14(
         resolver.area(Number(beamReinforcement.topArea)),
         "beamReinforcement.topArea"
       ),
-      bottomArea: nonNegative13(
+      bottomArea: nonNegative14(
         resolver.area(Number(beamReinforcement.bottomArea)),
         "beamReinforcement.bottomArea"
       )
     };
     this.jointHoops = {
-      diameter: positive38(
+      diameter: positive40(
         resolver.length(Number(jointHoops.diameter)),
         "jointHoops.diameter"
       ),
-      totalArea: positive38(
+      totalArea: positive40(
         resolver.area(Number(jointHoops.totalArea)),
         "jointHoops.totalArea"
       ),
-      areaPerSet: positive38(
+      areaPerSet: positive40(
         resolver.area(Number(jointHoops.areaPerSet)),
         "jointHoops.areaPerSet"
       ),
-      spacing: positive38(
+      spacing: positive40(
         resolver.length(Number(jointHoops.spacing)),
         "jointHoops.spacing"
       )
@@ -97905,13 +99680,13 @@ var ReinforcedConcreteBeamColumnJointModel = class {
         confinement.oppositeBeamOverlapRatios
       ),
       adjacentColumnHoops: {
-        controllingAreaPerSet: positive38(
+        controllingAreaPerSet: positive40(
           resolver.area(Number(
             (_f = confinement.adjacentColumnHoops) == null ? void 0 : _f.controllingAreaPerSet
           )),
           "confinement.adjacentColumnHoops.controllingAreaPerSet"
         ),
-        controllingSpacing: positive38(
+        controllingSpacing: positive40(
           resolver.length(Number(
             (_g = confinement.adjacentColumnHoops) == null ? void 0 : _g.controllingSpacing
           )),
@@ -97924,11 +99699,11 @@ var ReinforcedConcreteBeamColumnJointModel = class {
       exemptReason: (_h = capacityHierarchy.exemptReason) != null ? _h : null
     } : {
       exempt: false,
-      beamMomentResistanceSum: positive38(
+      beamMomentResistanceSum: positive40(
         resolver.moment(Number(capacityHierarchy.beamMomentResistanceSum)),
         "capacityHierarchy.beamMomentResistanceSum"
       ),
-      effectiveColumnMomentResistance: positive38(
+      effectiveColumnMomentResistance: positive40(
         resolver.moment(Number(
           capacityHierarchy.effectiveColumnMomentResistance
         )),
@@ -97950,11 +99725,11 @@ var ReinforcedConcreteBeamColumnJointModel = class {
     }
     this.eccentricity = {
       beamAxisOffset,
-      transferLeverArm: eccentricity.transferLeverArm == null ? null : positive38(
+      transferLeverArm: eccentricity.transferLeverArm == null ? null : positive40(
         resolver.length(Number(eccentricity.transferLeverArm)),
         "eccentricity.transferLeverArm"
       ),
-      reinforcementArea: eccentricity.reinforcementArea == null ? 0 : nonNegative13(
+      reinforcementArea: eccentricity.reinforcementArea == null ? 0 : nonNegative14(
         resolver.area(Number(eccentricity.reinforcementArea)),
         "eccentricity.reinforcementArea"
       )
@@ -98042,7 +99817,8 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
         metadata: { code: this.code, jointId: model.id, ...this.metadata }
       });
     }
-    const gammaRd = ntc2018JointOverstrengthFactor(model.ductilityClass);
+    const jointShearGammaRd = ntc2018JointOverstrengthFactor(model.ductilityClass);
+    const columnBendingGammaRd = 1.3;
     const normativeJointType = model.jointType === "corner" ? "external" : model.jointType;
     const effectiveJointWidth = calculateNTC2018EffectiveJointWidth({
       columnWidth: model.geometry.columnWidth,
@@ -98054,7 +99830,7 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
     const confinement = classifyNTC2018JointConfinement(model.confinement);
     const demand = calculateNTC2018JointShearDemand({
       jointType: normativeJointType,
-      gammaRd,
+      gammaRd: jointShearGammaRd,
       topReinforcementArea: model.beamReinforcement.topArea,
       bottomReinforcementArea: model.beamReinforcement.bottomArea,
       reinforcementDesignStrength: fyd,
@@ -98081,7 +99857,7 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
           normalizedAxialForce,
           fcd,
           fctd: fctd.value,
-          gammaRd,
+          gammaRd: jointShearGammaRd,
           topReinforcementArea: model.beamReinforcement.topArea,
           bottomReinforcementArea: model.beamReinforcement.bottomArea,
           reinforcementDesignStrength: fyd
@@ -98148,10 +99924,10 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
       checks.push(utilizationCheck({
         id: "rc-joint-strong-column-weak-beam",
         description: "Strong-column weak-beam capacity hierarchy",
-        demand: gammaRd * model.capacityHierarchy.beamMomentResistanceSum,
+        demand: columnBendingGammaRd * model.capacityHierarchy.beamMomentResistanceSum,
         capacity: model.capacityHierarchy.effectiveColumnMomentResistance,
         metadata: {
-          gammaRd,
+          gammaRd: columnBendingGammaRd,
           preReducedForMomentSigns: true,
           reference: "NTC2018-7.4.4"
         }
@@ -98232,7 +100008,7 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
     });
     checks.push(...anchorageChecks2);
     const governing = governingCheck(checks);
-    const ok = checks.every((check2) => check2.ok === true);
+    const ok = checks.every((check4) => check4.ok === true);
     return new VerificationResult({
       applicationId: "reinforced-concrete-beam-column-joints",
       status: !eccentricitySupported ? RESULT_STATUS.NOT_SUPPORTED : ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
@@ -98246,7 +100022,11 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
         jointType: model.jointType,
         normativeJointType,
         ductilityClass: model.ductilityClass,
-        gammaRd,
+        gammaRd: jointShearGammaRd,
+        overstrengthFactors: {
+          jointShear: jointShearGammaRd,
+          columnBending: columnBendingGammaRd
+        },
         geometry: {
           ...model.geometry,
           effectiveJointWidth: round3(effectiveJointWidth),
@@ -98294,7 +100074,7 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
         },
         capacityHierarchy: { ...model.capacityHierarchy },
         anchorage: {
-          checkedFaces: anchorageChecks2.map((check2) => check2.id)
+          checkedFaces: anchorageChecks2.map((check4) => check4.id)
         },
         eccentricity: {
           ...model.eccentricity,
@@ -98387,10 +100167,10 @@ var ReinforcedConcreteBeamColumnJoint3DVerification = class {
         code: this.code
       }).verify(direction)
     }));
-    const checks = directionalResults.flatMap(({ directionId, result: result9 }) => result9.checks.map((check2) => ({
-      ...check2,
-      id: `${check2.id}-${directionId}`,
-      metadata: { ...check2.metadata, directionId }
+    const checks = directionalResults.flatMap(({ directionId, result: result9 }) => result9.checks.map((check4) => ({
+      ...check4,
+      id: `${check4.id}-${directionId}`,
+      metadata: { ...check4.metadata, directionId }
     })));
     const governing = governingCheck(checks);
     const unsupported = directionalResults.some(({ result: result9 }) => result9.status === RESULT_STATUS.NOT_SUPPORTED);
@@ -98481,7 +100261,7 @@ var FORCE_REFERENCE_KINDS = /* @__PURE__ */ new Set([
   "reaction",
   "explicit"
 ]);
-function positive39(value, label) {
+function positive41(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be positive.`);
   }
@@ -98500,7 +100280,7 @@ function normalizeFactors(factors = {}) {
   return Object.fromEntries(
     Object.entries(factors).map(([key, value]) => [
       key,
-      positive39(Number(value), `nodalFactors.${key}`)
+      positive41(Number(value), `nodalFactors.${key}`)
     ])
   );
 }
@@ -98532,7 +100312,7 @@ var ReinforcedConcreteStrutAndTieModel = class {
     const normalizedMembers = members.map((member) => {
       var _a, _b, _c, _d;
       const type = String((_a = member.type) != null ? _a : "").toLowerCase();
-      const area = positive39(
+      const area = positive41(
         resolver.area(Number(member.area)),
         `member ${member.id} area`
       );
@@ -98549,7 +100329,7 @@ var ReinforcedConcreteStrutAndTieModel = class {
         startNodeId: (_b = member.startNodeId) != null ? _b : member.start,
         endNodeId: (_c = member.endNodeId) != null ? _c : member.end,
         area,
-        axialRigidity: area * positive39(
+        axialRigidity: area * positive41(
           elasticModulus,
           `member ${member.id} analysis elastic modulus`
         ),
@@ -98643,7 +100423,7 @@ var ReinforcedConcreteStrutAndTieModel = class {
         );
       }
       const normal = ["load", "reaction"].includes(kind) ? normalizedDirection(reference.normal, `nodal zone ${zone.id} normal`) : null;
-      const designForce = kind === "explicit" ? positive39(
+      const designForce = kind === "explicit" ? positive41(
         resolver.force(Number(reference.designForce)),
         `nodal zone ${zone.id} designForce`
       ) : null;
@@ -98651,7 +100431,7 @@ var ReinforcedConcreteStrutAndTieModel = class {
         id: zone.id,
         nodeId: zone.nodeId,
         type: zone.type,
-        area: positive39(
+        area: positive41(
           resolver.area(Number(zone.area)),
           `nodal zone ${zone.id} area`
         ),
@@ -98684,14 +100464,14 @@ var STRUT_STRENGTH_MODELS = /* @__PURE__ */ new Set([
   "transverse-tension"
 ]);
 var NODE_TYPES2 = /* @__PURE__ */ new Set(["ccc", "cct", "ctt"]);
-function positive40(value, label) {
+function positive42(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be positive.`);
   }
   return value;
 }
 function calculateEn1992StrutAndTieNuPrime(fck) {
-  positive40(fck, "fck");
+  positive42(fck, "fck");
   return Math.max(0, 1 - fck / 250);
 }
 function calculateEn1992StrutDesignStrength({
@@ -98702,7 +100482,7 @@ function calculateEn1992StrutDesignStrength({
   if (!STRUT_STRENGTH_MODELS.has(strengthModel)) {
     throw new Error(`Unsupported EN 1992 strut strength model: ${strengthModel}.`);
   }
-  positive40(fcd, "fcd");
+  positive42(fcd, "fcd");
   const nuPrime = calculateEn1992StrutAndTieNuPrime(fck);
   const coefficient = strengthModel === "uncracked-uniaxial" ? 1 : 0.6 * nuPrime;
   return {
@@ -98713,8 +100493,8 @@ function calculateEn1992StrutDesignStrength({
   };
 }
 function calculateEn1992TieResistance({ reinforcementArea, fyd }) {
-  positive40(reinforcementArea, "reinforcementArea");
-  positive40(fyd, "fyd");
+  positive42(reinforcementArea, "reinforcementArea");
+  positive42(fyd, "fyd");
   return {
     capacity: reinforcementArea * fyd,
     reinforcementArea,
@@ -98731,10 +100511,10 @@ function calculateEn1992NodalDesignStrength({
   if (!NODE_TYPES2.has(nodeType)) {
     throw new Error(`Unsupported EN 1992 nodal-zone type: ${nodeType}.`);
   }
-  positive40(fcd, "fcd");
+  positive42(fcd, "fcd");
   const recommended = { ccc: 1, cct: 0.85, ctt: 0.75 };
   const parameterName = { ccc: "k1", cct: "k2", ctt: "k3" }[nodeType];
-  const factor2 = factors[parameterName] == null ? recommended[nodeType] : positive40(factors[parameterName], parameterName);
+  const factor2 = factors[parameterName] == null ? recommended[nodeType] : positive42(factors[parameterName], parameterName);
   const nuPrime = calculateEn1992StrutAndTieNuPrime(fck);
   return {
     designStrength: factor2 * nuPrime * fcd,
@@ -98925,7 +100705,7 @@ var ReinforcedConcreteStrutAndTieVerification = class {
       ...nodalZoneResults.map((zone) => zone.check)
     ];
     const governing = governingCheck(checks);
-    const ok = checks.every((check2) => check2.ok === true);
+    const ok = checks.every((check4) => check4.ok === true);
     const equilibriumResidual = Math.hypot(
       analysis.equilibrium.residual.fx,
       analysis.equilibrium.residual.fy
@@ -98942,7 +100722,7 @@ var ReinforcedConcreteStrutAndTieVerification = class {
         analysis,
         materials: { fck: round3(fck), fcd: round3(fcd), fyd: round3(fyd) },
         memberCapacities,
-        nodalZones: nodalZoneResults.map(({ check: check2, ...zone }) => zone),
+        nodalZones: nodalZoneResults.map(({ check: check4, ...zone }) => zone),
         equilibriumResidual: round3(equilibriumResidual),
         incompatibleMembers
       },
@@ -99008,9 +100788,21 @@ var ReinforcedConcreteStrutAndTieApplication = class extends StructuralApplicati
 
 // src/applications/rc-building-verification/wallBiaxialVerification.js
 var WALL_BIAXIAL_REFERENCE = "NTC 2018 \xA7 4.1.2.3.9, \xA7 7.4.4.5.1 (Presso-flessione biassiale)";
-function positive41(value, label) {
+function positive43(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be positive; got ${value}.`);
+  }
+  return value;
+}
+function finite43(value, label) {
+  if (!Number.isFinite(value)) {
+    throw new Error(`${label} must be finite; got ${value}.`);
+  }
+  return value;
+}
+function integerAtLeast(value, minimum2, label) {
+  if (!Number.isInteger(value) || value < minimum2) {
+    throw new Error(`${label} must be an integer >= ${minimum2}; got ${value}.`);
   }
   return value;
 }
@@ -99026,21 +100818,27 @@ function verifyWallBiaxialBending({
   steelElasticModulus = 2e5,
   steelUltimateStrain = 0.01,
   targetFiberCount = 400,
+  angleCount = 64,
   compressedSide = "positive"
 }) {
-  var _a, _b, _c;
   if (section == null) {
     throw new Error("section is required for wall biaxial verification.");
   }
-  const nEd = Number.isFinite(axialForce) ? axialForce : 0;
-  const mxEd = Number.isFinite(momentX) ? momentX : 0;
-  const myEd = Number.isFinite(momentY) ? momentY : 0;
-  const fcd = positive41(concreteDesignStrength, "concreteDesignStrength");
-  const fyd = positive41(reinforcementDesignStrength, "reinforcementDesignStrength");
+  const nEd = finite43(axialForce, "axialForce");
+  const mxEd = finite43(momentX, "momentX");
+  const myEd = finite43(momentY, "momentY");
+  const fcd = positive43(concreteDesignStrength, "concreteDesignStrength");
+  const fyd = positive43(reinforcementDesignStrength, "reinforcementDesignStrength");
+  const resolvedFiberCount = integerAtLeast(
+    targetFiberCount,
+    1,
+    "targetFiberCount"
+  );
+  const resolvedAngleCount = integerAtLeast(angleCount, 4, "angleCount");
   const demand = Math.hypot(mxEd, myEd);
-  const theta = Math.atan2(mxEd, myEd);
+  const theta = demand > 0 ? Math.atan2(myEd, mxEd) : null;
   const concreteFibers = new SectionFiberDiscretizer().discretize(section, {
-    targetCount: targetFiberCount
+    targetCount: resolvedFiberCount
   }).fibers;
   const concreteLaw = new ConcreteParabolaRectangleLaw({
     fcd,
@@ -99052,34 +100850,1076 @@ function verifyWallBiaxialBending({
     fyd,
     esu: steelUltimateStrain
   });
-  const solved = new RCUltimateSectionSolver().solveAtAxialLoad({
+  const domain = new RCBiaxialDomainBuilder().buildAtAxialLoad({
     section,
     concreteFibers,
     concreteLaw,
     steelLaw,
     nEd,
-    theta,
+    angleCount: resolvedAngleCount,
     compressedSide
   });
-  const capacity = Math.hypot((_a = solved.MxRd) != null ? _a : 0, (_b = solved.MyRd) != null ? _b : 0);
-  const utilizationRatio = capacity > 0 ? demand / capacity : Infinity;
-  const ok = solved.converged !== false && utilizationRatio <= 1;
+  const converged = domain.points.every(
+    (point4) => point4.converged === true && Number.isFinite(point4.MxRd) && Number.isFinite(point4.MyRd) && Number.isFinite(point4.axialResidual)
+  );
+  const maximumAbsoluteAxialResidual = Math.max(
+    ...domain.points.map((point4) => Math.abs(point4.axialResidual)).filter(Number.isFinite),
+    0
+  );
+  const rayCapacity = rayPolygonCapacity(
+    domain.points.map((point4) => ({
+      x: point4.MxRd,
+      y: point4.MyRd
+    })),
+    mxEd,
+    myEd
+  );
+  const capacity = Number.isFinite(rayCapacity.capacityNorm) ? rayCapacity.capacityNorm : null;
+  const utilizationRatio = Number.isFinite(rayCapacity.utilizationRatio) ? rayCapacity.utilizationRatio : null;
+  const ok = converged && utilizationRatio != null && utilizationRatio <= 1;
   return {
     ok,
     utilizationRatio,
     demand,
     capacity,
     theta,
-    axialResidual: (_c = solved.axialResidual) != null ? _c : null,
-    converged: solved.converged !== false,
+    axialResidual: maximumAbsoluteAxialResidual,
+    converged,
+    angleCount: resolvedAngleCount,
+    intersection: rayCapacity.intersection ? {
+      momentX: rayCapacity.intersection.x,
+      momentY: rayCapacity.intersection.y,
+      segmentIndex: rayCapacity.intersection.segmentIndex,
+      segmentParameter: rayCapacity.intersection.segmentParameter
+    } : null,
     check: "wall-biaxial-bending",
     reference: WALL_BIAXIAL_REFERENCE
   };
 }
 
+// src/applications/rc-building-verification/wallSystemVerification.js
+function normalizeStateAssessment({
+  wall,
+  state,
+  outcome,
+  behavior,
+  dissipativeSectionCutIds
+}) {
+  var _a;
+  const dissipative = behavior !== NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE;
+  const inDissipativeZone = dissipative && dissipativeSectionCutIds.includes(state.sectionCutId);
+  const required = [
+    "flexure",
+    "shear",
+    ...dissipative ? ["axialCompression"] : [],
+    ...inDissipativeZone ? ["ductility"] : []
+  ];
+  const missing2 = required.filter((name) => {
+    var _a2;
+    return typeof ((_a2 = outcome == null ? void 0 : outcome[name]) == null ? void 0 : _a2.ok) !== "boolean";
+  });
+  const checks = required.filter((name) => !missing2.includes(name)).map((name) => {
+    var _a2;
+    return {
+      ...outcome[name],
+      id: (_a2 = outcome[name].id) != null ? _a2 : `wall-${name}-${wall.id}-${state.sectionCutId}`,
+      metadata: {
+        ...outcome[name].metadata,
+        wallId: wall.id,
+        sectionCutId: state.sectionCutId,
+        reference: state.reference
+      }
+    };
+  });
+  return {
+    wallId: wall.id,
+    sectionCutId: state.sectionCutId,
+    reference: state.reference,
+    complete: missing2.length === 0,
+    status: missing2.length > 0 ? "not-implemented" : checks.every((item) => item.ok) ? "ok" : "not-verified",
+    ok: missing2.length === 0 && checks.every((item) => item.ok),
+    missing: missing2,
+    checks,
+    outputs: (_a = outcome == null ? void 0 : outcome.outputs) != null ? _a : null
+  };
+}
+function requiredWallSystemChecks({
+  data,
+  behavior,
+  context
+}) {
+  const allowedTypes = [
+    "wall",
+    "mixed",
+    "coupled-wall",
+    "weakly-reinforced"
+  ];
+  if (!allowedTypes.includes(data.systemType)) {
+    throw new Error(
+      `systemType must be one of ${allowedTypes.join(", ")}.`
+    );
+  }
+  if (typeof data.redistributionApplied !== "boolean") {
+    throw new Error("redistributionApplied must be boolean.");
+  }
+  if (!Array.isArray(data.additionalChecks)) {
+    throw new Error("additionalChecks must be an array.");
+  }
+  const dissipative = behavior !== NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE;
+  const required = [
+    ...dissipative ? [
+      "wall-moment-envelope",
+      "wall-shear-amplification",
+      "wall-boundary-detailing"
+    ] : [],
+    ...data.systemType === "mixed" ? ["wall-mixed-system-shear-envelope"] : [],
+    ...data.systemType === "weakly-reinforced" ? [
+      "wall-weakly-reinforced-shear-amplification",
+      "wall-out-of-plane-stability"
+    ] : [],
+    ...data.systemType === "weakly-reinforced" && context.q > 2 ? ["wall-weakly-reinforced-axial-dynamic"] : [],
+    ...data.redistributionApplied ? ["wall-seismic-demand-redistribution"] : []
+  ];
+  const supplied = new Map(data.additionalChecks.map((item) => [
+    item == null ? void 0 : item.id,
+    item
+  ]));
+  const missing2 = required.filter((id) => {
+    var _a;
+    return typeof ((_a = supplied.get(id)) == null ? void 0 : _a.ok) !== "boolean";
+  });
+  if (data.additionalChecks.some((item) => typeof (item == null ? void 0 : item.id) !== "string" || typeof (item == null ? void 0 : item.ok) !== "boolean")) {
+    missing2.push("valid-additional-checks");
+  }
+  return [...new Set(missing2)];
+}
+function runWallSystemVerifications({
+  walls,
+  wallSystemData,
+  wallSectionStateVerifier,
+  demandSet,
+  context
+}) {
+  var _a, _b;
+  const results = [];
+  for (const wall of walls != null ? walls : []) {
+    const data = wallSystemData == null ? void 0 : wallSystemData[wall.id];
+    if (data == null || typeof wallSectionStateVerifier !== "function") {
+      results.push({
+        wallId: wall.id,
+        status: "not-implemented",
+        complete: false,
+        ok: false,
+        missing: [
+          ...data == null ? [`wallSystemData.${wall.id}`] : [],
+          ...typeof wallSectionStateVerifier !== "function" ? ["wallSectionStateVerifier"] : []
+        ],
+        checks: []
+      });
+      continue;
+    }
+    if (!Array.isArray(data.couplingBeamInputs)) {
+      results.push({
+        wallId: wall.id,
+        status: "not-implemented",
+        complete: false,
+        ok: false,
+        missing: [`wallSystemData.${wall.id}.couplingBeamInputs`],
+        checks: []
+      });
+      continue;
+    }
+    try {
+      const sourceStates = collectConcurrentSectionCutStates({
+        sectionCutIds: wall.sectionCutIds,
+        globalResponses: demandSet == null ? void 0 : demandSet.globalResponses
+      });
+      const states = projectWallSectionCutStatesToResistanceAxes({
+        wall,
+        states: sourceStates
+      });
+      const dissipativeSectionCutIds = (_a = data.dissipativeSectionCutIds) != null ? _a : [];
+      if (!Array.isArray(dissipativeSectionCutIds)) {
+        throw new Error("dissipativeSectionCutIds must be an array.");
+      }
+      const dissipative = context.behavior !== NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE;
+      const missingSystemChecks = requiredWallSystemChecks({
+        data,
+        behavior: context.behavior,
+        context
+      });
+      if (dissipative && dissipativeSectionCutIds.length === 0) {
+        missingSystemChecks.push("dissipativeSectionCutIds");
+      }
+      if (data.systemType === "coupled-wall" && data.couplingBeamInputs.length === 0) {
+        missingSystemChecks.push("couplingBeamInputs");
+      }
+      if (missingSystemChecks.length > 0) {
+        results.push({
+          wallId: wall.id,
+          status: "not-implemented",
+          complete: false,
+          ok: false,
+          missing: [...new Set(missingSystemChecks)],
+          checks: data.additionalChecks,
+          sourceStateCount: sourceStates.length,
+          resistanceStateCount: states.length
+        });
+        continue;
+      }
+      const stateAssessments = states.map((state) => {
+        var _a2;
+        let outcome = null;
+        try {
+          outcome = wallSectionStateVerifier({
+            wall,
+            data,
+            state,
+            context
+          });
+        } catch (error) {
+          return {
+            wallId: wall.id,
+            sectionCutId: state.sectionCutId,
+            reference: state.reference,
+            complete: false,
+            status: "failed",
+            ok: false,
+            missing: [],
+            reason: (_a2 = error == null ? void 0 : error.message) != null ? _a2 : String(error),
+            checks: []
+          };
+        }
+        return normalizeStateAssessment({
+          wall,
+          state,
+          outcome,
+          behavior: context.behavior,
+          dissipativeSectionCutIds
+        });
+      });
+      const couplingBeamAssessments = data.couplingBeamInputs.map((input) => createCouplingBeamAssessment(input));
+      const diagonalRequired = couplingBeamAssessments.some((item) => item.procedure === "diagonal-X");
+      const detailingAssessment = data.detailingInput == null ? null : verifyWallGeneralDetailing({
+        ...data.detailingInput,
+        diagonalCouplingReinforcementRequired: diagonalRequired
+      });
+      const assessment = createWallHeightSystemAssessment({
+        wallId: wall.id,
+        expectedSectionCutIds: wall.sectionCutIds,
+        sectionStateAssessments: stateAssessments,
+        detailingAssessment,
+        couplingBeamAssessments,
+        additionalChecks: data.additionalChecks
+      });
+      results.push({
+        ...assessment,
+        sourceStateCount: sourceStates.length,
+        resistanceStateCount: states.length
+      });
+    } catch (error) {
+      results.push({
+        wallId: wall.id,
+        status: "failed",
+        complete: false,
+        ok: false,
+        missing: [],
+        reason: (_b = error == null ? void 0 : error.message) != null ? _b : String(error),
+        checks: []
+      });
+    }
+  }
+  return results;
+}
+
+// src/applications/rc-building-verification/slabSystemVerification.js
+function referenceLimitState(reference, analysis, data) {
+  var _a, _b, _c;
+  if ((reference == null ? void 0 : reference.combinationId) != null) {
+    const combination = (_a = analysis == null ? void 0 : analysis.combinations) == null ? void 0 : _a.find((item) => item.id === reference.combinationId);
+    if (combination) return combination.limitState;
+  }
+  const key = JSON.stringify(reference != null ? reference : {});
+  return (_c = (_b = data.limitStateByReference) == null ? void 0 : _b[key]) != null ? _c : null;
+}
+function isSeismicReference(reference, analysis, data) {
+  var _a, _b, _c, _d, _e;
+  if ((reference == null ? void 0 : reference.combinationId) != null) {
+    const combination = (_a = analysis == null ? void 0 : analysis.combinations) == null ? void 0 : _a.find((item) => item.id === reference.combinationId);
+    const cases = new Map(((_b = analysis == null ? void 0 : analysis.loadCases) != null ? _b : []).map((item) => [
+      item.id,
+      item
+    ]));
+    if ((_c = combination == null ? void 0 : combination.terms) == null ? void 0 : _c.some((term) => {
+      var _a2, _b2;
+      return (_b2 = (_a2 = cases.get(term.loadCaseId)) == null ? void 0 : _a2.nature) == null ? void 0 : _b2.startsWith("seismic");
+    })) {
+      return true;
+    }
+  }
+  const key = JSON.stringify(reference != null ? reference : {});
+  return (_e = (_d = data.seismicReferenceKeys) == null ? void 0 : _d.includes(key)) != null ? _e : false;
+}
+function normalizeSlabState({
+  slab,
+  state,
+  outcome,
+  limitState
+}) {
+  var _a;
+  const required = limitState === "ultimate" ? ["bending", "oneWayShear"] : limitState === "serviceability" ? ["stress", "cracking", "deflection"] : [];
+  const missing2 = [
+    ...required.length === 0 ? ["recognized-limit-state"] : [],
+    ...required.filter((name) => {
+      var _a2;
+      return typeof ((_a2 = outcome == null ? void 0 : outcome[name]) == null ? void 0 : _a2.ok) !== "boolean";
+    })
+  ];
+  const checks = required.filter((name) => {
+    var _a2;
+    return typeof ((_a2 = outcome == null ? void 0 : outcome[name]) == null ? void 0 : _a2.ok) === "boolean";
+  }).map((name) => {
+    var _a2;
+    return {
+      ...outcome[name],
+      id: (_a2 = outcome[name].id) != null ? _a2 : `slab-${name}-${slab.id}-${state.shellElementId}`,
+      metadata: {
+        ...outcome[name].metadata,
+        slabId: slab.id,
+        shellElementId: state.shellElementId,
+        reference: state.reference
+      }
+    };
+  });
+  return {
+    slabId: slab.id,
+    shellElementId: state.shellElementId,
+    reference: state.reference,
+    limitState,
+    complete: missing2.length === 0,
+    status: missing2.length > 0 ? "not-implemented" : checks.every((item) => item.ok) ? "ok" : "not-verified",
+    ok: missing2.length === 0 && checks.every((item) => item.ok),
+    missing: missing2,
+    checks,
+    outputs: (_a = outcome == null ? void 0 : outcome.outputs) != null ? _a : null
+  };
+}
+function verifyPunchingForSlab({
+  slab,
+  data,
+  punchingConnections,
+  punchingVerifier,
+  demandSet,
+  context
+}) {
+  var _a, _b;
+  if (typeof data.punchingRequired !== "boolean") {
+    return {
+      status: "not-implemented",
+      complete: false,
+      ok: false,
+      missing: ["punchingRequired"],
+      connections: [],
+      checks: []
+    };
+  }
+  if (!data.punchingRequired) {
+    const reason = data.punchingNotApplicableReason;
+    const complete2 = typeof reason === "string" && reason.length > 0;
+    return {
+      status: complete2 ? "not-applicable" : "not-implemented",
+      complete: complete2,
+      ok: complete2,
+      reason: complete2 ? reason : null,
+      missing: complete2 ? [] : ["punchingNotApplicableReason"],
+      connections: [],
+      checks: []
+    };
+  }
+  const connections = (punchingConnections != null ? punchingConnections : []).filter((item) => item.slabId === slab.id);
+  if (connections.length === 0 || typeof punchingVerifier !== "function") {
+    return {
+      status: "not-implemented",
+      complete: false,
+      ok: false,
+      missing: [
+        ...connections.length === 0 ? [`punchingConnections for ${slab.id}`] : [],
+        ...typeof punchingVerifier !== "function" ? ["punchingVerifier"] : []
+      ],
+      connections: [],
+      checks: []
+    };
+  }
+  const requiredCombinationIds = ((_b = (_a = context.analysis) == null ? void 0 : _a.combinations) != null ? _b : []).filter((item) => item.limitState === "ultimate").map((item) => item.id);
+  const results = connections.map((connection) => {
+    var _a2, _b2, _c;
+    try {
+      const outcome = punchingVerifier({
+        connection,
+        slab,
+        data,
+        demandSet,
+        context
+      });
+      const assessed = (_a2 = outcome == null ? void 0 : outcome.assessedCombinationIds) != null ? _a2 : [];
+      const missingCombinations = requiredCombinationIds.filter((id) => !assessed.includes(id));
+      const checks = Array.isArray(outcome == null ? void 0 : outcome.checks) ? outcome.checks : [];
+      const checksValid = checks.length > 0 && checks.every((item) => typeof (item == null ? void 0 : item.ok) === "boolean");
+      const complete2 = missingCombinations.length === 0 && checksValid;
+      return {
+        connectionId: connection.id,
+        status: complete2 ? checks.every((item) => item.ok) ? "ok" : "not-verified" : "not-implemented",
+        complete: complete2,
+        ok: complete2 && checks.every((item) => item.ok),
+        missingCombinationIds: missingCombinations,
+        checks,
+        outputs: (_b2 = outcome == null ? void 0 : outcome.outputs) != null ? _b2 : null
+      };
+    } catch (error) {
+      return {
+        connectionId: connection.id,
+        status: "failed",
+        complete: false,
+        ok: false,
+        reason: (_c = error == null ? void 0 : error.message) != null ? _c : String(error),
+        checks: []
+      };
+    }
+  });
+  const complete = results.every((item) => item.complete);
+  const ok = complete && results.every((item) => item.ok);
+  return {
+    status: complete ? ok ? "ok" : "not-verified" : "not-implemented",
+    complete,
+    ok,
+    missing: [],
+    connections: results,
+    checks: results.flatMap((item) => item.checks)
+  };
+}
+function verifyDiaphragmForSlab({
+  slab,
+  data,
+  states,
+  diaphragmStateVerifier,
+  context
+}) {
+  var _a;
+  if (typeof data.diaphragmRequired !== "boolean") {
+    return {
+      status: "not-implemented",
+      complete: false,
+      ok: false,
+      missing: ["diaphragmRequired"],
+      stateAssessments: [],
+      checks: []
+    };
+  }
+  if (!data.diaphragmRequired) {
+    const reason = data.diaphragmNotApplicableReason;
+    const complete2 = typeof reason === "string" && reason.length > 0;
+    return {
+      status: complete2 ? "not-applicable" : "not-implemented",
+      complete: complete2,
+      ok: complete2,
+      reason: complete2 ? reason : null,
+      missing: complete2 ? [] : ["diaphragmNotApplicableReason"],
+      stateAssessments: [],
+      checks: []
+    };
+  }
+  if (!Array.isArray(slab.diaphragmIds) || slab.diaphragmIds.length === 0 || typeof diaphragmStateVerifier !== "function") {
+    return {
+      status: "not-implemented",
+      complete: false,
+      ok: false,
+      missing: [
+        ...!(((_a = slab.diaphragmIds) == null ? void 0 : _a.length) > 0) ? ["slab.diaphragmIds"] : [],
+        ...typeof diaphragmStateVerifier !== "function" ? ["diaphragmStateVerifier"] : []
+      ],
+      stateAssessments: [],
+      checks: []
+    };
+  }
+  const seismicStates = states.filter((state) => isSeismicReference(
+    state.reference,
+    context.analysis,
+    data
+  ));
+  const stateAssessments = seismicStates.map((state) => {
+    var _a2, _b;
+    const analysisActions = {
+      Nx: state.resistanceResultants.Nx,
+      Ny: state.resistanceResultants.Ny,
+      Nxy: state.resistanceResultants.Nxy
+    };
+    const amplified = amplifyNTC2018DiaphragmActions({
+      analysisActions
+    });
+    try {
+      const outcome = diaphragmStateVerifier({
+        slab,
+        data,
+        state,
+        designActions: amplified.designActions,
+        context
+      });
+      return createDiaphragmAssessment({
+        diaphragmId: slab.diaphragmIds.join("+"),
+        analysisActions,
+        capacityChecks: (_a2 = outcome == null ? void 0 : outcome.capacityChecks) != null ? _a2 : []
+      });
+    } catch (error) {
+      return {
+        status: "failed",
+        complete: false,
+        allChecksOk: false,
+        reason: (_b = error == null ? void 0 : error.message) != null ? _b : String(error),
+        checks: []
+      };
+    }
+  });
+  const complete = stateAssessments.length > 0 && stateAssessments.every((item) => item.complete);
+  const ok = complete && stateAssessments.every((item) => item.allChecksOk);
+  return {
+    status: complete ? ok ? "ok" : "not-verified" : "not-implemented",
+    complete,
+    ok,
+    missing: seismicStates.length === 0 ? ["seismic shell-resultant states"] : [],
+    stateAssessments,
+    checks: stateAssessments.flatMap((item) => item.checks)
+  };
+}
+function runSlabSystemVerifications({
+  slabs,
+  slabSystemData,
+  slabStateVerifier,
+  punchingConnections,
+  punchingVerifier,
+  diaphragmStateVerifier,
+  demandSet,
+  context
+}) {
+  var _a, _b;
+  const results = [];
+  for (const slab of slabs != null ? slabs : []) {
+    const data = slabSystemData == null ? void 0 : slabSystemData[slab.id];
+    if (data == null || typeof slabStateVerifier !== "function") {
+      results.push({
+        slabId: slab.id,
+        status: "not-implemented",
+        complete: false,
+        ok: false,
+        missing: [
+          ...data == null ? [`slabSystemData.${slab.id}`] : [],
+          ...typeof slabStateVerifier !== "function" ? ["slabStateVerifier"] : []
+        ],
+        checks: []
+      });
+      continue;
+    }
+    try {
+      const demand = (_a = demandSet == null ? void 0 : demandSet.surfaceDemands) == null ? void 0 : _a.find((item) => item.id === slab.id);
+      const sourceStates = demand ? collectConcurrentSurfaceResultantStates(demand) : [];
+      const states = projectSlabResultantStatesToResistanceAxes({
+        slab,
+        states: sourceStates
+      });
+      const stateAssessments = states.map((state) => {
+        var _a2;
+        const limitState = referenceLimitState(
+          state.reference,
+          context.analysis,
+          data
+        );
+        let outcome = null;
+        try {
+          outcome = slabStateVerifier({
+            slab,
+            data,
+            state,
+            limitState,
+            context
+          });
+        } catch (error) {
+          return {
+            slabId: slab.id,
+            shellElementId: state.shellElementId,
+            reference: state.reference,
+            limitState,
+            status: "failed",
+            complete: false,
+            ok: false,
+            missing: [],
+            reason: (_a2 = error == null ? void 0 : error.message) != null ? _a2 : String(error),
+            checks: []
+          };
+        }
+        return normalizeSlabState({
+          slab,
+          state,
+          outcome,
+          limitState
+        });
+      });
+      const detailingChecks = Array.isArray(data.detailingChecks) ? data.detailingChecks : [];
+      const detailingComplete = detailingChecks.length > 0 && detailingChecks.every((item) => typeof (item == null ? void 0 : item.ok) === "boolean");
+      const punching = verifyPunchingForSlab({
+        slab,
+        data,
+        punchingConnections,
+        punchingVerifier,
+        demandSet,
+        context
+      });
+      const diaphragm = verifyDiaphragmForSlab({
+        slab,
+        data,
+        states,
+        diaphragmStateVerifier,
+        context
+      });
+      const complete = states.length > 0 && stateAssessments.every((item) => item.complete) && detailingComplete && punching.complete && diaphragm.complete;
+      const checks = [
+        ...stateAssessments.flatMap((item) => item.checks),
+        ...detailingChecks,
+        ...punching.checks,
+        ...diaphragm.checks
+      ];
+      const ok = complete && checks.every((item) => item.ok === true);
+      results.push({
+        slabId: slab.id,
+        status: complete ? ok ? "ok" : "not-verified" : "not-implemented",
+        complete,
+        ok,
+        missing: [
+          ...states.length === 0 ? ["shell-resultant states"] : [],
+          ...!detailingComplete ? ["detailingChecks"] : [],
+          ...punching.complete ? [] : punching.missing,
+          ...diaphragm.complete ? [] : diaphragm.missing
+        ],
+        sourceStateCount: sourceStates.length,
+        resistanceStateCount: states.length,
+        stateAssessments,
+        detailingChecks,
+        punching,
+        diaphragm,
+        checks
+      });
+    } catch (error) {
+      results.push({
+        slabId: slab.id,
+        status: "failed",
+        complete: false,
+        ok: false,
+        missing: [],
+        reason: (_b = error == null ? void 0 : error.message) != null ? _b : String(error),
+        checks: []
+      });
+    }
+  }
+  return results;
+}
+
+// src/applications/rc-building-verification/foundationSystemVerification.js
+function groupReactionStates(states, supportNodeIds) {
+  var _a;
+  const groups = /* @__PURE__ */ new Map();
+  for (const state of states) {
+    const key = JSON.stringify((_a = state.reference) != null ? _a : {});
+    if (!groups.has(key)) {
+      groups.set(key, {
+        reference: state.reference,
+        reactions: []
+      });
+    }
+    groups.get(key).reactions.push(state);
+  }
+  return [...groups.values()].map((group) => {
+    const supplied = new Set(group.reactions.map((state) => state.nodeId));
+    const missingSupportNodeIds = supportNodeIds.filter((nodeId) => !supplied.has(nodeId));
+    return {
+      ...group,
+      complete: missingSupportNodeIds.length === 0,
+      missingSupportNodeIds
+    };
+  });
+}
+function hasSeismicCombinations(analysis) {
+  var _a, _b;
+  const cases = new Map(((_a = analysis == null ? void 0 : analysis.loadCases) != null ? _a : []).map((item) => [
+    item.id,
+    item
+  ]));
+  return ((_b = analysis == null ? void 0 : analysis.combinations) != null ? _b : []).some((combination) => {
+    var _a2;
+    return (_a2 = combination.terms) == null ? void 0 : _a2.some((term) => {
+      var _a3, _b2;
+      return (_b2 = (_a3 = cases.get(term.loadCaseId)) == null ? void 0 : _a3.nature) == null ? void 0 : _b2.startsWith("seismic");
+    });
+  });
+}
+function runFoundationSystemVerifications({
+  foundations,
+  foundationSystemData,
+  foundationVerifier,
+  demandSet,
+  context
+}) {
+  var _a, _b, _c, _d, _e, _f, _g;
+  const results = [];
+  for (const foundation of foundations != null ? foundations : []) {
+    const data = foundationSystemData == null ? void 0 : foundationSystemData[foundation.id];
+    if (data == null || typeof foundationVerifier !== "function") {
+      results.push({
+        foundationId: foundation.id,
+        status: "not-implemented",
+        complete: false,
+        ok: false,
+        missing: [
+          ...data == null ? [`foundationSystemData.${foundation.id}`] : [],
+          ...typeof foundationVerifier !== "function" ? ["foundationVerifier"] : []
+        ],
+        checks: []
+      });
+      continue;
+    }
+    try {
+      const sourceStates = foundation.supportNodeIds.flatMap((nodeId) => collectConcurrentSupportReactionStates({
+        nodeId,
+        globalResponses: demandSet == null ? void 0 : demandSet.globalResponses
+      }));
+      const resistanceStates = projectFoundationReactionStatesToResistanceAxes({
+        foundation,
+        states: sourceStates
+      });
+      const groupedStates = groupReactionStates(
+        resistanceStates,
+        foundation.supportNodeIds
+      );
+      const expectedCombinationIds = ((_b = (_a = context.analysis) == null ? void 0 : _a.combinations) != null ? _b : []).map((item) => item.id);
+      const outcome = foundationVerifier({
+        foundation,
+        data,
+        demand: {
+          schema: "strutture-js/rc-foundation-fem-demand-context",
+          version: 0,
+          units: (_c = demandSet == null ? void 0 : demandSet.units) != null ? _c : null,
+          signConventions: (_d = demandSet == null ? void 0 : demandSet.signConventions) != null ? _d : null,
+          concurrentReactionStates: sourceStates,
+          concurrentResistanceReactionStates: resistanceStates,
+          groupedResistanceReactionStates: groupedStates
+        },
+        context
+      });
+      const requiredFamilies = [
+        "structural",
+        "geotechnicalUltimate",
+        "serviceability",
+        "supportConnection",
+        ...hasSeismicCombinations(context.analysis) ? ["seismicFoundation"] : []
+      ];
+      const missingFamilies = requiredFamilies.filter((name) => {
+        var _a2;
+        return typeof ((_a2 = outcome == null ? void 0 : outcome[name]) == null ? void 0 : _a2.ok) !== "boolean";
+      });
+      const assessedCombinationIds = (_e = outcome == null ? void 0 : outcome.assessedCombinationIds) != null ? _e : [];
+      const missingCombinationIds = expectedCombinationIds.filter((id) => !assessedCombinationIds.includes(id));
+      const checks = requiredFamilies.filter((name) => {
+        var _a2;
+        return typeof ((_a2 = outcome == null ? void 0 : outcome[name]) == null ? void 0 : _a2.ok) === "boolean";
+      }).map((name) => {
+        var _a2;
+        return {
+          ...outcome[name],
+          id: (_a2 = outcome[name].id) != null ? _a2 : `foundation-${name}-${foundation.id}`,
+          metadata: {
+            ...outcome[name].metadata,
+            foundationId: foundation.id,
+            foundationType: foundation.type
+          }
+        };
+      });
+      const complete = sourceStates.length > 0 && groupedStates.every((group) => group.complete) && missingFamilies.length === 0 && missingCombinationIds.length === 0;
+      const ok = complete && checks.every((item) => item.ok);
+      results.push({
+        foundationId: foundation.id,
+        foundationType: foundation.type,
+        status: complete ? ok ? "ok" : "not-verified" : "not-implemented",
+        complete,
+        ok,
+        missing: [
+          ...sourceStates.length === 0 ? ["reaction states"] : [],
+          ...missingFamilies
+        ],
+        missingCombinationIds,
+        sourceStateCount: sourceStates.length,
+        resistanceStateCount: resistanceStates.length,
+        groupedResistanceReactionStates: groupedStates,
+        checks,
+        outputs: (_f = outcome == null ? void 0 : outcome.outputs) != null ? _f : null
+      });
+    } catch (error) {
+      results.push({
+        foundationId: foundation.id,
+        foundationType: foundation.type,
+        status: "failed",
+        complete: false,
+        ok: false,
+        missing: [],
+        reason: (_g = error == null ? void 0 : error.message) != null ? _g : String(error),
+        checks: []
+      });
+    }
+  }
+  return results;
+}
+
+// src/applications/rc-building-verification/ntc2018RcBuildingCoverage.js
+var NTC2018_RC_COVERAGE_STATUS = Object.freeze({
+  AVAILABLE: "available",
+  ADAPTER_REQUIRED: "adapter-required",
+  NOT_IMPLEMENTED: "not-implemented",
+  OUTSIDE_DECLARED_SCOPE: "outside-declared-scope"
+});
+function capability(id, status, references, evidence) {
+  return Object.freeze({
+    id,
+    status,
+    references: Object.freeze(references),
+    evidence: Object.freeze(evidence)
+  });
+}
+var NTC2018_RC_BUILDING_CAPABILITIES = Object.freeze([
+  capability(
+    "global-fem-contracts",
+    "available",
+    ["NTC 2018 \xA7\xA7 7.2-7.3"],
+    ["Global FEM v0 validation and JSON round-trip tests"]
+  ),
+  capability(
+    "solver-neutral-demand-extraction",
+    "available",
+    ["NTC 2018 \xA7\xA7 4.1, 7.2-7.4"],
+    [
+      "Concurrent member, joint, shell, section-cut and reaction state tests",
+      "Two-producer conformance test"
+    ]
+  ),
+  capability(
+    "structural-behavior-and-q",
+    "available",
+    ["NTC 2018 \xA7\xA7 7.2.2, 7.3.1-7.3.2, 7.4.1, 7.4.3"],
+    ["Independent topology and q-factor tests"]
+  ),
+  capability(
+    "regularity",
+    "available",
+    ["NTC 2018 \xA7 7.2.1"],
+    ["Explicit plan and elevation criterion tests"]
+  ),
+  capability(
+    "displacements-and-second-order",
+    "available",
+    ["NTC 2018 \xA7\xA7 7.2.1, 7.3.1, 7.3.6.1"],
+    ["Drift, separation and P-Delta interval tests"]
+  ),
+  capability(
+    "beam-local-verification",
+    "available",
+    ["NTC 2018 \xA7\xA7 4.1, 7.4.4.1, 7.4.6.1"],
+    ["Beam validation campaign and local application tests"]
+  ),
+  capability(
+    "column-local-verification",
+    "available",
+    ["NTC 2018 \xA7\xA7 4.1.2.3.9, 7.4.4.2, 7.4.6.2"],
+    ["Biaxial-domain, stability, shear and detailing tests"]
+  ),
+  capability(
+    "beam-column-joint-local-verification",
+    "available",
+    ["NTC 2018 \xA7\xA7 7.4.4.3, 7.4.6.2.3"],
+    ["Concurrent 3D joint application tests"]
+  ),
+  capability(
+    "slab-local-verification",
+    "available",
+    ["NTC 2018 \xA7 4.1"],
+    ["Plate and Wood-Armer application tests"]
+  ),
+  capability(
+    "punching-supported-geometries",
+    "available",
+    ["NTC 2018 \xA7 4.1.2.3.5.4"],
+    ["Punching validation campaign in its declared geometry scope"]
+  ),
+  capability(
+    "isolated-footing-local-verification",
+    "available",
+    ["NTC 2018 \xA7\xA7 4.1, 6.4"],
+    ["Footing contact and structural verification tests"]
+  ),
+  capability(
+    "foundation-beam-local-verification",
+    "available",
+    ["NTC 2018 \xA7\xA7 4.1, 6.4"],
+    ["Foundation-beam analysis and verification tests"]
+  ),
+  capability(
+    "wall-section-biaxial-verification",
+    "available",
+    ["NTC 2018 \xA7\xA7 4.1.2.3.9, 7.4.4.5.1"],
+    ["Asymmetric dense-domain validation by independent bisection"]
+  ),
+  capability(
+    "wall-chapter7-demand-and-detailing-kernels",
+    "available",
+    ["NTC 2018 \xA7\xA7 7.4.4.5, 7.4.6.2.4"],
+    ["Independent wall demand, critical-zone and confinement tests"]
+  ),
+  capability(
+    "capacity-design-kernels",
+    "available",
+    ["NTC 2018 \xA7 7.4.4"],
+    ["Beam, column, joint and wall capacity-design tests"]
+  ),
+  capability(
+    "diaphragm-force-amplification",
+    "available",
+    ["NTC 2018 \xA7 7.4.4.4.1"],
+    ["Signed 1.30 action-amplification tests"]
+  ),
+  capability(
+    "global-member-axis-mapping",
+    "available",
+    ["NTC 2018 \xA7\xA7 4.1, 7.4"],
+    [
+      "Explicit proper-orthogonal resistance-axis transformations",
+      "Member, joint and wall section-cut projection tests"
+    ]
+  ),
+  capability(
+    "global-wall-system-verification",
+    "available",
+    [
+      "NTC 2018 \xA7\xA7 7.4.4.5, 7.4.6.1.4, 7.4.6.2.4"
+    ],
+    [
+      "Every mapped section-cut state is transformed and assessed",
+      "Wall-height completeness and detailing orchestration tests",
+      "Mixed-system and weakly-reinforced wall demand tests"
+    ]
+  ),
+  capability(
+    "global-slab-and-punching-orchestration",
+    "available",
+    ["NTC 2018 \xA7\xA7 4.1.2.3.5, 7.2.6"],
+    [
+      "Explicit shell tensor transformations to slab resistance axes",
+      "Every concurrent ULS/SLS shell state is assessed",
+      "Punching connections map slabs, nodes, shells and supporting member ends",
+      "Ultimate-combination punching completeness tests"
+    ]
+  ),
+  capability(
+    "diaphragm-chapter4-resistance",
+    "available",
+    ["NTC 2018 \xA7\xA7 4.1, 7.4.4.4.1"],
+    [
+      "Signed 1.30 membrane-action transformation",
+      "Chapter-4 capacity checks are required for every seismic shell state",
+      "Building-level diaphragm orchestration tests"
+    ]
+  ),
+  capability(
+    "global-foundation-orchestration",
+    "available",
+    ["NTC 2018 \xA7\xA7 6.4, 7.11"],
+    [
+      "Every model support maps to exactly one foundation entity",
+      "Proper reaction-axis transformations and concurrent grouping tests",
+      "Structural, geotechnical, SLS, connection and seismic families are mandatory"
+    ]
+  ),
+  capability(
+    "modal-combination-and-accidental-torsion-verification",
+    "available",
+    ["NTC 2018 \xA7\xA7 7.2.6, 7.3.3, 7.3.3.1, 7.3.5"],
+    [
+      "Strict modal participating-mass threshold tests",
+      "CQC, 100-30-30 and signed accidental-eccentricity assessment tests",
+      "Solver-neutral building orchestration test"
+    ]
+  ),
+  capability(
+    "coupling-beams-and-special-wall-systems",
+    "available",
+    [
+      "NTC 2018 \xA7\xA7 7.4.4.5, 7.4.4.6, 7.4.6.2.4, 7.4.6.2.5"
+    ],
+    [
+      "Ordinary-versus-diagonal coupling-beam branch tests",
+      "Equation [7.4.24] and diagonal detailing boundary tests",
+      "Weakly-reinforced axial and shear amplification tests"
+    ]
+  ),
+  capability(
+    "complete-building-orchestration",
+    "available",
+    ["NTC 2018 \xA7\xA7 4.1, 7.2-7.4, 7.11"],
+    [
+      "Positive end-to-end ordinary-building fixture",
+      "All readiness families must close before a positive result",
+      "Two independent FEM producers yield the same building decision"
+    ]
+  ),
+  capability(
+    "prestressed-precast-and-bridge-rc",
+    "outside-declared-scope",
+    ["NTC 2018 \xA7\xA7 4.1.8, 4.1.10, 7.4.5, 7.9"],
+    ["Current scope is ordinary cast-in-place RC buildings"]
+  )
+]);
+function getNTC2018RcBuildingCoverage() {
+  return JSON.parse(JSON.stringify({
+    schema: "strutture-js/ntc2018-rc-building-coverage",
+    version: 0,
+    declaredScope: "ordinary-cast-in-place-reinforced-concrete-buildings",
+    declaredScopeCoverageComplete: true,
+    wholeChapter4And7CoverageClaimed: false,
+    capabilities: NTC2018_RC_BUILDING_CAPABILITIES
+  }));
+}
+function evaluateNTC2018RcBuildingCompleteness({
+  requiredCapabilityIds = NTC2018_RC_BUILDING_CAPABILITIES.filter((item) => item.status !== "outside-declared-scope").map((item) => item.id)
+} = {}) {
+  const index = new Map(NTC2018_RC_BUILDING_CAPABILITIES.map((item) => [
+    item.id,
+    item
+  ]));
+  const unknown = requiredCapabilityIds.filter((id) => !index.has(id));
+  if (unknown.length > 0) {
+    throw new Error(`Unknown RC building capability ids: ${unknown.join(", ")}.`);
+  }
+  const required = requiredCapabilityIds.map((id) => index.get(id));
+  const blocking = required.filter((item) => item.status !== NTC2018_RC_COVERAGE_STATUS.AVAILABLE);
+  return {
+    schema: "strutture-js/ntc2018-rc-building-completeness",
+    version: 0,
+    status: blocking.length === 0 ? "complete" : "not-implemented",
+    complete: blocking.length === 0,
+    requiredCapabilityIds: [...requiredCapabilityIds],
+    blockingCapabilities: blocking.map((item) => ({
+      id: item.id,
+      status: item.status
+    }))
+  };
+}
+
 // src/applications/rc-building-verification/RcBuildingVerificationApplication.js
 var APP_ID = "rc-building-verification";
-var APP_VERSION = "0.1.0";
+var APP_VERSION = "0.2.0";
 var APP_DOMAIN = "reinforced-concrete";
 var APP_CODES = ["ntc2018"];
 var APP_TAGS = [
@@ -99090,7 +101930,7 @@ var APP_TAGS = [
   "ntc2018",
   "capacity-design"
 ];
-var APP_MATURITY = "partial";
+var APP_MATURITY = "complete";
 function extractValidationErrors(...results) {
   var _a;
   const errors = [];
@@ -99107,7 +101947,7 @@ function extractValidationErrors(...results) {
 }
 function buildStoreyDisplacementData({ model, mapping, result: result9 }) {
   var _a, _b, _c, _d, _e, _f;
-  const storeys = (_a = mapping.storeys) != null ? _a : [];
+  const storeys = (_a = mapping == null ? void 0 : mapping.storeys) != null ? _a : [];
   if (storeys.length === 0) return [];
   const nodalDisp = /* @__PURE__ */ new Map();
   for (const entry of (_c = (_b = result9 == null ? void 0 : result9.results) == null ? void 0 : _b.nodalDisplacements) != null ? _c : []) {
@@ -99127,22 +101967,22 @@ function buildStoreyDisplacementData({ model, mapping, result: result9 }) {
   );
   const elevationOf = (storey) => {
     var _a2, _b2;
-    const ms = modelStoreyById.get((_a2 = storey.id) != null ? _a2 : storey.storeyId);
+    const ms = modelStoreyById.get((_a2 = storey.storeyId) != null ? _a2 : storey.id);
     return (_b2 = storey.elevation) != null ? _b2 : ms == null ? void 0 : ms.elevation;
   };
   const storeyWeightAbove = (index) => {
     var _a2, _b2;
     let w = 0;
     for (let i = index; i < storeys.length; i++) {
-      const sr = storeyResultBySid.get((_a2 = storeys[i].id) != null ? _a2 : storeys[i].storeyId);
+      const sr = storeyResultBySid.get((_a2 = storeys[i].storeyId) != null ? _a2 : storeys[i].id);
       const fz = (_b2 = sr == null ? void 0 : sr.resultants) == null ? void 0 : _b2.Fz;
       if (Number.isFinite(fz)) w += Math.abs(fz);
     }
     return w > 0 ? w : void 0;
   };
   return storeys.map((storey, index) => {
-    var _a2, _b2, _c2, _d2, _e2, _f2, _g, _h, _i, _j;
-    const sid = (_b2 = (_a2 = storey.id) != null ? _a2 : storey.storeyId) != null ? _b2 : `storey-${index}`;
+    var _a2, _b2, _c2, _d2, _e2, _f2, _g, _h;
+    const sid = (_b2 = (_a2 = storey.storeyId) != null ? _a2 : storey.id) != null ? _b2 : `storey-${index}`;
     const storeyNodes = (_c2 = storey.nodeIds) != null ? _c2 : [];
     const belowStorey = index > 0 ? (_e2 = (_d2 = storeys[index - 1]) == null ? void 0 : _d2.nodeIds) != null ? _e2 : [] : [];
     const avg = (nodeIds) => {
@@ -99165,15 +102005,15 @@ function buildStoreyDisplacementData({ model, mapping, result: result9 }) {
     const below = avg(belowStorey);
     const thisElev = elevationOf(storey);
     const belowElev = index > 0 ? elevationOf(storeys[index - 1]) : 0;
-    const height = (_f2 = storey.height) != null ? _f2 : Number.isFinite(thisElev) && Number.isFinite(belowElev) ? thisElev - belowElev : 3;
+    const height = (_f2 = storey.height) != null ? _f2 : Number.isFinite(thisElev) && Number.isFinite(belowElev) ? thisElev - belowElev : void 0;
     const sr = storeyResultBySid.get(sid);
     const shearX = (_g = sr == null ? void 0 : sr.resultants) == null ? void 0 : _g.Fx;
     const shearY = (_h = sr == null ? void 0 : sr.resultants) == null ? void 0 : _h.Fy;
     return {
       storeyId: sid,
-      height: height > 0 ? height : 3,
-      displacementX: (_i = top.x) != null ? _i : 0,
-      displacementXBelow: (_j = below.x) != null ? _j : 0,
+      height: Number.isFinite(height) && height > 0 ? height : void 0,
+      displacementX: top.x,
+      displacementXBelow: below.x,
       displacementY: top.y,
       displacementYBelow: below.y,
       // Populated from storeyResults.resultants when available; omitted
@@ -99184,51 +102024,182 @@ function buildStoreyDisplacementData({ model, mapping, result: result9 }) {
     };
   });
 }
-function evaluateReadiness({ contracts, input }) {
-  var _a, _b, _c, _d, _e, _f, _g;
+function evaluateReadiness({
+  contracts,
+  input,
+  demandSet = null,
+  behaviorDescriptor = null,
+  behaviorError = null,
+  linearDynamicAssessment = null,
+  linearDynamicError = null
+}) {
+  var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v;
   const assessments = [];
   const hasMapping = (_b = (_a = contracts.mapping) == null ? void 0 : _a.ok) != null ? _b : false;
   const hasResult = (_d = (_c = contracts.result) == null ? void 0 : _c.ok) != null ? _d : false;
   const hasBehavior = input.behavior != null;
   const hasStoreys = ((_g = (_f = (_e = input.mapping) == null ? void 0 : _e.storeys) == null ? void 0 : _f.length) != null ? _g : 0) > 0;
+  const hasRegularityInput = ((_h = input.regularityAssessmentInput) == null ? void 0 : _h.planInput) != null && ((_i = input.regularityAssessmentInput) == null ? void 0 : _i.elevationInput) != null;
+  const hasDisplacementInput = input.displacementAssessmentInput != null;
+  assessments.push({
+    assessment: "structural-behavior",
+    status: behaviorDescriptor ? "ready" : "blocked",
+    missing: [
+      ...input.behavior == null ? ["behavior"] : [],
+      ...input.structuralType == null ? ["structuralType"] : [],
+      ...behaviorError ? ["valid structural behavior parameters"] : []
+    ],
+    reason: behaviorError
+  });
   assessments.push({
     assessment: "structural-regularity",
-    status: hasMapping && hasStoreys ? "ready" : "blocked",
+    status: hasMapping && hasStoreys && hasRegularityInput ? "ready" : "blocked",
     missing: [
       ...!hasMapping ? ["mapping"] : [],
-      ...!hasStoreys ? ["storeys"] : []
+      ...!hasStoreys ? ["storeys"] : [],
+      ...!hasRegularityInput ? ["regularityAssessmentInput"] : []
     ]
   });
   assessments.push({
     assessment: "capacity-design",
-    status: hasBehavior && input.behavior !== "non-dissipative" ? "ready" : input.behavior === "non-dissipative" ? "not-applicable" : "blocked",
-    missing: !hasBehavior ? ["behavior"] : []
+    status: (behaviorDescriptor == null ? void 0 : behaviorDescriptor.behavior) === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE ? "not-applicable" : behaviorDescriptor ? "ready" : "blocked",
+    missing: !hasBehavior ? ["behavior"] : behaviorDescriptor ? [] : ["complete structural behavior descriptor"]
   });
   assessments.push({
     assessment: "displacement-checks",
-    status: hasMapping && hasStoreys && hasResult ? "ready" : "blocked",
+    status: hasMapping && hasStoreys && hasResult && hasDisplacementInput ? "ready" : "blocked",
     missing: [
       ...!hasMapping ? ["mapping"] : [],
       ...!hasStoreys ? ["storeys"] : [],
-      ...!hasResult ? ["result"] : []
+      ...!hasResult ? ["result"] : [],
+      ...!hasDisplacementInput ? ["displacementAssessmentInput"] : []
     ]
   });
   const hasMemberVerifiers = input.memberVerifiers != null && (typeof input.memberVerifiers.beam === "function" || typeof input.memberVerifiers.column === "function");
+  const hasMemberDemands = ((_k = (_j = demandSet == null ? void 0 : demandSet.memberDemands) == null ? void 0 : _j.length) != null ? _k : 0) > 0;
+  const mappedMembers = (_m = (_l = input.mapping) == null ? void 0 : _l.members) != null ? _m : [];
+  const membersHaveAxisMappings = mappedMembers.length > 0 && mappedMembers.every((member) => Array.isArray(member.lineActionMappings) && member.lineActionMappings.length === member.lineElementIds.length);
   assessments.push({
     assessment: "member-verification",
-    status: hasMemberVerifiers ? "ready" : "blocked",
-    missing: hasMemberVerifiers ? [] : ["memberVerifiers"]
+    status: hasMemberVerifiers && hasMemberDemands && membersHaveAxisMappings ? "ready" : "blocked",
+    missing: [
+      ...!hasMemberVerifiers ? ["memberVerifiers"] : [],
+      ...!hasMemberDemands ? ["globalFemDemandSet.memberDemands"] : [],
+      ...!membersHaveAxisMappings ? ["mapping.members.*.lineActionMappings"] : []
+    ]
+  });
+  const modalInput = input.linearDynamicAssessmentInput;
+  const modalMissing = (_n = linearDynamicAssessment == null ? void 0 : linearDynamicAssessment.missing) != null ? _n : [
+    ...modalInput == null ? ["linearDynamicAssessmentInput"] : [],
+    ...(modalInput == null ? void 0 : modalInput.modalProcedureId) == null ? ["linearDynamicAssessmentInput.modalProcedureId"] : [],
+    ...(modalInput == null ? void 0 : modalInput.responseSpectrumProcedureId) == null ? ["linearDynamicAssessmentInput.responseSpectrumProcedureId"] : [],
+    ...(modalInput == null ? void 0 : modalInput.meanPlanDimensions) == null ? ["linearDynamicAssessmentInput.meanPlanDimensions"] : []
+  ];
+  assessments.push({
+    assessment: "linear-dynamic-analysis",
+    status: (linearDynamicAssessment == null ? void 0 : linearDynamicAssessment.complete) === true ? "ready" : "blocked",
+    missing: (linearDynamicAssessment == null ? void 0 : linearDynamicAssessment.complete) === true ? [] : [...new Set(modalMissing)],
+    reason: linearDynamicError
   });
   const hasHierarchyData = input.jointHierarchy != null && Object.keys(input.jointHierarchy).length > 0;
   assessments.push({
+    assessment: "beam-column-hierarchy",
+    status: (behaviorDescriptor == null ? void 0 : behaviorDescriptor.behavior) === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE ? "not-applicable" : hasHierarchyData ? "ready" : "blocked",
+    missing: (behaviorDescriptor == null ? void 0 : behaviorDescriptor.behavior) === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE || hasHierarchyData ? [] : ["jointHierarchy"]
+  });
+  const hasJointVerifier = typeof input.jointVerifier === "function";
+  const hasJointDemands = ((_p = (_o = demandSet == null ? void 0 : demandSet.jointDemands) == null ? void 0 : _o.length) != null ? _p : 0) > 0;
+  assessments.push({
     assessment: "joint-verification",
-    status: hasHierarchyData ? "ready" : "blocked",
-    missing: hasHierarchyData ? [] : ["jointHierarchy"]
+    status: hasJointVerifier && hasJointDemands ? "ready" : "blocked",
+    missing: [
+      ...!hasJointVerifier ? ["jointVerifier"] : [],
+      ...!hasJointDemands ? ["globalFemDemandSet.jointDemands"] : []
+    ]
+  });
+  const mappedWalls = (_r = (_q = input.mapping) == null ? void 0 : _q.walls) != null ? _r : [];
+  const hasWallSectionStateVerifier = typeof input.wallSectionStateVerifier === "function";
+  const wallsHaveSystemData = mappedWalls.length > 0 && mappedWalls.every((wall) => {
+    var _a2;
+    const data = (_a2 = input.wallSystemData) == null ? void 0 : _a2[wall.id];
+    return (data == null ? void 0 : data.detailingInput) != null && Array.isArray(data.couplingBeamInputs) && typeof data.systemType === "string" && typeof data.redistributionApplied === "boolean" && Array.isArray(data.additionalChecks);
+  });
+  const completeWallSystemInput = hasWallSectionStateVerifier && wallsHaveSystemData;
+  const wallsHaveSectionAndActionMapping = mappedWalls.length > 0 && mappedWalls.every((wall) => {
+    var _a2;
+    const data = (_a2 = input.wallSections) == null ? void 0 : _a2[wall.id];
+    return (data == null ? void 0 : data.section) != null && Array.isArray(wall.sectionCutActionMappings) && wall.sectionCutActionMappings.length === wall.sectionCutIds.length && (data.actions != null || typeof data.selectActionsFromFem === "function");
+  });
+  assessments.push({
+    assessment: "wall-biaxial-verification",
+    status: completeWallSystemInput ? "covered-by-wall-system" : wallsHaveSectionAndActionMapping ? "ready" : "blocked",
+    missing: completeWallSystemInput || wallsHaveSectionAndActionMapping ? [] : [
+      "mapping.walls.*.sectionCutActionMappings",
+      "wallSections.*.section",
+      "wallSections.*.actions|selectActionsFromFem"
+    ]
+  });
+  assessments.push({
+    assessment: "wall-system-verification",
+    status: hasWallSectionStateVerifier && wallsHaveSystemData ? "ready" : "blocked",
+    missing: [
+      ...!hasWallSectionStateVerifier ? ["wallSectionStateVerifier"] : [],
+      ...!wallsHaveSystemData ? [
+        "wallSystemData.*.detailingInput",
+        "wallSystemData.*.couplingBeamInputs",
+        "wallSystemData.*.systemType",
+        "wallSystemData.*.redistributionApplied",
+        "wallSystemData.*.additionalChecks"
+      ] : []
+    ]
+  });
+  const mappedSlabs = (_t = (_s = input.mapping) == null ? void 0 : _s.slabs) != null ? _t : [];
+  const slabsHaveAxisMappings = mappedSlabs.length > 0 && mappedSlabs.every((slab) => Array.isArray(slab.shellResultantMappings) && slab.shellResultantMappings.length === slab.shellElementIds.length);
+  const slabsHaveSystemData = mappedSlabs.length > 0 && mappedSlabs.every((slab) => {
+    var _a2;
+    const data = (_a2 = input.slabSystemData) == null ? void 0 : _a2[slab.id];
+    return Array.isArray(data == null ? void 0 : data.detailingChecks) && typeof (data == null ? void 0 : data.punchingRequired) === "boolean" && typeof (data == null ? void 0 : data.diaphragmRequired) === "boolean";
+  });
+  assessments.push({
+    assessment: "slab-punching-diaphragm-verification",
+    status: typeof input.slabStateVerifier === "function" && slabsHaveAxisMappings && slabsHaveSystemData ? "ready" : "blocked",
+    missing: [
+      ...typeof input.slabStateVerifier !== "function" ? ["slabStateVerifier"] : [],
+      ...!slabsHaveAxisMappings ? ["mapping.slabs.*.shellResultantMappings"] : [],
+      ...!slabsHaveSystemData ? [
+        "slabSystemData.*.detailingChecks",
+        "slabSystemData.*.punchingRequired",
+        "slabSystemData.*.diaphragmRequired"
+      ] : []
+    ]
+  });
+  const mappedFoundations = (_v = (_u = input.mapping) == null ? void 0 : _u.foundations) != null ? _v : [];
+  const foundationsHaveMappings = mappedFoundations.length > 0 && mappedFoundations.every((foundation) => Array.isArray(foundation.supportReactionMappings) && foundation.supportReactionMappings.length === foundation.supportNodeIds.length);
+  const foundationsHaveData = mappedFoundations.length > 0 && mappedFoundations.every((foundation) => {
+    var _a2;
+    return ((_a2 = input.foundationSystemData) == null ? void 0 : _a2[foundation.id]) != null;
+  });
+  assessments.push({
+    assessment: "foundation-system-verification",
+    status: typeof input.foundationVerifier === "function" && foundationsHaveMappings && foundationsHaveData ? "ready" : "blocked",
+    missing: [
+      ...typeof input.foundationVerifier !== "function" ? ["foundationVerifier"] : [],
+      ...!foundationsHaveMappings ? [
+        "mapping.foundations.*.supportReactionMappings"
+      ] : [],
+      ...!foundationsHaveData ? ["foundationSystemData"] : []
+    ]
   });
   return assessments;
 }
-function runMemberVerifications({ members, memberVerifiers, memberData, context }) {
-  var _a, _b, _c, _d, _e, _f;
+function runMemberVerifications({
+  members,
+  memberVerifiers,
+  memberData,
+  demandSet,
+  context
+}) {
+  var _a, _b, _c, _d, _e, _f, _g;
   const results = [];
   for (const member of members != null ? members : []) {
     const role = member.role;
@@ -99242,26 +102213,119 @@ function runMemberVerifications({ members, memberVerifiers, memberData, context 
       });
       continue;
     }
+    const memberDemand = (_a = demandSet == null ? void 0 : demandSet.memberDemands) == null ? void 0 : _a.find(
+      (item) => item.id === member.id
+    );
+    const concurrentActionStates = memberDemand ? collectConcurrentMemberActionStates(memberDemand) : [];
+    if (!memberDemand || concurrentActionStates.length === 0) {
+      results.push({
+        memberId: member.id,
+        role,
+        status: "not-analyzed",
+        reason: "No concurrent GlobalFemDemandSet action states are available."
+      });
+      continue;
+    }
     try {
+      const concurrentResistanceActionStates = projectMemberActionStatesToResistanceAxes({
+        member,
+        states: concurrentActionStates
+      });
       const outcome = verifier({
         member,
-        data: (_a = memberData == null ? void 0 : memberData[member.id]) != null ? _a : null,
+        data: (_b = memberData == null ? void 0 : memberData[member.id]) != null ? _b : null,
+        demand: {
+          schema: "strutture-js/rc-member-fem-demand-context",
+          version: 0,
+          units: demandSet.units,
+          signConventions: demandSet.signConventions,
+          memberDemand,
+          concurrentActionStates,
+          concurrentResistanceActionStates
+        },
         context
       });
       results.push({
         memberId: member.id,
         role,
-        status: (_b = outcome == null ? void 0 : outcome.status) != null ? _b : "ok",
-        utilizationRatio: (_c = outcome == null ? void 0 : outcome.utilizationRatio) != null ? _c : null,
-        checks: (_d = outcome == null ? void 0 : outcome.checks) != null ? _d : [],
-        outputs: (_e = outcome == null ? void 0 : outcome.outputs) != null ? _e : null
+        status: (_c = outcome == null ? void 0 : outcome.status) != null ? _c : "not-verified",
+        utilizationRatio: (_d = outcome == null ? void 0 : outcome.utilizationRatio) != null ? _d : null,
+        checks: (_e = outcome == null ? void 0 : outcome.checks) != null ? _e : [],
+        outputs: (_f = outcome == null ? void 0 : outcome.outputs) != null ? _f : null
       });
     } catch (error) {
       results.push({
         memberId: member.id,
         role,
         status: "failed",
-        reason: (_f = error == null ? void 0 : error.message) != null ? _f : String(error)
+        reason: (_g = error == null ? void 0 : error.message) != null ? _g : String(error)
+      });
+    }
+  }
+  return results;
+}
+function runJointVerifications({
+  joints,
+  members,
+  jointVerifier,
+  jointData,
+  demandSet,
+  context
+}) {
+  var _a, _b, _c, _d, _e, _f, _g;
+  const results = [];
+  for (const joint of joints != null ? joints : []) {
+    if (typeof jointVerifier !== "function") {
+      results.push({
+        jointId: joint.id,
+        status: "not-analyzed",
+        reason: "No jointVerifier was supplied."
+      });
+      continue;
+    }
+    const jointDemand = (_a = demandSet == null ? void 0 : demandSet.jointDemands) == null ? void 0 : _a.find(
+      (item) => item.jointId === joint.id
+    );
+    const concurrentActionStates = jointDemand ? collectConcurrentJointActionStates(jointDemand) : [];
+    if (!jointDemand || concurrentActionStates.length === 0) {
+      results.push({
+        jointId: joint.id,
+        status: "not-analyzed",
+        reason: "No concurrent GlobalFemDemandSet joint states are available."
+      });
+      continue;
+    }
+    try {
+      const concurrentResistanceActionStates = projectJointActionStatesToResistanceAxes({
+        members,
+        states: concurrentActionStates
+      });
+      const outcome = jointVerifier({
+        joint,
+        data: (_b = jointData == null ? void 0 : jointData[joint.id]) != null ? _b : null,
+        demand: {
+          schema: "strutture-js/rc-joint-fem-demand-context",
+          version: 0,
+          units: demandSet.units,
+          signConventions: demandSet.signConventions,
+          jointDemand,
+          concurrentActionStates,
+          concurrentResistanceActionStates
+        },
+        context
+      });
+      results.push({
+        jointId: joint.id,
+        status: (_c = outcome == null ? void 0 : outcome.status) != null ? _c : "not-verified",
+        utilizationRatio: (_d = outcome == null ? void 0 : outcome.utilizationRatio) != null ? _d : null,
+        checks: (_e = outcome == null ? void 0 : outcome.checks) != null ? _e : [],
+        outputs: (_f = outcome == null ? void 0 : outcome.outputs) != null ? _f : null
+      });
+    } catch (error) {
+      results.push({
+        jointId: joint.id,
+        status: "failed",
+        reason: (_g = error == null ? void 0 : error.message) != null ? _g : String(error)
       });
     }
   }
@@ -99271,6 +102335,14 @@ function runJointHierarchyVerifications({ joints, jointHierarchy, behavior }) {
   var _a;
   const results = [];
   for (const joint of joints != null ? joints : []) {
+    if (behavior === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE) {
+      results.push({
+        jointId: joint.id,
+        status: "not-applicable",
+        reason: "Beam-column resistance hierarchy is not applied to non-dissipative design."
+      });
+      continue;
+    }
     const data = jointHierarchy == null ? void 0 : jointHierarchy[joint.id];
     if (!data) {
       results.push({
@@ -99301,8 +102373,8 @@ function runJointHierarchyVerifications({ joints, jointHierarchy, behavior }) {
   }
   return results;
 }
-function runWallBiaxialVerifications({ walls, wallSections }) {
-  var _a, _b, _c, _d;
+function runWallBiaxialVerifications({ walls, wallSections, demandSet }) {
+  var _a, _b, _c, _d, _e, _f, _g, _h;
   const results = [];
   for (const wall of walls != null ? walls : []) {
     const data = wallSections == null ? void 0 : wallSections[wall.id];
@@ -99314,19 +102386,73 @@ function runWallBiaxialVerifications({ walls, wallSections }) {
       });
       continue;
     }
+    const surfaceDemand = (_a = demandSet == null ? void 0 : demandSet.surfaceDemands) == null ? void 0 : _a.find(
+      (item) => item.id === wall.id
+    );
+    const femDemand = {
+      schema: "strutture-js/rc-wall-fem-demand-context",
+      version: 0,
+      units: (_b = demandSet == null ? void 0 : demandSet.units) != null ? _b : null,
+      signConventions: (_c = demandSet == null ? void 0 : demandSet.signConventions) != null ? _c : null,
+      surfaceDemand: surfaceDemand != null ? surfaceDemand : null,
+      concurrentShellResultantStates: surfaceDemand ? collectConcurrentSurfaceResultantStates(surfaceDemand) : [],
+      concurrentSectionCutStates: collectConcurrentSectionCutStates({
+        sectionCutIds: (_d = wall.sectionCutIds) != null ? _d : [],
+        globalResponses: demandSet == null ? void 0 : demandSet.globalResponses
+      })
+    };
+    try {
+      femDemand.concurrentResistanceSectionCutStates = projectWallSectionCutStatesToResistanceAxes({
+        wall,
+        states: femDemand.concurrentSectionCutStates
+      });
+    } catch (error) {
+      results.push({
+        wallId: wall.id,
+        status: "failed",
+        reason: (_e = error == null ? void 0 : error.message) != null ? _e : String(error)
+      });
+      continue;
+    }
+    let actions;
+    try {
+      actions = typeof data.selectActionsFromFem === "function" ? data.selectActionsFromFem({
+        wall,
+        data,
+        demand: femDemand
+      }) : data.actions;
+    } catch (error) {
+      results.push({
+        wallId: wall.id,
+        status: "failed",
+        reason: (_f = error == null ? void 0 : error.message) != null ? _f : String(error)
+      });
+      continue;
+    }
+    if (!Number.isFinite(actions == null ? void 0 : actions.axialForce) || !Number.isFinite(actions == null ? void 0 : actions.momentX) || !Number.isFinite(actions == null ? void 0 : actions.momentY)) {
+      results.push({
+        wallId: wall.id,
+        status: "not-analyzed",
+        reason: "Explicit finite wall actions or selectActionsFromFem output are required.",
+        availableShellStateCount: femDemand.concurrentShellResultantStates.length,
+        availableSectionCutStateCount: femDemand.concurrentSectionCutStates.length
+      });
+      continue;
+    }
     try {
       const outcome = verifyWallBiaxialBending({
         section: data.section,
-        axialForce: (_a = data.actions) == null ? void 0 : _a.axialForce,
-        momentX: (_b = data.actions) == null ? void 0 : _b.momentX,
-        momentY: (_c = data.actions) == null ? void 0 : _c.momentY,
+        axialForce: actions.axialForce,
+        momentX: actions.momentX,
+        momentY: actions.momentY,
         concreteDesignStrength: data.concreteDesignStrength,
         reinforcementDesignStrength: data.reinforcementDesignStrength,
         concreteEc2: data.concreteEc2,
         concreteEcu: data.concreteEcu,
         steelElasticModulus: data.steelElasticModulus,
         steelUltimateStrain: data.steelUltimateStrain,
-        targetFiberCount: data.targetFiberCount
+        targetFiberCount: data.targetFiberCount,
+        angleCount: data.angleCount
       });
       results.push({
         wallId: wall.id,
@@ -99336,6 +102462,9 @@ function runWallBiaxialVerifications({ walls, wallSections }) {
         capacity: outcome.capacity,
         theta: outcome.theta,
         converged: outcome.converged,
+        angleCount: outcome.angleCount,
+        intersection: outcome.intersection,
+        actionReference: (_g = actions.reference) != null ? _g : null,
         check: outcome.check,
         reference: outcome.reference
       });
@@ -99343,7 +102472,7 @@ function runWallBiaxialVerifications({ walls, wallSections }) {
       results.push({
         wallId: wall.id,
         status: "failed",
-        reason: (_d = error == null ? void 0 : error.message) != null ? _d : String(error)
+        reason: (_h = error == null ? void 0 : error.message) != null ? _h : String(error)
       });
     }
   }
@@ -99372,13 +102501,13 @@ var RcBuildingVerificationApplication = class extends StructuralApplication {
    * @param {Object} input.result – GlobalFemResultContract.
    * @param {Object} input.mapping – FemEntityMappingContract (confirmed).
    * @param {string} input.behavior – Structural behavior choice.
-   * @param {string} [input.structuralType] – Structural type. Default "frame".
+   * @param {string} input.structuralType – Explicit structural type.
    * @param {Object} [input.siteParams] – Site hazard parameters.
    * @param {Object} [input.metadata] – Consumer metadata.
    * @returns {CalculationResult}
    */
   run(input = {}) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _A, _B, _C, _D, _E, _F, _G, _H, _I, _J, _K, _L, _M, _N, _O, _P, _Q, _R, _S, _T, _U, _V, _W, _X, _Y, _Z, __, _$, _aa, _ba, _ca;
     const warnings = [];
     const assumptions = [];
     const capabilitiesVal = validateFemCapabilitiesContract(input.capabilities);
@@ -99393,7 +102522,8 @@ var RcBuildingVerificationApplication = class extends StructuralApplication {
     const resultVal = input.result != null ? validateGlobalFemResultContract(input.result, {
       model: modelVal.ok ? modelVal.value : null,
       analysis: analysisVal.ok ? analysisVal.value : null,
-      capabilities: capabilitiesVal.ok ? capabilitiesVal.value : null
+      capabilities: capabilitiesVal.ok ? capabilitiesVal.value : null,
+      mapping: (mappingVal == null ? void 0 : mappingVal.ok) ? mappingVal.value : null
     }) : null;
     const { errors: validationErrors, warnings: validationWarnings } = extractValidationErrors(
       capabilitiesVal,
@@ -99422,7 +102552,12 @@ var RcBuildingVerificationApplication = class extends StructuralApplication {
               mapping: mappingVal,
               result: resultVal
             },
-            input
+            input,
+            demandSet: null,
+            behaviorDescriptor: null,
+            behaviorError: null,
+            linearDynamicAssessment: null,
+            linearDynamicError: null
           })
         },
         warnings,
@@ -99432,63 +102567,85 @@ var RcBuildingVerificationApplication = class extends StructuralApplication {
         metadata: (_c = input.metadata) != null ? _c : {}
       });
     }
-    const behavior = (_d = input.behavior) != null ? _d : NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE;
-    const structuralType = (_e = input.structuralType) != null ? _e : "frame";
-    const behaviorDesc = createNTC2018StructuralBehavior({
-      behavior,
-      structuralType,
-      regularity: {
-        plan: "regular",
-        // will be updated after regularity assessment
-        elevation: "regular"
-      }
-    });
+    const postprocessing = (mappingVal == null ? void 0 : mappingVal.ok) && (resultVal == null ? void 0 : resultVal.ok) ? new GlobalFemPostProcessingApplication().run({
+      capabilities: capabilitiesVal.value,
+      model: modelVal.value,
+      analysis: analysisVal.value,
+      result: resultVal.value,
+      mapping: mappingVal.value,
+      profile: GLOBAL_FEM_POSTPROCESSING_PROFILES.CONFIRMED
+    }) : null;
+    const demandSet = (_e = (_d = postprocessing == null ? void 0 : postprocessing.outputs) == null ? void 0 : _d.demands) != null ? _e : null;
+    let behavior = null;
+    let structuralType = null;
+    let behaviorError = null;
+    try {
+      behavior = input.behavior == null ? null : normalizeNTC2018StructuralBehavior(input.behavior);
+      structuralType = input.structuralType == null ? null : normalizeNTC2018StructuralType(input.structuralType);
+    } catch (error) {
+      behaviorError = (_f = error == null ? void 0 : error.message) != null ? _f : String(error);
+    }
     const storeys = buildStoreyDisplacementData({
       model: modelVal.value,
-      mapping: (_f = mappingVal == null ? void 0 : mappingVal.value) != null ? _f : input.mapping,
-      result: (_g = resultVal == null ? void 0 : resultVal.value) != null ? _g : input.result
+      mapping: (_g = mappingVal == null ? void 0 : mappingVal.value) != null ? _g : input.mapping,
+      result: (_h = resultVal == null ? void 0 : resultVal.value) != null ? _h : input.result
     });
+    let linearDynamicAssessment = null;
+    let linearDynamicError = null;
+    if (input.linearDynamicAssessmentInput != null && (resultVal == null ? void 0 : resultVal.ok)) {
+      const linearDynamicInput = input.linearDynamicAssessmentInput;
+      try {
+        linearDynamicAssessment = createNTC2018LinearDynamicAssessment({
+          analysis: analysisVal.value,
+          result: resultVal.value,
+          ...linearDynamicInput,
+          storeyIds: (_i = linearDynamicInput.storeyIds) != null ? _i : modelVal.value.storeys.map((storey) => storey.id)
+        });
+      } catch (error) {
+        linearDynamicError = (_j = error == null ? void 0 : error.message) != null ? _j : String(error);
+      }
+    }
     let regularityAssessment = null;
-    if ((mappingVal == null ? void 0 : mappingVal.ok) && storeys.length >= 2) {
+    if ((mappingVal == null ? void 0 : mappingVal.ok) && storeys.length >= 2 && behavior != null && ((_k = input.regularityAssessmentInput) == null ? void 0 : _k.planInput) != null && ((_l = input.regularityAssessmentInput) == null ? void 0 : _l.elevationInput) != null) {
       regularityAssessment = createNTC2018RegularityAssessment({
-        planInput: {
-          planLengthX: (_h = input.planLengthX) != null ? _h : 20,
-          planLengthY: (_i = input.planLengthY) != null ? _i : 15
-        },
-        elevationInput: {
-          storeys: storeys.map((s) => ({
-            storeyId: s.storeyId,
-            elevation: 0,
-            height: s.height,
-            mass: s.weight > 0 ? s.weight : 200
-          }))
-        },
+        ...input.regularityAssessmentInput,
         behavior
       });
-      behaviorDesc.regularity = {
-        plan: regularityAssessment.planRegularity,
-        elevation: regularityAssessment.elevationRegularity
-      };
-      behaviorDesc.kr = regularityAssessment.reductionFactorKr;
-      behaviorDesc.q = behaviorDesc.q0 * behaviorDesc.kr;
+    }
+    let behaviorDesc = null;
+    if (behavior != null && structuralType != null && (behavior === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE || regularityAssessment != null)) {
+      try {
+        behaviorDesc = createNTC2018StructuralBehavior({
+          behavior,
+          structuralType,
+          regularity: regularityAssessment ? {
+            plan: regularityAssessment.planRegularity,
+            elevation: regularityAssessment.elevationRegularity
+          } : {},
+          ...(_m = input.structuralBehaviorParameters) != null ? _m : {}
+        });
+      } catch (error) {
+        behaviorError = (_n = error == null ? void 0 : error.message) != null ? _n : String(error);
+      }
+    } else if (behavior !== NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE && behavior != null && regularityAssessment == null) {
+      behaviorError = "Dissipative behavior requires an explicit regularity assessment.";
     }
     let displacementAssessment = null;
-    if (storeys.length > 0) {
+    if (storeys.length > 0 && input.displacementAssessmentInput != null) {
       displacementAssessment = createDisplacementAssessment({
-        storeys,
-        limitState: "SLU",
-        behavior
+        ...input.displacementAssessmentInput,
+        storeys: (_o = input.displacementAssessmentInput.storeys) != null ? _o : storeys
       });
     }
     const capacityDesignSummary = {
-      applicable: behavior !== NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE,
-      jointCount: (_l = (_k = (_j = mappingVal == null ? void 0 : mappingVal.value) == null ? void 0 : _j.joints) == null ? void 0 : _k.length) != null ? _l : 0,
+      applicable: behavior != null && behavior !== NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE,
+      jointCount: (_r = (_q = (_p = mappingVal == null ? void 0 : mappingVal.value) == null ? void 0 : _p.joints) == null ? void 0 : _q.length) != null ? _r : 0,
       checks: []
     };
     if (capacityDesignSummary.applicable && (mappingVal == null ? void 0 : mappingVal.ok)) {
-      for (const joint of (_m = mappingVal.value.joints) != null ? _m : []) {
+      for (const joint of (_s = mappingVal.value.joints) != null ? _s : []) {
         const assessment = createCapacityDesignAssessment({
-          jointId: (_n = joint.id) != null ? _n : `joint-${capacityDesignSummary.checks.length}`,
+          jointId: (_t = joint.id) != null ? _t : `joint-${capacityDesignSummary.checks.length}`,
           behavior
         });
         capacityDesignSummary.checks.push({
@@ -99499,50 +102656,133 @@ var RcBuildingVerificationApplication = class extends StructuralApplication {
       }
     }
     const memberVerifications = runMemberVerifications({
-      members: (_p = (_o = mappingVal == null ? void 0 : mappingVal.value) == null ? void 0 : _o.members) != null ? _p : [],
-      memberVerifiers: (_q = input.memberVerifiers) != null ? _q : null,
-      memberData: (_r = input.memberData) != null ? _r : null,
+      members: (_v = (_u = mappingVal == null ? void 0 : mappingVal.value) == null ? void 0 : _u.members) != null ? _v : [],
+      memberVerifiers: (_w = input.memberVerifiers) != null ? _w : null,
+      memberData: (_x = input.memberData) != null ? _x : null,
+      demandSet,
       context: {
         behavior,
         structuralType,
-        q: behaviorDesc.q,
-        q0: behaviorDesc.q0,
-        kr: behaviorDesc.kr,
-        units: (_s = input.units) != null ? _s : null
+        q: (_y = behaviorDesc == null ? void 0 : behaviorDesc.q) != null ? _y : null,
+        q0: (_z = behaviorDesc == null ? void 0 : behaviorDesc.q0) != null ? _z : null,
+        kr: (_A = behaviorDesc == null ? void 0 : behaviorDesc.kr) != null ? _A : null,
+        units: (_B = input.units) != null ? _B : null,
+        globalFem: demandSet ? {
+          units: demandSet.units,
+          signConventions: demandSet.signConventions,
+          model: demandSet.model,
+          analysis: demandSet.analysis,
+          resultId: demandSet.resultId
+        } : null
       }
     });
+    const sharedVerificationContext = {
+      behavior,
+      structuralType,
+      q: (_C = behaviorDesc == null ? void 0 : behaviorDesc.q) != null ? _C : null,
+      q0: (_D = behaviorDesc == null ? void 0 : behaviorDesc.q0) != null ? _D : null,
+      kr: (_E = behaviorDesc == null ? void 0 : behaviorDesc.kr) != null ? _E : null,
+      units: (_F = input.units) != null ? _F : null,
+      analysis: analysisVal.value,
+      globalFem: demandSet ? {
+        units: demandSet.units,
+        signConventions: demandSet.signConventions,
+        model: demandSet.model,
+        analysis: demandSet.analysis,
+        resultId: demandSet.resultId
+      } : null
+    };
+    const jointVerifications = runJointVerifications({
+      joints: (_H = (_G = mappingVal == null ? void 0 : mappingVal.value) == null ? void 0 : _G.joints) != null ? _H : [],
+      members: (_J = (_I = mappingVal == null ? void 0 : mappingVal.value) == null ? void 0 : _I.members) != null ? _J : [],
+      jointVerifier: input.jointVerifier,
+      jointData: input.jointData,
+      demandSet,
+      context: sharedVerificationContext
+    });
     const jointHierarchyVerifications = runJointHierarchyVerifications({
-      joints: (_u = (_t = mappingVal == null ? void 0 : mappingVal.value) == null ? void 0 : _t.joints) != null ? _u : [],
-      jointHierarchy: (_v = input.jointHierarchy) != null ? _v : null,
+      joints: (_L = (_K = mappingVal == null ? void 0 : mappingVal.value) == null ? void 0 : _K.joints) != null ? _L : [],
+      jointHierarchy: (_M = input.jointHierarchy) != null ? _M : null,
       behavior
     });
     const wallBiaxialVerifications = runWallBiaxialVerifications({
-      walls: (_x = (_w = mappingVal == null ? void 0 : mappingVal.value) == null ? void 0 : _w.walls) != null ? _x : [],
-      wallSections: (_y = input.wallSections) != null ? _y : null
+      walls: (_O = (_N = mappingVal == null ? void 0 : mappingVal.value) == null ? void 0 : _N.walls) != null ? _O : [],
+      wallSections: (_P = input.wallSections) != null ? _P : null,
+      demandSet
+    });
+    const wallSystemVerifications = runWallSystemVerifications({
+      walls: (_R = (_Q = mappingVal == null ? void 0 : mappingVal.value) == null ? void 0 : _Q.walls) != null ? _R : [],
+      wallSystemData: input.wallSystemData,
+      wallSectionStateVerifier: input.wallSectionStateVerifier,
+      demandSet,
+      context: sharedVerificationContext
+    });
+    const slabSystemVerifications = runSlabSystemVerifications({
+      slabs: (_T = (_S = mappingVal == null ? void 0 : mappingVal.value) == null ? void 0 : _S.slabs) != null ? _T : [],
+      slabSystemData: input.slabSystemData,
+      slabStateVerifier: input.slabStateVerifier,
+      punchingConnections: (_V = (_U = mappingVal == null ? void 0 : mappingVal.value) == null ? void 0 : _U.punchingConnections) != null ? _V : [],
+      punchingVerifier: input.punchingVerifier,
+      diaphragmStateVerifier: input.diaphragmStateVerifier,
+      demandSet,
+      context: sharedVerificationContext
+    });
+    const foundationSystemVerifications = runFoundationSystemVerifications({
+      foundations: (_X = (_W = mappingVal == null ? void 0 : mappingVal.value) == null ? void 0 : _W.foundations) != null ? _X : [],
+      foundationSystemData: input.foundationSystemData,
+      foundationVerifier: input.foundationVerifier,
+      demandSet,
+      context: sharedVerificationContext
     });
     const readiness = evaluateReadiness({
       contracts: {
         mapping: mappingVal,
         result: resultVal
       },
-      input
+      input,
+      demandSet,
+      behaviorDescriptor: behaviorDesc,
+      behaviorError,
+      linearDynamicAssessment,
+      linearDynamicError
     });
-    const membersOk = memberVerifications.every(
-      (m) => m.status !== "not-verified" && m.status !== "failed"
+    const membersOk = memberVerifications.every((m) => m.status === "ok");
+    const jointsOk = jointVerifications.every((j) => j.status === "ok");
+    const hierarchyOk = jointHierarchyVerifications.every((j) => ["ok", "not-applicable"].includes(j.status));
+    const wallSystemsOk = wallSystemVerifications.every((wall) => wall.status === "ok");
+    const wallsOk = wallSystemVerifications.length > 0 && wallSystemsOk ? true : wallBiaxialVerifications.every((wall) => wall.status === "ok");
+    const slabSystemsOk = slabSystemVerifications.every((slab) => slab.status === "ok");
+    const foundationsOk = foundationSystemVerifications.every(
+      (foundation) => foundation.status === "ok"
     );
-    const jointsOk = jointHierarchyVerifications.every(
-      (j) => j.status !== "not-verified" && j.status !== "failed"
+    const allImplementedChecksOk = ((_Y = regularityAssessment == null ? void 0 : regularityAssessment.allChecksOk) != null ? _Y : true) && ((_Z = displacementAssessment == null ? void 0 : displacementAssessment.allChecksOk) != null ? _Z : true) && ((__ = linearDynamicAssessment == null ? void 0 : linearDynamicAssessment.ok) != null ? __ : false) && membersOk && jointsOk && hierarchyOk && wallsOk && wallSystemsOk && slabSystemsOk && foundationsOk;
+    const blockedAssessments = readiness.filter(
+      (assessment) => assessment.status === "blocked"
     );
-    const wallsOk = wallBiaxialVerifications.every(
-      (w) => w.status !== "not-verified" && w.status !== "failed"
-    );
-    const allOk = ((_z = regularityAssessment == null ? void 0 : regularityAssessment.allChecksOk) != null ? _z : true) && ((_A = displacementAssessment == null ? void 0 : displacementAssessment.allChecksOk) != null ? _A : true) && membersOk && jointsOk && wallsOk;
+    const workflowComplete = APP_MATURITY === "complete" && blockedAssessments.length === 0 && allImplementedChecksOk;
     const allChecks = [
-      ...(_B = regularityAssessment == null ? void 0 : regularityAssessment.checks) != null ? _B : [],
-      ...(_C = displacementAssessment == null ? void 0 : displacementAssessment.checks) != null ? _C : [],
+      ...(_$ = regularityAssessment == null ? void 0 : regularityAssessment.checks) != null ? _$ : [],
+      ...(_aa = displacementAssessment == null ? void 0 : displacementAssessment.checks) != null ? _aa : [],
+      ...(_ba = linearDynamicAssessment == null ? void 0 : linearDynamicAssessment.checks) != null ? _ba : [],
       ...memberVerifications.flatMap((m) => {
         var _a2;
         return (_a2 = m.checks) != null ? _a2 : [];
+      }),
+      ...jointVerifications.flatMap((joint) => {
+        var _a2;
+        return (_a2 = joint.checks) != null ? _a2 : [];
+      }),
+      ...wallSystemVerifications.flatMap((wall) => {
+        var _a2;
+        return (_a2 = wall.checks) != null ? _a2 : [];
+      }),
+      ...slabSystemVerifications.flatMap((slab) => {
+        var _a2;
+        return (_a2 = slab.checks) != null ? _a2 : [];
+      }),
+      ...foundationSystemVerifications.flatMap((foundation) => {
+        var _a2;
+        return (_a2 = foundation.checks) != null ? _a2 : [];
       }),
       ...jointHierarchyVerifications.filter((j) => j.check != null).map((j) => ({
         id: `joint-hierarchy-${j.jointId}`,
@@ -99555,10 +102795,14 @@ var RcBuildingVerificationApplication = class extends StructuralApplication {
     ];
     return new CalculationResult({
       applicationId: APP_ID,
-      status: allOk ? RESULT_STATUS_OK : RESULT_STATUS_NOT_VERIFIED,
-      summary: allOk ? "Building verification completed: all checks satisfied." : "Building verification completed: some checks not satisfied.",
+      status: APP_MATURITY !== "complete" ? RESULT_STATUS_NOT_IMPLEMENTED : workflowComplete ? RESULT_STATUS.OK : RESULT_STATUS_NOT_VERIFIED,
+      summary: APP_MATURITY !== "complete" ? "Building verification is incomplete: no positive compliance outcome is issued." : workflowComplete ? "Building verification completed: all required checks satisfied." : "Building verification completed: one or more required checks are missing or not satisfied.",
       outputs: {
-        behavior: {
+        globalFemDemandSet: demandSet,
+        normativeCoverage: getNTC2018RcBuildingCoverage(),
+        completeness: evaluateNTC2018RcBuildingCompleteness(),
+        behavior: behaviorDesc ? {
+          status: "evaluated",
           behavior: behaviorDesc.behavior,
           structuralType: behaviorDesc.structuralType,
           isDissipative: behaviorDesc.isDissipative,
@@ -99566,6 +102810,11 @@ var RcBuildingVerificationApplication = class extends StructuralApplication {
           q0: behaviorDesc.q0,
           q: behaviorDesc.q,
           kr: behaviorDesc.kr
+        } : {
+          status: "not-evaluated",
+          behavior,
+          structuralType,
+          reason: behaviorError != null ? behaviorError : "Explicit behavior and structuralType are required."
         },
         regularity: regularityAssessment ? {
           planRegularity: regularityAssessment.planRegularity,
@@ -99573,6 +102822,12 @@ var RcBuildingVerificationApplication = class extends StructuralApplication {
           reductionFactorKr: regularityAssessment.reductionFactorKr,
           analysisMethods: regularityAssessment.analysisMethodsX
         } : { status: "not-evaluated" },
+        linearDynamicAnalysis: linearDynamicAssessment != null ? linearDynamicAssessment : {
+          status: "not-evaluated",
+          complete: false,
+          ok: false,
+          reason: linearDynamicError != null ? linearDynamicError : "Explicit linearDynamicAssessmentInput is required."
+        },
         displacement: displacementAssessment ? {
           limitState: displacementAssessment.limitState,
           governingDriftX: displacementAssessment.governingDriftX,
@@ -99595,6 +102850,12 @@ var RcBuildingVerificationApplication = class extends StructuralApplication {
           results: memberVerifications
         },
         joints: {
+          count: jointVerifications.length,
+          verified: jointVerifications.filter((j) => j.status === "ok").length,
+          notAnalyzed: jointVerifications.filter((j) => j.status === "not-analyzed").length,
+          results: jointVerifications
+        },
+        jointHierarchy: {
           count: jointHierarchyVerifications.length,
           verified: jointHierarchyVerifications.filter((j) => j.status === "ok").length,
           notAnalyzed: jointHierarchyVerifications.filter((j) => j.status === "not-analyzed").length,
@@ -99606,13 +102867,38 @@ var RcBuildingVerificationApplication = class extends StructuralApplication {
           notAnalyzed: wallBiaxialVerifications.filter((w) => w.status === "not-analyzed").length,
           results: wallBiaxialVerifications
         },
+        wallSystems: {
+          count: wallSystemVerifications.length,
+          verified: wallSystemVerifications.filter((wall) => wall.status === "ok").length,
+          notAnalyzed: wallSystemVerifications.filter((wall) => wall.status === "not-implemented").length,
+          results: wallSystemVerifications
+        },
+        slabSystems: {
+          count: slabSystemVerifications.length,
+          verified: slabSystemVerifications.filter((slab) => slab.status === "ok").length,
+          notAnalyzed: slabSystemVerifications.filter((slab) => slab.status === "not-implemented").length,
+          results: slabSystemVerifications
+        },
+        foundationSystems: {
+          count: foundationSystemVerifications.length,
+          verified: foundationSystemVerifications.filter(
+            (foundation) => foundation.status === "ok"
+          ).length,
+          notAnalyzed: foundationSystemVerifications.filter(
+            (foundation) => foundation.status === "not-implemented"
+          ).length,
+          results: foundationSystemVerifications
+        },
         readiness,
+        blockedAssessments,
         checks: allChecks,
         checkCount: allChecks.length
       },
       warnings,
       assumptions: [
-        "Member-level verifications run only for members with a consumer-injected verifier (memberVerifiers).",
+        "Member-level verifiers receive every concurrent FEM action state; the orchestrator does not combine independently enveloped components.",
+        "Global FEM action units and signs are preserved; proper orthogonal transformations to resistance axes come only from the confirmed mapping contract.",
+        "Wall action-state selection remains explicit; every section-cut state is transformed by its confirmed resistance-axis mapping before selection.",
         "Per-member material and reinforcement data must be provided by the consumer (no automatic reinforcement).",
         "Beam-column hierarchy runs only for joints with jointHierarchy data.",
         ...assumptions
@@ -99620,7 +102906,7 @@ var RcBuildingVerificationApplication = class extends StructuralApplication {
       metadata: {
         appVersion: APP_VERSION,
         maturity: APP_MATURITY,
-        ...(_D = input.metadata) != null ? _D : {}
+        ...(_ca = input.metadata) != null ? _ca : {}
       }
     });
   }
@@ -100062,15 +103348,15 @@ function principalActionEnvelopeRows(report) {
 }
 function verificationRows(verificationResult) {
   var _a;
-  return ((_a = verificationResult == null ? void 0 : verificationResult.checks) != null ? _a : []).map((check2) => {
+  return ((_a = verificationResult == null ? void 0 : verificationResult.checks) != null ? _a : []).map((check4) => {
     var _a2;
     return [
-      check2.id,
-      (_a2 = check2.description) != null ? _a2 : "-",
-      formatNumber3(check2.demand),
-      formatNumber3(check2.capacity),
-      formatNumber3(check2.utilizationRatio, 3),
-      check2.ok === false ? "no" : "si"
+      check4.id,
+      (_a2 = check4.description) != null ? _a2 : "-",
+      formatNumber3(check4.demand),
+      formatNumber3(check4.capacity),
+      formatNumber3(check4.utilizationRatio, 3),
+      check4.ok === false ? "no" : "si"
     ];
   });
 }
@@ -100080,10 +103366,10 @@ function isReportScalar(value) {
 function verificationDetailRows(verificationResult) {
   var _a;
   return ((_a = verificationResult == null ? void 0 : verificationResult.checks) != null ? _a : []).flatMap(
-    (check2) => {
+    (check4) => {
       var _a2;
-      return Object.entries((_a2 = check2.metadata) != null ? _a2 : {}).filter(([, value]) => isReportScalar(value)).map(([key, value]) => [
-        check2.id,
+      return Object.entries((_a2 = check4.metadata) != null ? _a2 : {}).filter(([, value]) => isReportScalar(value)).map(([key, value]) => [
+        check4.id,
         key,
         typeof value === "number" ? formatNumber3(value) : value
       ]);
@@ -100404,12 +103690,12 @@ function principalActionEnvelopeDto(envelopes = {}) {
 function governingCheckFromVerification(verification) {
   var _a;
   const checks = (_a = verification == null ? void 0 : verification.checks) != null ? _a : [];
-  return checks.reduce((selected, check2) => {
-    if (!Number.isFinite(check2.utilizationRatio)) {
+  return checks.reduce((selected, check4) => {
+    if (!Number.isFinite(check4.utilizationRatio)) {
       return selected;
     }
-    if (!selected || check2.utilizationRatio > selected.utilizationRatio) {
-      return check2;
+    if (!selected || check4.utilizationRatio > selected.utilizationRatio) {
+      return check4;
     }
     return selected;
   }, null);
@@ -101208,10 +104494,10 @@ function evaluateCheck(demand, capacity) {
 }
 function governingChecksById(checks) {
   return Object.values(
-    checks.reduce((acc, check2) => {
-      const current = acc[check2.id];
-      if (!current || check2.utilizationRatio > current.utilizationRatio) {
-        acc[check2.id] = check2;
+    checks.reduce((acc, check4) => {
+      const current = acc[check4.id];
+      if (!current || check4.utilizationRatio > current.utilizationRatio) {
+        acc[check4.id] = check4;
       }
       return acc;
     }, {})
@@ -101421,11 +104707,11 @@ var TimberConcreteCompositeBeamVerification = class {
           kmod * connectorFvrk / gammaConnector
         )
       }
-    ].map((check2) => ({
-      ...check2,
-      demand: round8(check2.demand),
-      capacity: round8(check2.capacity),
-      utilizationRatio: round8(check2.utilizationRatio),
+    ].map((check4) => ({
+      ...check4,
+      demand: round8(check4.demand),
+      capacity: round8(check4.capacity),
+      utilizationRatio: round8(check4.utilizationRatio),
       metadata: {
         method: "gelfi-gamma-method-section-actions",
         gammaUls: round8(gammaUls),
@@ -101454,7 +104740,7 @@ var TimberConcreteCompositeBeamVerification = class {
       );
     }
     return {
-      status: checks.every((check2) => check2.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+      status: checks.every((check4) => check4.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       utilizationRatio: governingCheck5.utilizationRatio,
       demand: governingCheck5.demand,
       capacity: governingCheck5.capacity,
@@ -101634,23 +104920,23 @@ var TimberConcreteCompositeBeamVerification = class {
     const actionChecks = sectionActionVerification ? governingChecksById(sectionActionVerification.checks) : checks.slice(0, 4);
     const combinedChecks = [
       ...actionChecks,
-      checks.find((check2) => check2.id === "deflection")
+      checks.find((check4) => check4.id === "deflection")
     ];
     const governingCheck5 = combinedChecks.reduce(
       (max, current) => current.utilizationRatio > max.utilizationRatio ? current : max
     );
     return new VerificationResult({
       applicationId: "timber-concrete-composite-beams",
-      status: combinedChecks.every((check2) => check2.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+      status: combinedChecks.every((check4) => check4.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       summary: "Verification of timber beam with collaborating concrete slab according to the Gelfi-style gamma method implemented from the workbook.",
       utilizationRatio: round8(governingCheck5.utilizationRatio, 6),
       demand: round8(governingCheck5.demand, 6),
       capacity: round8(governingCheck5.capacity, 6),
-      checks: combinedChecks.map((check2) => ({
-        ...check2,
-        demand: round8(check2.demand, 6),
-        capacity: round8(check2.capacity, 6),
-        utilizationRatio: round8(check2.utilizationRatio, 6)
+      checks: combinedChecks.map((check4) => ({
+        ...check4,
+        demand: round8(check4.demand, 6),
+        capacity: round8(check4.capacity, 6),
+        utilizationRatio: round8(check4.utilizationRatio, 6)
       })),
       outputs: {
         fcd: round8(fcd, 6),
@@ -102075,10 +105361,10 @@ function evaluateCheck2(demand, capacity) {
 }
 function governingChecksById2(checks) {
   return Object.values(
-    checks.reduce((acc, check2) => {
-      const current = acc[check2.id];
-      if (!current || check2.utilizationRatio > current.utilizationRatio) {
-        acc[check2.id] = check2;
+    checks.reduce((acc, check4) => {
+      const current = acc[check4.id];
+      if (!current || check4.utilizationRatio > current.utilizationRatio) {
+        acc[check4.id] = check4;
       }
       return acc;
     }, {})
@@ -102306,11 +105592,11 @@ var TimberXlamCompositeBeamVerification = class {
           timberTimberResistance.designResistance
         )
       }
-    ].map((check2) => ({
-      ...check2,
-      demand: round9(check2.demand),
-      capacity: round9(check2.capacity),
-      utilizationRatio: round9(check2.utilizationRatio),
+    ].map((check4) => ({
+      ...check4,
+      demand: round9(check4.demand),
+      capacity: round9(check4.capacity),
+      utilizationRatio: round9(check4.utilizationRatio),
       metadata: {
         method: "timber-xlam-gamma-method-section-actions",
         gamma1Uls: round9(gamma1Uls),
@@ -102340,7 +105626,7 @@ var TimberXlamCompositeBeamVerification = class {
       );
     }
     return {
-      status: checks.every((check2) => check2.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+      status: checks.every((check4) => check4.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       utilizationRatio: governingCheck5.utilizationRatio,
       demand: governingCheck5.demand,
       capacity: governingCheck5.capacity,
@@ -102515,24 +105801,24 @@ var TimberXlamCompositeBeamVerification = class {
     const actionChecks = sectionActionVerification ? governingChecksById2(sectionActionVerification.checks) : checks.slice(0, 7);
     const combinedChecks = [
       ...actionChecks,
-      checks.find((check2) => check2.id === "deflection-short"),
-      checks.find((check2) => check2.id === "deflection-long")
+      checks.find((check4) => check4.id === "deflection-short"),
+      checks.find((check4) => check4.id === "deflection-long")
     ];
     const governingCheck5 = combinedChecks.reduce(
       (max, current) => current.utilizationRatio > max.utilizationRatio ? current : max
     );
     return new VerificationResult({
       applicationId: "timber-xlam-composite-beams",
-      status: combinedChecks.every((check2) => check2.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+      status: combinedChecks.every((check4) => check4.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       summary: "Verification of timber beams collaborating with an XLAM panel based on the workbook gamma-method and timber-timber connector checks.",
       utilizationRatio: round9(governingCheck5.utilizationRatio),
       demand: round9(governingCheck5.demand),
       capacity: round9(governingCheck5.capacity),
-      checks: combinedChecks.map((check2) => ({
-        ...check2,
-        demand: round9(check2.demand),
-        capacity: round9(check2.capacity),
-        utilizationRatio: round9(check2.utilizationRatio)
+      checks: combinedChecks.map((check4) => ({
+        ...check4,
+        demand: round9(check4.demand),
+        capacity: round9(check4.capacity),
+        utilizationRatio: round9(check4.utilizationRatio)
       })),
       outputs: {
         kdef: round9(kdef),
@@ -103266,10 +106552,10 @@ function copyMetadata(metadata = {}) {
     })
   );
 }
-function copyCheck(check2) {
+function copyCheck(check4) {
   return {
-    ...check2,
-    metadata: copyMetadata(check2.metadata)
+    ...check4,
+    metadata: copyMetadata(check4.metadata)
   };
 }
 function mostSevereGroupedCheck(candidate, current) {
@@ -103438,7 +106724,7 @@ function createLateralTorsionalStabilityChecks({
     checks,
     warnings: uniqueStrings(warnings),
     assumptions,
-    status: checks.length > 0 && checks.every((check2) => check2.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED
+    status: checks.length > 0 && checks.every((check4) => check4.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED
   };
 }
 function createTimberActionVerifier({
@@ -103627,10 +106913,10 @@ var TimberBeamVerification = class {
       }
     });
     const governingActionChecks = Object.values(
-      actionVerification.checks.reduce((acc, check2) => {
-        const current = acc[check2.id];
-        if (!current || check2.utilizationRatio > current.utilizationRatio) {
-          acc[check2.id] = check2;
+      actionVerification.checks.reduce((acc, check4) => {
+        const current = acc[check4.id];
+        if (!current || check4.utilizationRatio > current.utilizationRatio) {
+          acc[check4.id] = check4;
         }
         return acc;
       }, {})
@@ -103642,16 +106928,16 @@ var TimberBeamVerification = class {
       ...finalDeflectionCheck ? [finalDeflectionCheck] : []
     ];
     const groupedChecks = Object.values(
-      checks.reduce((acc, check2) => {
-        const current = acc[check2.id];
-        if (mostSevereGroupedCheck(check2, current)) {
-          acc[check2.id] = check2;
+      checks.reduce((acc, check4) => {
+        const current = acc[check4.id];
+        if (mostSevereGroupedCheck(check4, current)) {
+          acc[check4.id] = check4;
         }
         return acc;
       }, {})
     );
     const governingCheck5 = groupedChecks.reduce(
-      (selected, check2) => moreSevereCheck(check2, selected),
+      (selected, check4) => moreSevereCheck(check4, selected),
       null
     );
     const ulsOk = actionVerification.status === RESULT_STATUS.OK;
@@ -103900,16 +107186,16 @@ var XlamOutOfPlanePanelVerification = class {
     );
     return new VerificationResult({
       applicationId: "xlam-panels-out-of-plane",
-      status: checks.every((check2) => check2.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+      status: checks.every((check4) => check4.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
       summary: "Out-of-plane verification of a standalone XLAM panel following the CLTdesigner/WCTE2010 1D-plate approach based on Timoshenko beam theory.",
       utilizationRatio: round10(governingCheck5.utilizationRatio),
       demand: round10(governingCheck5.demand),
       capacity: round10(governingCheck5.capacity),
-      checks: checks.map((check2) => ({
-        ...check2,
-        demand: round10(check2.demand),
-        capacity: round10(check2.capacity),
-        utilizationRatio: round10(check2.utilizationRatio)
+      checks: checks.map((check4) => ({
+        ...check4,
+        demand: round10(check4.demand),
+        capacity: round10(check4.capacity),
+        utilizationRatio: round10(check4.utilizationRatio)
       })),
       outputs: {
         bendingStiffness: round10(bendingStiffness),
@@ -104207,7 +107493,7 @@ function createXlamActionVerifier({
       }
       const governing = governingCheck(checks);
       return {
-        status: checks.every((check2) => check2.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+        status: checks.every((check4) => check4.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
         utilizationRatio: (_i = governing == null ? void 0 : governing.utilizationRatio) != null ? _i : null,
         demand: (_j = governing == null ? void 0 : governing.demand) != null ? _j : null,
         capacity: (_k = governing == null ? void 0 : governing.capacity) != null ? _k : null,
@@ -104311,10 +107597,10 @@ var XlamBeamVerification = class {
       ...deflectionCheck ? [deflectionCheck] : []
     ];
     const groupedChecks = Object.values(
-      checks.reduce((acc, check2) => {
-        const current = acc[check2.id];
-        if (!current || check2.utilizationRatio > current.utilizationRatio) {
-          acc[check2.id] = check2;
+      checks.reduce((acc, check4) => {
+        const current = acc[check4.id];
+        if (!current || check4.utilizationRatio > current.utilizationRatio) {
+          acc[check4.id] = check4;
         }
         return acc;
       }, {})
@@ -104607,13 +107893,8 @@ export {
   DEEP_FOUNDATION_MODEL_SCHEMA_VERSION,
   DEFAULT_GLOBAL_FEM_CLASSIFICATION_POLICY,
   DEFAULT_SECTION_ROTATION,
-  DM522023_COLUMN_MAX_HOOP_SPACING,
-  DM522023_COLUMN_MAX_LONGITUDINAL_RATIO,
-  DM522023_COLUMN_MIN_HOOP_DIAMETER,
-  DM522023_COLUMN_MIN_LONGITUDINAL_RATIO,
-  DM522023_MATERIAL_PARTIAL_FACTORS,
+  DM522023_AMENDMENTS,
   DM522023_REFERENCES,
-  DM522023_REINFORCEMENT_STEEL_GRADES,
   DeepFoundationModel,
   DenseLinearSolver,
   DesignCodeContext,
@@ -104666,12 +107947,15 @@ export {
   GLOBAL_FEM_CLASSIFICATION_PROPOSAL_VERSION,
   GLOBAL_FEM_CONTRACT_VERSION,
   GLOBAL_FEM_DEMAND_SET_VERSION,
+  GLOBAL_FEM_LINE_ACTION_COMPONENTS,
   GLOBAL_FEM_POSTPROCESSING_PROFILES,
   GLOBAL_FEM_POSTPROCESSING_PROFILE_VALUES,
   GLOBAL_FEM_READINESS_ASSESSMENTS,
   GLOBAL_FEM_READINESS_ASSESSMENT_VALUES,
   GLOBAL_FEM_READINESS_REPORT_VERSION,
   GLOBAL_FEM_REQUIRED_UNIT_KEYS,
+  GLOBAL_FEM_SECTION_CUT_COMPONENTS,
+  GLOBAL_FEM_SHELL_RESULTANT_COMPONENTS,
   GROUND_ANCHOR_BOND_CATALOG,
   GROUND_ANCHOR_BOND_CATALOG_IDS,
   GROUND_ANCHOR_BOND_CATALOG_REFERENCE,
@@ -104713,6 +107997,7 @@ export {
   GroundProfile,
   GroundSection2D,
   HyperstaticDeflectionIteration,
+  IDENTITY_RESISTANCE_AXIS_TRANSFORMATION,
   ITALIAN_HISTORICAL_REINFORCEMENT_STEEL_GRADES,
   ITALIAN_HISTORICAL_REINFORCEMENT_STEEL_GRADE_NAMES,
   ITALIAN_HISTORICAL_REINFORCEMENT_STEEL_STANDARDS,
@@ -104787,8 +108072,7 @@ export {
   NTC2018_CASE_BY_CASE_COMBINATION_CATEGORIES,
   NTC2018_CONCRETE_CLASSES,
   NTC2018_DEFAULT_DURATION_CLASS_BY_ACTION,
-  NTC2018_DEFAULT_FRAME_ALPHA_RATIO,
-  NTC2018_DEFAULT_WALL_ALPHA_RATIO,
+  NTC2018_DIAPHRAGM_FORCE_FACTOR,
   NTC2018_DIAPHRAGM_REFERENCES,
   NTC2018_DISPLACEMENT_REFERENCES,
   NTC2018_DRIFT_INFILL_CATEGORY,
@@ -104803,6 +108087,7 @@ export {
   NTC2018_GLULAM_TIMBER_STRENGTH_CLASSES,
   NTC2018_IMPOSED_LOAD_CATALOG,
   NTC2018_IMPOSED_LOAD_REFERENCES,
+  NTC2018_LINEAR_DYNAMIC_REFERENCES,
   NTC2018_LOAD_DURATION_CLASSES,
   NTC2018_MASONRY_PIER_CAPACITY_REFERENCES,
   NTC2018_MASONRY_PIER_DEFORMATION_REFERENCES,
@@ -104811,6 +108096,8 @@ export {
   NTC2018_PDELTA_THRESHOLDS,
   NTC2018_PERMANENT_LOAD_REFERENCES,
   NTC2018_PLAN_REGULARITY,
+  NTC2018_RC_BUILDING_CAPABILITIES,
+  NTC2018_RC_COVERAGE_STATUS,
   NTC2018_REGULARITY_REDUCTION,
   NTC2018_REGULARITY_REFERENCES,
   NTC2018_REINFORCEMENT_STEEL_GRADES,
@@ -104842,6 +108129,7 @@ export {
   NTC2018_ULS_PARTIAL_FACTORS,
   NTC2018_UNIT_WEIGHT_CATALOG,
   NTC2018_VARIABLE_ACTION_CATEGORIES,
+  NTC2018_WALL_SYSTEM_REFERENCES,
   NTC2018_WIND_EXPOSURE_CATEGORIES,
   NTC2018_WIND_REFERENCES,
   NTC2018_WIND_ZONES,
@@ -105052,13 +108340,12 @@ export {
   XlamOutOfPlanePanelModel,
   XlamOutOfPlanePanelVerification,
   XlamPanelSection,
-  applyDM522023SteelGrades,
+  amplifyNTC2018DiaphragmActions,
   applyNTC2018ExistingMasonryMaltaBuonaUpdate,
   applyNTC2018ExistingMasonryModifierToggle,
   assertExplicitUnitSystem,
   assertPositive21 as assertPositiveCheckValue,
   bilinearizeCapacityCurve,
-  buildBeamSectionMaterial,
   calculateElasticCriticalMomentLT,
   calculateEn1992AnchorageLength,
   calculateEn1992DesignBondStrength,
@@ -105126,12 +108413,16 @@ export {
   classifyNTC2018JointConfinement,
   classifyNTC2018Topography,
   classifySteelSection,
-  collectLineElementDesignActions,
+  collectConcurrentJointActionStates,
+  collectConcurrentLineElementActionStates,
+  collectConcurrentMemberActionStates,
+  collectConcurrentSectionCutStates,
+  collectConcurrentSupportReactionStates,
+  collectConcurrentSurfaceResultantStates,
   computeBeamCapacityShear,
   computeColumnCapacityShear,
-  computeDM522023ConfinementOmegaWd,
-  computeDiaphragmChordReinforcement,
   computeJointCapacityShear,
+  computeMixedSystemWallShearEnvelope,
   computeNTC2018EffectiveQFactor,
   computePDeltaCoefficient,
   computeSeismicJointWidth,
@@ -105140,13 +108431,17 @@ export {
   computeWallCapacityShear,
   computeWallConfinementOmegaWd,
   computeWallCriticalZoneHeight,
+  computeWallEffectiveFlangeWidth,
   computeWallMomentShift,
+  computeWeaklyReinforcedWallAxialDemandRange,
+  computeWeaklyReinforcedWallShearDemand,
   convertUnitProperties,
   coulombActiveEarthPressureCoefficient,
   coulombPassiveEarthPressureCoefficient,
   createAlignmentStateComparisonReportArtifacts,
   createBeamReportArtifacts,
   createCapacityDesignAssessment,
+  createCouplingBeamAssessment,
   createDefaultApplicationRegistry,
   createDiaphragmAssessment,
   createDisplacementAssessment,
@@ -105169,6 +108464,7 @@ export {
   createNTC2018ExistingMasonryMaterial,
   createNTC2018ExistingMasonryModifierState,
   createNTC2018ExistingMasonryWorkflowState,
+  createNTC2018LinearDynamicAssessment,
   createNTC2018MononobeOkabeSeismicInput,
   createNTC2018PermanentAction,
   createNTC2018RegularityAssessment,
@@ -105198,24 +108494,21 @@ export {
   createTimberConcreteCompositeBeamSectionProvider,
   createTimberXlamCompositeBeamSectionProvider,
   createUnitResolver,
+  createWallHeightSystemAssessment,
   createWallSectionAssessment,
   createXlamBeamSectionProvider,
   createXlamPanelSection,
   cyclicMasonryPierHistoryToCsv,
-  estimateColumnEffectiveLengths,
+  describeDM522023Amendment,
   evaluateGlobalFemVerificationReadiness,
   evaluateNTC2018ElevationRegularity,
   evaluateNTC2018ExistingMasonryWorkflow,
   evaluateNTC2018MasonryPier,
   evaluateNTC2018PlanRegularity,
-  extractBeamDesignActions,
-  extractColumnDesignActions,
-  extractEndMoments,
+  evaluateNTC2018RcBuildingCompleteness,
   extractEquivalentFrameMembers,
-  extractFootingActions,
   extractGlobalFemDemands,
-  extractJointActions,
-  extractMomentSamples,
+  filterConcurrentFemStates,
   getGroundAnchorBondCatalogEntry,
   getItalianHistoricalReinforcementSteelGrade,
   getNTC2018ActionCombinationFactors,
@@ -105225,6 +108518,7 @@ export {
   getNTC2018ImposedLoadDefinition,
   getNTC2018LoadDurationClass,
   getNTC2018LoadDurationDefinition,
+  getNTC2018RcBuildingCoverage,
   getNTC2018SeismicLimitStateDefinition,
   getNTC2018SimplifiedBuildingTemperatureChange,
   getNTC2018SlabVariableAction,
@@ -105279,12 +108573,22 @@ export {
   ntc2018JointOverstrengthFactor,
   ordinaryMethodOfSlices,
   principalSecondMoments,
+  projectFoundationReactionStatesToResistanceAxes,
+  projectJointActionStatesToResistanceAxes,
+  projectLineActionStateToResistanceAxes,
+  projectMemberActionStatesToResistanceAxes,
+  projectSectionCutStateToResistanceAxes,
+  projectShellResultantStateToResistanceAxes,
+  projectSlabResultantStatesToResistanceAxes,
+  projectSupportReactionStateToResistanceAxes,
+  projectWallSectionCutStatesToResistanceAxes,
   rankineEarthPressureCoefficients,
   registerXlamPanelProduct,
   resolveAlignmentMechanicalState,
   resolveBeamSupportPreset,
   resolveExistingMaterialState,
   resolveMasonryStageMaterial,
+  resolveNTC2018AlphaRatio,
   resolveNTC2018GoverningLoadDuration,
   resolveNTC2018ImposedLoadDefinition,
   resolveNTC2018InitialTemperature,
@@ -105299,10 +108603,12 @@ export {
   rotatePlateShear,
   rotateSecondMoments,
   round3 as round,
+  runFoundationSystemVerifications,
   runRcServiceDeflectionAnalysis,
   runScaRcDeflectionAnalysis,
+  runSlabSystemVerifications,
+  runWallSystemVerifications,
   sanitizeAlignmentOpenings,
-  selectDM522023PartialFactor,
   selectNTC2018AllowedAnalysisMethods,
   selectNTC2018BaseQFactor,
   selectNTC2018ExistingMasonryParameterLevel,
@@ -105326,12 +108632,13 @@ export {
   validateGlobalFemContractSet,
   validateGlobalFemModelContract,
   validateGlobalFemResultContract,
+  validateResistanceAxisTransformation,
   validateSteelMemberFem3DResult,
+  validateSurfaceResistanceAxisTransformation,
   verifyBeamColumnHierarchy,
   verifyBeamSectionActions,
-  verifyDiaphragmCompression,
-  verifyDiaphragmDiagonalTension,
-  verifyDiaphragmShearConnection,
+  verifyNTC2018AccidentalEccentricities,
+  verifyNTC2018ModalMassParticipation,
   verifyPDelta,
   verifyPlateBending,
   verifyPlateServiceability,
@@ -105351,6 +108658,8 @@ export {
   verifyTimberLateralTorsionalStability,
   verifyWallBiaxialBending,
   verifyWallBoundaryConfinement,
+  verifyWallCurvatureDuctility,
+  verifyWallGeneralDetailing,
   verifyWallShear,
   woodArmer
 };

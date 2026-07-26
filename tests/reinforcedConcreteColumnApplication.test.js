@@ -196,6 +196,12 @@ test("RC column application verifies shear and seismic confinement contracts", (
           longitudinalReinforcementArea: 1256,
           transverseReinforcement: { diameter: 8, legs: 2, spacing: 100 },
         },
+        capacityDesign: {
+          clearLength: 3000,
+          endMomentsX: [100e6, 100e6],
+          endMomentsY: [100e6, 100e6],
+          endMomentsPreAdjustedForHierarchy: true,
+        },
       },
       detailing: {
         longitudinal: {
@@ -236,10 +242,47 @@ test("RC column application verifies shear and seismic confinement contracts", (
 
   assert.equal(xShearCheck.metadata.analysisShear, 80e3);
   assert.equal(yShearCheck.metadata.analysisShear, 60e3);
+  assert.equal(xShearCheck.metadata.gammaRd, 1.1);
+  assert.ok(
+    Math.abs(xShearCheck.metadata.capacityDesignShear - 73333.3333333333) <
+      1e-6,
+  );
   assert.ok(
     result.checks.some((check) => check.metadata?.axis === "x"),
   );
   assert.ok(
     result.checks.some((check) => check.id === "rc-column-seismic-omega-wd"),
+  );
+});
+
+test("RC column capacity shear rejects end moments not explicitly hierarchy-adjusted", () => {
+  assert.throws(
+    () => createFixture({
+      shear: {
+        x: {
+          mode: "with-transverse-reinforcement",
+          method: "ntc2018",
+          bw: 300,
+          effectiveDepth: 450,
+          longitudinalReinforcementArea: 1256,
+          transverseReinforcement: {
+            diameter: 8,
+            legs: 2,
+            spacing: 100,
+          },
+        },
+        capacityDesign: {
+          clearLength: 3000,
+          endMomentsX: [100e6, 100e6],
+        },
+      },
+      detailing: {
+        seismic: {
+          enabled: true,
+          ductilityClass: "CDB",
+        },
+      },
+    }),
+    /endMomentsPreAdjustedForHierarchy/,
   );
 });

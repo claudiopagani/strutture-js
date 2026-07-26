@@ -38,13 +38,28 @@ export {
 } from "./contracts/index.js";
 
 export {
-  buildBeamSectionMaterial,
-  collectLineElementDesignActions,
-  estimateColumnEffectiveLengths,
-  extractBeamDesignActions,
-  extractColumnDesignActions,
-  extractEndMoments,
-  extractFootingActions,
-  extractJointActions,
-  extractMomentSamples,
-} from "./globalToLocalMemberAdapter.js";
+  GLOBAL_FEM_LINE_ACTION_COMPONENTS,
+  GLOBAL_FEM_SECTION_CUT_COMPONENTS,
+  GLOBAL_FEM_SHELL_RESULTANT_COMPONENTS,
+  collectConcurrentJointActionStates,
+  collectConcurrentLineElementActionStates,
+  collectConcurrentMemberActionStates,
+  collectConcurrentSectionCutStates,
+  collectConcurrentSupportReactionStates,
+  collectConcurrentSurfaceResultantStates,
+  filterConcurrentFemStates,
+} from "./ConcurrentFemDemandStates.js";
+export {
+  IDENTITY_RESISTANCE_AXIS_TRANSFORMATION,
+  projectJointActionStatesToResistanceAxes,
+  projectLineActionStateToResistanceAxes,
+  projectMemberActionStatesToResistanceAxes,
+  projectFoundationReactionStatesToResistanceAxes,
+  projectSectionCutStateToResistanceAxes,
+  projectShellResultantStateToResistanceAxes,
+  projectSlabResultantStatesToResistanceAxes,
+  projectSupportReactionStateToResistanceAxes,
+  projectWallSectionCutStatesToResistanceAxes,
+  validateResistanceAxisTransformation,
+  validateSurfaceResistanceAxisTransformation,
+} from "./ResistanceAxisMapping.js";

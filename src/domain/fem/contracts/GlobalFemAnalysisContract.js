@@ -222,6 +222,44 @@ function validateRequestedOutputs(outputs, path, errors) {
   });
 }
 
+function validateAccidentalEccentricities(procedure, path, model, errors) {
+  if (!validateArray(
+    procedure.accidentalEccentricities,
+    `${path}.accidentalEccentricities`,
+    errors,
+  )) return;
+  procedure.accidentalEccentricities.forEach(
+    (eccentricity, eccentricityIndex) => {
+      const eccentricityPath =
+        `${path}.accidentalEccentricities[${eccentricityIndex}]`;
+      if (!validateRecord(eccentricity, eccentricityPath, errors)) return;
+      validateId(eccentricity.id, `${eccentricityPath}.id`, errors);
+      validateString(
+        eccentricity.direction,
+        `${eccentricityPath}.direction`,
+        errors,
+        { allowed: ["X", "Y", "Z"] },
+      );
+      validateFinite(
+        eccentricity.offset,
+        `${eccentricityPath}.offset`,
+        errors,
+      );
+      if (eccentricity.storeyId != null && model &&
+          !model.storeys.some((storey) =>
+            storey.id === eccentricity.storeyId)) {
+        addError(
+          errors,
+          "FEM_UNKNOWN_REFERENCE",
+          `${eccentricityPath}.storeyId`,
+          `${eccentricityPath}.storeyId references unknown storey ` +
+            `${eccentricity.storeyId}.`,
+        );
+      }
+    },
+  );
+}
+
 function validateStaticProcedure(procedure, path, indices, model, errors) {
   validateIdArray(procedure.loadCaseIds, `${path}.loadCaseIds`, errors, { minLength: 1 });
   validateReferences(
@@ -288,30 +326,7 @@ function validateStaticProcedure(procedure, path, indices, model, errors) {
     });
   }
 
-  if (validateArray(
-    procedure.accidentalEccentricities,
-    `${path}.accidentalEccentricities`,
-    errors,
-  )) {
-    procedure.accidentalEccentricities.forEach((eccentricity, eccentricityIndex) => {
-      const eccentricityPath = `${path}.accidentalEccentricities[${eccentricityIndex}]`;
-      if (!validateRecord(eccentricity, eccentricityPath, errors)) return;
-      validateId(eccentricity.id, `${eccentricityPath}.id`, errors);
-      validateString(eccentricity.direction, `${eccentricityPath}.direction`, errors, {
-        allowed: ["X", "Y", "Z"],
-      });
-      validateFinite(eccentricity.offset, `${eccentricityPath}.offset`, errors);
-      if (eccentricity.storeyId != null && model &&
-          !model.storeys.some((storey) => storey.id === eccentricity.storeyId)) {
-        addError(
-          errors,
-          "FEM_UNKNOWN_REFERENCE",
-          `${eccentricityPath}.storeyId`,
-          `${eccentricityPath}.storeyId references unknown storey ${eccentricity.storeyId}.`,
-        );
-      }
-    });
-  }
+  validateAccidentalEccentricities(procedure, path, model, errors);
 }
 
 function validateModalProcedure(procedure, path, indices, errors) {
@@ -397,6 +412,24 @@ function validateProcedures(procedures, indices, options, errors) {
         `${path}.spectrumIds`,
         errors,
         "response spectrum",
+      );
+      validateString(
+        procedure.modalCombinationMethod,
+        `${path}.modalCombinationMethod`,
+        errors,
+        { allowed: ["cqc"] },
+      );
+      validateString(
+        procedure.componentCombinationRule,
+        `${path}.componentCombinationRule`,
+        errors,
+        { allowed: ["100-30-30"] },
+      );
+      validateAccidentalEccentricities(
+        procedure,
+        path,
+        options.model,
+        errors,
       );
     }
     if (["nonlinear-static", "time-history"].includes(procedure.type)) {

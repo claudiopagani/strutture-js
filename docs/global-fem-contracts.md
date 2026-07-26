@@ -54,7 +54,7 @@ GlobalFemModelContract ─────────► GlobalFemResultContract
 FemEntityMappingContract ────────────────┘
         │ semantica strutturale esplicita
         ▼
-future applications / verificatori norms
+RcBuildingVerificationApplication / altri consumer
 ```
 
 Il postprocessore applicativo e i suoi tre profili sono descritti in
@@ -154,16 +154,31 @@ completata.
 
 Mantiene separata la semantica dalla mesh:
 
-- `members`: membro e ruolo (`beam`, `column`, `brace`, `other`) verso aste;
-- `walls`: setto verso shell, piani e section cut;
-- `slabs`: impalcato verso shell e piano;
+- `members`: membro e ruolo (`beam`, `column`, `brace`, `other`) verso aste,
+  con una trasformazione `lineActionMappings` per ogni asta;
+- `walls`: setto verso shell, piani e section cut, con una trasformazione
+  `sectionCutActionMappings` per ogni taglio;
+- `slabs`: impalcato verso shell, piano e diaframmi, con una trasformazione
+  `shellResultantMappings` per ogni elemento;
 - `storeys`: piano verso nodi, diaframmi e mesh;
-- `joints`: giunto verso nodo e estremità delle aste.
+- `joints`: giunto verso nodo e estremità delle aste;
+- `punchingConnections`: nodo di appoggio, shell della soletta ed estremità
+  delle aste di sostegno che definiscono ogni connessione punzonabile;
+- `foundations`: fondazione verso supporti e nodi, con una trasformazione
+  `supportReactionMappings` per ogni reazione.
 
 Con il modello fornito al validatore, ogni asta deve appartenere a un membro,
 ogni shell a un solo setto o impalcato e ogni piano deve avere un mapping. Gli
 identificativi originari di un provider possono essere conservati in
 `metadata`, senza assumere significato nel dominio.
+
+Le trasformazioni delle azioni sono matrici 3×3 proprie, ortogonali e
+destrorse: ogni riga esprime un asse resistente nella base del risultato FEM.
+Non sono permessi scambi di componenti o inversioni di segno impliciti. Per le
+shell la trasformazione mantiene concorde la normale positiva e applica
+esplicitamente la legge tensoriale a `Nx`, `Ny`, `Nxy`, `Mx`, `My`, `Mxy` e
+quella vettoriale a `Vx`, `Vy`. Le reazioni sono trasformate dal sistema
+globale agli assi della fondazione.
 
 ## Unità, assi, segni e identificativi
 
@@ -214,23 +229,27 @@ revisione diversa del modello o dell'analisi.
 | `norms` | Applicare formule, limiti e coefficienti normativi a input già espliciti |
 | Consumer | Conservare contratti completi, versione della libreria, warning ed errori; gestire rete, job e persistenza |
 
-## Matrice dati per verifiche future
+## Matrice dati per le verifiche globali
 
 I dati FEM indicati sono necessari ma non sufficienti: resistenze, armature,
-dettagli costruttivi e parametri normativi resteranno nei modelli applicativi e
-nelle norme.
+dettagli costruttivi e parametri normativi appartengono ai modelli applicativi
+e alle norme.
 
-| Verifica futura | Dati FEM necessari |
+| Verifica | Dati FEM necessari |
 | --- | --- |
-| Setti | mapping setto → shell/section cut/piani; assi e facce shell; risultanti `Nx`, `Ny`, `Nxy`, `Mx`, `My`, `Mxy`, `Vx`, `Vy`; posizione; azioni di section cut; combinazione governante |
+| Setti | mapping setto → shell/section cut/piani; trasformazioni negli assi resistenti; risultanti e azioni di section cut per ogni stato concorrente; combinazione governante |
 | Derive e spostamenti globali | nodi e quote di piano; diaframmi; spostamenti/rotazioni nodali; risultati per piano; altezza interpiano; combinazione |
 | Regolarità torsionale | mapping piano/diaframma; centri di massa e rigidezza; spostamenti ai bordi; rotazione del diaframma; indicatori torsionali e combinazione |
 | Masse partecipanti | sorgente di massa e direzioni; periodi/frequenze; forme modali; fattori e masse partecipanti per direzione |
 | Effetti P-Delta | procedura `second-order-static`; ipotesi di rigidezza; masse/carichi gravitazionali; spostamenti; azioni; convergenza e residui |
-| Gerarchia trave-pilastro | mapping ruoli dei membri e giunti; estremità delle aste; azioni locali per stazione e combinazione; sezioni/materiali referenziati; capacità da application/norm |
+| Gerarchia trave-pilastro | mapping ruoli dei membri e giunti; estremità delle aste; trasformazioni negli assi resistenti; azioni per stato concorrente; sezioni/materiali referenziati; capacità da application/norm |
 | Taglio nei nodi | nodo del giunto; aste incidenti e lato start/end; assi locali; azioni alle facce del nodo; combinazione; geometria e armature da application |
 | Gerarchia a taglio di travi e pilastri | mapping membro; inviluppi di `Vy`/`Vz`, momenti e assiale; stazioni; combinazioni governanti; capacità flessionali/taglio da application/norm |
 | Gerarchia a taglio dei setti | mapping setto; section cut; risultanti shell e tagli globali; piano e combinazione; capacità flessionali/taglio da application/norm |
+| Solette e piastre | mapping impalcato → shell/diaframma; trasformazioni tensoriali; risultanti concorrenti per SLU e SLE; proprietà, armature e limiti da application/norm |
+| Punzonamento | connessione punzonabile; nodo, shell ed estremità delle aste di sostegno; reazioni e risultanti concorrenti per ogni combinazione ultima; geometria e armature da application |
+| Diaframmi | shell e diaframma associati; azioni membranali sismiche concorrenti; amplificazione normativa; capacità e dettagli dei collettori da application/norm |
+| Fondazioni | mapping fondazione → supporti/nodi; reazioni concorrenti trasformate negli assi resistenti; combinazioni SLU geotecniche/strutturali, SLE e sismiche; terreno, geometria e resistenze da application |
 
 ## Esempio ridotto
 
@@ -356,7 +375,7 @@ dopo fixture di interoperabilità e regressioni su payload reali anonimizzati.
 
 ## Conformità di adapter e solver
 
-Un futuro adapter esterno o solver interno deve:
+Qualunque adapter esterno o solver interno deve:
 
 1. produrre prima il manifest delle capability, usando `false` per ciò che non
    supporta;
@@ -368,6 +387,6 @@ Un futuro adapter esterno o solver interno deve:
 7. eseguire i validator individuali e infine `validateGlobalFemContractSet`;
 8. conservare warning, errori e payload completo nel consumer.
 
-L'adapter specifico resta fuori da `strutture-js`. Il futuro solver globale
-interno dovrà produrre gli stessi cinque DTO e passare gli stessi validatori,
+L'adapter specifico resta fuori da `strutture-js`. Anche il solver globale
+interno deve produrre gli stessi cinque DTO e passare gli stessi validatori,
 senza scorciatoie o contratti paralleli.

@@ -421,7 +421,7 @@ function jointFixture(overrides = {}) {
     materials: { concreteMaterial, reinforcementMaterial },
     actions: { columnAxialForce: 200000, columnShearAbove: 50000 },
     beamReinforcement: { topArea: 500, bottomArea: 500 },
-    jointHoops: { diameter: 8, totalArea: 1000, areaPerSet: 220, spacing: 100 },
+    jointHoops: { diameter: 8, totalArea: 1500, areaPerSet: 220, spacing: 100 },
     confinement: {
       faceCoverageRatios: { positiveX: 1, negativeX: 1, positiveZ: 0, negativeZ: 0 },
       oppositeBeamOverlapRatios: { x: 1, z: 0 },
@@ -429,7 +429,7 @@ function jointFixture(overrides = {}) {
     },
     capacityHierarchy: {
       beamMomentResistanceSum: 200e6,
-      effectiveColumnMomentResistance: 250e6,
+      effectiveColumnMomentResistance: 270e6,
       preReducedForMomentSigns: true,
     },
     units,
