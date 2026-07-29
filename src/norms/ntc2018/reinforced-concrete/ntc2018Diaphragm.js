@@ -7,6 +7,9 @@
  * Resistance checks remain chapter-4 section checks.
  */
 
+import { withNormativeReferences } from "../../normativeReference.js";
+import { NTC2018_RC_CHAPTER_7_4_REFERENCES } from "../normativeReferences.js";
+
 export const NTC2018_DIAPHRAGM_FORCE_FACTOR = 1.30;
 
 export const NTC2018_DIAPHRAGM_REFERENCES = Object.freeze([
@@ -43,6 +46,7 @@ export function amplifyNTC2018DiaphragmActions({ analysisActions } = {}) {
     throw new Error("analysisActions must contain at least one component.");
   }
 
+  // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A7.4.4.4.1
   const designActions = Object.fromEntries(
     entries.map(([component, value]) => [
       component,
@@ -55,6 +59,10 @@ export function amplifyNTC2018DiaphragmActions({ analysisActions } = {}) {
     designActions,
     amplificationFactor: NTC2018_DIAPHRAGM_FORCE_FACTOR,
     reference: "NTC 2018 § 7.4.4.4.1",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.diaphragm],
+    ),
   };
 }
 
@@ -100,5 +108,9 @@ export function createDiaphragmAssessment({
           "No chapter-4 in-plane resistance checks were supplied; only the § 7.4.4.4.1 demand amplification was performed.",
         ],
     references: NTC2018_DIAPHRAGM_REFERENCES,
+    metadata: withNormativeReferences(
+      demand.metadata,
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.diaphragm],
+    ),
   };
 }

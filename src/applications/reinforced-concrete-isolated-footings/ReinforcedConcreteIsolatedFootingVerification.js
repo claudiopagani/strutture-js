@@ -25,10 +25,30 @@ import {
   calculateEn1992DesignBondStrength,
   calculateEn1992LocalBearingResistance,
 } from "../../norms/en1992/reinforced-concrete/index.js";
+import { EN1992_RC_EXTERNAL_REFERENCES } from "../../norms/en1992/normativeReferences.js";
+import { withNormativeReferences } from "../../norms/normativeReference.js";
+import {
+  NTC2018_RC_CHAPTER_4_REFERENCES,
+  NTC2018_RC_OUTSIDE_CORPUS_REFERENCES,
+} from "../../norms/ntc2018/normativeReferences.js";
 
 const INTERNAL_UNITS = Object.freeze({ force: "N", length: "mm" });
 const UNIT_WIDTH = 1000;
 const PUNCHING_2004 = "EN1992_1_1_2004_A1_2014";
+const FOOTING_NORMATIVE_REFERENCES = Object.freeze([
+  NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.foundationDesign,
+  NTC2018_RC_CHAPTER_4_REFERENCES.flexureAndAxialForce,
+  NTC2018_RC_CHAPTER_4_REFERENCES.shearWithoutTransverseReinforcement,
+  NTC2018_RC_CHAPTER_4_REFERENCES.punching,
+  NTC2018_RC_CHAPTER_4_REFERENCES.anchorage,
+  EN1992_RC_EXTERNAL_REFERENCES.punching2004,
+  EN1992_RC_EXTERNAL_REFERENCES.localBearing,
+  EN1992_RC_EXTERNAL_REFERENCES.bondAndAnchorage,
+]);
+
+function footingMetadata(metadata = {}) {
+  return withNormativeReferences(metadata, FOOTING_NORMATIVE_REFERENCES);
+}
 
 function totalVerticalForce(model) {
   return model.actions.columnVerticalForce +
@@ -287,11 +307,14 @@ function verifyPunchingForFooting({ model, contact, directions }) {
           capacity: round(Math.max(model.geometry.widthX, model.geometry.widthY)),
           utilizationRatio: 0,
           ok: true,
-          metadata: {
+          metadata: withNormativeReferences({
             method: "EN1992-1-1-2004-control-perimeter-at-2d",
             nonApplicabilityReason:
               "The basic control perimeter at 2d reaches or crosses the footing boundary; one-way shear remains checked.",
-          },
+          }, [
+            NTC2018_RC_CHAPTER_4_REFERENCES.punching,
+            EN1992_RC_EXTERNAL_REFERENCES.punching2004,
+          ]),
         },
       ],
       outputs: {
@@ -329,6 +352,8 @@ function verifyPunchingForFooting({ model, contact, directions }) {
     };
   }
 
+  // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A4.1.2.3.5.4
+  // @see https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-2-design-concrete-structures
   const offset = 2 * effectiveDepth;
   const perimeterPolygon = roundedRectanglePolygon(
     model.column.widthX,
@@ -472,6 +497,7 @@ function verifyLocalBearing(model) {
   );
   const distributionArea = model.localBearing.distributionArea ??
     distributionWidthX * distributionWidthY;
+  // @see https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-2-design-concrete-structures
   const bearing = calculateEn1992LocalBearingResistance({
     loadedArea,
     distributionArea,
@@ -504,10 +530,10 @@ function verifyLocalBearing(model) {
         ok: maximumInterfacePressure <=
           model.localBearing.resistanceReductionFactor *
             model.materials.concreteMaterial.fcd,
-        metadata: {
+        metadata: withNormativeReferences({
           method: "nonuniform-interface-peak-stress-no-dispersion-enhancement",
           reference: "EN1992-1-1:2004-6.7(3)",
-        },
+        }, [EN1992_RC_EXTERNAL_REFERENCES.localBearing]),
       }
     : {
         id: "rc-footing-column-interface-crushing",
@@ -518,11 +544,11 @@ function verifyLocalBearing(model) {
           model.actions.columnVerticalForce / bearing.resistance,
         ),
         ok: model.actions.columnVerticalForce <= bearing.resistance,
-        metadata: {
+        metadata: withNormativeReferences({
           ...bearing,
           loadedArea,
           distributionArea,
-        },
+        }, [EN1992_RC_EXTERNAL_REFERENCES.localBearing]),
       };
 
   return {
@@ -553,6 +579,8 @@ function verifyFootingAnchorages(model) {
   ].filter(([, anchor]) => anchor);
 
   return anchors.map(([id, anchor]) => {
+    // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A4.1.2.3.10
+    // @see https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-2-design-concrete-structures
     const bond = calculateEn1992DesignBondStrength({
       fctd: anchor.fctd ?? fctd,
       barDiameter: anchor.diameter,
@@ -579,7 +607,13 @@ function verifyFootingAnchorages(model) {
       capacity: round(anchor.availableLength),
       utilizationRatio: round(required.designLength / anchor.availableLength),
       ok: required.designLength <= anchor.availableLength,
-      metadata: { ...required, fbd: round(bond.fbd) },
+      metadata: withNormativeReferences(
+        { ...required, fbd: round(bond.fbd) },
+        [
+          NTC2018_RC_CHAPTER_4_REFERENCES.anchorage,
+          EN1992_RC_EXTERNAL_REFERENCES.bondAndAnchorage,
+        ],
+      ),
     };
   });
 }
@@ -592,6 +626,7 @@ export class ReinforcedConcreteIsolatedFootingVerification {
 
   verify(model) {
     const nEd = totalVerticalForce(model);
+    // @see https://www.gazzettaufficiale.it/eli/id/2018/02/20/18A00716/sg
     const contact = new RectangularFootingContactAnalysis().analyze({
       widthX: model.geometry.widthX,
       widthY: model.geometry.widthY,
@@ -606,10 +641,10 @@ export class ReinforcedConcreteIsolatedFootingVerification {
       capacity: 1,
       utilizationRatio: round(contact.equilibriumUtilization),
       ok: contact.status !== "no-compressive-equilibrium",
-      metadata: {
+      metadata: withNormativeReferences({
         contactType: contact.contactType,
         reference: "rigid-rectangular-base-no-tension-contact",
-      },
+      }, [NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.foundationDesign]),
     };
 
     if (contact.status === "no-compressive-equilibrium") {
@@ -625,7 +660,7 @@ export class ReinforcedConcreteIsolatedFootingVerification {
         assumptions: [
           "Soil contact has zero tensile strength and the footing base is treated as rigid for pressure distribution.",
         ],
-        metadata: { code: this.code, ...this.metadata },
+        metadata: footingMetadata({ code: this.code, ...this.metadata }),
       });
     }
 
@@ -642,7 +677,7 @@ export class ReinforcedConcreteIsolatedFootingVerification {
         assumptions: [
           "No biaxial effective-area or rectangularized contact approximation is applied.",
         ],
-        metadata: { code: this.code, ...this.metadata },
+        metadata: footingMetadata({ code: this.code, ...this.metadata }),
       });
     }
 
@@ -655,10 +690,10 @@ export class ReinforcedConcreteIsolatedFootingVerification {
         contact.maximumPressure / model.soil.designBearingResistance,
       ),
       ok: contact.maximumPressure <= model.soil.designBearingResistance,
-      metadata: {
+      metadata: withNormativeReferences({
         resistanceSource: model.soil.bearingResistanceSource,
         geotechnicalResistanceCalculatedByModule: false,
-      },
+      }, [NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.foundationDesign]),
     };
     const horizontalDemand = Math.hypot(
       model.actions.horizontalX,
@@ -682,10 +717,10 @@ export class ReinforcedConcreteIsolatedFootingVerification {
           ok:
             horizontalDemand === 0 ||
             horizontalDemand <= model.soil.designSlidingResistance,
-          metadata: {
+          metadata: withNormativeReferences({
             resistanceSource: model.soil.slidingResistanceSource,
             geotechnicalResistanceCalculatedByModule: false,
-          },
+          }, [NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.foundationDesign]),
         };
 
     if (slidingMissing) {
@@ -699,7 +734,7 @@ export class ReinforcedConcreteIsolatedFootingVerification {
           "Pass soil.designSlidingResistance from a justified geotechnical verification; the structural module does not derive it from an assumed friction coefficient.",
         ],
         assumptions: [],
-        metadata: { code: this.code, ...this.metadata },
+        metadata: footingMetadata({ code: this.code, ...this.metadata }),
       });
     }
 
@@ -797,13 +832,13 @@ export class ReinforcedConcreteIsolatedFootingVerification {
         "The column is centered and unrotated, and all actions are reduced to the center of the footing base.",
         "The assigned bearing and sliding resistances already include the geotechnical design approach and partial factors selected by the responsible geotechnical verification.",
       ],
-      metadata: {
+      metadata: footingMetadata({
         code: this.code,
         method: "rigid-rectangular-footing-compression-only-contact-plus-rc-checks",
         governingCheckId: governing?.id ?? null,
         geotechnicalCapacityCalculated: false,
         ...this.metadata,
-      },
+      }),
     });
   }
 }

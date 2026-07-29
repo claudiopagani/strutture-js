@@ -20,6 +20,8 @@ import {
   resolveServiceabilityOptions,
 } from "./serviceability/serviceabilityOptions.js";
 import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
+import { withNormativeReferences } from "../../../norms/normativeReference.js";
+import { NTC2018_RC_CHAPTER_4_REFERENCES } from "../../../norms/ntc2018/normativeReferences.js";
 
 function concreteStressLimit({ combinationType, concreteMaterial }) {
   const normalizedCombination = normalizeCombinationType(combinationType);
@@ -37,6 +39,8 @@ function concreteStressLimit({ combinationType, concreteMaterial }) {
     return {
       id: "rare",
       factor: 0.6,
+      normativeReference:
+        NTC2018_RC_CHAPTER_4_REFERENCES.concreteStressCharacteristic,
       value: 0.6 * fck,
       method: "ntc2018-4.1.2.2.5.1-characteristic",
     };
@@ -46,6 +50,8 @@ function concreteStressLimit({ combinationType, concreteMaterial }) {
     return {
       id: "quasi-permanent",
       factor: 0.45,
+      normativeReference:
+        NTC2018_RC_CHAPTER_4_REFERENCES.concreteStressQuasiPermanent,
       value: 0.45 * fck,
       method: "ntc2018-4.1.2.2.5.1-quasi-permanent",
     };
@@ -70,12 +76,30 @@ function steelStressLimit({ combinationType, reinforcementMaterial }) {
     return {
       id: "rare",
       factor: 0.8,
+      normativeReference: NTC2018_RC_CHAPTER_4_REFERENCES.reinforcementStress,
       value: 0.8 * fyk,
       method: "ntc2018-4.1.2.2.5.2-characteristic",
     };
   }
 
   return null;
+}
+
+function serviceabilityReferences({
+  combinationType,
+  concreteMaterial,
+  reinforcementMaterial,
+  includeCrackControl = false,
+}) {
+  return [
+    concreteStressLimit({ combinationType, concreteMaterial })
+      ?.normativeReference,
+    steelStressLimit({ combinationType, reinforcementMaterial })
+      ?.normativeReference,
+    includeCrackControl
+      ? NTC2018_RC_CHAPTER_4_REFERENCES.crackWidth
+      : null,
+  ].filter(Boolean);
 }
 
 function resolveStressActions({ nEd, mEd, mxEd, myEd }) {
@@ -195,7 +219,7 @@ export class ReinforcedConcreteServiceabilityVerification {
           crackControlComplete: true,
           tensileBars: [],
         },
-        metadata: {
+        metadata: withNormativeReferences({
           code: this.code,
           method: "ntc2018-sle-serviceability",
           governingCheckId: null,
@@ -212,7 +236,12 @@ export class ReinforcedConcreteServiceabilityVerification {
           creepCoefficient: options.deflection.creepCoefficient,
           includeShrinkage: options.deflection.includeShrinkage,
           ...this.metadata,
-        },
+        }, serviceabilityReferences({
+          combinationType: context.combinationType ?? null,
+          concreteMaterial,
+          reinforcementMaterial,
+          includeCrackControl: true,
+        })),
       };
     }
 
@@ -258,11 +287,15 @@ export class ReinforcedConcreteServiceabilityVerification {
           error.message,
         ],
         assumptions,
-        metadata: {
+        metadata: withNormativeReferences({
           code: this.code,
           method: "ntc2018-sle-serviceability",
           ...this.metadata,
-        },
+        }, serviceabilityReferences({
+          combinationType: context.combinationType ?? null,
+          concreteMaterial,
+          reinforcementMaterial,
+        })),
       };
     }
 
@@ -287,13 +320,14 @@ export class ReinforcedConcreteServiceabilityVerification {
     });
 
     if (concreteLimit) {
+      // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A4.1.2.2.5.1
       checks.push(
         utilizationCheck({
           id: "rc-sle-concrete-stress",
           description: "Concrete compression stress limit in service",
           demand: concreteCompression,
           capacity: concreteLimit.value,
-          metadata: {
+          metadata: withNormativeReferences({
             method: concreteLimit.method,
             combinationType,
             limitFactor: concreteLimit.factor,
@@ -303,19 +337,20 @@ export class ReinforcedConcreteServiceabilityVerification {
             mxEd: round(stressActions.userMxEd),
             myEd: round(stressActions.userMyEd),
             biaxialStress: stressActions.biaxialStress,
-          },
+          }, [concreteLimit.normativeReference]),
         }),
       );
     }
 
     if (steelLimit) {
+      // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A4.1.2.2.5.2
       checks.push(
         utilizationCheck({
           id: "rc-sle-steel-stress",
           description: "Reinforcement stress limit in service",
           demand: steelStress,
           capacity: steelLimit.value,
-          metadata: {
+          metadata: withNormativeReferences({
             method: steelLimit.method,
             combinationType,
             limitFactor: steelLimit.factor,
@@ -325,7 +360,7 @@ export class ReinforcedConcreteServiceabilityVerification {
             mxEd: round(stressActions.userMxEd),
             myEd: round(stressActions.userMyEd),
             biaxialStress: stressActions.biaxialStress,
-          },
+          }, [steelLimit.normativeReference]),
         }),
       );
     }
@@ -462,7 +497,7 @@ export class ReinforcedConcreteServiceabilityVerification {
           kappaZ: round(solvedState.strainField.kappaZ, 12),
         },
       },
-      metadata: {
+      metadata: withNormativeReferences({
         code: this.code,
         method: "ntc2018-sle-serviceability",
         governingCheckId: governing?.id ?? null,
@@ -479,7 +514,12 @@ export class ReinforcedConcreteServiceabilityVerification {
         creepCoefficient: options.deflection.creepCoefficient,
         includeShrinkage: options.deflection.includeShrinkage,
         ...this.metadata,
-      },
+      }, serviceabilityReferences({
+        combinationType,
+        concreteMaterial,
+        reinforcementMaterial,
+        includeCrackControl: Boolean(widthClass),
+      })),
     };
   }
 

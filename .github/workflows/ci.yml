@@ -8,9 +8,16 @@ jobs:
   quality-and-validation:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      STRUTTURE_NORMATIVE_PATH: .normative/strutture-normative
 
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: claudiopagani/strutture-normative
+          ref: 41da3faa489600173106935bbcf726119300e48d
+          path: .normative/strutture-normative
       - uses: actions/setup-node@v4
         with:
           node-version: 24

@@ -311,3 +311,13 @@ export {
   verifyNTC2018AccidentalEccentricities,
   verifyNTC2018ModalMassParticipation,
 } from "./seismicAnalysisChecks.js";
+
+export {
+  CIRC2019_RC_REFERENCES,
+  NORMATIVE_REFERENCE_RELATIONS,
+  NORMATIVE_REFERENCE_RESOLUTION_STATUS,
+  NTC2018_NORMATIVE_CORPUS,
+  NTC2018_RC_CHAPTER_4_REFERENCES,
+  NTC2018_RC_CHAPTER_7_4_REFERENCES,
+  NTC2018_RC_OUTSIDE_CORPUS_REFERENCES,
+} from "./normativeReferences.js";

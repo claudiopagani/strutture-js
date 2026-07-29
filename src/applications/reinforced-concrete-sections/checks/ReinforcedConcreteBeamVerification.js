@@ -10,6 +10,7 @@ import { ReinforcedConcreteShearVerification } from "./ReinforcedConcreteShearVe
 import { ReinforcedConcreteTorsionVerification } from "./ReinforcedConcreteTorsionVerification.js";
 import { ReinforcedConcreteBeamDetailingVerification } from "./ReinforcedConcreteBeamDetailingVerification.js";
 import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
+import { withNormativeReferences } from "../../../norms/normativeReference.js";
 
 const DEFAULT_SECTION_UNITS = Object.freeze({ force: "N", length: "mm" });
 
@@ -574,6 +575,8 @@ export class ReinforcedConcreteBeamVerification {
       }, {}),
     );
     const governing = governingCheck(groupedChecks);
+    const normativeReferences = groupedChecks.flatMap((check) =>
+      check.metadata?.normativeReferences ?? []);
 
     return new VerificationResult({
       applicationId: "reinforced-concrete-beams",
@@ -612,13 +615,13 @@ export class ReinforcedConcreteBeamVerification {
         ...actionVerification.assumptions,
         "Each FEM station is checked as an independent RC section; ULS bending and SLE stress checks use biaxial actions when present, while crack control remains based on the primary bending plane.",
       ],
-      metadata: {
+      metadata: withNormativeReferences({
         code: this.code,
         beamId,
         governingCheckId: governing?.id ?? null,
         verificationStations,
         ...this.metadata,
-      },
+      }, normativeReferences),
     });
   }
 }

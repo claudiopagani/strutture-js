@@ -6,6 +6,8 @@ import {
   createRcSectionAnalysisContext,
 } from "../shared/RcSectionAnalysisContext.js";
 import { round } from "../shared/rcCommon.js";
+import { withNormativeReferences } from "../../../norms/normativeReference.js";
+import { NTC2018_RC_CHAPTER_4_REFERENCES } from "../../../norms/ntc2018/normativeReferences.js";
 
 function summarizeOptionalPoint(point) {
   return point == null ? null : RCMomentCurvatureAnalyzer.summarizePoint(point);
@@ -143,12 +145,15 @@ export function runMomentCurvatureWorkflow(model, { code, metadata }) {
       "postUltimateFractureEnergyDensity is an energy per unit volume, expressed internally as N/mm2; it is not a mesh-regularized fracture energy per unit crack area.",
       "NTC 2018 ductility outputs use M'yd at the first-yield curvature, phiYd = MRd / M'yd * phiPrimeYd, and the earlier event between material ultimate strain and a 15% post-peak resistance drop.",
     ],
-    metadata: {
+    metadata: withNormativeReferences({
       code,
       sectionId: model.id,
       analysisType: model.analysisType,
       solverMethod: "fiber-section-axial-equilibrium",
       ...metadata,
-    },
+    }, [
+      NTC2018_RC_CHAPTER_4_REFERENCES.flexureAndAxialForce,
+      NTC2018_RC_CHAPTER_4_REFERENCES.curvatureDuctility,
+    ]),
   });
 }

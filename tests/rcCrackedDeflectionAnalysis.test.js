@@ -71,6 +71,11 @@ test("RC cracked deflection application consumes its public beam model", () => {
   assert.equal(model.section, source.section);
   assert.notEqual(result.status, "not-analyzed");
   assert.equal(result.outputs.performance.profile, "interactive");
+  assert.ok(result.metadata.normativeReferences.some((reference) =>
+    reference.unitId ===
+      "urn:structural-codes:it:unit:ntc2018:4.1.2.2.2"));
+  assert.ok(result.metadata.normativeReferences.some((reference) =>
+    reference.citation.includes("EN 1992-1-1:2004 § 7.4.3")));
 });
 
 function createDefaultDeflectionSection() {

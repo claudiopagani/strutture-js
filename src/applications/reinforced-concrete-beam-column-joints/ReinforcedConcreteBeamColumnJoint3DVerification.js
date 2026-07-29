@@ -2,6 +2,8 @@ import { VerificationResult } from "../../core/results/VerificationResult.js";
 import { governingCheck } from "../../core/results/checkUtils.js";
 import { RESULT_STATUS } from "../../core/results/resultStatus.js";
 import { ReinforcedConcreteBeamColumnJointVerification } from "./ReinforcedConcreteBeamColumnJointVerification.js";
+import { withNormativeReferences } from "../../norms/normativeReference.js";
+import { NTC2018_RC_CHAPTER_7_4_REFERENCES } from "../../norms/ntc2018/normativeReferences.js";
 
 export class ReinforcedConcreteBeamColumnJoint3DVerification {
   constructor({ code = "NTC2018", metadata = {} } = {}) {
@@ -59,12 +61,16 @@ export class ReinforcedConcreteBeamColumnJoint3DVerification {
         ...directionalResults.flatMap(({ directionId, result }) =>
           result.assumptions.map((assumption) => `[${directionId}] ${assumption}`)),
       ],
-      metadata: {
+      metadata: withNormativeReferences({
         code: this.code,
         method: "ntc2018-concurrent-directional-joint-checks",
         governingCheckId: governing?.id ?? null,
         ...this.metadata,
-      },
+      }, [
+        NTC2018_RC_CHAPTER_7_4_REFERENCES.beamColumnJoint,
+        NTC2018_RC_CHAPTER_7_4_REFERENCES.jointGeometry,
+        NTC2018_RC_CHAPTER_7_4_REFERENCES.jointDetailing,
+      ]),
     });
   }
 }

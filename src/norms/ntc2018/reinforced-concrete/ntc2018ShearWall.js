@@ -10,6 +10,12 @@ import {
   NTC2018_STRUCTURAL_BEHAVIOR,
   normalizeNTC2018StructuralBehavior,
 } from "./structuralBehavior.js";
+import { withNormativeReferences } from "../../normativeReference.js";
+import { NTC2018_RC_CHAPTER_7_4_REFERENCES } from "../normativeReferences.js";
+
+function wallMetadata(references) {
+  return withNormativeReferences({}, references);
+}
 
 export const NTC2018_SHEAR_WALL_REFERENCES = Object.freeze([
   Object.freeze({
@@ -64,6 +70,7 @@ export function computeWallCriticalZoneHeight({
   const storeyCap = storeys <= 6
     ? clearStoreyHeight
     : 2 * clearStoreyHeight;
+  // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A7.4.4.5.1
   const hCr = Math.min(uncapped, 2 * length, storeyCap);
   return {
     hCr,
@@ -73,6 +80,7 @@ export function computeWallCriticalZoneHeight({
       storeyHeight: storeyCap,
     },
     reference: "NTC 2018 § 7.4.4.5.1, Eq. [7.4.13]",
+    metadata: wallMetadata([NTC2018_RC_CHAPTER_7_4_REFERENCES.wall]),
   };
 }
 
@@ -102,6 +110,7 @@ export function computeWallMomentShift({
     slender,
     hCr: criticalZone.hCr,
     reference: "NTC 2018 § 7.4.4.5.1 (Presso-flessione)",
+    metadata: wallMetadata([NTC2018_RC_CHAPTER_7_4_REFERENCES.wall]),
   };
 }
 
@@ -139,6 +148,9 @@ export function computeWallCapacityShear({
       gammaRd: null,
       slender: height / length > 2,
       reference: "NTC 2018 § 7.4.1",
+      metadata: wallMetadata([
+        NTC2018_RC_CHAPTER_7_4_REFERENCES.structuralBehavior,
+      ]),
     };
   }
   if (behaviorFactor < 1.5) {
@@ -151,6 +163,7 @@ export function computeWallCapacityShear({
   let rawAmplificationFactor;
   let amplificationFactor;
 
+  // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A7.4.4.5.1
   if (slender) {
     const spectrumTc = positive(elasticSpectrumTc, "elasticSpectrumTc");
     const spectrumT1 = positive(elasticSpectrumT1, "elasticSpectrumT1");
@@ -176,6 +189,7 @@ export function computeWallCapacityShear({
     reference: slender
       ? "NTC 2018 § 7.4.4.5.1, Eq. [7.4.14]"
       : "NTC 2018 § 7.4.4.5.1, Eq. [7.4.15]",
+    metadata: wallMetadata([NTC2018_RC_CHAPTER_7_4_REFERENCES.wall]),
   };
 }
 
@@ -217,6 +231,7 @@ export function verifyWallShear({
       utilizationRatio: demand / concreteCompressionResistance,
       ok: demand <= concreteCompressionResistance,
       reference: "NTC 2018 § 7.4.4.5.1 (taglio-compressione)",
+      metadata: wallMetadata([NTC2018_RC_CHAPTER_7_4_REFERENCES.wall]),
     },
     {
       check: "wall-shear-web-tension",
@@ -225,6 +240,7 @@ export function verifyWallShear({
       utilizationRatio: demand / webTensionResistance,
       ok: demand <= webTensionResistance,
       reference: "NTC 2018 § 7.4.4.5.1 (taglio-trazione)",
+      metadata: wallMetadata([NTC2018_RC_CHAPTER_7_4_REFERENCES.wall]),
     },
   ];
 
@@ -237,6 +253,7 @@ export function verifyWallShear({
       utilizationRatio: demand / sliding,
       ok: demand <= sliding,
       reference: "NTC 2018 § 7.4.4.5.1, Eqs. [7.4.18]-[7.4.22]",
+      metadata: wallMetadata([NTC2018_RC_CHAPTER_7_4_REFERENCES.wall]),
     });
     if (isSquatWall) {
       const inclined = nonNegative(
@@ -251,6 +268,7 @@ export function verifyWallShear({
         ok: inclined > demand / 2,
         comparison: ">",
         reference: "NTC 2018 § 7.4.4.5.1 (Vid > VEd/2)",
+        metadata: wallMetadata([NTC2018_RC_CHAPTER_7_4_REFERENCES.wall]),
       });
     }
   }
@@ -262,6 +280,7 @@ export function verifyWallShear({
     webTensionResistance,
     checks,
     reference: "NTC 2018 § 7.4.4.5.1",
+    metadata: wallMetadata([NTC2018_RC_CHAPTER_7_4_REFERENCES.wall]),
   };
 }
 
@@ -278,6 +297,7 @@ export function verifyWallBoundaryConfinement({
     threshold: 0.0035,
     check: "wall-boundary-confinement-region",
     reference: "NTC 2018 § 7.4.4.5.2",
+    metadata: wallMetadata([NTC2018_RC_CHAPTER_7_4_REFERENCES.wallDuctility]),
   };
 }
 
@@ -293,6 +313,7 @@ export function computeWallBoundaryLength({
   if (typeof simplifiedDetailing !== "boolean") {
     throw new Error("simplifiedDetailing must be boolean.");
   }
+  // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A7.4.4.5.2
   const minimumLength = simplifiedDetailing
     ? Math.max(0.20 * length, 1.5 * thickness)
     : Math.max(0.15 * length, 0.15 * thickness);
@@ -304,6 +325,12 @@ export function computeWallBoundaryLength({
     reference: simplifiedDetailing
       ? "NTC 2018 §§ 7.4.4.5.2 e 7.4.6.2.4"
       : "NTC 2018 § 7.4.4.5.2",
+    metadata: wallMetadata([
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.wallDuctility,
+      ...(simplifiedDetailing
+        ? [NTC2018_RC_CHAPTER_7_4_REFERENCES.wallDetailing]
+        : []),
+    ]),
   };
 }
 
@@ -327,6 +354,9 @@ export function computeWallConfinementOmegaWd({
       equationValue: 0,
       minimumValue: 0,
       reference: "NTC 2018 § 7.4.1",
+      metadata: wallMetadata([
+        NTC2018_RC_CHAPTER_7_4_REFERENCES.structuralBehavior,
+      ]),
     };
   }
   const alpha = positive(confinementEffectiveness, "confinementEffectiveness");
@@ -339,6 +369,7 @@ export function computeWallConfinementOmegaWd({
   const epsSy = positive(reinforcementYieldStrain, "reinforcementYieldStrain");
   const bc = positive(grossSectionDepth, "grossSectionDepth");
   const b0 = positive(confinedCoreDepth, "confinedCoreDepth");
+  // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A7.4.6.2.4
   const equationValue = (
     30 * muPhi * (nuD + omegaV) * epsSy * (bc / b0) - 0.035
   ) / alpha;
@@ -349,6 +380,9 @@ export function computeWallConfinementOmegaWd({
     equationValue,
     minimumValue,
     reference: "NTC 2018 § 7.4.6.2.4, Eq. [7.4.32]",
+    metadata: wallMetadata([
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.wallDetailing,
+    ]),
   };
 }
 
@@ -375,6 +409,7 @@ export function createWallSectionAssessment({
     comparison: ">",
     ok: length / thickness > 4,
     reference: "NTC 2018 § 7.4.4.5",
+    metadata: wallMetadata([NTC2018_RC_CHAPTER_7_4_REFERENCES.wall]),
   }];
 
   if (normalizedBehavior !== NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE) {
@@ -391,6 +426,7 @@ export function createWallSectionAssessment({
       utilizationRatio: axialRatio / limit,
       ok: axialRatio <= limit,
       reference: "NTC 2018 § 7.4.4.5.1",
+      metadata: wallMetadata([NTC2018_RC_CHAPTER_7_4_REFERENCES.wall]),
     });
   }
   if (flexuralCheck != null) {
@@ -417,5 +453,6 @@ export function createWallSectionAssessment({
     allChecksOk,
     checks,
     references: NTC2018_SHEAR_WALL_REFERENCES,
+    metadata: wallMetadata([NTC2018_RC_CHAPTER_7_4_REFERENCES.wall]),
   };
 }

@@ -8,7 +8,13 @@ import { RESULT_STATUS } from "../../core/results/resultStatus.js";
 import {
   calculateEn1992AnchorageLength,
   calculateEn1992DesignBondStrength,
+  EN1992_RC_EXTERNAL_REFERENCES,
 } from "../../norms/en1992/reinforced-concrete/index.js";
+import { withNormativeReferences } from "../../norms/normativeReference.js";
+import {
+  NTC2018_RC_CHAPTER_4_REFERENCES,
+  NTC2018_RC_CHAPTER_7_4_REFERENCES,
+} from "../../norms/ntc2018/normativeReferences.js";
 
 function positive(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
@@ -19,11 +25,41 @@ function positive(value, label) {
 }
 
 function minCheck(id, description, required, provided, metadata = {}) {
-  return utilizationCheck({ id, description, demand: required, capacity: provided, metadata });
+  return utilizationCheck({
+    id,
+    description,
+    demand: required,
+    capacity: provided,
+    metadata: detailingMetadata(metadata),
+  });
 }
 
 function maxCheck(id, description, provided, allowed, metadata = {}) {
-  return utilizationCheck({ id, description, demand: provided, capacity: allowed, metadata });
+  return utilizationCheck({
+    id,
+    description,
+    demand: provided,
+    capacity: allowed,
+    metadata: detailingMetadata(metadata),
+  });
+}
+
+function detailingMetadata(metadata = {}) {
+  const legacyReference = metadata.reference ?? "";
+  const normativeReference = legacyReference === "NTC2018-4.1.2.3.10"
+    ? NTC2018_RC_CHAPTER_4_REFERENCES.anchorage
+    : legacyReference.startsWith("NTC2018-4.1")
+      ? NTC2018_RC_CHAPTER_4_REFERENCES.columnDetailing
+      : legacyReference === "NTC2018-7.4.6.1.2"
+        ? NTC2018_RC_CHAPTER_7_4_REFERENCES.columnGeometry
+        : legacyReference.startsWith("NTC2018-7.4")
+          ? NTC2018_RC_CHAPTER_7_4_REFERENCES.columnDetailing
+          : null;
+
+  return withNormativeReferences(
+    metadata,
+    normativeReference ? [normativeReference] : [],
+  );
 }
 
 function ductilityClass(value) {
@@ -81,6 +117,7 @@ export class ReinforcedConcreteColumnDetailingVerification {
       Number(transverse.designStrength ?? model.reinforcementMaterial?.fyd),
       "transverse design strength",
     );
+    // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A4.1.6.1.2
     const minimumArea = Math.max(0.1 * compression / fyd, 0.003 * area);
     const maximumArea = 0.04 * area;
     const ordinaryHoopSpacing = Math.min(12 * minBarDiameter, 250);
@@ -106,6 +143,7 @@ export class ReinforcedConcreteColumnDetailingVerification {
         Number(detailing.seismic.sectionDepthInBending ?? Math.max(width, depth)),
         "detailing.seismic.sectionDepthInBending",
       );
+      // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A7.4.6.2.2
       const criticalZoneLength = clearHeight < 3 * sectionDepthInBending
         ? clearHeight
         : Math.max(sectionDepthInBending, clearHeight / 6, 450);
@@ -204,7 +242,26 @@ export class ReinforcedConcreteColumnDetailingVerification {
       });
       const axialTension = compression <= 0 && Math.abs(model.actions.nEd) > 0;
       const requiredLength = base.designLength * (axialTension ? 1.5 : 1);
-      checks.push(minCheck("rc-column-longitudinal-anchorage", "Column longitudinal bar anchorage", requiredLength, anchor.availableLength, { reference: axialTension ? "NTC2018-7.4.6.2.2" : "NTC2018-4.1.2.3.10", fbd: round(bond.fbd), axialTensionFactor: axialTension ? 1.5 : 1 }));
+      checks.push(minCheck(
+        "rc-column-longitudinal-anchorage",
+        "Column longitudinal bar anchorage",
+        requiredLength,
+        anchor.availableLength,
+        withNormativeReferences({
+          reference: axialTension
+            ? "NTC2018-7.4.6.2.2"
+            : "NTC2018-4.1.2.3.10",
+          fbd: round(bond.fbd),
+          axialTensionFactor: axialTension ? 1.5 : 1,
+        }, [
+          EN1992_RC_EXTERNAL_REFERENCES.bondAndAnchorage,
+          NTC2018_RC_CHAPTER_4_REFERENCES.anchorage,
+          NTC2018_RC_CHAPTER_4_REFERENCES.bondDesignStrength,
+          ...(axialTension
+            ? [NTC2018_RC_CHAPTER_7_4_REFERENCES.columnDetailing]
+            : []),
+        ]),
+      ));
       anchorageOutput = { ...base, requiredLength, fbd: bond.fbd };
     }
 
@@ -229,7 +286,25 @@ export class ReinforcedConcreteColumnDetailingVerification {
         "Confinement volumePerSet is the total steel volume effective in one transverse-reinforcement set inside the core.",
         "restrainedBarSpacings contains every clear centre-line spacing between consecutive laterally restrained longitudinal bars around the core.",
       ],
-      metadata: { code: this.code, governingCheckId: governing?.id ?? null },
+      metadata: withNormativeReferences({
+        code: this.code,
+        governingCheckId: governing?.id ?? null,
+      }, [
+        NTC2018_RC_CHAPTER_4_REFERENCES.columnDetailing,
+        ...(detailing.seismic?.enabled === true
+          ? [
+              NTC2018_RC_CHAPTER_7_4_REFERENCES.columnGeometry,
+              NTC2018_RC_CHAPTER_7_4_REFERENCES.columnDetailing,
+            ]
+          : []),
+        ...(detailing.anchorage
+          ? [
+              NTC2018_RC_CHAPTER_4_REFERENCES.anchorage,
+              NTC2018_RC_CHAPTER_4_REFERENCES.bondDesignStrength,
+              EN1992_RC_EXTERNAL_REFERENCES.bondAndAnchorage,
+            ]
+          : []),
+      ]),
     });
   }
 }

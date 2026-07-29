@@ -6,6 +6,11 @@ import { ReinforcedConcreteSectionVerification } from "../reinforced-concrete-se
 import { ReinforcedConcreteShearVerification } from "../reinforced-concrete-sections/checks/ReinforcedConcreteShearVerification.js";
 import { ReinforcedConcreteSectionModel } from "../reinforced-concrete-sections/models/ReinforcedConcreteSectionModel.js";
 import { selectNTC2018OverstrengthFactors } from "../../norms/ntc2018/reinforced-concrete/structuralBehavior.js";
+import { withNormativeReferences } from "../../norms/normativeReference.js";
+import {
+  NTC2018_RC_CHAPTER_4_REFERENCES,
+  NTC2018_RC_CHAPTER_7_4_REFERENCES,
+} from "../../norms/ntc2018/normativeReferences.js";
 import { ReinforcedConcreteColumnDetailingVerification } from "./ReinforcedConcreteColumnDetailingVerification.js";
 
 const INTERNAL_UNITS = Object.freeze({ force: "N", length: "mm" });
@@ -128,7 +133,7 @@ function resolveAxis({
       capacity: round(lambdaLimit),
       utilizationRatio: round(ratio),
       ok: secondOrderIncluded,
-      metadata: {
+      metadata: withNormativeReferences({
         reference: "NTC2018-4.1.41-4.1.42",
         screeningExceeded: secondOrderRequired,
         secondOrderIncluded,
@@ -139,7 +144,12 @@ function resolveAxis({
           : secondOrderFlag === true
             ? "input-declared-inclusive"
             : "first-order-screened",
-      },
+      }, [
+        NTC2018_RC_CHAPTER_4_REFERENCES.columnSlenderness,
+        ...(Number.isFinite(nominalRigidity)
+          ? [NTC2018_RC_CHAPTER_4_REFERENCES.nominalStiffness]
+          : []),
+      ]),
     },
   };
 }
@@ -183,6 +193,7 @@ export class ReinforcedConcreteColumnVerification {
       model.actions.nEd,
       model.stability.compressionSignConvention,
     );
+    // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A4.1.2.3.9.2
     const normalizedAxialForce = compression / (concreteArea * fcd);
     const lambdaLimit = normalizedAxialForce > 0
       ? 25 / Math.sqrt(normalizedAxialForce)
@@ -194,6 +205,7 @@ export class ReinforcedConcreteColumnVerification {
       Number.isFinite(concreteElasticModulus) && concreteElasticModulus > 0
         ? concreteElasticModulus / gammaCE
         : null;
+    // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A4.1.2.3.9.3
     const rigidityFactor =
       Number.isFinite(creepCoefficient) && creepCoefficient >= 0
         ? 0.3 / (1 + 0.5 * creepCoefficient)
@@ -304,12 +316,15 @@ export class ReinforcedConcreteColumnVerification {
         assumptions: [
           "The NTC 2018 single-column slenderness screening is applied independently to the two section bending components.",
         ],
-        metadata: {
+        metadata: withNormativeReferences({
           code: this.code,
           method: "ntc2018-4.1.2.3.9.2-screening-and-4.1.44",
           unresolvedAxes: unresolvedAxes.map((axis) => axis.id),
           ...this.metadata,
-        },
+        }, [
+          NTC2018_RC_CHAPTER_4_REFERENCES.columnSlenderness,
+          NTC2018_RC_CHAPTER_4_REFERENCES.nominalStiffness,
+        ]),
       });
     }
 
@@ -357,7 +372,7 @@ export class ReinforcedConcreteColumnVerification {
         sectionResult.status === RESULT_STATUS.OK &&
         Number.isFinite(capacity.utilizationRatio) &&
         capacity.utilizationRatio <= 1,
-      metadata: {
+      metadata: withNormativeReferences({
         method: "fiber-domain-ray-intersection",
         mxEd: round(axisMx.designMoment),
         myEd: round(axisMy.designMoment),
@@ -368,7 +383,7 @@ export class ReinforcedConcreteColumnVerification {
               segmentIndex: capacity.intersection.segmentIndex,
             }
           : null,
-      },
+      }, [NTC2018_RC_CHAPTER_4_REFERENCES.flexureAndAxialForce]),
     };
     const capacityDesign = model.shear?.capacityDesign;
     const seismicGammaRd = model.detailing?.seismic?.enabled
@@ -406,7 +421,7 @@ export class ReinforcedConcreteColumnVerification {
         result.checks = result.checks.map((check) => ({
           ...check,
           id: `${check.id}-${axisId}`,
-          metadata: {
+          metadata: withNormativeReferences({
             ...check.metadata,
             axis: axisId,
             analysisShear: round(Math.abs(shear.vEd ?? action ?? 0)),
@@ -415,7 +430,9 @@ export class ReinforcedConcreteColumnVerification {
             reference: capacityDesignShear > 0
               ? "NTC2018-7.4.5"
               : check.metadata?.reference,
-          },
+          }, capacityDesignShear > 0
+            ? [NTC2018_RC_CHAPTER_7_4_REFERENCES.columnCapacityDesign]
+            : []),
         }));
 
         return [axisId, result];
@@ -486,12 +503,19 @@ export class ReinforcedConcreteColumnVerification {
         "mxEd is paired with concreteSection.inertiaY and myEd with concreteSection.inertiaZ, following the existing RC section action convention.",
         "Explicit total moments are assumed to include imperfections, cracking, creep and second-order effects; generated moments use the documented NTC nominal-stiffness isolated-member method.",
       ],
-      metadata: {
+      metadata: withNormativeReferences({
         code: this.code,
         method: "ntc2018-column-stability-resistance-shear-detailing",
         governingCheckId: governing?.id ?? null,
         ...this.metadata,
-      },
+      }, [
+        NTC2018_RC_CHAPTER_4_REFERENCES.columnSlenderness,
+        NTC2018_RC_CHAPTER_4_REFERENCES.nominalStiffness,
+        NTC2018_RC_CHAPTER_4_REFERENCES.flexureAndAxialForce,
+        ...(capacityDesign
+          ? [NTC2018_RC_CHAPTER_7_4_REFERENCES.columnCapacityDesign]
+          : []),
+      ]),
     });
   }
 }

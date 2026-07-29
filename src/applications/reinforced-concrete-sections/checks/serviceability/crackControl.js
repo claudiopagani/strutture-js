@@ -5,6 +5,8 @@ import {
   utilizationCheck,
 } from "../../shared/rcCommon.js";
 import { normalizeEnvironment } from "./serviceabilityOptions.js";
+import { withNormativeReferences } from "../../../../norms/normativeReference.js";
+import { CIRC2019_RC_REFERENCES } from "../../../../norms/ntc2018/normativeReferences.js";
 
 const CRACK_WIDTH_BY_COMBINATION = Object.freeze({
   ordinary: {
@@ -21,6 +23,7 @@ const CRACK_WIDTH_BY_COMBINATION = Object.freeze({
   },
 });
 
+// @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Acirc2019%3Ac4.1.2.2.4.5
 const MAX_BAR_DIAMETER_TABLE = Object.freeze([
   { sigma: 160, w3: 40, w2: 32, w1: 25 },
   { sigma: 200, w3: 32, w2: 25, w1: 16 },
@@ -253,12 +256,12 @@ export function createIndirectCrackControlChecks({
             "Indirect crack control through maximum reinforcing bar diameter",
           demand: bar.diameter,
           capacity: diameterLimit,
-          metadata: {
+          metadata: withNormativeReferences({
             ...metadata,
             method: "circolare-ntc2018-c4.1.ii",
             diameter: round(bar.diameter),
             diameterLimit: round(diameterLimit),
-          },
+          }, [CIRC2019_RC_REFERENCES.indirectCrackControlDiameter]),
         }),
       );
     }
@@ -271,13 +274,13 @@ export function createIndirectCrackControlChecks({
             "Indirect crack control through maximum reinforcing bar spacing",
           demand: spacing,
           capacity: spacingLimit,
-          metadata: {
+          metadata: withNormativeReferences({
             ...metadata,
             method: "circolare-ntc2018-c4.1.iii",
             spacing: round(spacing),
             spacingLimit: round(spacingLimit),
             rowTolerance: round(options.rowTolerance),
-          },
+          }, [CIRC2019_RC_REFERENCES.indirectCrackControlSpacing]),
         }),
       );
     }

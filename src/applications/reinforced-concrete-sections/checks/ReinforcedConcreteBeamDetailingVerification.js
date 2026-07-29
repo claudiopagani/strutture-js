@@ -8,7 +8,13 @@ import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 import {
   calculateEn1992AnchorageLength,
   calculateEn1992DesignBondStrength,
+  EN1992_RC_EXTERNAL_REFERENCES,
 } from "../../../norms/en1992/reinforced-concrete/index.js";
+import { withNormativeReferences } from "../../../norms/normativeReference.js";
+import {
+  NTC2018_RC_CHAPTER_4_REFERENCES,
+  NTC2018_RC_CHAPTER_7_4_REFERENCES,
+} from "../../../norms/ntc2018/normativeReferences.js";
 
 function positive(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
@@ -47,7 +53,7 @@ function minimumCheck(id, description, required, provided, metadata = {}) {
     description,
     demand: required,
     capacity: provided,
-    metadata,
+    metadata: detailingMetadata(metadata),
   });
 }
 
@@ -57,8 +63,24 @@ function maximumCheck(id, description, provided, allowed, metadata = {}) {
     description,
     demand: provided,
     capacity: allowed,
-    metadata,
+    metadata: detailingMetadata(metadata),
   });
+}
+
+function detailingMetadata(metadata = {}) {
+  const legacyReference = metadata.reference ?? "";
+  const normativeReference = legacyReference.startsWith("NTC2018-4.1")
+    ? NTC2018_RC_CHAPTER_4_REFERENCES.beamDetailing
+    : legacyReference === "NTC2018-7.4.6.1.1"
+      ? NTC2018_RC_CHAPTER_7_4_REFERENCES.beamGeometry
+      : legacyReference.startsWith("NTC2018-7.4")
+        ? NTC2018_RC_CHAPTER_7_4_REFERENCES.beamDetailing
+        : null;
+
+  return withNormativeReferences(
+    metadata,
+    normativeReference ? [normativeReference] : [],
+  );
 }
 
 function normalizeDuctilityClass(value) {
@@ -108,7 +130,7 @@ function anchorageChecks({ anchors, fctd, fyk, seismic }) {
       `Available anchorage length for beam bar ${id}`,
       required.designLength,
       availableLength,
-      {
+      withNormativeReferences({
         ...required,
         fbd: round(bond.fbd),
         designSteelStress: round(designSteelStress),
@@ -118,7 +140,14 @@ function anchorageChecks({ anchors, fctd, fyk, seismic }) {
           ...(seismic ? ["NTC2018-7.4.6.2.1"] : []),
           required.reference,
         ],
-      },
+      }, [
+        EN1992_RC_EXTERNAL_REFERENCES.bondAndAnchorage,
+        NTC2018_RC_CHAPTER_4_REFERENCES.anchorage,
+        NTC2018_RC_CHAPTER_4_REFERENCES.bondDesignStrength,
+        ...(seismic
+          ? [NTC2018_RC_CHAPTER_7_4_REFERENCES.beamDetailing]
+          : []),
+      ]),
     );
   });
 }
@@ -193,6 +222,7 @@ export class ReinforcedConcreteBeamDetailingVerification {
     );
     const fyk = positive(Number(reinforcementMaterial?.fyk), "reinforcementMaterial.fyk");
     const concreteArea = positive(Number(concrete?.area ?? width * height), "concrete area");
+    // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A4.1.6.1.1
     const minimumLongitudinalArea = Math.max(
       0.26 * fctm / fyk * tensionZoneWidth * effectiveDepth,
       0.0013 * tensionZoneWidth * effectiveDepth,
@@ -217,6 +247,7 @@ export class ReinforcedConcreteBeamDetailingVerification {
         detailing.seismic.ductilityClass,
       );
       const isCda = ductilityClass === "CDA";
+      // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A7.4.6.2.1
       const criticalZoneLength = (isCda ? 1.5 : 1) * height;
       const rhoTop = top.area / (width * height);
       const rhoBottom = bottom.area / (width * height);
@@ -305,11 +336,26 @@ export class ReinforcedConcreteBeamDetailingVerification {
         "The supplied longitudinal layers describe the reinforcement effective at every checked beam section.",
         "Anchorage alpha factors and bond conditions are explicit design inputs and are not inferred from a drawing.",
       ],
-      metadata: {
+      metadata: withNormativeReferences({
         code: this.code,
         method: "ntc2018-4.1.6.1.1-and-7.4.6.1.1-7.4.6.2.1",
         governingCheckId: governing?.id ?? null,
-      },
+      }, [
+        NTC2018_RC_CHAPTER_4_REFERENCES.beamDetailing,
+        ...(detailing.anchors?.length
+          ? [
+              NTC2018_RC_CHAPTER_4_REFERENCES.anchorage,
+              NTC2018_RC_CHAPTER_4_REFERENCES.bondDesignStrength,
+              EN1992_RC_EXTERNAL_REFERENCES.bondAndAnchorage,
+            ]
+          : []),
+        ...(seismic
+          ? [
+              NTC2018_RC_CHAPTER_7_4_REFERENCES.beamGeometry,
+              NTC2018_RC_CHAPTER_7_4_REFERENCES.beamDetailing,
+            ]
+          : []),
+      ]),
     });
   }
 }

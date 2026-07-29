@@ -56,6 +56,7 @@ export function calculateEn1992Punching2004WithoutShearReinforcement({
   const fcd = resolvedAlphaCc * resolvedFck / resolvedGammaC;
   const vRdMax = 0.5 * nu * fcd;
 
+  // @see https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-2-design-concrete-structures
   return {
     fck: resolvedFck,
     effectiveDepth: d,
@@ -83,6 +84,10 @@ export function calculateEn1992Punching2004WithoutShearReinforcement({
       clauses: ["6.4.4", "6.4.5"],
       equations: ["6.47"],
     },
+    metadata: withNormativeReferences(
+      {},
+      [EN1992_RC_EXTERNAL_REFERENCES.punching2004],
+    ),
   };
 }
 
@@ -105,6 +110,7 @@ export function calculateEn1992Punching2004WithShearReinforcement({
   const concreteContribution = 0.75 * vRdc;
   const reinforcementContribution = 1.5 * d / sr * asw * fywdEffective / (u1 * d);
 
+  // @see https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-2-design-concrete-structures
   return {
     vRdCs: concreteContribution + reinforcementContribution,
     concreteContribution,
@@ -121,5 +127,11 @@ export function calculateEn1992Punching2004WithShearReinforcement({
       clause: "6.4.5(1)",
       equation: "6.52",
     },
+    metadata: withNormativeReferences(
+      {},
+      [EN1992_RC_EXTERNAL_REFERENCES.punching2004],
+    ),
   };
 }
+import { withNormativeReferences } from "../../normativeReference.js";
+import { EN1992_RC_EXTERNAL_REFERENCES } from "../normativeReferences.js";

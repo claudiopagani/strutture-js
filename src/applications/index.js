@@ -280,7 +280,9 @@ export {
 export {
   NTC2018_RC_BUILDING_CAPABILITIES,
   NTC2018_RC_COVERAGE_STATUS,
+  NTC2018_RC_TRACEABILITY_STATUS,
   RcBuildingVerificationApplication,
+  auditNTC2018RcDesignBasis,
   evaluateNTC2018RcBuildingCompleteness,
   getNTC2018RcBuildingCoverage,
   runFoundationSystemVerifications,

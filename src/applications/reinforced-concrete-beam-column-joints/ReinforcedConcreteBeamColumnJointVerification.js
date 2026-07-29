@@ -16,7 +16,13 @@ import {
 import {
   calculateEn1992AnchorageLength,
   calculateEn1992DesignBondStrength,
+  EN1992_RC_EXTERNAL_REFERENCES,
 } from "../../norms/en1992/reinforced-concrete/index.js";
+import { withNormativeReferences } from "../../norms/normativeReference.js";
+import {
+  NTC2018_RC_CHAPTER_4_REFERENCES,
+  NTC2018_RC_CHAPTER_7_4_REFERENCES,
+} from "../../norms/ntc2018/normativeReferences.js";
 
 function positiveStrength(value) {
   return Number.isFinite(value) && value > 0 ? value : null;
@@ -46,6 +52,46 @@ function resolveFctd(model) {
   };
 }
 
+function jointMetadata(metadata = {}) {
+  const reference = metadata.reference ?? "";
+  const equation = metadata.equation ?? "";
+  const normativeReferences = [];
+
+  if (
+    reference === "NTC2018-7.4.4.3.1" ||
+    String(equation).startsWith("NTC2018-7.4.")
+  ) {
+    normativeReferences.push(
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.beamColumnJoint,
+    );
+  } else if (reference === "NTC2018-7.4.6.2.3") {
+    normativeReferences.push(
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.jointDetailing,
+    );
+  } else if (reference === "NTC2018-7.4.4") {
+    normativeReferences.push(
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.columnCapacityDesign,
+    );
+  } else if (reference === "NTC2018-7.4.6.1.3") {
+    normativeReferences.push(
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.jointGeometry,
+    );
+  } else if (reference === "NTC2018-7.4.6.2.1") {
+    normativeReferences.push(
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.beamDetailing,
+    );
+  }
+
+  return withNormativeReferences(metadata, normativeReferences);
+}
+
+function normativeUtilizationCheck(options) {
+  return utilizationCheck({
+    ...options,
+    metadata: jointMetadata(options.metadata),
+  });
+}
+
 function safeUtilizationCheck(options) {
   if (!Number.isFinite(options.capacity) || options.capacity <= 0) {
     return {
@@ -55,11 +101,11 @@ function safeUtilizationCheck(options) {
       capacity: round(options.capacity),
       utilizationRatio: null,
       ok: false,
-      metadata: { ...options.metadata },
+      metadata: jointMetadata(options.metadata),
     };
   }
 
-  return utilizationCheck(options);
+  return normativeUtilizationCheck(options);
 }
 
 export class ReinforcedConcreteBeamColumnJointVerification {
@@ -183,14 +229,14 @@ export class ReinforcedConcreteBeamColumnJointVerification {
           shearStress: round(selectedTension.shearStress),
         },
       }),
-      utilizationCheck({
+      normativeUtilizationCheck({
         id: "rc-joint-minimum-hoop-diameter",
         description: "Minimum joint hoop diameter",
         demand: 6,
         capacity: model.jointHoops.diameter,
         metadata: { reference: "NTC2018-7.4.4.3.1" },
       }),
-      utilizationCheck({
+      normativeUtilizationCheck({
         id: "rc-joint-adjacent-hoop-area",
         description: "Joint hoop set area compared with adjacent column requirement",
         demand: adjacent.controllingAreaPerSet,
@@ -200,7 +246,7 @@ export class ReinforcedConcreteBeamColumnJointVerification {
           reference: "NTC2018-7.4.6.2.3",
         },
       }),
-      utilizationCheck({
+      normativeUtilizationCheck({
         id: "rc-joint-hoop-spacing",
         description: "Joint hoop spacing",
         demand: model.jointHoops.spacing,
@@ -214,7 +260,7 @@ export class ReinforcedConcreteBeamColumnJointVerification {
     ];
 
     if (!model.capacityHierarchy.exempt) {
-      checks.push(utilizationCheck({
+      checks.push(normativeUtilizationCheck({
         id: "rc-joint-strong-column-weak-beam",
         description: "Strong-column weak-beam capacity hierarchy",
         demand:
@@ -233,7 +279,7 @@ export class ReinforcedConcreteBeamColumnJointVerification {
     const eccentricityLimit = model.geometry.columnWidth / 4;
     const eccentricity = Math.abs(model.eccentricity.beamAxisOffset);
     if (eccentricity <= eccentricityLimit + 1e-9) {
-      checks.push(utilizationCheck({
+      checks.push(normativeUtilizationCheck({
         id: "rc-joint-beam-axis-eccentricity",
         description: "Beam-to-column joint axis eccentricity",
         demand: eccentricity,
@@ -298,16 +344,21 @@ export class ReinforcedConcreteBeamColumnJointVerification {
           nationalMinimumLength: 150,
         });
 
-        return utilizationCheck({
+        return normativeUtilizationCheck({
           id: `rc-joint-beam-bar-anchorage-${face}`,
           description: `Beam ${face} anchorage through or beyond the joint`,
           demand: required.designLength,
           capacity: anchor.availableLength,
-          metadata: {
+          metadata: withNormativeReferences({
             ...required,
             fbd: round(bond.fbd),
             reference: "NTC2018-7.4.6.2.1",
-          },
+          }, [
+            EN1992_RC_EXTERNAL_REFERENCES.bondAndAnchorage,
+            NTC2018_RC_CHAPTER_4_REFERENCES.anchorage,
+            NTC2018_RC_CHAPTER_4_REFERENCES.bondDesignStrength,
+            NTC2018_RC_CHAPTER_7_4_REFERENCES.beamDetailing,
+          ]),
         });
       });
     checks.push(...anchorageChecks);
@@ -411,13 +462,28 @@ export class ReinforcedConcreteBeamColumnJointVerification {
           ? ["The effective column moment resistance supplied for hierarchy is already reduced according to the member moment signs and node equilibrium rule of NTC 2018 equation 7.4.4."]
           : []),
       ],
-      metadata: {
+      metadata: withNormativeReferences({
         code: this.code,
         method: "NTC2018-7.4.4-and-7.4.4.3.1",
         jointId: model.id,
         governingCheckId: governing?.id ?? null,
         ...this.metadata,
-      },
+      }, [
+        NTC2018_RC_CHAPTER_7_4_REFERENCES.beamColumnJoint,
+        NTC2018_RC_CHAPTER_7_4_REFERENCES.jointGeometry,
+        NTC2018_RC_CHAPTER_7_4_REFERENCES.jointDetailing,
+        ...(!model.capacityHierarchy.exempt
+          ? [NTC2018_RC_CHAPTER_7_4_REFERENCES.columnCapacityDesign]
+          : []),
+        ...(anchorageChecks.length > 0
+          ? [
+              NTC2018_RC_CHAPTER_4_REFERENCES.anchorage,
+              NTC2018_RC_CHAPTER_4_REFERENCES.bondDesignStrength,
+              EN1992_RC_EXTERNAL_REFERENCES.bondAndAnchorage,
+              NTC2018_RC_CHAPTER_7_4_REFERENCES.beamDetailing,
+            ]
+          : []),
+      ]),
     });
   }
 }

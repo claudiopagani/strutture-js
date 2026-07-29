@@ -8,6 +8,13 @@ import {
   NTC2018_REGULARITY_REDUCTION,
   selectNTC2018AllowedAnalysisMethods,
 } from "./structuralBehavior.js";
+import { withNormativeReferences } from "../../normativeReference.js";
+import { NTC2018_RC_OUTSIDE_CORPUS_REFERENCES } from "../normativeReferences.js";
+
+const STRUCTURAL_REGULARITY_NORMATIVE_REFERENCES = Object.freeze([
+  NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.structuralRegularity,
+  NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.structuralRegularityGuidance,
+]);
 
 export const NTC2018_REGULARITY_REFERENCES = Object.freeze([
   Object.freeze({
@@ -19,6 +26,19 @@ export const NTC2018_REGULARITY_REFERENCES = Object.freeze([
     citation: "§ C7.2.1",
   }),
 ]);
+
+function regularityMetadata(metadata = {}) {
+  return withNormativeReferences(metadata, [
+    ...STRUCTURAL_REGULARITY_NORMATIVE_REFERENCES,
+  ]);
+}
+
+function regularityCheck(check) {
+  return {
+    ...check,
+    metadata: regularityMetadata(check.metadata),
+  };
+}
 
 function positive(value, label) {
   const number = Number(value);
@@ -76,11 +96,12 @@ export function evaluateNTC2018PlanRegularity(input = {}) {
     "massAndStiffnessApproximatelySymmetric",
   );
   const floors = normalizeFloorPlans(input);
-  const checks = [{
+  // @see https://www.gazzettaufficiale.it/eli/id/2018/02/20/18A00716/sg
+  const checks = [regularityCheck({
     check: "plan-mass-stiffness-symmetry",
     ok: symmetry,
     reference: "NTC 2018 § 7.2.1, lettera a)",
-  }];
+  })];
   const floorDetails = [];
 
   for (let index = 0; index < floors.length; index++) {
@@ -164,7 +185,7 @@ export function evaluateNTC2018PlanRegularity(input = {}) {
         ok: strengthOk,
         reference: "NTC 2018 § 7.2.1, lettera c)",
       },
-    ];
+    ].map(regularityCheck);
     checks.push(...floorChecks);
     floorDetails.push({
       storeyId,
@@ -198,6 +219,9 @@ export function evaluateNTC2018PlanRegularity(input = {}) {
     reentrantRatioY: null,
     eccentricityRatioX: null,
     eccentricityRatioY: null,
+    metadata: regularityMetadata({
+      normativeConformityClaimed: false,
+    }),
   };
 }
 
@@ -210,7 +234,7 @@ function pairCheck({
   maximum,
   reference,
 }) {
-  return {
+  return regularityCheck({
     check,
     storeyId,
     comparedTo,
@@ -219,7 +243,7 @@ function pairCheck({
     minimum,
     maximum,
     reference,
-  };
+  });
 }
 
 function positiveStoreyValue(storey, key, index) {
@@ -269,11 +293,12 @@ export function evaluateNTC2018ElevationRegularity({
     };
   });
 
-  const checks = [{
+  // @see https://www.gazzettaufficiale.it/eli/id/2018/02/20/18A00716/sg
+  const checks = [regularityCheck({
     check: "elevation-continuous-horizontal-resisting-systems",
     ok: continuousVerticalSystems,
     reference: "NTC 2018 § 7.2.1, lettera d)",
-  }];
+  })];
   const storeyDetails = [];
   const first = normalized[0];
 
@@ -344,7 +369,7 @@ export function evaluateNTC2018ElevationRegularity({
             `Storey ${current.storeyId} setbacks in ${direction} must be finite and non-negative.`,
           );
         }
-        pairChecks.push({
+        pairChecks.push(regularityCheck({
           check: `elevation-setback-${direction.toLowerCase()}`,
           storeyId: current.storeyId,
           comparedTo: below.storeyId,
@@ -356,7 +381,7 @@ export function evaluateNTC2018ElevationRegularity({
           immediateLimit: 0.10,
           fromFirstLimit: 0.30,
           reference: "NTC 2018 § 7.2.1, lettera g)",
-        });
+        }));
       }
     }
 
@@ -379,6 +404,9 @@ export function evaluateNTC2018ElevationRegularity({
     checks,
     storeyDetails,
     stiffnessCriterionExempt,
+    metadata: regularityMetadata({
+      normativeConformityClaimed: false,
+    }),
   };
 }
 
@@ -435,5 +463,8 @@ export function createNTC2018RegularityAssessment({
     allChecksOk: checks.every((check) => check.ok === true),
     checks,
     references: NTC2018_REGULARITY_REFERENCES,
+    metadata: regularityMetadata({
+      normativeConformityClaimed: false,
+    }),
   };
 }

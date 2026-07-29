@@ -145,7 +145,7 @@ Stato sintetico dei moduli applicativi:
 | `reinforced-concrete-foundation-beams` | Implementato locale | Contatto monolatero, rigidezza fessurata iterativa e verifiche locali di travi prismatiche orizzontali su letto di Winkler assegnato. |
 | `reinforced-concrete-beam-column-joints` | Implementato locale | Verifica locale NTC 2018 di nodi interni, esterni e d'angolo, inclusi ancoraggi, eccentricita e stati 3D concorrenti. |
 | `reinforced-concrete-strut-and-tie` | Parziale | Analisi e verifica EN 1992 di modelli tirante-puntone 2D con topologia e zone nodali assegnate. |
-| `rc-building-verification` | Completo nel perimetro dichiarato | Orchestrazione NTC 2018 di edifici ordinari in c.a. gettato in opera da contratti FEM solver-neutral: dinamica, membri, nodi, setti, solai, punzonamento, diaframmi e fondazioni. |
+| `rc-building-verification` | Implementazione completa nel perimetro dichiarato; tracciabilità normativa parziale | Orchestrazione NTC 2018 di edifici ordinari in c.a. gettato in opera da contratti FEM solver-neutral: dinamica, membri, nodi, setti, solai, punzonamento, diaframmi e fondazioni. Il corpus corrente è `extracted` e non include ancora tutti i capitoli richiesti, quindi non viene dichiarata conformità normativa. |
 | `timber-beams` | Parziale | Verifiche di travi in legno da risultati FEM disponibili. |
 | `timber-concrete-composite-beams` | Implementato | Verifica gamma-method di travi legno-calcestruzzo con connettori. |
 | `timber-xlam-composite-beams` | Implementato | Verifica gamma-method di travi lignee collaboranti con pannelli XLAM. |
@@ -516,6 +516,9 @@ funzionalita operativa e non sostituisce questi criteri. Vedi
 - Ogni uso professionale richiede controllo, responsabilita e giudizio dell'ingegnere.
 
 I limiti implementativi, le ipotesi normative e le scelte numeriche devono restare separati. Vedi [docs/implementation-boundaries.md](docs/implementation-boundaries.md).
+La procedura per URN canonici, link consultabili, revisione bloccata del corpus
+e riferimenti `outside-corpus` è descritta in
+[docs/normative-traceability.md](docs/normative-traceability.md).
 
 ## Roadmap
 

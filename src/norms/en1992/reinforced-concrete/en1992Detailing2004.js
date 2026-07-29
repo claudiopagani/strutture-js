@@ -1,3 +1,6 @@
+import { withNormativeReferences } from "../../normativeReference.js";
+import { EN1992_RC_EXTERNAL_REFERENCES } from "../normativeReferences.js";
+
 function positive(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be positive.`);
@@ -29,11 +32,16 @@ export function calculateEn1992DesignBondStrength({
     throw new Error("EN 1992 bond strength requires barDiameter < 132 mm.");
   }
 
+  // @see https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-2-design-concrete-structures
   return {
     fbd: 2.25 * bondConditionFactor * diameterFactor * fctd,
     eta1: bondConditionFactor,
     eta2: diameterFactor,
     reference: "EN1992-1-1:2004-8.4.2-(8.2)",
+    metadata: withNormativeReferences(
+      {},
+      [EN1992_RC_EXTERNAL_REFERENCES.bondAndAnchorage],
+    ),
   };
 }
 
@@ -89,6 +97,10 @@ export function calculateEn1992AnchorageLength({
       alpha5,
     },
     reference: "EN1992-1-1:2004-8.4.3-8.4.4",
+    metadata: withNormativeReferences(
+      {},
+      [EN1992_RC_EXTERNAL_REFERENCES.bondAndAnchorage],
+    ),
   };
 }
 
@@ -116,6 +128,10 @@ export function calculateEn1992LocalBearingResistance({
       resistanceReductionFactor * loadedArea * fcd * enhancement,
     resistanceReductionFactor,
     reference: "EN1992-1-1:2004-6.7-(6.63)",
+    metadata: withNormativeReferences(
+      {},
+      [EN1992_RC_EXTERNAL_REFERENCES.localBearing],
+    ),
   };
 }
 
@@ -148,5 +164,9 @@ export function calculateEn1992ShrinkageCurvature({
       reinforcementFirstMoment / sectionSecondMoment,
     effectiveModularRatio,
     reference: "EN1992-1-1:2004-7.4.3-(7.21)",
+    metadata: withNormativeReferences(
+      {},
+      [EN1992_RC_EXTERNAL_REFERENCES.shrinkageCurvature],
+    ),
   };
 }

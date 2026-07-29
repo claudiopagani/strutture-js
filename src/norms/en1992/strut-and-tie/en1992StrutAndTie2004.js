@@ -1,3 +1,6 @@
+import { withNormativeReferences } from "../../normativeReference.js";
+import { EN1992_RC_EXTERNAL_REFERENCES } from "../normativeReferences.js";
+
 const STRUT_STRENGTH_MODELS = new Set([
   "uncracked-uniaxial",
   "transverse-tension",
@@ -15,6 +18,7 @@ function positive(value, label) {
 export function calculateEn1992StrutAndTieNuPrime(fck) {
   positive(fck, "fck");
 
+  // @see https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-2-design-concrete-structures
   return Math.max(0, 1 - fck / 250);
 }
 
@@ -33,6 +37,7 @@ export function calculateEn1992StrutDesignStrength({
     ? 1
     : 0.6 * nuPrime;
 
+  // @see https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-2-design-concrete-structures
   return {
     designStrength: coefficient * fcd,
     coefficient,
@@ -40,6 +45,10 @@ export function calculateEn1992StrutDesignStrength({
     equation: strengthModel === "uncracked-uniaxial"
       ? "EN1992-1-1-2004-6.55"
       : "EN1992-1-1-2004-6.56",
+    metadata: withNormativeReferences(
+      {},
+      [EN1992_RC_EXTERNAL_REFERENCES.strutAndTie],
+    ),
   };
 }
 
@@ -47,11 +56,16 @@ export function calculateEn1992TieResistance({ reinforcementArea, fyd }) {
   positive(reinforcementArea, "reinforcementArea");
   positive(fyd, "fyd");
 
+  // @see https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-2-design-concrete-structures
   return {
     capacity: reinforcementArea * fyd,
     reinforcementArea,
     fyd,
     equation: "EN1992-1-1-2004-6.5.3",
+    metadata: withNormativeReferences(
+      {},
+      [EN1992_RC_EXTERNAL_REFERENCES.strutAndTie],
+    ),
   };
 }
 
@@ -73,6 +87,7 @@ export function calculateEn1992NodalDesignStrength({
     : positive(factors[parameterName], parameterName);
   const nuPrime = calculateEn1992StrutAndTieNuPrime(fck);
 
+  // @see https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-2-design-concrete-structures
   return {
     designStrength: factor * nuPrime * fcd,
     factor,
@@ -86,6 +101,10 @@ export function calculateEn1992NodalDesignStrength({
       cct: "EN1992-1-1-2004-6.61",
       ctt: "EN1992-1-1-2004-6.62",
     }[nodeType],
+    metadata: withNormativeReferences(
+      {},
+      [EN1992_RC_EXTERNAL_REFERENCES.strutAndTie],
+    ),
   };
 }
 

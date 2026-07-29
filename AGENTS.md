@@ -15,6 +15,15 @@ Queste regole valgono per agenti automatici e contributori assistiti da AI.
 - Non inventare riferimenti normativi, coefficienti, formule o limiti. Ogni
   implementazione tecnica deve citare fonti verificabili e dichiarare unita,
   ipotesi e campo di validita.
+- Per modifiche normative consulta la revisione bloccata della repository
+  sorella `strutture-normative`, usa gli URN canonici di unita e asset e
+  conserva i riferimenti in `metadata.normativeReferences`. Un URL non
+  sostituisce l'identita canonica e un record `extracted` non equivale a una
+  review normativa approvata.
+- Prima di modificare codice normativamente rilevante esegui
+  `npm run check:normative-references` e segui
+  `docs/normative-traceability.md`. Riferimenti non ancora presenti nel corpus
+  restano esplicitamente `outside-corpus`; non ricostruirli a memoria.
 - Non implementare o modificare formule senza test. Aggiungi validazione
   indipendente proporzionata alla criticita e regressioni per ogni bug
   numerico.
@@ -33,3 +42,5 @@ Queste regole valgono per agenti automatici e contributori assistiti da AI.
 
 I criteri decisionali completi sono in `docs/project-boundaries.md`; la
 stabilita degli entry point e descritta in `docs/public-api-policy.md`.
+La procedura per formule e riferimenti e descritta in
+`docs/normative-traceability.md`.

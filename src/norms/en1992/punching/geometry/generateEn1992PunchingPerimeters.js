@@ -1,4 +1,6 @@
 import { PunchingControlPerimeter } from "../../../../domain/slabs/punching/index.js";
+import { withNormativeReferences } from "../../../normativeReference.js";
+import { EN1992_RC_EXTERNAL_REFERENCES } from "../../normativeReferences.js";
 
 const INTERNAL_UNITS = Object.freeze({ force: "N", length: "mm" });
 const GEOMETRY_TOLERANCE = 1e-6;
@@ -108,6 +110,12 @@ function createPerimeter({
   clause,
   metadata = {},
 }) {
+  const normativeReference = codeId.includes("2023")
+    ? EN1992_RC_EXTERNAL_REFERENCES.punching2023
+    : EN1992_RC_EXTERNAL_REFERENCES.punching2004;
+
+  // @see https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-2-design-concrete-structures
+  // @see https://eurocodes.jrc.ec.europa.eu/second-generation-eurocodes
   return new PunchingControlPerimeter({
     id,
     codeId,
@@ -121,7 +129,7 @@ function createPerimeter({
       standard: codeId,
       clause,
     },
-    metadata,
+    metadata: withNormativeReferences(metadata, [normativeReference]),
   });
 }
 

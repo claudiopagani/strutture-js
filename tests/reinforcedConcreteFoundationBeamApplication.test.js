@@ -106,6 +106,12 @@ test("RC foundation-beam application analyzes soil response and reuses section c
   assert.equal(combination.foundationIteration.stiffnessIteration, true);
   assert.equal(combination.foundationIteration.converged, true);
   assert.ok(combination.foundationIteration.iterations >= 1);
+  assert.ok(result.metadata.normativeReferences.some((reference) =>
+    reference.citation === "NTC 2018 § 6.4" &&
+    reference.resolutionStatus === "outside-corpus"));
+  assert.ok(result.metadata.normativeReferences.some((reference) =>
+    reference.unitId ===
+      "urn:structural-codes:it:unit:ntc2018:4.1.2.2.2"));
 });
 
 test("RC foundation-beam application guards tensile Winkler reactions", () => {

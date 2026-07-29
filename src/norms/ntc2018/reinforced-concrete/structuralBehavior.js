@@ -6,6 +6,12 @@
  * post-processor.
  */
 
+import { withNormativeReferences } from "../../normativeReference.js";
+import {
+  NTC2018_RC_CHAPTER_7_4_REFERENCES,
+  NTC2018_RC_OUTSIDE_CORPUS_REFERENCES,
+} from "../normativeReferences.js";
+
 export const NTC2018_STRUCTURAL_BEHAVIOR = Object.freeze({
   NON_DISSIPATIVE: "non-dissipative",
   CD_A: "cd-a",
@@ -69,6 +75,7 @@ export const NTC2018_OVERSTRENGTH_FACTORS = Object.freeze({
   }),
 });
 
+// @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A7.4.3
 const Q0_CDA = Object.freeze({
   frame: 4.5,
   wall: 4.0,
@@ -206,6 +213,10 @@ export function checkNonDissipativeAdmissibility({
     agSOverG,
     warnings,
     reference: "NTC 2018 §§ 7.0 e 7.2.2",
+    metadata: withNormativeReferences({}, [
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.structuralBehavior,
+      NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.globalSeismicAnalysis,
+    ]),
   };
 }
 
@@ -240,6 +251,7 @@ export function resolveNTC2018AlphaRatio({
   }
 
   if (type === NTC2018_STRUCTURAL_TYPE.FRAME) {
+    // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A7.4.3
     const storeys = positiveInteger(frameStoreyCount, "frameStoreyCount");
     const bays = positiveInteger(frameBayCount, "frameBayCount");
     if (storeys === 1) return 1.1;
@@ -409,6 +421,10 @@ export function selectNTC2018AllowedAnalysisMethods({
     recommended: NTC2018_ANALYSIS_METHOD.LINEAR_DYNAMIC,
     linearStaticAllowed,
     checks,
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.globalSeismicAnalysis],
+    ),
   };
 }
 
@@ -462,5 +478,10 @@ export function createNTC2018StructuralBehavior({
       : q0 * kr,
     kr,
     references: NTC2018_STRUCTURAL_BEHAVIOR_REFERENCES,
+    metadata: withNormativeReferences({}, [
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.structuralBehavior,
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.structuralTypesAndQ,
+      NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.globalSeismicAnalysis,
+    ]),
   };
 }

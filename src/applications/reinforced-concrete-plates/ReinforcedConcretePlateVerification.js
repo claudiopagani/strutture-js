@@ -9,6 +9,11 @@ import { verifyPlateServiceability } from "./checks/verifyPlateServiceability.js
 import { verifyPlateSlenderness } from "./checks/verifyPlateSlenderness.js";
 import { uniqueStrings } from "./checks/plateCheckUtils.js";
 import { RC_PLATE_ANALYSIS_TYPES } from "./ReinforcedConcretePlateModel.js";
+import { withNormativeReferences } from "../../norms/normativeReference.js";
+import {
+  CIRC2019_RC_REFERENCES,
+  NTC2018_RC_CHAPTER_4_REFERENCES,
+} from "../../norms/ntc2018/normativeReferences.js";
 
 const SLE_COMBINATIONS = new Set([
   "SLE_RARE",
@@ -256,7 +261,26 @@ export class ReinforcedConcretePlateVerification {
   }
 
   resultMetadata(model) {
-    return {
+    const normativeReferences = {
+      [RC_PLATE_ANALYSIS_TYPES.ULS_BENDING_SHEAR]: [
+        NTC2018_RC_CHAPTER_4_REFERENCES.flexureAndAxialForce,
+        NTC2018_RC_CHAPTER_4_REFERENCES.shearWithoutTransverseReinforcement,
+      ],
+      [RC_PLATE_ANALYSIS_TYPES.SLS_STRESS_CRACKING]: [
+        NTC2018_RC_CHAPTER_4_REFERENCES.concreteStressCharacteristic,
+        NTC2018_RC_CHAPTER_4_REFERENCES.concreteStressQuasiPermanent,
+        NTC2018_RC_CHAPTER_4_REFERENCES.reinforcementStress,
+        NTC2018_RC_CHAPTER_4_REFERENCES.crackWidth,
+        CIRC2019_RC_REFERENCES.indirectCrackControlDiameter,
+        CIRC2019_RC_REFERENCES.indirectCrackControlSpacing,
+      ],
+      [RC_PLATE_ANALYSIS_TYPES.SLS_SIMPLIFIED_DEFLECTION]: [
+        NTC2018_RC_CHAPTER_4_REFERENCES.deflection,
+        CIRC2019_RC_REFERENCES.simplifiedDeflectionSlenderness,
+      ],
+    }[model.analysis.type] ?? [];
+
+    return withNormativeReferences({
       code: this.code,
       applicationId: "reinforced-concrete-plates",
       modelId: model.id,
@@ -277,6 +301,6 @@ export class ReinforcedConcretePlateVerification {
         mxy: "symmetric tensor component Mxy = Myx; positive when positive X and Y plate-edge couples follow the documented tensor convention",
       },
       ...this.metadata,
-    };
+    }, normativeReferences);
   }
 }

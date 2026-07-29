@@ -538,6 +538,7 @@ export function resolveUltimateDuctilityPoint({
     return null;
   }
 
+  // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A4.1.2.3.4.2
   const dropPoint = interpolateCurvatureAtMomentDrop({
     points,
     maximumIndex: maximum.index,
@@ -628,6 +629,7 @@ export function resolveNtc2018Ductility({
   const phiPrimeYd = firstYieldPoint.absoluteCurvature;
   const mPrimeYd = absoluteMoment(firstYieldPoint);
   const mRd = maximum?.moment ?? null;
+  // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A4.1.2.3.4.2
   const phiYd =
     Number.isFinite(phiPrimeYd) &&
     Number.isFinite(mPrimeYd) &&

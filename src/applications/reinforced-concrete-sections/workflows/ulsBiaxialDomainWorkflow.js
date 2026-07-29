@@ -1,5 +1,7 @@
 import { VerificationResult } from "../../../core/results/VerificationResult.js";
 import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
+import { withNormativeReferences } from "../../../norms/normativeReference.js";
+import { NTC2018_RC_CHAPTER_4_REFERENCES } from "../../../norms/ntc2018/normativeReferences.js";
 import { RCBiaxialDomainBuilder } from "../analysis/RCBiaxialDomainBuilder.js";
 import {
   createRcSectionAnalysisContext,
@@ -25,6 +27,7 @@ export function runUlsBiaxialDomainWorkflow(model, { code, metadata }) {
   const domainBuilder = new RCBiaxialDomainBuilder({
     ultimateSolver: createUltimateSectionSolver(model),
   });
+  // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A4.1.2.3.4.2
   const domain = domainBuilder.buildAtAxialLoad({
     section: context.section,
     concreteFibers: context.mesh.fibers,
@@ -71,12 +74,12 @@ export function runUlsBiaxialDomainWorkflow(model, { code, metadata }) {
       "Current biaxial workflow samples the domain by neutral-axis orientation and concrete ultimate strain on the compressed side.",
       "Concrete in tension is neglected during ULS resistance integration.",
     ],
-    metadata: {
+    metadata: withNormativeReferences({
       code,
       sectionId: model.id,
       analysisType: model.analysisType,
       solverMethod: "illinois",
       ...metadata,
-    },
+    }, [NTC2018_RC_CHAPTER_4_REFERENCES.flexureAndAxialForce]),
   });
 }

@@ -6,6 +6,12 @@ import { ReinforcedConcreteBeamVerification } from "../reinforced-concrete-secti
 import { SectionMomentCurvatureCurve } from "../rc-cracked-deflection/analysis/SectionMomentCurvatureCurve.js";
 import { createUnitResolver } from "../../domain/units/UnitSystem.js";
 import { ReinforcedConcreteFoundationBeamModel } from "./ReinforcedConcreteFoundationBeamModel.js";
+import { EN1992_RC_EXTERNAL_REFERENCES } from "../../norms/en1992/normativeReferences.js";
+import { withNormativeReferences } from "../../norms/normativeReference.js";
+import {
+  NTC2018_RC_CHAPTER_4_REFERENCES,
+  NTC2018_RC_OUTSIDE_CORPUS_REFERENCES,
+} from "../../norms/ntc2018/normativeReferences.js";
 
 function json(value) {
   return typeof value?.toJSON === "function" ? value.toJSON() : value;
@@ -56,6 +62,8 @@ function createCrackedStiffnessResolver(model) {
     const distanceBottom = gross.centroid - bounds.minY;
     const distanceTop = bounds.maxY - gross.centroid;
     const fctm = model.concreteMaterial.fctm;
+    // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A4.1.2.2.2
+    // @see https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-2-design-concrete-structures
     const mcrPositive = fctm * gross.inertia / distanceBottom;
     const mcrNegative = fctm * gross.inertia / distanceTop;
     const sectionMoment = toSection.moment(moment);
@@ -199,13 +207,19 @@ export class ReinforcedConcreteFoundationBeamApplication extends StructuralAppli
         ...analysis.assumptions,
         ...(verificationJson.assumptions ?? []),
       ],
-      metadata: {
+      metadata: withNormativeReferences({
         code: settings.code,
         foundationModel: analysis.foundationModel,
         contactViolation,
         iterationFailure,
         crackedStiffnessIteration: Boolean(flexuralRigidityResolver),
-      },
+      }, [
+        NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.foundationDesign,
+        NTC2018_RC_CHAPTER_4_REFERENCES.flexureAndAxialForce,
+        NTC2018_RC_CHAPTER_4_REFERENCES.shearWithoutTransverseReinforcement,
+        NTC2018_RC_CHAPTER_4_REFERENCES.deflection,
+        EN1992_RC_EXTERNAL_REFERENCES.deflection,
+      ]),
     });
   }
 }

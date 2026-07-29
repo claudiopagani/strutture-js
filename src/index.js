@@ -542,7 +542,9 @@ export {
   ReinforcedConcreteStrutAndTieVerification,
   NTC2018_RC_BUILDING_CAPABILITIES,
   NTC2018_RC_COVERAGE_STATUS,
+  NTC2018_RC_TRACEABILITY_STATUS,
   RcBuildingVerificationApplication,
+  auditNTC2018RcDesignBasis,
   evaluateNTC2018RcBuildingCompleteness,
   getNTC2018RcBuildingCoverage,
   runFoundationSystemVerifications,
@@ -652,6 +654,7 @@ export {
   calculateEn1992DesignBondStrength,
   calculateEn1992LocalBearingResistance,
   calculateEn1992ShrinkageCurvature,
+  EN1992_RC_EXTERNAL_REFERENCES,
 } from "./norms/en1992/reinforced-concrete/index.js";
 
 export {
@@ -671,6 +674,11 @@ export {
   NTC2018_LOAD_DURATION_CLASSES,
   NTC2018_PERMANENT_LOAD_REFERENCES,
   NTC2018_REINFORCEMENT_STEEL_GRADES,
+  CIRC2019_RC_REFERENCES,
+  NTC2018_NORMATIVE_CORPUS,
+  NTC2018_RC_CHAPTER_4_REFERENCES,
+  NTC2018_RC_CHAPTER_7_4_REFERENCES,
+  NTC2018_RC_OUTSIDE_CORPUS_REFERENCES,
   NTC2018_SLAB_MATERIAL_WEIGHT_DATABASE,
   NTC2018_SLAB_VARIABLE_ACTIONS_DATABASE,
   NTC2018_SNOW_EXPOSURE_CLASSES,
@@ -878,6 +886,8 @@ export {
   createNTC2018ULSFundamentalCombination,
   NTC2018_RETAINING_WALL_SEISMIC_REFERENCE,
   NTC2018_LINEAR_DYNAMIC_REFERENCES,
+  NORMATIVE_REFERENCE_RELATIONS,
+  NORMATIVE_REFERENCE_RESOLUTION_STATUS,
   createNTC2018LinearDynamicAssessment,
   verifyNTC2018AccidentalEccentricities,
   verifyNTC2018ModalMassParticipation,

@@ -223,4 +223,9 @@ test("combined assessment exposes allChecksOk and analysis-method evidence", () 
   assert.equal(result.reductionFactorKr, 1);
   assert.equal(result.analysisMethodsX.linearStaticAllowed, true);
   assert.equal(result.analysisMethodsY.linearStaticAllowed, true);
+  assert.equal(result.metadata.normativeConformityClaimed, false);
+  assert.ok(result.metadata.normativeReferences.every((reference) =>
+    reference.resolutionStatus === "outside-corpus"));
+  assert.ok(result.checks.every((check) =>
+    check.metadata.normativeReferences.length === 2));
 });

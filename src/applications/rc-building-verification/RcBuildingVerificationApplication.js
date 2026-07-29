@@ -72,6 +72,12 @@ import {
 import {
     createNTC2018LinearDynamicAssessment,
 } from "../../norms/ntc2018/seismicAnalysisChecks.js";
+import { withNormativeReferences } from "../../norms/normativeReference.js";
+import {
+    NTC2018_RC_CHAPTER_4_REFERENCES,
+    NTC2018_RC_CHAPTER_7_4_REFERENCES,
+    NTC2018_RC_OUTSIDE_CORPUS_REFERENCES,
+} from "../../norms/ntc2018/normativeReferences.js";
 import {
     verifyWallBiaxialBending,
 } from "./wallBiaxialVerification.js";
@@ -750,6 +756,7 @@ function runJointHierarchyVerifications({ joints, jointHierarchy, behavior }) {
                 capacity: outcome.capacity,
                 check: outcome.check,
                 reference: outcome.reference,
+                metadata: outcome.metadata,
             });
         } catch (error) {
             results.push({
@@ -1318,7 +1325,10 @@ export class RcBuildingVerificationApplication extends StructuralApplication {
                     capacity: j.capacity,
                     utilizationRatio: j.utilizationRatio,
                     ok: j.status === "ok",
-                    metadata: { reference: j.reference },
+                    metadata: {
+                        reference: j.reference,
+                        ...(j.metadata ?? {}),
+                    },
                 })),
         ];
 
@@ -1451,11 +1461,29 @@ export class RcBuildingVerificationApplication extends StructuralApplication {
                 "Beam-column hierarchy runs only for joints with jointHierarchy data.",
                 ...assumptions,
             ],
-            metadata: {
+            metadata: withNormativeReferences({
+                ...input.metadata ?? {},
                 appVersion: APP_VERSION,
                 maturity: APP_MATURITY,
-                ...input.metadata ?? {},
-            },
+                normativeConformityClaimed: false,
+                normativeTraceabilityComplete:
+                    evaluateNTC2018RcBuildingCompleteness()
+                        .normativeTraceabilityComplete,
+            }, [
+                NTC2018_RC_CHAPTER_4_REFERENCES.flexureAndAxialForce,
+                NTC2018_RC_CHAPTER_4_REFERENCES.shearWithoutTransverseReinforcement,
+                NTC2018_RC_CHAPTER_4_REFERENCES.shearWithTransverseReinforcement,
+                NTC2018_RC_CHAPTER_4_REFERENCES.punching,
+                NTC2018_RC_CHAPTER_7_4_REFERENCES.structuralBehavior,
+                NTC2018_RC_CHAPTER_7_4_REFERENCES.structuralTypesAndQ,
+                NTC2018_RC_CHAPTER_7_4_REFERENCES.columnCapacityDesign,
+                NTC2018_RC_CHAPTER_7_4_REFERENCES.beamColumnJoint,
+                NTC2018_RC_CHAPTER_7_4_REFERENCES.diaphragm,
+                NTC2018_RC_CHAPTER_7_4_REFERENCES.wall,
+                NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.globalSeismicAnalysis,
+                NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.foundationDesign,
+                NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.seismicFoundationDesign,
+            ]),
         });
     }
 }

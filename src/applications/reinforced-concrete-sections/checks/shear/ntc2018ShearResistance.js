@@ -1,5 +1,7 @@
 import { createUnitResolver } from "../../../../domain/units/UnitSystem.js";
 import { RESULT_STATUS } from "../../../../core/results/resultStatus.js";
+import { withNormativeReferences } from "../../../../norms/normativeReference.js";
+import { NTC2018_RC_CHAPTER_4_REFERENCES } from "../../../../norms/ntc2018/normativeReferences.js";
 import {
   DEFAULT_RC_SHEAR_UNITS,
   clamp,
@@ -32,6 +34,7 @@ export function computeWithoutTransverseResistance(params) {
     };
   }
 
+  // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A4.1.2.3.5.1
   const k = Math.min(1 + Math.sqrt(200 / params.effectiveDepth), 2);
   const vMin = 0.035 * k ** 1.5 * Math.sqrt(params.fck);
   const vRdcStress =
@@ -49,7 +52,7 @@ export function computeWithoutTransverseResistance(params) {
     vMin,
     vRdcStress,
     resistanceStress,
-    metadata: {
+    metadata: withNormativeReferences({
       method: "ntc2018-4.1.2.3.5.1",
       k: round(k),
       vMin: round(vMin),
@@ -62,7 +65,7 @@ export function computeWithoutTransverseResistance(params) {
       rhoLEffective: round(params.rhoLEffective, 9),
       sigmaCp: round(params.sigmaCp),
       sources: params.sources,
-    },
+    }, [NTC2018_RC_CHAPTER_4_REFERENCES.shearWithoutTransverseReinforcement]),
   };
 }
 
@@ -85,10 +88,10 @@ export function verifyWithoutTransverseReinforcement({ vEd, params }) {
       outputs: {
         parameters: params,
       },
-      metadata: {
+      metadata: withNormativeReferences({
         method: "ntc2018-4.1.2.3.5.1",
         missingParameters: resistance.missing,
-      },
+      }, [NTC2018_RC_CHAPTER_4_REFERENCES.shearWithoutTransverseReinforcement]),
     };
   }
 
@@ -119,10 +122,10 @@ export function verifyWithoutTransverseReinforcement({ vEd, params }) {
       resistanceStress: round(resistance.resistanceStress),
       vRd: round(resistance.capacity),
     },
-    metadata: {
+    metadata: withNormativeReferences({
       method: "ntc2018-4.1.2.3.5.1",
       governingCheckId: check.id,
-    },
+    }, [NTC2018_RC_CHAPTER_4_REFERENCES.shearWithoutTransverseReinforcement]),
   };
 }
 
@@ -193,6 +196,7 @@ function computeWithTransverseResistance({ params, shear, units, warnings }) {
       ? createUnitResolver(units, DEFAULT_RC_SHEAR_UNITS).stress(shear.fcdPrime)
       : (shear.fcdPrimeFactor ?? 0.5) * params.fcd;
   const alphaC = shear.alphaC ?? shear.alphaCw ?? alphaCForShear(params);
+  // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A4.1.2.3.5.2
   const vRsdAt = (cotTheta) =>
     params.transverseReinforcement.areaPerSpacing *
     z *
@@ -371,10 +375,10 @@ export function verifyWithTransverseReinforcement({ vEd, params, shear, units })
       outputs: {
         parameters: params,
       },
-      metadata: {
+      metadata: withNormativeReferences({
         method: "ntc2018-4.1.2.3.5.2",
         missingParameters: missing,
-      },
+      }, [NTC2018_RC_CHAPTER_4_REFERENCES.shearWithTransverseReinforcement]),
     };
   }
 
@@ -409,7 +413,7 @@ export function verifyWithTransverseReinforcement({ vEd, params, shear, units })
       "Shear resistance as maximum between stirrup and no-stirrup mechanisms",
     demand: vEd,
     capacity,
-    metadata: {
+    metadata: withNormativeReferences({
       method: "ntc2018-4.1.2.3.5.2",
       selectedMechanism,
       vRdWithTransverseReinforcement: round(withResistance.capacity),
@@ -430,7 +434,10 @@ export function verifyWithTransverseReinforcement({ vEd, params, shear, units })
       fcd: round(params.fcd),
       fcdPrime: round(withResistance.fcdPrime),
       alphaC: round(withResistance.alphaC),
-    },
+    }, [
+      NTC2018_RC_CHAPTER_4_REFERENCES.shearWithTransverseReinforcement,
+      NTC2018_RC_CHAPTER_4_REFERENCES.shearWithoutTransverseReinforcement,
+    ]),
   });
 
   warnings.push(
@@ -475,9 +482,12 @@ export function verifyWithTransverseReinforcement({ vEd, params, shear, units })
         vRcdAtMaxCot: round(withResistance.vRcdAtMaxCot),
       },
     },
-    metadata: {
+    metadata: withNormativeReferences({
       method: "ntc2018-4.1.2.3.5.2",
       governingCheckId: check.id,
-    },
+    }, [
+      NTC2018_RC_CHAPTER_4_REFERENCES.shearWithTransverseReinforcement,
+      NTC2018_RC_CHAPTER_4_REFERENCES.shearWithoutTransverseReinforcement,
+    ]),
   };
 }

@@ -61586,6 +61586,551 @@ var NTC2018_EXISTING_MATERIAL_KNOWLEDGE_LEVELS = {
 };
 var NTC2018_EXISTING_MASONRY_KNOWLEDGE_LEVELS = NTC2018_EXISTING_MATERIAL_KNOWLEDGE_LEVELS;
 
+// src/norms/normativeReference.js
+var NORMATIVE_REFERENCE_RELATIONS = Object.freeze({
+  CLARIFIES: "clarifies",
+  EXCLUDES: "excludes",
+  IMPLEMENTS: "implements",
+  INFORMS: "informs",
+  TESTS: "tests",
+  VALIDATES: "validates"
+});
+var NORMATIVE_REFERENCE_RESOLUTION_STATUS = Object.freeze({
+  OUTSIDE_CORPUS: "outside-corpus",
+  RESOLVED: "resolved"
+});
+var RELATIONS = new Set(Object.values(NORMATIVE_REFERENCE_RELATIONS));
+var RESOLUTION_STATUSES = new Set(
+  Object.values(NORMATIVE_REFERENCE_RESOLUTION_STATUS)
+);
+var UNIT_ID_PATTERN = /^urn:structural-codes:it:unit:[a-z0-9][a-z0-9:._-]*$/;
+var ASSET_ID_PATTERN = /^urn:structural-codes:it:asset:(?:formula|table|figure):[a-z0-9][a-z0-9:._-]*$/;
+function nonEmptyString(value, label) {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error(`${label} must be a non-empty string.`);
+  }
+  return value.trim();
+}
+function optionalNonEmptyString(value, label) {
+  return value == null ? null : nonEmptyString(value, label);
+}
+function normalizedAssetIds(assetIds) {
+  if (!Array.isArray(assetIds)) {
+    throw new Error("assetIds must be an array.");
+  }
+  const normalized3 = assetIds.map((assetId) => nonEmptyString(assetId, "assetId"));
+  for (const assetId of normalized3) {
+    if (!ASSET_ID_PATTERN.test(assetId)) {
+      throw new Error(`Invalid normative asset id: ${assetId}.`);
+    }
+  }
+  if (new Set(normalized3).size !== normalized3.length) {
+    throw new Error("assetIds must not contain duplicates.");
+  }
+  return Object.freeze(normalized3);
+}
+function createNormativeReference({
+  corpusId,
+  corpusRevision,
+  corpusStatus,
+  documentId,
+  unitId = null,
+  assetIds = [],
+  relation,
+  citation,
+  href,
+  resolutionStatus = NORMATIVE_REFERENCE_RESOLUTION_STATUS.RESOLVED
+}) {
+  const normalizedResolutionStatus = nonEmptyString(
+    resolutionStatus,
+    "resolutionStatus"
+  );
+  if (!RESOLUTION_STATUSES.has(normalizedResolutionStatus)) {
+    throw new Error(
+      `Unsupported normative reference resolution status: ${resolutionStatus}.`
+    );
+  }
+  const normalizedRelation = nonEmptyString(relation, "relation");
+  if (!RELATIONS.has(normalizedRelation)) {
+    throw new Error(`Unsupported normative reference relation: ${relation}.`);
+  }
+  const normalizedUnitId = optionalNonEmptyString(unitId, "unitId");
+  const normalizedAssets = normalizedAssetIds(assetIds);
+  if (normalizedResolutionStatus === NORMATIVE_REFERENCE_RESOLUTION_STATUS.RESOLVED) {
+    if (!normalizedUnitId || !UNIT_ID_PATTERN.test(normalizedUnitId)) {
+      throw new Error(
+        "A resolved normative reference requires a canonical unitId."
+      );
+    }
+    nonEmptyString(corpusRevision, "corpusRevision");
+    nonEmptyString(corpusStatus, "corpusStatus");
+  } else if (normalizedUnitId !== null || normalizedAssets.length > 0) {
+    throw new Error(
+      "An outside-corpus reference cannot claim canonical unit or asset ids."
+    );
+  }
+  const normalizedHref = optionalNonEmptyString(href, "href");
+  if (normalizedHref !== null) {
+    try {
+      new URL(normalizedHref);
+    } catch {
+      throw new Error(`Invalid normative reference href: ${href}.`);
+    }
+  }
+  return Object.freeze({
+    corpusId: nonEmptyString(corpusId, "corpusId"),
+    corpusRevision: optionalNonEmptyString(
+      corpusRevision,
+      "corpusRevision"
+    ),
+    corpusStatus: optionalNonEmptyString(corpusStatus, "corpusStatus"),
+    documentId: nonEmptyString(documentId, "documentId"),
+    unitId: normalizedUnitId,
+    assetIds: normalizedAssets,
+    relation: normalizedRelation,
+    citation: nonEmptyString(citation, "citation"),
+    href: normalizedHref,
+    resolutionStatus: normalizedResolutionStatus
+  });
+}
+function cloneNormativeReference(reference) {
+  return {
+    ...reference,
+    assetIds: [...reference.assetIds]
+  };
+}
+function referenceIdentity(reference) {
+  return JSON.stringify([
+    reference.documentId,
+    reference.unitId,
+    reference.assetIds,
+    reference.relation,
+    reference.citation
+  ]);
+}
+function withNormativeReferences(metadata = {}, references = []) {
+  var _a;
+  const combined = [
+    ...(_a = metadata.normativeReferences) != null ? _a : [],
+    ...references
+  ];
+  const seen = /* @__PURE__ */ new Set();
+  const unique10 = [];
+  for (const reference of combined) {
+    const identity = referenceIdentity(reference);
+    if (!seen.has(identity)) {
+      seen.add(identity);
+      unique10.push(cloneNormativeReference(reference));
+    }
+  }
+  return {
+    ...metadata,
+    normativeReferences: unique10
+  };
+}
+
+// src/norms/ntc2018/normativeReferences.js
+var NTC2018_NORMATIVE_CORPUS = Object.freeze({
+  corpusId: "structural-codes",
+  corpusRevision: "41da3faa489600173106935bbcf726119300e48d",
+  corpusStatus: "extracted",
+  repository: "https://github.com/claudiopagani/strutture-normative",
+  schemaVersion: "2.0.0-alpha.2",
+  viewer: "https://strutture-normative-viewer.claudiopagani19.chatgpt.site/"
+});
+function viewerHref(unitId) {
+  return `${NTC2018_NORMATIVE_CORPUS.viewer}?unit=${encodeURIComponent(unitId)}`;
+}
+function resolvedReference({
+  documentId = "ntc2018",
+  unitId,
+  assetIds = [],
+  relation = NORMATIVE_REFERENCE_RELATIONS.IMPLEMENTS,
+  citation
+}) {
+  return createNormativeReference({
+    ...NTC2018_NORMATIVE_CORPUS,
+    documentId,
+    unitId,
+    assetIds,
+    relation,
+    citation,
+    href: viewerHref(unitId)
+  });
+}
+function outsideCorpusReference({
+  documentId = "ntc2018",
+  relation = NORMATIVE_REFERENCE_RELATIONS.INFORMS,
+  citation,
+  href = "https://www.gazzettaufficiale.it/eli/id/2018/02/20/18A00716/sg"
+}) {
+  return createNormativeReference({
+    corpusId: NTC2018_NORMATIVE_CORPUS.corpusId,
+    corpusRevision: NTC2018_NORMATIVE_CORPUS.corpusRevision,
+    corpusStatus: NORMATIVE_REFERENCE_RESOLUTION_STATUS.OUTSIDE_CORPUS,
+    documentId,
+    relation,
+    citation,
+    href,
+    resolutionStatus: NORMATIVE_REFERENCE_RESOLUTION_STATUS.OUTSIDE_CORPUS
+  });
+}
+function freezeCatalog(value) {
+  return Object.freeze(value);
+}
+var NTC2018_RC_CHAPTER_4_REFERENCES = freezeCatalog({
+  concreteDesignCompression: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:4.1.2.1.1.1",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.3"
+    ],
+    citation: "NTC 2018 \xA7 4.1.2.1.1.1, formula [4.1.3]"
+  }),
+  concreteDesignTension: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:4.1.2.1.1.2",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.4"
+    ],
+    citation: "NTC 2018 \xA7 4.1.2.1.1.2, formula [4.1.4]"
+  }),
+  reinforcementDesignYield: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:4.1.2.1.1.3",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.5"
+    ],
+    citation: "NTC 2018 \xA7 4.1.2.1.1.3, formula [4.1.5]"
+  }),
+  bondDesignStrength: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:4.1.2.1.1.4",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.6",
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.7"
+    ],
+    citation: "NTC 2018 \xA7 4.1.2.1.1.4, formule [4.1.6]-[4.1.7]"
+  }),
+  concreteConstitutiveParameters: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:4.1.2.1.2.1",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.2.1.2.1:material-parameters-up-to-c50-60",
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.2.1.2.1:material-parameters-over-c50-60"
+    ],
+    citation: "NTC 2018 \xA7 4.1.2.1.2.1"
+  }),
+  deflection: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:4.1.2.2.2",
+    relation: NORMATIVE_REFERENCE_RELATIONS.INFORMS,
+    citation: "NTC 2018 \xA7 4.1.2.2.2"
+  }),
+  crackWidth: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:4.1.2.2.4.5",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.14"
+    ],
+    citation: "NTC 2018 \xA7 4.1.2.2.4.5, formula [4.1.14]"
+  }),
+  concreteStressCharacteristic: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:4.1.2.2.5.1",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.15"
+    ],
+    citation: "NTC 2018 \xA7 4.1.2.2.5.1, formula [4.1.15]"
+  }),
+  concreteStressQuasiPermanent: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:4.1.2.2.5.1",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.16"
+    ],
+    citation: "NTC 2018 \xA7 4.1.2.2.5.1, formula [4.1.16]"
+  }),
+  reinforcementStress: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:4.1.2.2.5.2",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.17"
+    ],
+    citation: "NTC 2018 \xA7 4.1.2.2.5.2, formula [4.1.17]"
+  }),
+  flexureAndAxialForce: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:4.1.2.3.4.2",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.18a",
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.18b",
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.19",
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.20",
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.21"
+    ],
+    citation: "NTC 2018 \xA7 4.1.2.3.4.2, formule [4.1.18]-[4.1.21]"
+  }),
+  curvatureDuctility: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:4.1.2.3.4.2",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.2.3.4.2:phi-yd"
+    ],
+    citation: "NTC 2018 \xA7 4.1.2.3.4.2, curvatura convenzionale di prima plasticizzazione"
+  }),
+  shearWithoutTransverseReinforcement: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:4.1.2.3.5.1",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.22",
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.23",
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.24",
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.2.3.5.1:parameters"
+    ],
+    citation: "NTC 2018 \xA7 4.1.2.3.5.1, formule [4.1.22]-[4.1.24]"
+  }),
+  shearWithTransverseReinforcement: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:4.1.2.3.5.2",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.25",
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.26",
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.27",
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.28",
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.29",
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.30",
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.2.3.5.2:alpha-c"
+    ],
+    citation: "NTC 2018 \xA7 4.1.2.3.5.2, formule [4.1.25]-[4.1.30]"
+  }),
+  punching: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:4.1.2.3.5.4",
+    citation: "NTC 2018 \xA7 4.1.2.3.5.4"
+  }),
+  anchorage: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:4.1.2.3.10",
+    citation: "NTC 2018 \xA7 4.1.2.3.10"
+  }),
+  torsion: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:4.1.2.3.6",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.34",
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.35",
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.36",
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.37",
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.38",
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.39",
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.40"
+    ],
+    citation: "NTC 2018 \xA7 4.1.2.3.6, formule [4.1.34]-[4.1.40]"
+  }),
+  strutAndTie: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:4.1.2.3.7",
+    citation: "NTC 2018 \xA7 4.1.2.3.7"
+  }),
+  columnSlenderness: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:4.1.2.3.9.2",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.41",
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.42",
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.43"
+    ],
+    citation: "NTC 2018 \xA7 4.1.2.3.9.2, formule [4.1.41]-[4.1.43]"
+  }),
+  nominalStiffness: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:4.1.2.3.9.3",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.44"
+    ],
+    citation: "NTC 2018 \xA7 4.1.2.3.9.3, formula [4.1.44]"
+  }),
+  beamDetailing: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:4.1.6.1.1",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.45"
+    ],
+    citation: "NTC 2018 \xA7 4.1.6.1.1, formula [4.1.45]"
+  }),
+  columnDetailing: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:4.1.6.1.2",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.46"
+    ],
+    citation: "NTC 2018 \xA7 4.1.6.1.2, formula [4.1.46]"
+  })
+});
+var NTC2018_RC_CHAPTER_7_4_REFERENCES = freezeCatalog({
+  structuralBehavior: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:7.4.1",
+    citation: "NTC 2018 \xA7 7.4.1"
+  }),
+  structuralTypesAndQ: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:7.4.3",
+    citation: "NTC 2018 \xA7 7.4.3"
+  }),
+  beamCapacityShear: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:7.4.4.1.1",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.1",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.2"
+    ],
+    citation: "NTC 2018 \xA7 7.4.4.1.1, formule [7.4.1]-[7.4.2]"
+  }),
+  beamDuctility: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:7.4.4.1.2",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.3"
+    ],
+    citation: "NTC 2018 \xA7 7.4.4.1.2, formula [7.4.3]"
+  }),
+  columnCapacityDesign: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:7.4.4.2.1",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.4",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.5",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.5:mi-d"
+    ],
+    citation: "NTC 2018 \xA7 7.4.4.2.1, formule [7.4.4]-[7.4.5]"
+  }),
+  beamColumnJoint: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:7.4.4.3.1",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.6",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.7",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.8",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.9",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.10",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.11",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.12"
+    ],
+    citation: "NTC 2018 \xA7 7.4.4.3.1, formule [7.4.6]-[7.4.12]"
+  }),
+  diaphragm: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:7.4.4.4.1",
+    citation: "NTC 2018 \xA7 7.4.4.4.1"
+  }),
+  wall: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:7.4.4.5.1",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.13",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.14",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.15",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.16",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.17",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.18",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.19",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.20",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.21",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.22"
+    ],
+    citation: "NTC 2018 \xA7 7.4.4.5.1, formule [7.4.13]-[7.4.22]"
+  }),
+  wallDuctility: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:7.4.4.5.2",
+    citation: "NTC 2018 \xA7 7.4.4.5.2"
+  }),
+  couplingBeam: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:7.4.4.6",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.23",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.24"
+    ],
+    citation: "NTC 2018 \xA7 7.4.4.6, formule [7.4.23]-[7.4.24]"
+  }),
+  beamGeometry: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:7.4.6.1.1",
+    citation: "NTC 2018 \xA7 7.4.6.1.1"
+  }),
+  columnGeometry: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:7.4.6.1.2",
+    citation: "NTC 2018 \xA7 7.4.6.1.2"
+  }),
+  jointGeometry: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:7.4.6.1.3",
+    citation: "NTC 2018 \xA7 7.4.6.1.3"
+  }),
+  wallGeometry: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:7.4.6.1.4",
+    citation: "NTC 2018 \xA7 7.4.6.1.4"
+  }),
+  beamDetailing: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:7.4.6.2.1",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.26",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.27"
+    ],
+    citation: "NTC 2018 \xA7 7.4.6.2.1, formule [7.4.26]-[7.4.27]"
+  }),
+  columnDetailing: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:7.4.6.2.2",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.28",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.28:staffe-minime",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.29",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.30",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.31a",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.31b",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.31c",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.31d"
+    ],
+    citation: "NTC 2018 \xA7 7.4.6.2.2, formule [7.4.28]-[7.4.31]"
+  }),
+  jointDetailing: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:7.4.6.2.3",
+    citation: "NTC 2018 \xA7 7.4.6.2.3"
+  }),
+  wallDetailing: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:7.4.6.2.4",
+    citation: "NTC 2018 \xA7 7.4.6.2.4"
+  }),
+  couplingBeamDetailing: resolvedReference({
+    unitId: "urn:structural-codes:it:unit:ntc2018:7.4.4.6",
+    assetIds: [
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.23",
+      "urn:structural-codes:it:asset:formula:ntc2018:7.4.24"
+    ],
+    citation: "NTC 2018 \xA7 7.4.4.6, formule [7.4.23]-[7.4.24]"
+  })
+});
+var CIRC2019_RC_REFERENCES = freezeCatalog({
+  simplifiedDeflectionSlenderness: resolvedReference({
+    documentId: "circ2019",
+    unitId: "urn:structural-codes:it:unit:circ2019:c4.1.2.2.2",
+    assetIds: [
+      "urn:structural-codes:it:asset:table:circ2019:c4.1.i"
+    ],
+    relation: NORMATIVE_REFERENCE_RELATIONS.CLARIFIES,
+    citation: "Circolare 2019 \xA7 C4.1.2.2.2, tabella C4.1.I"
+  }),
+  indirectCrackControlDiameter: resolvedReference({
+    documentId: "circ2019",
+    unitId: "urn:structural-codes:it:unit:circ2019:c4.1.2.2.4.5",
+    assetIds: [
+      "urn:structural-codes:it:asset:table:circ2019:c4.1.ii"
+    ],
+    relation: NORMATIVE_REFERENCE_RELATIONS.CLARIFIES,
+    citation: "Circolare 2019 \xA7 C4.1.2.2.4.5, tabella C4.1.II"
+  }),
+  indirectCrackControlSpacing: resolvedReference({
+    documentId: "circ2019",
+    unitId: "urn:structural-codes:it:unit:circ2019:c4.1.2.2.4.5",
+    assetIds: [
+      "urn:structural-codes:it:asset:table:circ2019:c4.1.iii"
+    ],
+    relation: NORMATIVE_REFERENCE_RELATIONS.CLARIFIES,
+    citation: "Circolare 2019 \xA7 C4.1.2.2.4.5, tabella C4.1.III"
+  })
+});
+var NTC2018_RC_OUTSIDE_CORPUS_REFERENCES = freezeCatalog({
+  foundationDesign: outsideCorpusReference({
+    citation: "NTC 2018 \xA7 6.4"
+  }),
+  globalSeismicAnalysis: outsideCorpusReference({
+    citation: "NTC 2018 \xA7\xA7 7.2-7.3"
+  }),
+  structuralRegularity: outsideCorpusReference({
+    citation: "NTC 2018 \xA7 7.2.1"
+  }),
+  structuralRegularityGuidance: outsideCorpusReference({
+    documentId: "circ2019",
+    citation: "Circolare 2019 \xA7 C7.2.1",
+    href: "https://www.gazzettaufficiale.it/eli/id/2019/02/11/19A00855/sg"
+  }),
+  seismicFoundationDesign: outsideCorpusReference({
+    citation: "NTC 2018 \xA7 7.11"
+  }),
+  materialQualification: outsideCorpusReference({
+    citation: "NTC 2018, capitolo 11"
+  })
+});
+
 // src/norms/ntc2018/materials/createNTC2018Material.js
 var NTC2018_REFERENCE = "DM 17/01/2018 - NTC 2018";
 var INTERNAL_UNITS24 = Object.freeze({ force: "N", length: "mm" });
@@ -61636,6 +62181,7 @@ function createNTC2018ConcreteMaterial({
     elasticModulus: round4(ecm, 0),
     fcm: round4(fcm, 2),
     fck: round4(fck, 2),
+    // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A4.1.2.1.1.1
     fcd: round4(alphaCc * fck / gammaC, 2),
     fctm: round4(fctm, 2),
     existing: existingState.existing,
@@ -61646,7 +62192,7 @@ function createNTC2018ConcreteMaterial({
       elasticModulus: round4(ecm, 0)
     } : {},
     units: INTERNAL_UNITS24,
-    metadata: {
+    metadata: withNormativeReferences({
       ...metadata,
       normativePreset: "NTC2018",
       ntcReference: NTC2018_REFERENCE,
@@ -61660,7 +62206,10 @@ function createNTC2018ConcreteMaterial({
       knowledgeLevelDescription: existingState.knowledgeLevelDescription,
       confidenceFactor: existingState.confidenceFactor,
       characteristicStrengthSource: existingState.existing ? "mean-divided-by-confidence-factor" : "catalog-characteristic"
-    }
+    }, [
+      NTC2018_RC_CHAPTER_4_REFERENCES.concreteDesignCompression,
+      NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.materialQualification
+    ])
   });
 }
 function createNTC2018ReinforcementSteelMaterial({
@@ -61704,6 +62253,7 @@ function createNTC2018ReinforcementSteelMaterial({
     fyMean: existingState.existing ? round4(fyMean, 2) : null,
     ftMean: existingState.existing ? round4(ftMean, 2) : null,
     fyk: round4(fyk, 2),
+    // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A4.1.2.1.1.3
     fyd: round4(fyk / gammaS, 2),
     ftk: round4(ftk, 2),
     ductilityClass: preset.ductilityClass,
@@ -61712,7 +62262,7 @@ function createNTC2018ReinforcementSteelMaterial({
     knowledgeLevel: (_a = existingState.knowledgeLevel) != null ? _a : knowledgeLevel,
     confidenceFactor: existingState.confidenceFactor,
     units: INTERNAL_UNITS24,
-    metadata: {
+    metadata: withNormativeReferences({
       ...metadata,
       normativePreset: "NTC2018",
       ntcReference: NTC2018_REFERENCE,
@@ -61729,7 +62279,10 @@ function createNTC2018ReinforcementSteelMaterial({
       knowledgeLevelDescription: existingState.knowledgeLevelDescription,
       confidenceFactor: existingState.confidenceFactor,
       characteristicStrengthSource: existingState.existing ? "mean-divided-by-confidence-factor" : "catalog-characteristic"
-    }
+    }, [
+      NTC2018_RC_CHAPTER_4_REFERENCES.reinforcementDesignYield,
+      NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.materialQualification
+    ])
   });
 }
 function createNTC2018StructuralSteelMaterial({
@@ -65312,14 +65865,14 @@ function finiteNonNegative(value, label) {
   }
   return value;
 }
-function nonEmptyString(value, label) {
+function nonEmptyString2(value, label) {
   if (typeof value !== "string" || value.trim() === "") {
     throw new Error(`${label} must be a non-empty string.`);
   }
   return value.trim();
 }
-function optionalNonEmptyString(value, label) {
-  return value == null ? null : nonEmptyString(value, label);
+function optionalNonEmptyString2(value, label) {
+  return value == null ? null : nonEmptyString2(value, label);
 }
 function limitStateDefinition(limitState) {
   const definition = NTC2018_SEISMIC_LIMIT_STATES[limitState];
@@ -65355,15 +65908,15 @@ function normalizeSource2(source) {
   }
   return {
     kind: source.kind,
-    reference: nonEmptyString(
+    reference: nonEmptyString2(
       source.reference,
       "hazardParameters.source.reference"
     ),
-    datasetVersion: optionalNonEmptyString(
+    datasetVersion: optionalNonEmptyString2(
       source.datasetVersion,
       "hazardParameters.source.datasetVersion"
     ),
-    resultId: optionalNonEmptyString(
+    resultId: optionalNonEmptyString2(
       source.resultId,
       "hazardParameters.source.resultId"
     )
@@ -65403,7 +65956,7 @@ function normalizeNTC2018SiteHazardParameters({
   }
   return {
     schemaVersion: "ntc2018-site-hazard-parameters/v1",
-    siteReference: nonEmptyString(
+    siteReference: nonEmptyString2(
       siteReference,
       "hazardParameters.siteReference"
     ),
@@ -65540,7 +66093,7 @@ function resolveNTC2018TopographicAmplification({
     value: explicitCoefficient,
     selection: "documented-explicit-within-tabulated-range",
     location: "between-base-and-reference-location",
-    sourceReference: nonEmptyString(coefficientSource, "coefficientSource"),
+    sourceReference: nonEmptyString2(coefficientSource, "coefficientSource"),
     reference: NTC2018_SEISMIC_REFERENCES.topographicAmplification
   };
 }
@@ -65652,7 +66205,7 @@ function calculateNTC2018HorizontalElasticSpectrum({
   viscousDampingPercent = 5,
   periods
 } = {}) {
-  const normalizedActionId = nonEmptyString(actionId, "actionId");
+  const normalizedActionId = nonEmptyString2(actionId, "actionId");
   const hazard = normalizeNTC2018SiteHazardParameters(hazardParameters);
   const normalizedPeriods = normalizePeriods(periods);
   const spectrumParameters = calculateNTC2018HorizontalSpectrumParameters({
@@ -66681,7 +67234,7 @@ function finitePositive3(value, label) {
   }
   return value;
 }
-function nonEmptyString2(value, label) {
+function nonEmptyString3(value, label) {
   if (typeof value !== "string" || value.trim() === "") {
     throw new Error(`${label} must be a non-empty string.`);
   }
@@ -66849,7 +67402,7 @@ function resolveGroundSnowLoad({
     resolver.areaLoad(groundSnowLoad),
     "groundSnowLoad"
   );
-  const source = nonEmptyString2(groundSnowLoadSource, "groundSnowLoadSource");
+  const source = nonEmptyString3(groundSnowLoadSource, "groundSnowLoadSource");
   if (value < minimum2.value) {
     throw new Error(
       `groundSnowLoad must not be lower than the NTC 2018 minimum ${minimum2.value} kN/m^2.`
@@ -66905,7 +67458,7 @@ function resolveShapeCoefficient({
   return {
     value: finiteNonNegative2(shapeCoefficient, "shapeCoefficient"),
     source: "documented-explicit-value",
-    sourceReference: nonEmptyString2(
+    sourceReference: nonEmptyString3(
       shapeCoefficientSource,
       "shapeCoefficientSource"
     ),
@@ -66938,7 +67491,7 @@ function resolveExposureCoefficient({
     exposureClass: null,
     value: finitePositive3(exposureCoefficient, "exposureCoefficient"),
     source: "documented-explicit-value",
-    sourceReference: nonEmptyString2(
+    sourceReference: nonEmptyString3(
       exposureCoefficientSource,
       "exposureCoefficientSource"
     ),
@@ -66952,7 +67505,7 @@ function resolveThermalCoefficient({
   const defaultApplied = thermalCoefficient == null;
   const value = finitePositive3(thermalCoefficient != null ? thermalCoefficient : 1, "thermalCoefficient");
   if (value !== 1) {
-    nonEmptyString2(thermalCoefficientSource, "thermalCoefficientSource");
+    nonEmptyString3(thermalCoefficientSource, "thermalCoefficientSource");
   }
   return {
     value,
@@ -67006,8 +67559,8 @@ function calculateNTC2018SnowAreaLoad({
   thermalCoefficientSource = null,
   units = null
 } = {}) {
-  const loadId = nonEmptyString2(id, "id");
-  const normalizedActionId = nonEmptyString2(actionId, "actionId");
+  const loadId = nonEmptyString3(id, "id");
+  const normalizedActionId = nonEmptyString3(actionId, "actionId");
   const sourceUnits = assertExplicitUnitSystem(units, "calculateNTC2018SnowAreaLoad");
   const resolver = createUnitResolver(sourceUnits, INTERNAL_UNITS29);
   const altitude = finiteNonNegative2(resolver.length(siteAltitude), "siteAltitude");
@@ -67294,7 +67847,7 @@ function finitePositive4(value, label) {
   }
   return value;
 }
-function nonEmptyString3(value, label) {
+function nonEmptyString4(value, label) {
   if (typeof value !== "string" || value.trim() === "") {
     throw new Error(`${label} must be a non-empty string.`);
   }
@@ -67436,7 +67989,7 @@ function resolveNTC2018InternalAirTemperature({
     value: finiteNumber(value, "value"),
     temperatureUnit: TEMPERATURE_UNIT,
     source: "documented-explicit-value",
-    sourceReference: nonEmptyString3(source, "source"),
+    sourceReference: nonEmptyString4(source, "source"),
     reference: NTC2018_THERMAL_REFERENCES.internalAir
   };
 }
@@ -67462,7 +68015,7 @@ function resolveNTC2018InitialTemperature({
     value: finiteNumber(value, "value"),
     temperatureUnit: TEMPERATURE_UNIT,
     source: "documented-explicit-value",
-    sourceReference: nonEmptyString3(source, "source"),
+    sourceReference: nonEmptyString4(source, "source"),
     reference: NTC2018_THERMAL_REFERENCES.elementDistribution
   };
 }
@@ -67611,7 +68164,7 @@ function resolveThermalCases({
   if (summer < winter) {
     throw new Error("summerMeanTemperature must not be lower than winterMeanTemperature.");
   }
-  const sourceReference = nonEmptyString3(
+  const sourceReference = nonEmptyString4(
     temperatureStateSource,
     "temperatureStateSource"
   );
@@ -67651,8 +68204,8 @@ function calculateNTC2018BuildingThermalActions({
   initialTemperatureSource = null,
   temperatureUnit = null
 } = {}) {
-  const summerId = nonEmptyString3(summerActionId, "summerActionId");
-  const winterId = nonEmptyString3(winterActionId, "winterActionId");
+  const summerId = nonEmptyString4(summerActionId, "summerActionId");
+  const winterId = nonEmptyString4(winterActionId, "winterActionId");
   if (summerId === winterId) {
     throw new Error("summerActionId and winterActionId must be different.");
   }
@@ -67841,7 +68394,7 @@ function finitePositive5(value, label) {
   }
   return value;
 }
-function nonEmptyString4(value, label) {
+function nonEmptyString5(value, label) {
   if (typeof value !== "string" || value.trim() === "") {
     throw new Error(`${label} must be a non-empty string.`);
   }
@@ -67931,7 +68484,7 @@ function calculateNTC2018BaseWindSpeed({
   }
   assertVelocityUnit(baseWindSpeedUnit, "baseWindSpeedUnit");
   const documentedValue = finitePositive5(baseWindSpeed, "baseWindSpeed");
-  const sourceReference = nonEmptyString4(baseWindSpeedSource, "baseWindSpeedSource");
+  const sourceReference = nonEmptyString5(baseWindSpeedSource, "baseWindSpeedSource");
   if (documentedValue < minimum2.value) {
     throw new Error(
       `baseWindSpeed must not be lower than the NTC 2018 minimum ${minimum2.value} m/s.`
@@ -68128,7 +68681,7 @@ function resolveExposure({
         heightAboveGround,
         value: finitePositive5(exposureCoefficient, "exposureCoefficient"),
         source: "documented-explicit-value",
-        sourceReference: nonEmptyString4(
+        sourceReference: nonEmptyString5(
           exposureCoefficientSource,
           "exposureCoefficientSource"
         ),
@@ -68145,7 +68698,7 @@ function resolveExposure({
   }
   const ct = finitePositive5(topographyCoefficient != null ? topographyCoefficient : 1, "topographyCoefficient");
   if (ct !== 1) {
-    nonEmptyString4(topographyCoefficientSource, "topographyCoefficientSource");
+    nonEmptyString5(topographyCoefficientSource, "topographyCoefficientSource");
   }
   const exposure = calculateNTC2018WindExposureCoefficient({
     exposureCategory,
@@ -68179,7 +68732,7 @@ function resolveDynamicCoefficient({
       dynamic: {
         value: finitePositive5(dynamicCoefficient, "dynamicCoefficient"),
         source: "documented-explicit-value",
-        sourceReference: nonEmptyString4(
+        sourceReference: nonEmptyString5(
           dynamicCoefficientSource,
           "dynamicCoefficientSource"
         ),
@@ -68254,8 +68807,8 @@ function calculateNTC2018WindAreaLoad({
   dynamicCoefficientSource = null,
   units = null
 } = {}) {
-  const loadId = nonEmptyString4(id, "id");
-  const normalizedActionId = nonEmptyString4(actionId, "actionId");
+  const loadId = nonEmptyString5(id, "id");
+  const normalizedActionId = nonEmptyString5(actionId, "actionId");
   const sourceUnits = assertExplicitUnitSystem(units, "calculateNTC2018WindAreaLoad");
   const resolver = createUnitResolver(sourceUnits, INTERNAL_UNITS30);
   const altitude = finiteNonNegative4(resolver.length(siteAltitude), "siteAltitude");
@@ -68354,7 +68907,7 @@ function calculateNTC2018WindAreaLoad({
     });
   }
   const cp = finiteNumber2(pressureCoefficient, "pressureCoefficient");
-  const cpSource = nonEmptyString4(
+  const cpSource = nonEmptyString5(
     pressureCoefficientSource,
     "pressureCoefficientSource"
   );
@@ -69555,10 +70108,10 @@ var NTC2018_PERMANENT_LOAD_REFERENCES = Object.freeze({
   equivalentPartitions: "D.M. 17/01/2018, NTC 2018, section 3.1.3",
   partialFactors: "D.M. 17/01/2018, NTC 2018, section 2.6.1, Table 2.6.I"
 });
-function freezeCatalog(entries3) {
+function freezeCatalog2(entries3) {
   return Object.freeze(entries3.map((entry) => Object.freeze({ ...entry })));
 }
-var NTC2018_UNIT_WEIGHT_CATALOG = freezeCatalog([
+var NTC2018_UNIT_WEIGHT_CATALOG = freezeCatalog2([
   {
     id: "plain-concrete",
     category: "concrete",
@@ -70688,7 +71241,11 @@ function classifyNTC2018JointConfinement({
     bothPairsOverlap,
     threshold: 0.75,
     faceCoverageRatios: { ...faceCoverageRatios },
-    oppositeBeamOverlapRatios: { ...oppositeBeamOverlapRatios }
+    oppositeBeamOverlapRatios: { ...oppositeBeamOverlapRatios },
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.jointGeometry]
+    )
   };
 }
 function calculateNTC2018JointShearDemand({
@@ -70716,7 +71273,11 @@ function calculateNTC2018JointShearDemand({
     beamForce,
     columnShearAbove,
     reinforcementArea,
-    equation: jointType === "internal" ? "NTC2018-7.4.7" : "NTC2018-7.4.6"
+    equation: jointType === "internal" ? "NTC2018-7.4.7" : "NTC2018-7.4.6",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.beamColumnJoint]
+    )
   };
 }
 function calculateNTC2018JointCompressionCapacity({
@@ -70744,7 +71305,11 @@ function calculateNTC2018JointCompressionCapacity({
     alphaJ,
     eta,
     radicand,
-    equation: "NTC2018-7.4.8-7.4.9"
+    equation: "NTC2018-7.4.8-7.4.9",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.beamColumnJoint]
+    )
   };
 }
 function calculateNTC2018JointTensionReinforcement({
@@ -70787,7 +71352,11 @@ function calculateNTC2018JointTensionReinforcement({
       axialFactor,
       reinforcementArea,
       shearStress: jointShearDemand / (effectiveJointWidth * columnLongitudinalLayerDistance),
-      equation: jointType === "internal" ? "NTC2018-7.4.11" : "NTC2018-7.4.12"
+      equation: jointType === "internal" ? "NTC2018-7.4.11" : "NTC2018-7.4.12",
+      metadata: withNormativeReferences(
+        {},
+        [NTC2018_RC_CHAPTER_7_4_REFERENCES.beamColumnJoint]
+      )
     };
   }
   const shearStress = jointShearDemand / (effectiveJointWidth * columnLongitudinalLayerDistance);
@@ -70801,7 +71370,11 @@ function calculateNTC2018JointTensionReinforcement({
     requiredConfiningStress,
     shearStress,
     denominator,
-    equation: "NTC2018-7.4.10"
+    equation: "NTC2018-7.4.10",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.beamColumnJoint]
+    )
   };
 }
 var NTC2018_BEAM_COLUMN_JOINT_TYPES = Object.freeze([...JOINT_TYPES]);
@@ -70967,7 +71540,11 @@ function checkNonDissipativeAdmissibility({
     simplifiedRegimeEligible,
     agSOverG,
     warnings,
-    reference: "NTC 2018 \xA7\xA7 7.0 e 7.2.2"
+    reference: "NTC 2018 \xA7\xA7 7.0 e 7.2.2",
+    metadata: withNormativeReferences({}, [
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.structuralBehavior,
+      NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.globalSeismicAnalysis
+    ])
   };
 }
 function selectNTC2018OverstrengthFactors({ behavior }) {
@@ -71129,7 +71706,11 @@ function selectNTC2018AllowedAnalysisMethods({
     allowed: [...allowed],
     recommended: NTC2018_ANALYSIS_METHOD.LINEAR_DYNAMIC,
     linearStaticAllowed,
-    checks
+    checks,
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.globalSeismicAnalysis]
+    )
   };
 }
 function createNTC2018StructuralBehavior({
@@ -71171,11 +71752,20 @@ function createNTC2018StructuralBehavior({
     q0,
     q: normalizedBehavior === NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE ? q0 : q0 * kr,
     kr,
-    references: NTC2018_STRUCTURAL_BEHAVIOR_REFERENCES
+    references: NTC2018_STRUCTURAL_BEHAVIOR_REFERENCES,
+    metadata: withNormativeReferences({}, [
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.structuralBehavior,
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.structuralTypesAndQ,
+      NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.globalSeismicAnalysis
+    ])
   };
 }
 
 // src/norms/ntc2018/reinforced-concrete/structuralRegularity.js
+var STRUCTURAL_REGULARITY_NORMATIVE_REFERENCES = Object.freeze([
+  NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.structuralRegularity,
+  NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.structuralRegularityGuidance
+]);
 var NTC2018_REGULARITY_REFERENCES = Object.freeze([
   Object.freeze({
     source: "NTC 2018",
@@ -71186,6 +71776,17 @@ var NTC2018_REGULARITY_REFERENCES = Object.freeze([
     citation: "\xA7 C7.2.1"
   })
 ]);
+function regularityMetadata(metadata = {}) {
+  return withNormativeReferences(metadata, [
+    ...STRUCTURAL_REGULARITY_NORMATIVE_REFERENCES
+  ]);
+}
+function regularityCheck(check4) {
+  return {
+    ...check4,
+    metadata: regularityMetadata(check4.metadata)
+  };
+}
 function positive26(value, label) {
   const number = Number(value);
   if (!Number.isFinite(number) || number <= 0) {
@@ -71232,11 +71833,11 @@ function evaluateNTC2018PlanRegularity(input = {}) {
     "massAndStiffnessApproximatelySymmetric"
   );
   const floors = normalizeFloorPlans(input);
-  const checks = [{
+  const checks = [regularityCheck({
     check: "plan-mass-stiffness-symmetry",
     ok: symmetry,
     reference: "NTC 2018 \xA7 7.2.1, lettera a)"
-  }];
+  })];
   const floorDetails = [];
   for (let index = 0; index < floors.length; index++) {
     const floor = floors[index];
@@ -71311,7 +71912,7 @@ function evaluateNTC2018PlanRegularity(input = {}) {
         ok: strengthOk,
         reference: "NTC 2018 \xA7 7.2.1, lettera c)"
       }
-    ];
+    ].map(regularityCheck);
     checks.push(...floorChecks);
     floorDetails.push({
       storeyId,
@@ -71337,7 +71938,10 @@ function evaluateNTC2018PlanRegularity(input = {}) {
     reentrantRatioX: null,
     reentrantRatioY: null,
     eccentricityRatioX: null,
-    eccentricityRatioY: null
+    eccentricityRatioY: null,
+    metadata: regularityMetadata({
+      normativeConformityClaimed: false
+    })
   };
 }
 function pairCheck({
@@ -71349,7 +71953,7 @@ function pairCheck({
   maximum,
   reference
 }) {
-  return {
+  return regularityCheck({
     check: check4,
     storeyId,
     comparedTo,
@@ -71358,7 +71962,7 @@ function pairCheck({
     minimum: minimum2,
     maximum,
     reference
-  };
+  });
 }
 function positiveStoreyValue(storey, key, index) {
   return positive26(storey[key], `storeys[${index}].${key}`);
@@ -71392,11 +71996,11 @@ function evaluateNTC2018ElevationRegularity({
       capacityDemandRatioY: topResistanceException ? null : positiveStoreyValue(storey, "capacityDemandRatioY", index)
     };
   });
-  const checks = [{
+  const checks = [regularityCheck({
     check: "elevation-continuous-horizontal-resisting-systems",
     ok: continuousVerticalSystems,
     reference: "NTC 2018 \xA7 7.2.1, lettera d)"
-  }];
+  })];
   const storeyDetails = [];
   const first = normalized3[0];
   for (let index = 1; index < normalized3.length; index++) {
@@ -71450,7 +72054,7 @@ function evaluateNTC2018ElevationRegularity({
             `Storey ${current.storeyId} setbacks in ${direction} must be finite and non-negative.`
           );
         }
-        pairChecks.push({
+        pairChecks.push(regularityCheck({
           check: `elevation-setback-${direction.toLowerCase()}`,
           storeyId: current.storeyId,
           comparedTo: below.storeyId,
@@ -71460,7 +72064,7 @@ function evaluateNTC2018ElevationRegularity({
           immediateLimit: 0.1,
           fromFirstLimit: 0.3,
           reference: "NTC 2018 \xA7 7.2.1, lettera g)"
-        });
+        }));
       }
     }
     checks.push(...pairChecks);
@@ -71478,7 +72082,10 @@ function evaluateNTC2018ElevationRegularity({
     allChecksOk,
     checks,
     storeyDetails,
-    stiffnessCriterionExempt
+    stiffnessCriterionExempt,
+    metadata: regularityMetadata({
+      normativeConformityClaimed: false
+    })
   };
 }
 function createNTC2018RegularityAssessment({
@@ -71530,7 +72137,10 @@ function createNTC2018RegularityAssessment({
     elevationDetails: elevationResult.storeyDetails,
     allChecksOk: checks.every((check4) => check4.ok === true),
     checks,
-    references: NTC2018_REGULARITY_REFERENCES
+    references: NTC2018_REGULARITY_REFERENCES,
+    metadata: regularityMetadata({
+      normativeConformityClaimed: false
+    })
   };
 }
 
@@ -71595,7 +72205,11 @@ function verifyBeamColumnHierarchy({
       gammaRd: null,
       discordantColumns: false,
       check: "capacity-design-beam-column-hierarchy",
-      reference: "NTC 2018 \xA7 7.4.4.2.1, Eq. [7.4.4]"
+      reference: "NTC 2018 \xA7 7.4.4.2.1, Eq. [7.4.4]",
+      metadata: withNormativeReferences(
+        {},
+        [NTC2018_RC_CHAPTER_7_4_REFERENCES.columnCapacityDesign]
+      )
     };
   }
   const beams = finiteArray(
@@ -71635,7 +72249,11 @@ function verifyBeamColumnHierarchy({
     transferredColumnMoment,
     discordantColumns,
     check: "capacity-design-beam-column-hierarchy",
-    reference: "NTC 2018 \xA7 7.4.4.2.1, Eq. [7.4.4]"
+    reference: "NTC 2018 \xA7 7.4.4.2.1, Eq. [7.4.4]",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.columnCapacityDesign]
+    )
   };
 }
 function computeBeamCapacityShear({
@@ -71673,7 +72291,11 @@ function computeBeamCapacityShear({
     shearFromEndMoments,
     gammaRd,
     check: "capacity-design-beam-shear",
-    reference: "NTC 2018 \xA7 7.4.4.1.1 (Taglio)"
+    reference: "NTC 2018 \xA7 7.4.4.1.1 (Taglio)",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.beamCapacityShear]
+    )
   };
 }
 function columnEndDesignMoment({
@@ -71725,7 +72347,11 @@ function computeColumnCapacityShear({
     hierarchyFactorTop: topEnd.hierarchyFactor,
     hierarchyFactorBottom: bottomEnd.hierarchyFactor,
     check: "capacity-design-column-shear",
-    reference: "NTC 2018 \xA7 7.4.4.2.1, Eq. [7.4.5]"
+    reference: "NTC 2018 \xA7 7.4.4.2.1, Eq. [7.4.5]",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.columnCapacityDesign]
+    )
   };
 }
 function computeJointCapacityShear({
@@ -71764,7 +72390,11 @@ function computeJointCapacityShear({
     gammaRd: factors.jointShear,
     jointType,
     check: "capacity-design-joint-shear",
-    reference: jointType === "internal" ? "NTC 2018 \xA7 7.4.4.3.1, Eq. [7.4.7]" : "NTC 2018 \xA7 7.4.4.3.1, Eq. [7.4.6]"
+    reference: jointType === "internal" ? "NTC 2018 \xA7 7.4.4.3.1, Eq. [7.4.7]" : "NTC 2018 \xA7 7.4.4.3.1, Eq. [7.4.6]",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.beamColumnJoint]
+    )
   };
 }
 function resistanceCheck(result9, resistance, check4) {
@@ -71837,11 +72467,22 @@ function createCapacityDesignAssessment({
     status: complete ? checks.every((check4) => check4.ok === true) ? "ok" : "not-verified" : "not-implemented",
     allChecksOk: complete && checks.every((check4) => check4.ok === true),
     checks,
-    references: NTC2018_CAPACITY_DESIGN_REFERENCES
+    references: NTC2018_CAPACITY_DESIGN_REFERENCES,
+    metadata: withNormativeReferences({}, [
+      ...hierarchy != null || columnShear != null ? [NTC2018_RC_CHAPTER_7_4_REFERENCES.columnCapacityDesign] : [],
+      ...beamShear != null ? [NTC2018_RC_CHAPTER_7_4_REFERENCES.beamCapacityShear] : [],
+      ...jointShear != null ? [NTC2018_RC_CHAPTER_7_4_REFERENCES.beamColumnJoint] : []
+    ])
   };
 }
 
 // src/norms/ntc2018/reinforced-concrete/displacementChecks.js
+function outsideCorpusMetadata(metadata = {}) {
+  return withNormativeReferences(
+    metadata,
+    [NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.globalSeismicAnalysis]
+  );
+}
 var NTC2018_DISPLACEMENT_REFERENCES = Object.freeze([
   Object.freeze({
     source: "NTC 2018",
@@ -71955,7 +72596,8 @@ function verifyStoreyDrift({
     ok: designDriftRatio <= limit,
     demand: designDriftRatio,
     capacity: limit,
-    reference: category === "rigidly-connected-fragile" ? "NTC 2018 \xA7 7.3.6.1, Eq. [7.3.11a]" : category === "rigidly-connected-ductile" ? "NTC 2018 \xA7 7.3.6.1, Eq. [7.3.11b]" : "NTC 2018 \xA7 7.3.6.1, Eq. [7.3.12]"
+    reference: category === "rigidly-connected-fragile" ? "NTC 2018 \xA7 7.3.6.1, Eq. [7.3.11a]" : category === "rigidly-connected-ductile" ? "NTC 2018 \xA7 7.3.6.1, Eq. [7.3.11b]" : "NTC 2018 \xA7 7.3.6.1, Eq. [7.3.12]",
+    metadata: outsideCorpusMetadata()
   }];
   let nonStructuralCapacity = null;
   if (category === "damage-avoiding") {
@@ -71968,7 +72610,8 @@ function verifyStoreyDrift({
       ok: designDriftRatio <= nonStructuralCapacity,
       demand: designDriftRatio,
       capacity: nonStructuralCapacity,
-      reference: "NTC 2018 \xA7 7.3.6.1, Eq. [7.3.12]"
+      reference: "NTC 2018 \xA7 7.3.6.1, Eq. [7.3.12]",
+      metadata: outsideCorpusMetadata()
     });
   }
   return {
@@ -71983,7 +72626,8 @@ function verifyStoreyDrift({
     nonStructuralDisplacementCapacityRatio: nonStructuralCapacity,
     checks,
     check: "storey-drift",
-    reference: checks[0].reference
+    reference: checks[0].reference,
+    metadata: outsideCorpusMetadata()
   };
 }
 function computePDeltaCoefficient({
@@ -72009,7 +72653,12 @@ function computePDeltaCoefficient({
   } else {
     status = "forbidden";
   }
-  return { theta, status, amplificationFactor };
+  return {
+    theta,
+    status,
+    amplificationFactor,
+    metadata: outsideCorpusMetadata()
+  };
 }
 function verifyPDelta(params) {
   const result9 = computePDeltaCoefficient(params);
@@ -72017,7 +72666,8 @@ function verifyPDelta(params) {
     ...result9,
     ok: result9.status === "negligible" || result9.status === "amplification-required",
     check: "pdelta",
-    reference: "NTC 2018 \xA7 7.3.1, Eq. [7.3.3]"
+    reference: "NTC 2018 \xA7 7.3.1, Eq. [7.3.3]",
+    metadata: outsideCorpusMetadata(result9.metadata)
   };
 }
 function computeSeismicJointWidth({
@@ -72053,7 +72703,8 @@ function computeSeismicJointWidth({
     geometricMinimum,
     usedEstimatedDisplacements: usedEstimatedDisplacementA || usedEstimatedDisplacementB,
     check: "seismic-joint",
-    reference: "NTC 2018 \xA7 7.2.1, distanza tra costruzioni contigue"
+    reference: "NTC 2018 \xA7 7.2.1, distanza tra costruzioni contigue",
+    metadata: outsideCorpusMetadata()
   };
 }
 function directionDisplacements(storey, direction, prefix) {
@@ -72132,7 +72783,8 @@ function verifyStoreyDisplacements({
     storeyId: storey.storeyId,
     ...results,
     allChecksOk: checks.every((check4) => check4.ok === true),
-    checks
+    checks,
+    metadata: outsideCorpusMetadata()
   };
 }
 function createDisplacementAssessment({
@@ -72181,7 +72833,8 @@ function createDisplacementAssessment({
     governingThetaY: governing("pDeltaY", "theta"),
     allChecksOk: allChecks.length > 0 && allChecks.every((check4) => check4.ok === true),
     checks: allChecks,
-    references: NTC2018_DISPLACEMENT_REFERENCES
+    references: NTC2018_DISPLACEMENT_REFERENCES,
+    metadata: outsideCorpusMetadata()
   };
 }
 
@@ -72267,7 +72920,11 @@ function amplifyNTC2018DiaphragmActions({ analysisActions } = {}) {
     analysisActions: { ...analysisActions },
     designActions,
     amplificationFactor: NTC2018_DIAPHRAGM_FORCE_FACTOR,
-    reference: "NTC 2018 \xA7 7.4.4.4.1"
+    reference: "NTC 2018 \xA7 7.4.4.4.1",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.diaphragm]
+    )
   };
 }
 function createDiaphragmAssessment({
@@ -72300,11 +72957,18 @@ function createDiaphragmAssessment({
     warnings: complete ? [] : [
       "No chapter-4 in-plane resistance checks were supplied; only the \xA7 7.4.4.4.1 demand amplification was performed."
     ],
-    references: NTC2018_DIAPHRAGM_REFERENCES
+    references: NTC2018_DIAPHRAGM_REFERENCES,
+    metadata: withNormativeReferences(
+      demand.metadata,
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.diaphragm]
+    )
   };
 }
 
 // src/norms/ntc2018/reinforced-concrete/ntc2018ShearWall.js
+function wallMetadata(references) {
+  return withNormativeReferences({}, references);
+}
 var NTC2018_SHEAR_WALL_REFERENCES = Object.freeze([
   Object.freeze({
     source: "NTC 2018",
@@ -72359,7 +73023,8 @@ function computeWallCriticalZoneHeight({
       twoWallLengths: 2 * length,
       storeyHeight: storeyCap
     },
-    reference: "NTC 2018 \xA7 7.4.4.5.1, Eq. [7.4.13]"
+    reference: "NTC 2018 \xA7 7.4.4.5.1, Eq. [7.4.13]",
+    metadata: wallMetadata([NTC2018_RC_CHAPTER_7_4_REFERENCES.wall])
   };
 }
 function computeWallMomentShift({
@@ -72385,7 +73050,8 @@ function computeWallMomentShift({
     applicable,
     slender,
     hCr: criticalZone.hCr,
-    reference: "NTC 2018 \xA7 7.4.4.5.1 (Presso-flessione)"
+    reference: "NTC 2018 \xA7 7.4.4.5.1 (Presso-flessione)",
+    metadata: wallMetadata([NTC2018_RC_CHAPTER_7_4_REFERENCES.wall])
   };
 }
 function computeWallCapacityShear({
@@ -72418,7 +73084,10 @@ function computeWallCapacityShear({
       rawAmplificationFactor: 1,
       gammaRd: null,
       slender: height / length > 2,
-      reference: "NTC 2018 \xA7 7.4.1"
+      reference: "NTC 2018 \xA7 7.4.1",
+      metadata: wallMetadata([
+        NTC2018_RC_CHAPTER_7_4_REFERENCES.structuralBehavior
+      ])
     };
   }
   if (behaviorFactor < 1.5) {
@@ -72448,7 +73117,8 @@ function computeWallCapacityShear({
     rawAmplificationFactor,
     gammaRd,
     slender,
-    reference: slender ? "NTC 2018 \xA7 7.4.4.5.1, Eq. [7.4.14]" : "NTC 2018 \xA7 7.4.4.5.1, Eq. [7.4.15]"
+    reference: slender ? "NTC 2018 \xA7 7.4.4.5.1, Eq. [7.4.14]" : "NTC 2018 \xA7 7.4.4.5.1, Eq. [7.4.15]",
+    metadata: wallMetadata([NTC2018_RC_CHAPTER_7_4_REFERENCES.wall])
   };
 }
 function verifyWallShear({
@@ -72483,7 +73153,8 @@ function verifyWallShear({
       capacity: concreteCompressionResistance,
       utilizationRatio: demand / concreteCompressionResistance,
       ok: demand <= concreteCompressionResistance,
-      reference: "NTC 2018 \xA7 7.4.4.5.1 (taglio-compressione)"
+      reference: "NTC 2018 \xA7 7.4.4.5.1 (taglio-compressione)",
+      metadata: wallMetadata([NTC2018_RC_CHAPTER_7_4_REFERENCES.wall])
     },
     {
       check: "wall-shear-web-tension",
@@ -72491,7 +73162,8 @@ function verifyWallShear({
       capacity: webTensionResistance,
       utilizationRatio: demand / webTensionResistance,
       ok: demand <= webTensionResistance,
-      reference: "NTC 2018 \xA7 7.4.4.5.1 (taglio-trazione)"
+      reference: "NTC 2018 \xA7 7.4.4.5.1 (taglio-trazione)",
+      metadata: wallMetadata([NTC2018_RC_CHAPTER_7_4_REFERENCES.wall])
     }
   ];
   if (isDissipativeZone) {
@@ -72502,7 +73174,8 @@ function verifyWallShear({
       capacity: sliding,
       utilizationRatio: demand / sliding,
       ok: demand <= sliding,
-      reference: "NTC 2018 \xA7 7.4.4.5.1, Eqs. [7.4.18]-[7.4.22]"
+      reference: "NTC 2018 \xA7 7.4.4.5.1, Eqs. [7.4.18]-[7.4.22]",
+      metadata: wallMetadata([NTC2018_RC_CHAPTER_7_4_REFERENCES.wall])
     });
     if (isSquatWall) {
       const inclined = nonNegative11(
@@ -72516,7 +73189,8 @@ function verifyWallShear({
         utilizationRatio: inclined > 0 ? demand / 2 / inclined : Infinity,
         ok: inclined > demand / 2,
         comparison: ">",
-        reference: "NTC 2018 \xA7 7.4.4.5.1 (Vid > VEd/2)"
+        reference: "NTC 2018 \xA7 7.4.4.5.1 (Vid > VEd/2)",
+        metadata: wallMetadata([NTC2018_RC_CHAPTER_7_4_REFERENCES.wall])
       });
     }
   }
@@ -72526,7 +73200,8 @@ function verifyWallShear({
     concreteCompressionResistance,
     webTensionResistance,
     checks,
-    reference: "NTC 2018 \xA7 7.4.4.5.1"
+    reference: "NTC 2018 \xA7 7.4.4.5.1",
+    metadata: wallMetadata([NTC2018_RC_CHAPTER_7_4_REFERENCES.wall])
   };
 }
 function verifyWallBoundaryConfinement({
@@ -72541,7 +73216,8 @@ function verifyWallBoundaryConfinement({
     maximumConcreteCompressiveStrain: strain,
     threshold: 35e-4,
     check: "wall-boundary-confinement-region",
-    reference: "NTC 2018 \xA7 7.4.4.5.2"
+    reference: "NTC 2018 \xA7 7.4.4.5.2",
+    metadata: wallMetadata([NTC2018_RC_CHAPTER_7_4_REFERENCES.wallDuctility])
   };
 }
 function computeWallBoundaryLength({
@@ -72562,7 +73238,11 @@ function computeWallBoundaryLength({
     strainDerivedLength: strainLength,
     minimumLength,
     simplifiedDetailing,
-    reference: simplifiedDetailing ? "NTC 2018 \xA7\xA7 7.4.4.5.2 e 7.4.6.2.4" : "NTC 2018 \xA7 7.4.4.5.2"
+    reference: simplifiedDetailing ? "NTC 2018 \xA7\xA7 7.4.4.5.2 e 7.4.6.2.4" : "NTC 2018 \xA7 7.4.4.5.2",
+    metadata: wallMetadata([
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.wallDuctility,
+      ...simplifiedDetailing ? [NTC2018_RC_CHAPTER_7_4_REFERENCES.wallDetailing] : []
+    ])
   };
 }
 function computeWallConfinementOmegaWd({
@@ -72581,7 +73261,10 @@ function computeWallConfinementOmegaWd({
       omegaWd: 0,
       equationValue: 0,
       minimumValue: 0,
-      reference: "NTC 2018 \xA7 7.4.1"
+      reference: "NTC 2018 \xA7 7.4.1",
+      metadata: wallMetadata([
+        NTC2018_RC_CHAPTER_7_4_REFERENCES.structuralBehavior
+      ])
     };
   }
   const alpha = positive29(confinementEffectiveness, "confinementEffectiveness");
@@ -72600,7 +73283,10 @@ function computeWallConfinementOmegaWd({
     omegaWd: Math.max(minimumValue, equationValue),
     equationValue,
     minimumValue,
-    reference: "NTC 2018 \xA7 7.4.6.2.4, Eq. [7.4.32]"
+    reference: "NTC 2018 \xA7 7.4.6.2.4, Eq. [7.4.32]",
+    metadata: wallMetadata([
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.wallDetailing
+    ])
   };
 }
 function createWallSectionAssessment({
@@ -72622,7 +73308,8 @@ function createWallSectionAssessment({
     capacity: 4,
     comparison: ">",
     ok: length / thickness > 4,
-    reference: "NTC 2018 \xA7 7.4.4.5"
+    reference: "NTC 2018 \xA7 7.4.4.5",
+    metadata: wallMetadata([NTC2018_RC_CHAPTER_7_4_REFERENCES.wall])
   }];
   if (normalizedBehavior !== NTC2018_STRUCTURAL_BEHAVIOR.NON_DISSIPATIVE) {
     const axialRatio = nonNegative11(
@@ -72636,7 +73323,8 @@ function createWallSectionAssessment({
       capacity: limit,
       utilizationRatio: axialRatio / limit,
       ok: axialRatio <= limit,
-      reference: "NTC 2018 \xA7 7.4.4.5.1"
+      reference: "NTC 2018 \xA7 7.4.4.5.1",
+      metadata: wallMetadata([NTC2018_RC_CHAPTER_7_4_REFERENCES.wall])
     });
   }
   if (flexuralCheck != null) {
@@ -72657,7 +73345,8 @@ function createWallSectionAssessment({
     status: complete ? allChecksOk ? "ok" : "not-verified" : "not-implemented",
     allChecksOk,
     checks,
-    references: NTC2018_SHEAR_WALL_REFERENCES
+    references: NTC2018_SHEAR_WALL_REFERENCES,
+    metadata: wallMetadata([NTC2018_RC_CHAPTER_7_4_REFERENCES.wall])
   };
 }
 
@@ -72665,7 +73354,7 @@ function createWallSectionAssessment({
 var NTC2018_WALL_SYSTEM_REFERENCES = Object.freeze([
   Object.freeze({
     source: "NTC 2018",
-    citation: "\xA7\xA7 7.4.4.5, 7.4.4.6, 7.4.6.1.4, 7.4.6.2.4 e 7.4.6.2.5"
+    citation: "\xA7\xA7 7.4.4.5, 7.4.4.6, 7.4.6.1.4 e 7.4.6.2.4"
   })
 ]);
 function finite39(value, label) {
@@ -72696,13 +73385,20 @@ function requiredBoolean2(value, label) {
   return value;
 }
 function check2(id, demand, capacity, ok, extra = {}) {
+  var _a;
+  const reference = (_a = extra.reference) != null ? _a : "";
+  const normativeReference = reference.includes("7.4.6.1.4") ? NTC2018_RC_CHAPTER_7_4_REFERENCES.wallGeometry : reference.includes("7.4.6.2.4") ? NTC2018_RC_CHAPTER_7_4_REFERENCES.wallDetailing : reference.includes("7.4.4.6") ? NTC2018_RC_CHAPTER_7_4_REFERENCES.couplingBeam : reference.includes("7.4.4.5.2") ? NTC2018_RC_CHAPTER_7_4_REFERENCES.wallDuctility : reference.includes("7.4.4.5") ? NTC2018_RC_CHAPTER_7_4_REFERENCES.wall : null;
   return {
     id,
     demand,
     capacity,
     utilizationRatio: Number.isFinite(demand) && Number.isFinite(capacity) && capacity > 0 ? demand / capacity : null,
     ok,
-    ...extra
+    ...extra,
+    metadata: withNormativeReferences(
+      extra.metadata,
+      normativeReference ? [normativeReference] : []
+    )
   };
 }
 function computeWallEffectiveFlangeWidth({
@@ -72721,7 +73417,11 @@ function computeWallEffectiveFlangeWidth({
   return {
     effectiveFlangeWidth: Math.min(...Object.values(limits)),
     limits,
-    reference: "NTC 2018 \xA7 7.4.4.5.1"
+    reference: "NTC 2018 \xA7 7.4.4.5.1",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.wall]
+    )
   };
 }
 function computeMixedSystemWallShearEnvelope({
@@ -72756,7 +73456,11 @@ function computeMixedSystemWallShearEnvelope({
     minimumShearAtOneThird: va / 2,
     transitionElevation,
     points,
-    reference: "NTC 2018 \xA7 7.4.4.5.1, Fig. 7.4.5"
+    reference: "NTC 2018 \xA7 7.4.4.5.1, Fig. 7.4.5",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.wall]
+    )
   };
 }
 function computeWeaklyReinforcedWallShearDemand({
@@ -72769,7 +73473,11 @@ function computeWeaklyReinforcedWallShearDemand({
   return {
     shearDemand: shear * amplificationFactor,
     amplificationFactor,
-    reference: "NTC 2018 \xA7 7.4.4.5.1"
+    reference: "NTC 2018 \xA7 7.4.4.5.1",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.wall]
+    )
   };
 }
 function computeWeaklyReinforcedWallAxialDemandRange({
@@ -72784,7 +73492,11 @@ function computeWeaklyReinforcedWallAxialDemandRange({
     maximumAxialDemand: gravity + additionalDynamicDemand,
     additionalDynamicDemand,
     applicable: behaviorFactor > 2,
-    reference: "NTC 2018 \xA7 7.4.4.5.1"
+    reference: "NTC 2018 \xA7 7.4.4.5.1",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.wall]
+    )
   };
 }
 function verifyWallCurvatureDuctility({
@@ -72806,7 +73518,11 @@ function verifyWallCurvatureDuctility({
       capacity,
       demand <= capacity
     ),
-    reference: "NTC 2018 \xA7 7.4.4.5.2"
+    reference: "NTC 2018 \xA7 7.4.4.5.2",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.wallDuctility]
+    )
   };
 }
 function verifyWallGeneralDetailing({
@@ -72932,7 +73648,11 @@ function verifyWallGeneralDetailing({
     recommendedMinimum: 5e-3,
     satisfied: strain <= 2e-3 || verticalRatio >= 5e-3,
     mandatory: false,
-    reference: "NTC 2018 \xA7 7.4.6.2.4"
+    reference: "NTC 2018 \xA7 7.4.6.2.4",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.wallDetailing]
+    )
   };
   return {
     status: checks.every((item) => item.ok) ? "ok" : "not-verified",
@@ -72940,7 +73660,11 @@ function verifyWallGeneralDetailing({
     minimumThickness,
     checks,
     recommendations: [recommendation],
-    references: NTC2018_WALL_SYSTEM_REFERENCES
+    references: NTC2018_WALL_SYSTEM_REFERENCES,
+    metadata: withNormativeReferences({}, [
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.wallGeometry,
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.wallDetailing
+    ])
   };
 }
 function createCouplingBeamAssessment({
@@ -73069,21 +73793,21 @@ function createCouplingBeamAssessment({
         confinementSpacing,
         0.1,
         confinementSpacing <= 0.1,
-        { reference: "NTC 2018 \xA7 7.4.6.2.5" }
+        { reference: "NTC 2018 \xA7 7.4.4.6" }
       ),
       check2(
         "coupling-beam-distributed-bar-diameter",
         0.01,
         distributedBarDiameter,
         distributedBarDiameter >= 0.01,
-        { reference: "NTC 2018 \xA7 7.4.6.2.5" }
+        { reference: "NTC 2018 \xA7 7.4.4.6" }
       ),
       check2(
         "coupling-beam-distributed-bar-spacing",
         distributedBarSpacing,
         0.1,
         distributedBarSpacing <= 0.1,
-        { reference: "NTC 2018 \xA7 7.4.6.2.5" }
+        { reference: "NTC 2018 \xA7 7.4.4.6" }
       ),
       check2(
         "coupling-beam-edge-bars",
@@ -73092,7 +73816,7 @@ function createCouplingBeamAssessment({
         edgeBarCount >= 2 && edgeBarDiameter >= 0.016,
         {
           edgeBarDiameter,
-          reference: "NTC 2018 \xA7 7.4.6.2.5"
+          reference: "NTC 2018 \xA7 7.4.4.6"
         }
       ),
       check2(
@@ -73100,7 +73824,7 @@ function createCouplingBeamAssessment({
         providedAnchorage,
         1.5 * ordinaryAnchorage,
         providedAnchorage >= 1.5 * ordinaryAnchorage,
-        { reference: "NTC 2018 \xA7 7.4.6.2.5" }
+        { reference: "NTC 2018 \xA7 7.4.4.6" }
       )
     );
   }
@@ -73117,7 +73841,11 @@ function createCouplingBeamAssessment({
     ordinaryShearLimit,
     missing: missing2,
     checks,
-    references: NTC2018_WALL_SYSTEM_REFERENCES
+    references: NTC2018_WALL_SYSTEM_REFERENCES,
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.couplingBeam]
+    )
   };
 }
 function createWallHeightSystemAssessment({
@@ -73166,7 +73894,14 @@ function createWallHeightSystemAssessment({
     detailingAssessment,
     couplingBeamAssessments,
     checks,
-    references: NTC2018_WALL_SYSTEM_REFERENCES
+    references: NTC2018_WALL_SYSTEM_REFERENCES,
+    metadata: withNormativeReferences({}, [
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.wall,
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.wallDuctility,
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.wallGeometry,
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.wallDetailing,
+      ...couplingBeamAssessments.length > 0 ? [NTC2018_RC_CHAPTER_7_4_REFERENCES.couplingBeam] : []
+    ])
   };
 }
 
@@ -85333,6 +86068,51 @@ function resolveRcSleModularRatio(...candidates) {
   return DEFAULT_RC_SLE_MODULAR_RATIO;
 }
 
+// src/norms/en1992/normativeReferences.js
+var EN1992_1_1_2004_OVERVIEW = "https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-2-design-concrete-structures";
+var SECOND_GENERATION_EUROCODES_OVERVIEW = "https://eurocodes.jrc.ec.europa.eu/second-generation-eurocodes";
+function externalEn1992Reference({
+  citation,
+  documentId = "en1992-1-1-2004",
+  href = EN1992_1_1_2004_OVERVIEW
+}) {
+  return createNormativeReference({
+    corpusId: "structural-codes",
+    corpusRevision: null,
+    corpusStatus: NORMATIVE_REFERENCE_RESOLUTION_STATUS.OUTSIDE_CORPUS,
+    documentId,
+    relation: NORMATIVE_REFERENCE_RELATIONS.IMPLEMENTS,
+    citation,
+    href,
+    resolutionStatus: NORMATIVE_REFERENCE_RESOLUTION_STATUS.OUTSIDE_CORPUS
+  });
+}
+var EN1992_RC_EXTERNAL_REFERENCES = Object.freeze({
+  bondAndAnchorage: externalEn1992Reference({
+    citation: "EN 1992-1-1:2004 \xA7\xA7 8.4.2-8.4.4, espressioni (8.2)-(8.6)"
+  }),
+  localBearing: externalEn1992Reference({
+    citation: "EN 1992-1-1:2004 \xA7 6.7, espressione (6.63)"
+  }),
+  deflection: externalEn1992Reference({
+    citation: "EN 1992-1-1:2004 \xA7 7.4.3, espressioni (7.18)-(7.21)"
+  }),
+  shrinkageCurvature: externalEn1992Reference({
+    citation: "EN 1992-1-1:2004 \xA7 7.4.3(6), espressione (7.21)"
+  }),
+  strutAndTie: externalEn1992Reference({
+    citation: "EN 1992-1-1:2004 \xA7 6.5"
+  }),
+  punching2004: externalEn1992Reference({
+    citation: "EN 1992-1-1:2004+A1:2014 \xA7\xA7 6.4.2-6.4.5 e \xA7 9.4.3"
+  }),
+  punching2023: externalEn1992Reference({
+    documentId: "en1992-1-1-2023",
+    citation: "EN 1992-1-1:2023 \xA7\xA7 8.4 e 12.5.1",
+    href: SECOND_GENERATION_EUROCODES_OVERVIEW
+  })
+});
+
 // src/norms/en1992/reinforced-concrete/en1992Detailing2004.js
 function positive32(value, label) {
   if (!Number.isFinite(value) || value <= 0) {
@@ -85362,7 +86142,11 @@ function calculateEn1992DesignBondStrength({
     fbd: 2.25 * bondConditionFactor * diameterFactor * fctd,
     eta1: bondConditionFactor,
     eta2: diameterFactor,
-    reference: "EN1992-1-1:2004-8.4.2-(8.2)"
+    reference: "EN1992-1-1:2004-8.4.2-(8.2)",
+    metadata: withNormativeReferences(
+      {},
+      [EN1992_RC_EXTERNAL_REFERENCES.bondAndAnchorage]
+    )
   };
 }
 function calculateEn1992AnchorageLength({
@@ -85405,7 +86189,11 @@ function calculateEn1992AnchorageLength({
       alpha4,
       alpha5
     },
-    reference: "EN1992-1-1:2004-8.4.3-8.4.4"
+    reference: "EN1992-1-1:2004-8.4.3-8.4.4",
+    metadata: withNormativeReferences(
+      {},
+      [EN1992_RC_EXTERNAL_REFERENCES.bondAndAnchorage]
+    )
   };
 }
 function calculateEn1992LocalBearingResistance({
@@ -85426,7 +86214,11 @@ function calculateEn1992LocalBearingResistance({
     enhancement,
     resistance: resistanceReductionFactor * loadedArea * fcd * enhancement,
     resistanceReductionFactor,
-    reference: "EN1992-1-1:2004-6.7-(6.63)"
+    reference: "EN1992-1-1:2004-6.7-(6.63)",
+    metadata: withNormativeReferences(
+      {},
+      [EN1992_RC_EXTERNAL_REFERENCES.localBearing]
+    )
   };
 }
 function calculateEn1992ShrinkageCurvature({
@@ -85449,7 +86241,11 @@ function calculateEn1992ShrinkageCurvature({
   return {
     curvature: freeShrinkageStrain * effectiveModularRatio * reinforcementFirstMoment / sectionSecondMoment,
     effectiveModularRatio,
-    reference: "EN1992-1-1:2004-7.4.3-(7.21)"
+    reference: "EN1992-1-1:2004-7.4.3-(7.21)",
+    metadata: withNormativeReferences(
+      {},
+      [EN1992_RC_EXTERNAL_REFERENCES.shrinkageCurvature]
+    )
   };
 }
 
@@ -86417,7 +87213,10 @@ function utilizationCheck2({ demand, capacity, metadata }) {
     capacity: round3(capacity),
     utilizationRatio: round3(utilizationRatio),
     ok: Number.isFinite(utilizationRatio) && utilizationRatio <= 1,
-    metadata
+    metadata: withNormativeReferences(metadata, [
+      NTC2018_RC_CHAPTER_4_REFERENCES.deflection,
+      EN1992_RC_EXTERNAL_REFERENCES.deflection
+    ])
   };
 }
 function slendernessCheck({ span, section, serviceability }) {
@@ -86450,7 +87249,7 @@ function slendernessCheck({ span, section, serviceability }) {
     capacity: round3(limit),
     utilizationRatio: round3(utilizationRatio),
     ok: utilizationRatio <= 1,
-    metadata: {
+    metadata: withNormativeReferences({
       method: "circolare-ntc2018-c4.1.i-screening",
       system,
       stressLevel,
@@ -86463,7 +87262,10 @@ function slendernessCheck({ span, section, serviceability }) {
       reinforcementRatioLow: FLAT_SLAB_REINFORCEMENT_RATIO_LIMITS.low,
       reinforcementRatioHigh: FLAT_SLAB_REINFORCEMENT_RATIO_LIMITS.high,
       interpolationFactor: round3(interpolationFactor)
-    }
+    }, [
+      NTC2018_RC_CHAPTER_4_REFERENCES.deflection,
+      CIRC2019_RC_REFERENCES.simplifiedDeflectionSlenderness
+    ])
   };
 }
 
@@ -86596,6 +87398,13 @@ var RC_DEFLECTION_PERFORMANCE_PROFILES = Object.freeze({
     maxOutputPointsPerCombination: null
   })
 });
+function deflectionMetadata(metadata = {}, includeShrinkage = false) {
+  return withNormativeReferences(metadata, [
+    NTC2018_RC_CHAPTER_4_REFERENCES.deflection,
+    EN1992_RC_EXTERNAL_REFERENCES.deflection,
+    ...includeShrinkage ? [EN1992_RC_EXTERNAL_REFERENCES.shrinkageCurvature] : []
+  ]);
+}
 function isQuasiPermanent(type) {
   return normalizeCombinationType4(type) === "SLE_QUASI_PERMANENT";
 }
@@ -86761,11 +87570,11 @@ var CrackedSectionDeflectionAnalysis = class {
         warnings: [
           "Cracked inertia, tension stiffening and time-dependent effects were not evaluated because required inputs are missing."
         ],
-        metadata: {
+        metadata: deflectionMetadata({
           code: this.code,
           beamId,
           ...this.metadata
-        }
+        })
       });
     }
     const es = reinforcementMaterial == null ? void 0 : reinforcementMaterial.elasticModulus;
@@ -86808,11 +87617,11 @@ var CrackedSectionDeflectionAnalysis = class {
           "Concrete and reinforcement elastic moduli are required for curvature integration."
         ],
         assumptions,
-        metadata: {
+        metadata: deflectionMetadata({
           code: this.code,
           beamId,
           ...this.metadata
-        }
+        }, includeShrinkage)
       });
     }
     if (!isFinitePositive3(axialForceCurveTolerance)) {
@@ -86829,7 +87638,10 @@ var CrackedSectionDeflectionAnalysis = class {
           "Pass serviceability.deflection.freeShrinkageStrain explicitly; the module does not infer humidity, notional size or concrete age."
         ],
         assumptions,
-        metadata: { code: this.code, beamId, ...this.metadata }
+        metadata: deflectionMetadata(
+          { code: this.code, beamId, ...this.metadata },
+          includeShrinkage
+        )
       });
     }
     const resultResolver = createUnitResolver(
@@ -87367,7 +88179,7 @@ var CrackedSectionDeflectionAnalysis = class {
       },
       warnings,
       assumptions,
-      metadata: {
+      metadata: deflectionMetadata({
         code: this.code,
         beamId,
         method: "en1992-curvature-integration-tension-stiffening-creep-shrinkage",
@@ -87376,7 +88188,7 @@ var CrackedSectionDeflectionAnalysis = class {
         includeShrinkage,
         freeShrinkageStrain: includeShrinkage ? freeShrinkageStrain : null,
         ...this.metadata
-      }
+      }, includeShrinkage)
     });
   }
 };
@@ -90987,13 +91799,16 @@ function runMomentCurvatureWorkflow(model, { code, metadata }) {
       "postUltimateFractureEnergyDensity is an energy per unit volume, expressed internally as N/mm2; it is not a mesh-regularized fracture energy per unit crack area.",
       "NTC 2018 ductility outputs use M'yd at the first-yield curvature, phiYd = MRd / M'yd * phiPrimeYd, and the earlier event between material ultimate strain and a 15% post-peak resistance drop."
     ],
-    metadata: {
+    metadata: withNormativeReferences({
       code,
       sectionId: model.id,
       analysisType: model.analysisType,
       solverMethod: "fiber-section-axial-equilibrium",
       ...metadata
-    }
+    }, [
+      NTC2018_RC_CHAPTER_4_REFERENCES.flexureAndAxialForce,
+      NTC2018_RC_CHAPTER_4_REFERENCES.curvatureDuctility
+    ])
   });
 }
 
@@ -91206,13 +92021,13 @@ function runUlsBiaxialDomainWorkflow(model, { code, metadata }) {
       "Current biaxial workflow samples the domain by neutral-axis orientation and concrete ultimate strain on the compressed side.",
       "Concrete in tension is neglected during ULS resistance integration."
     ],
-    metadata: {
+    metadata: withNormativeReferences({
       code,
       sectionId: model.id,
       analysisType: model.analysisType,
       solverMethod: "illinois",
       ...metadata
-    }
+    }, [NTC2018_RC_CHAPTER_4_REFERENCES.flexureAndAxialForce])
   });
 }
 
@@ -91397,13 +92212,13 @@ function runUlsUniaxialDomainWorkflow(model, { code, metadata }) {
       "The automatically generated compression side is capped at Nc,Rd = 0.8 Ac fcd + As fyd, with compression reported as negative axial force; explicit nValues can be used to build an uncapped section-analysis domain.",
       "Concrete in tension is neglected during ULS resistance integration."
     ],
-    metadata: {
+    metadata: withNormativeReferences({
       code,
       sectionId: model.id,
       analysisType: model.analysisType,
       solverMethod: "illinois",
       ...metadata
-    }
+    }, [NTC2018_RC_CHAPTER_4_REFERENCES.flexureAndAxialForce])
   });
 }
 
@@ -91446,7 +92261,11 @@ function runUlsUniaxialResistanceWorkflow(model, { code, metadata }) {
         demand: round3(demand, 6),
         capacity: round3(capacity, 6),
         utilizationRatio: round3(utilizationRatio, 6),
-        ok: utilizationRatio <= 1
+        ok: utilizationRatio <= 1,
+        metadata: withNormativeReferences(
+          { method: "fiber-section-strain-compatibility" },
+          [NTC2018_RC_CHAPTER_4_REFERENCES.flexureAndAxialForce]
+        )
       }
     ],
     outputs: {
@@ -91503,13 +92322,13 @@ function runUlsUniaxialResistanceWorkflow(model, { code, metadata }) {
       "Current workflow implements only ULS uniaxial resistance with concrete ultimate strain governing the compressed edge.",
       "Concrete in tension is neglected during the ULS resistance integration."
     ],
-    metadata: {
+    metadata: withNormativeReferences({
       code,
       sectionId: model.id,
       analysisType: model.analysisType,
       solverMethod: "illinois",
       ...metadata
-    }
+    }, [NTC2018_RC_CHAPTER_4_REFERENCES.flexureAndAxialForce])
   });
 }
 
@@ -91959,7 +92778,7 @@ function computeWithoutTransverseResistance(params) {
     vMin,
     vRdcStress,
     resistanceStress,
-    metadata: {
+    metadata: withNormativeReferences({
       method: "ntc2018-4.1.2.3.5.1",
       k: round3(k),
       vMin: round3(vMin),
@@ -91972,7 +92791,7 @@ function computeWithoutTransverseResistance(params) {
       rhoLEffective: round3(params.rhoLEffective, 9),
       sigmaCp: round3(params.sigmaCp),
       sources: params.sources
-    }
+    }, [NTC2018_RC_CHAPTER_4_REFERENCES.shearWithoutTransverseReinforcement])
   };
 }
 function verifyWithoutTransverseReinforcement({ vEd, params }) {
@@ -91994,10 +92813,10 @@ function verifyWithoutTransverseReinforcement({ vEd, params }) {
       outputs: {
         parameters: params
       },
-      metadata: {
+      metadata: withNormativeReferences({
         method: "ntc2018-4.1.2.3.5.1",
         missingParameters: resistance.missing
-      }
+      }, [NTC2018_RC_CHAPTER_4_REFERENCES.shearWithoutTransverseReinforcement])
     };
   }
   const check4 = utilizationCheck3({
@@ -92026,10 +92845,10 @@ function verifyWithoutTransverseReinforcement({ vEd, params }) {
       resistanceStress: round3(resistance.resistanceStress),
       vRd: round3(resistance.capacity)
     },
-    metadata: {
+    metadata: withNormativeReferences({
       method: "ntc2018-4.1.2.3.5.1",
       governingCheckId: check4.id
-    }
+    }, [NTC2018_RC_CHAPTER_4_REFERENCES.shearWithoutTransverseReinforcement])
   };
 }
 function alphaCForShear(params) {
@@ -92205,10 +93024,10 @@ function verifyWithTransverseReinforcement({ vEd, params, shear, units }) {
       outputs: {
         parameters: params
       },
-      metadata: {
+      metadata: withNormativeReferences({
         method: "ntc2018-4.1.2.3.5.2",
         missingParameters: missing2
-      }
+      }, [NTC2018_RC_CHAPTER_4_REFERENCES.shearWithTransverseReinforcement])
     };
   }
   const withResistance = computeWithTransverseResistance({
@@ -92234,7 +93053,7 @@ function verifyWithTransverseReinforcement({ vEd, params, shear, units }) {
     description: "Shear resistance as maximum between stirrup and no-stirrup mechanisms",
     demand: vEd,
     capacity,
-    metadata: {
+    metadata: withNormativeReferences({
       method: "ntc2018-4.1.2.3.5.2",
       selectedMechanism,
       vRdWithTransverseReinforcement: round3(withResistance.capacity),
@@ -92255,7 +93074,10 @@ function verifyWithTransverseReinforcement({ vEd, params, shear, units }) {
       fcd: round3(params.fcd),
       fcdPrime: round3(withResistance.fcdPrime),
       alphaC: round3(withResistance.alphaC)
-    }
+    }, [
+      NTC2018_RC_CHAPTER_4_REFERENCES.shearWithTransverseReinforcement,
+      NTC2018_RC_CHAPTER_4_REFERENCES.shearWithoutTransverseReinforcement
+    ])
   });
   warnings.push(
     shear.torsionHandled === true ? "Minimum shear reinforcement detailing, spacing limits and anchorage are not included in this MVP check." : "Minimum shear reinforcement detailing, spacing limits, anchorage and torsion are not included in this MVP check."
@@ -92296,10 +93118,13 @@ function verifyWithTransverseReinforcement({ vEd, params, shear, units }) {
         vRcdAtMaxCot: round3(withResistance.vRcdAtMaxCot)
       }
     },
-    metadata: {
+    metadata: withNormativeReferences({
       method: "ntc2018-4.1.2.3.5.2",
       governingCheckId: check4.id
-    }
+    }, [
+      NTC2018_RC_CHAPTER_4_REFERENCES.shearWithTransverseReinforcement,
+      NTC2018_RC_CHAPTER_4_REFERENCES.shearWithoutTransverseReinforcement
+    ])
   };
 }
 
@@ -93371,12 +94196,12 @@ function createIndirectCrackControlChecks({
           description: "Indirect crack control through maximum reinforcing bar diameter",
           demand: bar.diameter,
           capacity: diameterLimit,
-          metadata: {
+          metadata: withNormativeReferences({
             ...metadata,
             method: "circolare-ntc2018-c4.1.ii",
             diameter: round3(bar.diameter),
             diameterLimit: round3(diameterLimit)
-          }
+          }, [CIRC2019_RC_REFERENCES.indirectCrackControlDiameter])
         })
       );
     }
@@ -93387,13 +94212,13 @@ function createIndirectCrackControlChecks({
           description: "Indirect crack control through maximum reinforcing bar spacing",
           demand: spacing,
           capacity: spacingLimit,
-          metadata: {
+          metadata: withNormativeReferences({
             ...metadata,
             method: "circolare-ntc2018-c4.1.iii",
             spacing: round3(spacing),
             spacingLimit: round3(spacingLimit),
             rowTolerance: round3(options.rowTolerance)
-          }
+          }, [CIRC2019_RC_REFERENCES.indirectCrackControlSpacing])
         })
       );
     }
@@ -93412,6 +94237,7 @@ function concreteStressLimit({ combinationType, concreteMaterial }) {
     return {
       id: "rare",
       factor: 0.6,
+      normativeReference: NTC2018_RC_CHAPTER_4_REFERENCES.concreteStressCharacteristic,
       value: 0.6 * fck,
       method: "ntc2018-4.1.2.2.5.1-characteristic"
     };
@@ -93420,6 +94246,7 @@ function concreteStressLimit({ combinationType, concreteMaterial }) {
     return {
       id: "quasi-permanent",
       factor: 0.45,
+      normativeReference: NTC2018_RC_CHAPTER_4_REFERENCES.concreteStressQuasiPermanent,
       value: 0.45 * fck,
       method: "ntc2018-4.1.2.2.5.1-quasi-permanent"
     };
@@ -93436,11 +94263,25 @@ function steelStressLimit({ combinationType, reinforcementMaterial }) {
     return {
       id: "rare",
       factor: 0.8,
+      normativeReference: NTC2018_RC_CHAPTER_4_REFERENCES.reinforcementStress,
       value: 0.8 * fyk,
       method: "ntc2018-4.1.2.2.5.2-characteristic"
     };
   }
   return null;
+}
+function serviceabilityReferences({
+  combinationType,
+  concreteMaterial,
+  reinforcementMaterial,
+  includeCrackControl = false
+}) {
+  var _a, _b;
+  return [
+    (_a = concreteStressLimit({ combinationType, concreteMaterial })) == null ? void 0 : _a.normativeReference,
+    (_b = steelStressLimit({ combinationType, reinforcementMaterial })) == null ? void 0 : _b.normativeReference,
+    includeCrackControl ? NTC2018_RC_CHAPTER_4_REFERENCES.crackWidth : null
+  ].filter(Boolean);
 }
 function resolveStressActions({ nEd, mEd, mxEd, myEd }) {
   const userMxEd = Number.isFinite(mxEd) ? mxEd : Number.isFinite(mEd) ? mEd : 0;
@@ -93503,7 +94344,7 @@ var ReinforcedConcreteServiceabilityVerification = class {
     mesh = ((_d) => (_d = context.mesh) != null ? _d : this.mesh)(),
     solver = ((_e) => (_e = context.solver) != null ? _e : this.solver)()
   } = {}) {
-    var _a2, _b2, _c2, _d2, _e2, _f, _g, _h, _i, _j, _k;
+    var _a2, _b2, _c2, _d2, _e2, _f, _g, _h, _i, _j, _k, _l, _m;
     const options = resolveServiceabilityOptions(serviceability);
     const warnings = [];
     const assumptions = [
@@ -93549,7 +94390,7 @@ var ReinforcedConcreteServiceabilityVerification = class {
           crackControlComplete: true,
           tensileBars: []
         },
-        metadata: {
+        metadata: withNormativeReferences({
           code: this.code,
           method: "ntc2018-sle-serviceability",
           governingCheckId: null,
@@ -93566,7 +94407,12 @@ var ReinforcedConcreteServiceabilityVerification = class {
           creepCoefficient: options.deflection.creepCoefficient,
           includeShrinkage: options.deflection.includeShrinkage,
           ...this.metadata
-        }
+        }, serviceabilityReferences({
+          combinationType: (_d2 = context.combinationType) != null ? _d2 : null,
+          concreteMaterial,
+          reinforcementMaterial,
+          includeCrackControl: true
+        }))
       };
     }
     if (normalizeEnvironment(options.environment) !== "ordinary") {
@@ -93608,11 +94454,15 @@ var ReinforcedConcreteServiceabilityVerification = class {
           error.message
         ],
         assumptions,
-        metadata: {
+        metadata: withNormativeReferences({
           code: this.code,
           method: "ntc2018-sle-serviceability",
           ...this.metadata
-        }
+        }, serviceabilityReferences({
+          combinationType: (_e2 = context.combinationType) != null ? _e2 : null,
+          concreteMaterial,
+          reinforcementMaterial
+        }))
       };
     }
     if (!solvedState.converged) {
@@ -93620,9 +94470,9 @@ var ReinforcedConcreteServiceabilityVerification = class {
         "The RC SLE stress solver did not converge within the configured limits."
       );
     }
-    const combinationType = (_d2 = context.combinationType) != null ? _d2 : null;
+    const combinationType = (_f = context.combinationType) != null ? _f : null;
     const concreteCompression = Math.abs(
-      (_f = (_e2 = solvedState.state.extremes.maxConcreteCompression) == null ? void 0 : _e2.value) != null ? _f : 0
+      (_h = (_g = solvedState.state.extremes.maxConcreteCompression) == null ? void 0 : _g.value) != null ? _h : 0
     );
     const steelStress = maxAbsSteelStress(solvedState.state);
     const concreteLimit = concreteStressLimit({
@@ -93640,7 +94490,7 @@ var ReinforcedConcreteServiceabilityVerification = class {
           description: "Concrete compression stress limit in service",
           demand: concreteCompression,
           capacity: concreteLimit.value,
-          metadata: {
+          metadata: withNormativeReferences({
             method: concreteLimit.method,
             combinationType,
             limitFactor: concreteLimit.factor,
@@ -93650,7 +94500,7 @@ var ReinforcedConcreteServiceabilityVerification = class {
             mxEd: round3(stressActions.userMxEd),
             myEd: round3(stressActions.userMyEd),
             biaxialStress: stressActions.biaxialStress
-          }
+          }, [concreteLimit.normativeReference])
         })
       );
     }
@@ -93661,7 +94511,7 @@ var ReinforcedConcreteServiceabilityVerification = class {
           description: "Reinforcement stress limit in service",
           demand: steelStress,
           capacity: steelLimit.value,
-          metadata: {
+          metadata: withNormativeReferences({
             method: steelLimit.method,
             combinationType,
             limitFactor: steelLimit.factor,
@@ -93671,7 +94521,7 @@ var ReinforcedConcreteServiceabilityVerification = class {
             mxEd: round3(stressActions.userMxEd),
             myEd: round3(stressActions.userMyEd),
             biaxialStress: stressActions.biaxialStress
-          }
+          }, [steelLimit.normativeReference])
         })
       );
     }
@@ -93750,9 +94600,9 @@ var ReinforcedConcreteServiceabilityVerification = class {
     const governing = governingCheck(checks);
     return {
       status: solvedState.converged && !crackControlNotVerified && checks.every((check4) => check4.ok) ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
-      utilizationRatio: (_g = governing == null ? void 0 : governing.utilizationRatio) != null ? _g : null,
-      demand: (_h = governing == null ? void 0 : governing.demand) != null ? _h : null,
-      capacity: (_i = governing == null ? void 0 : governing.capacity) != null ? _i : null,
+      utilizationRatio: (_i = governing == null ? void 0 : governing.utilizationRatio) != null ? _i : null,
+      demand: (_j = governing == null ? void 0 : governing.demand) != null ? _j : null,
+      capacity: (_k = governing == null ? void 0 : governing.capacity) != null ? _k : null,
       checks,
       warnings,
       assumptions,
@@ -93764,7 +94614,7 @@ var ReinforcedConcreteServiceabilityVerification = class {
         biaxialStress: stressActions.biaxialStress,
         crackControlMomentEd: round3(stressActions.primaryMoment),
         combinationType,
-        fiberCount: (_j = meshResult == null ? void 0 : meshResult.generatedCount) != null ? _j : null,
+        fiberCount: (_l = meshResult == null ? void 0 : meshResult.generatedCount) != null ? _l : null,
         modularRatio: options.modularRatio,
         creepCoefficient: options.deflection.creepCoefficient,
         includeShrinkage: options.deflection.includeShrinkage,
@@ -93793,10 +94643,10 @@ var ReinforcedConcreteServiceabilityVerification = class {
           kappaZ: round3(solvedState.strainField.kappaZ, 12)
         }
       },
-      metadata: {
+      metadata: withNormativeReferences({
         code: this.code,
         method: "ntc2018-sle-serviceability",
-        governingCheckId: (_k = governing == null ? void 0 : governing.id) != null ? _k : null,
+        governingCheckId: (_m = governing == null ? void 0 : governing.id) != null ? _m : null,
         combinationType,
         mEd: round3(stressActions.primaryMoment),
         mxEd: round3(stressActions.userMxEd),
@@ -93810,7 +94660,12 @@ var ReinforcedConcreteServiceabilityVerification = class {
         creepCoefficient: options.deflection.creepCoefficient,
         includeShrinkage: options.deflection.includeShrinkage,
         ...this.metadata
-      }
+      }, serviceabilityReferences({
+        combinationType,
+        concreteMaterial,
+        reinforcementMaterial,
+        includeCrackControl: Boolean(widthClass)
+      }))
     };
   }
   verify({
@@ -94242,7 +95097,26 @@ var ReinforcedConcretePlateVerification = class {
     });
   }
   resultMetadata(model) {
-    return {
+    var _a;
+    const normativeReferences = (_a = {
+      [RC_PLATE_ANALYSIS_TYPES.ULS_BENDING_SHEAR]: [
+        NTC2018_RC_CHAPTER_4_REFERENCES.flexureAndAxialForce,
+        NTC2018_RC_CHAPTER_4_REFERENCES.shearWithoutTransverseReinforcement
+      ],
+      [RC_PLATE_ANALYSIS_TYPES.SLS_STRESS_CRACKING]: [
+        NTC2018_RC_CHAPTER_4_REFERENCES.concreteStressCharacteristic,
+        NTC2018_RC_CHAPTER_4_REFERENCES.concreteStressQuasiPermanent,
+        NTC2018_RC_CHAPTER_4_REFERENCES.reinforcementStress,
+        NTC2018_RC_CHAPTER_4_REFERENCES.crackWidth,
+        CIRC2019_RC_REFERENCES.indirectCrackControlDiameter,
+        CIRC2019_RC_REFERENCES.indirectCrackControlSpacing
+      ],
+      [RC_PLATE_ANALYSIS_TYPES.SLS_SIMPLIFIED_DEFLECTION]: [
+        NTC2018_RC_CHAPTER_4_REFERENCES.deflection,
+        CIRC2019_RC_REFERENCES.simplifiedDeflectionSlenderness
+      ]
+    }[model.analysis.type]) != null ? _a : [];
+    return withNormativeReferences({
       code: this.code,
       applicationId: "reinforced-concrete-plates",
       modelId: model.id,
@@ -94263,7 +95137,7 @@ var ReinforcedConcretePlateVerification = class {
         mxy: "symmetric tensor component Mxy = Myx; positive when positive X and Y plate-edge couples follow the documented tensor convention"
       },
       ...this.metadata
-    };
+    }, normativeReferences);
   }
 };
 
@@ -94517,7 +95391,11 @@ function calculateEn1992Punching2004WithoutShearReinforcement({
       standard: "EN 1992-1-1:2004+A1:2014",
       clauses: ["6.4.4", "6.4.5"],
       equations: ["6.47"]
-    }
+    },
+    metadata: withNormativeReferences(
+      {},
+      [EN1992_RC_EXTERNAL_REFERENCES.punching2004]
+    )
   };
 }
 function calculateEn1992Punching2004WithShearReinforcement({
@@ -94552,7 +95430,11 @@ function calculateEn1992Punching2004WithShearReinforcement({
       standard: "EN 1992-1-1:2004+A1:2014",
       clause: "6.4.5(1)",
       equation: "6.52"
-    }
+    },
+    metadata: withNormativeReferences(
+      {},
+      [EN1992_RC_EXTERNAL_REFERENCES.punching2004]
+    )
   };
 }
 
@@ -94621,7 +95503,11 @@ function calculateEn1992Punching2023WithoutShearReinforcement({
       standard: "EN 1992-1-1:2023",
       clause: "8.4.3",
       backgroundEquations: ["10", "13", "14"]
-    }
+    },
+    metadata: withNormativeReferences(
+      {},
+      [EN1992_RC_EXTERNAL_REFERENCES.punching2023]
+    )
   };
 }
 function calculateEn1992Punching2023WithShearReinforcement({
@@ -94685,7 +95571,11 @@ function calculateEn1992Punching2023WithShearReinforcement({
       standard: "EN 1992-1-1:2023",
       clause: "8.4.4",
       equations: ["8.104", "8.105", "8.106", "8.109", "8.110", "8.111"]
-    }
+    },
+    metadata: withNormativeReferences(
+      {},
+      [EN1992_RC_EXTERNAL_REFERENCES.punching2023]
+    )
   };
 }
 
@@ -94716,6 +95606,9 @@ function interpolateK(ratio2) {
   const [x1, y1] = points[upperIndex];
   return y0 + (ratio2 - x0) / (x1 - x0) * (y1 - y0);
 }
+function concentrationMetadata(reference) {
+  return withNormativeReferences({}, [reference]);
+}
 function calculateEn1992PunchingBeta2004({
   position,
   footprint,
@@ -94736,7 +95629,10 @@ function calculateEn1992PunchingBeta2004({
       beta,
       method: "equation-6.42-circular-interior",
       eccentricity: { x: ex, y: ey, resultant: eccentricity },
-      reference: "EN 1992-1-1:2004+A1:2014 Eq. (6.42)"
+      reference: "EN 1992-1-1:2004+A1:2014 Eq. (6.42)",
+      metadata: concentrationMetadata(
+        EN1992_RC_EXTERNAL_REFERENCES.punching2004
+      )
     };
   }
   if ((footprint == null ? void 0 : footprint.shape) !== "rectangle") {
@@ -94753,7 +95649,10 @@ function calculateEn1992PunchingBeta2004({
       method: "equation-6.43-rectangular-interior-biaxial",
       eccentricity: { x: ex, y: ey },
       controlWidths: { x: widthX, y: widthY },
-      reference: "EN 1992-1-1:2004+A1:2014 Eq. (6.43)"
+      reference: "EN 1992-1-1:2004+A1:2014 Eq. (6.43)",
+      metadata: concentrationMetadata(
+        EN1992_RC_EXTERNAL_REFERENCES.punching2004
+      )
     };
   }
   if (position === "edge") {
@@ -94772,7 +95671,10 @@ function calculateEn1992PunchingBeta2004({
       u1Star,
       k,
       w1,
-      reference: "EN 1992-1-1:2004+A1:2014 Eqs. (6.44)-(6.45)"
+      reference: "EN 1992-1-1:2004+A1:2014 Eqs. (6.44)-(6.45)",
+      metadata: concentrationMetadata(
+        EN1992_RC_EXTERNAL_REFERENCES.punching2004
+      )
     };
   }
   if (position === "corner") {
@@ -94785,7 +95687,10 @@ function calculateEn1992PunchingBeta2004({
       method: "equation-6.46-corner-inward",
       eccentricity: { x: ex, y: ey },
       u1Star,
-      reference: "EN 1992-1-1:2004+A1:2014 Eq. (6.46)"
+      reference: "EN 1992-1-1:2004+A1:2014 Eq. (6.46)",
+      metadata: concentrationMetadata(
+        EN1992_RC_EXTERNAL_REFERENCES.punching2004
+      )
     };
   }
   throw new Error(`Unsupported support position for automatic beta: ${position}.`);
@@ -94823,7 +95728,10 @@ function calculateEn1992PunchingBetaE2023({
     bb,
     controlPerimeterWidths: { x: widthX, y: widthY },
     method: `table-8.3-${position}`,
-    reference: "EN 1992-1-1:2023 8.4.3, Eq. (8.93) and Table 8.3"
+    reference: "EN 1992-1-1:2023 8.4.3, Eq. (8.93) and Table 8.3",
+    metadata: concentrationMetadata(
+      EN1992_RC_EXTERNAL_REFERENCES.punching2023
+    )
   };
 }
 
@@ -94913,6 +95821,7 @@ function createPerimeter({
   clause,
   metadata = {}
 }) {
+  const normativeReference = codeId.includes("2023") ? EN1992_RC_EXTERNAL_REFERENCES.punching2023 : EN1992_RC_EXTERNAL_REFERENCES.punching2004;
   return new PunchingControlPerimeter({
     id,
     codeId,
@@ -94926,7 +95835,7 @@ function createPerimeter({
       standard: codeId,
       clause
     },
-    metadata
+    metadata: withNormativeReferences(metadata, [normativeReference])
   });
 }
 function interiorRectangleSegments(footprint, offset) {
@@ -95406,7 +96315,8 @@ function notSupported2(request, warnings, assumptions = [], outputs = {}) {
   });
 }
 function resultMetadata(request) {
-  return {
+  const externalReference = request.code.id === RC_PUNCHING_DESIGN_CODE_IDS.EN_1992_1_1_2004 ? EN1992_RC_EXTERNAL_REFERENCES.punching2004 : EN1992_RC_EXTERNAL_REFERENCES.punching2023;
+  return withNormativeReferences({
     applicationId: APPLICATION_ID2,
     requestId: request.id,
     connectionId: request.connection.id,
@@ -95434,7 +96344,10 @@ function resultMetadata(request) {
       ]
     },
     references: { ...REFERENCE_URLS }
-  };
+  }, [
+    NTC2018_RC_CHAPTER_4_REFERENCES.punching,
+    externalReference
+  ]);
 }
 function validateScope(request, parameters) {
   var _a, _b, _c, _d, _e;
@@ -95694,6 +96607,7 @@ function resolveOuterPerimeter(request, perimeterSet, effectiveDepth, offset) {
 }
 function createCheck({ id, stateId, location, demand, capacity, reference }) {
   const utilizationRatio = demand / capacity;
+  const externalReference = String(reference).includes("2023") ? EN1992_RC_EXTERNAL_REFERENCES.punching2023 : EN1992_RC_EXTERNAL_REFERENCES.punching2004;
   return {
     id,
     stateId,
@@ -95704,10 +96618,15 @@ function createCheck({ id, stateId, location, demand, capacity, reference }) {
     utilizationRatio,
     ok: utilizationRatio <= 1,
     units: "N/mm2",
-    reference
+    reference,
+    metadata: withNormativeReferences({}, [
+      NTC2018_RC_CHAPTER_4_REFERENCES.punching,
+      externalReference
+    ])
   };
 }
 function createLimitCheck({ id, stateId, location, value, limit, units, reference }) {
+  const externalReference = String(reference).includes("2023") ? EN1992_RC_EXTERNAL_REFERENCES.punching2023 : EN1992_RC_EXTERNAL_REFERENCES.punching2004;
   return {
     id,
     stateId,
@@ -95718,10 +96637,15 @@ function createLimitCheck({ id, stateId, location, value, limit, units, referenc
     utilizationRatio: value / limit,
     ok: value <= limit,
     units,
-    reference
+    reference,
+    metadata: withNormativeReferences({}, [
+      NTC2018_RC_CHAPTER_4_REFERENCES.punching,
+      externalReference
+    ])
   };
 }
 function createMinimumCheck({ id, stateId, location, value, minimum: minimum2, units, reference }) {
+  const externalReference = String(reference).includes("2023") ? EN1992_RC_EXTERNAL_REFERENCES.punching2023 : EN1992_RC_EXTERNAL_REFERENCES.punching2004;
   return {
     id,
     stateId,
@@ -95732,7 +96656,11 @@ function createMinimumCheck({ id, stateId, location, value, minimum: minimum2, u
     utilizationRatio: minimum2 / value,
     ok: value >= minimum2,
     units,
-    reference
+    reference,
+    metadata: withNormativeReferences({}, [
+      NTC2018_RC_CHAPTER_4_REFERENCES.punching,
+      externalReference
+    ])
   };
 }
 function verify2004(request, parameters) {
@@ -96368,10 +97296,31 @@ function positive37(value, label) {
   return value;
 }
 function minCheck(id, description, required, provided, metadata = {}) {
-  return utilizationCheck({ id, description, demand: required, capacity: provided, metadata });
+  return utilizationCheck({
+    id,
+    description,
+    demand: required,
+    capacity: provided,
+    metadata: detailingMetadata(metadata)
+  });
 }
 function maxCheck(id, description, provided, allowed, metadata = {}) {
-  return utilizationCheck({ id, description, demand: provided, capacity: allowed, metadata });
+  return utilizationCheck({
+    id,
+    description,
+    demand: provided,
+    capacity: allowed,
+    metadata: detailingMetadata(metadata)
+  });
+}
+function detailingMetadata(metadata = {}) {
+  var _a;
+  const legacyReference = (_a = metadata.reference) != null ? _a : "";
+  const normativeReference = legacyReference === "NTC2018-4.1.2.3.10" ? NTC2018_RC_CHAPTER_4_REFERENCES.anchorage : legacyReference.startsWith("NTC2018-4.1") ? NTC2018_RC_CHAPTER_4_REFERENCES.columnDetailing : legacyReference === "NTC2018-7.4.6.1.2" ? NTC2018_RC_CHAPTER_7_4_REFERENCES.columnGeometry : legacyReference.startsWith("NTC2018-7.4") ? NTC2018_RC_CHAPTER_7_4_REFERENCES.columnDetailing : null;
+  return withNormativeReferences(
+    metadata,
+    normativeReference ? [normativeReference] : []
+  );
 }
 function ductilityClass(value) {
   const normalized3 = String(value != null ? value : "").toUpperCase().replaceAll('"', "").replaceAll("-", "");
@@ -96384,7 +97333,7 @@ var ReinforcedConcreteColumnDetailingVerification = class {
     this.code = code;
   }
   verify({ model, compression: compression2, normalizedAxialForce } = {}) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x;
     const detailing = model.detailing;
     if (!detailing) {
       return new VerificationResult({
@@ -96536,7 +97485,22 @@ var ReinforcedConcreteColumnDetailingVerification = class {
       });
       const axialTension = compression2 <= 0 && Math.abs(model.actions.nEd) > 0;
       const requiredLength = base.designLength * (axialTension ? 1.5 : 1);
-      checks.push(minCheck("rc-column-longitudinal-anchorage", "Column longitudinal bar anchorage", requiredLength, anchor.availableLength, { reference: axialTension ? "NTC2018-7.4.6.2.2" : "NTC2018-4.1.2.3.10", fbd: round3(bond.fbd), axialTensionFactor: axialTension ? 1.5 : 1 }));
+      checks.push(minCheck(
+        "rc-column-longitudinal-anchorage",
+        "Column longitudinal bar anchorage",
+        requiredLength,
+        anchor.availableLength,
+        withNormativeReferences({
+          reference: axialTension ? "NTC2018-7.4.6.2.2" : "NTC2018-4.1.2.3.10",
+          fbd: round3(bond.fbd),
+          axialTensionFactor: axialTension ? 1.5 : 1
+        }, [
+          EN1992_RC_EXTERNAL_REFERENCES.bondAndAnchorage,
+          NTC2018_RC_CHAPTER_4_REFERENCES.anchorage,
+          NTC2018_RC_CHAPTER_4_REFERENCES.bondDesignStrength,
+          ...axialTension ? [NTC2018_RC_CHAPTER_7_4_REFERENCES.columnDetailing] : []
+        ])
+      ));
       anchorageOutput = { ...base, requiredLength, fbd: bond.fbd };
     }
     const governing = governingCheck(checks);
@@ -96559,7 +97523,21 @@ var ReinforcedConcreteColumnDetailingVerification = class {
         "Confinement volumePerSet is the total steel volume effective in one transverse-reinforcement set inside the core.",
         "restrainedBarSpacings contains every clear centre-line spacing between consecutive laterally restrained longitudinal bars around the core."
       ],
-      metadata: { code: this.code, governingCheckId: (_w = governing == null ? void 0 : governing.id) != null ? _w : null }
+      metadata: withNormativeReferences({
+        code: this.code,
+        governingCheckId: (_w = governing == null ? void 0 : governing.id) != null ? _w : null
+      }, [
+        NTC2018_RC_CHAPTER_4_REFERENCES.columnDetailing,
+        ...((_x = detailing.seismic) == null ? void 0 : _x.enabled) === true ? [
+          NTC2018_RC_CHAPTER_7_4_REFERENCES.columnGeometry,
+          NTC2018_RC_CHAPTER_7_4_REFERENCES.columnDetailing
+        ] : [],
+        ...detailing.anchorage ? [
+          NTC2018_RC_CHAPTER_4_REFERENCES.anchorage,
+          NTC2018_RC_CHAPTER_4_REFERENCES.bondDesignStrength,
+          EN1992_RC_EXTERNAL_REFERENCES.bondAndAnchorage
+        ] : []
+      ])
     });
   }
 };
@@ -96641,12 +97619,15 @@ function resolveAxis({
       capacity: round3(lambdaLimit),
       utilizationRatio: round3(ratio2),
       ok: secondOrderIncluded,
-      metadata: {
+      metadata: withNormativeReferences({
         reference: "NTC2018-4.1.41-4.1.42",
         screeningExceeded: secondOrderRequired,
         secondOrderIncluded,
         momentSource: explicitTotal ? "explicit-total" : Number.isFinite(generatedTotalMoment) ? "generated-ntc2018-nominal-stiffness" : secondOrderFlag === true ? "input-declared-inclusive" : "first-order-screened"
-      }
+      }, [
+        NTC2018_RC_CHAPTER_4_REFERENCES.columnSlenderness,
+        ...Number.isFinite(nominalRigidity) ? [NTC2018_RC_CHAPTER_4_REFERENCES.nominalStiffness] : []
+      ])
     }
   };
 }
@@ -96784,12 +97765,15 @@ var ReinforcedConcreteColumnVerification = class {
         assumptions: [
           "The NTC 2018 single-column slenderness screening is applied independently to the two section bending components."
         ],
-        metadata: {
+        metadata: withNormativeReferences({
           code: this.code,
           method: "ntc2018-4.1.2.3.9.2-screening-and-4.1.44",
           unresolvedAxes: unresolvedAxes.map((axis) => axis.id),
           ...this.metadata
-        }
+        }, [
+          NTC2018_RC_CHAPTER_4_REFERENCES.columnSlenderness,
+          NTC2018_RC_CHAPTER_4_REFERENCES.nominalStiffness
+        ])
       });
     }
     const sectionModel = new ReinforcedConcreteSectionModel({
@@ -96833,7 +97817,7 @@ var ReinforcedConcreteColumnVerification = class {
       capacity: round3(capacity.capacityNorm),
       utilizationRatio: round3(capacity.utilizationRatio),
       ok: sectionResult.status === RESULT_STATUS.OK && Number.isFinite(capacity.utilizationRatio) && capacity.utilizationRatio <= 1,
-      metadata: {
+      metadata: withNormativeReferences({
         method: "fiber-domain-ray-intersection",
         mxEd: round3(axisMx.designMoment),
         myEd: round3(axisMy.designMoment),
@@ -96842,7 +97826,7 @@ var ReinforcedConcreteColumnVerification = class {
           myRd: round3(capacity.intersection.y),
           segmentIndex: capacity.intersection.segmentIndex
         } : null
-      }
+      }, [NTC2018_RC_CHAPTER_4_REFERENCES.flexureAndAxialForce])
     };
     const capacityDesign = (_i = model.shear) == null ? void 0 : _i.capacityDesign;
     const seismicGammaRd = ((_k = (_j = model.detailing) == null ? void 0 : _j.seismic) == null ? void 0 : _k.enabled) ? selectNTC2018OverstrengthFactors({
@@ -96877,14 +97861,14 @@ var ReinforcedConcreteColumnVerification = class {
           return {
             ...check4,
             id: `${check4.id}-${axisId}`,
-            metadata: {
+            metadata: withNormativeReferences({
               ...check4.metadata,
               axis: axisId,
               analysisShear: round3(Math.abs((_b3 = (_a3 = shear.vEd) != null ? _a3 : action) != null ? _b3 : 0)),
               capacityDesignShear: round3(capacityDesignShear),
               gammaRd: seismicGammaRd,
               reference: capacityDesignShear > 0 ? "NTC2018-7.4.5" : (_c3 = check4.metadata) == null ? void 0 : _c3.reference
-            }
+            }, capacityDesignShear > 0 ? [NTC2018_RC_CHAPTER_7_4_REFERENCES.columnCapacityDesign] : [])
           };
         });
         return [axisId, result9];
@@ -96951,12 +97935,17 @@ var ReinforcedConcreteColumnVerification = class {
         "mxEd is paired with concreteSection.inertiaY and myEd with concreteSection.inertiaZ, following the existing RC section action convention.",
         "Explicit total moments are assumed to include imperfections, cracking, creep and second-order effects; generated moments use the documented NTC nominal-stiffness isolated-member method."
       ],
-      metadata: {
+      metadata: withNormativeReferences({
         code: this.code,
         method: "ntc2018-column-stability-resistance-shear-detailing",
         governingCheckId: (_u = governing == null ? void 0 : governing.id) != null ? _u : null,
         ...this.metadata
-      }
+      }, [
+        NTC2018_RC_CHAPTER_4_REFERENCES.columnSlenderness,
+        NTC2018_RC_CHAPTER_4_REFERENCES.nominalStiffness,
+        NTC2018_RC_CHAPTER_4_REFERENCES.flexureAndAxialForce,
+        ...capacityDesign ? [NTC2018_RC_CHAPTER_7_4_REFERENCES.columnCapacityDesign] : []
+      ])
     });
   }
 };
@@ -97227,6 +98216,19 @@ var ReinforcedConcreteIsolatedFootingModel = class {
 var INTERNAL_UNITS44 = Object.freeze({ force: "N", length: "mm" });
 var UNIT_WIDTH2 = 1e3;
 var PUNCHING_2004 = "EN1992_1_1_2004_A1_2014";
+var FOOTING_NORMATIVE_REFERENCES = Object.freeze([
+  NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.foundationDesign,
+  NTC2018_RC_CHAPTER_4_REFERENCES.flexureAndAxialForce,
+  NTC2018_RC_CHAPTER_4_REFERENCES.shearWithoutTransverseReinforcement,
+  NTC2018_RC_CHAPTER_4_REFERENCES.punching,
+  NTC2018_RC_CHAPTER_4_REFERENCES.anchorage,
+  EN1992_RC_EXTERNAL_REFERENCES.punching2004,
+  EN1992_RC_EXTERNAL_REFERENCES.localBearing,
+  EN1992_RC_EXTERNAL_REFERENCES.bondAndAnchorage
+]);
+function footingMetadata(metadata = {}) {
+  return withNormativeReferences(metadata, FOOTING_NORMATIVE_REFERENCES);
+}
 function totalVerticalForce(model) {
   return model.actions.columnVerticalForce + model.actions.uniformDownwardPressure * model.geometry.widthX * model.geometry.widthY;
 }
@@ -97451,10 +98453,13 @@ function verifyPunchingForFooting({ model, contact, directions }) {
           capacity: round3(Math.max(model.geometry.widthX, model.geometry.widthY)),
           utilizationRatio: 0,
           ok: true,
-          metadata: {
+          metadata: withNormativeReferences({
             method: "EN1992-1-1-2004-control-perimeter-at-2d",
             nonApplicabilityReason: "The basic control perimeter at 2d reaches or crosses the footing boundary; one-way shear remains checked."
-          }
+          }, [
+            NTC2018_RC_CHAPTER_4_REFERENCES.punching,
+            EN1992_RC_EXTERNAL_REFERENCES.punching2004
+          ])
         }
       ],
       outputs: {
@@ -97644,10 +98649,10 @@ function verifyLocalBearing(model) {
       maximumInterfacePressure / (model.localBearing.resistanceReductionFactor * model.materials.concreteMaterial.fcd)
     ),
     ok: maximumInterfacePressure <= model.localBearing.resistanceReductionFactor * model.materials.concreteMaterial.fcd,
-    metadata: {
+    metadata: withNormativeReferences({
       method: "nonuniform-interface-peak-stress-no-dispersion-enhancement",
       reference: "EN1992-1-1:2004-6.7(3)"
-    }
+    }, [EN1992_RC_EXTERNAL_REFERENCES.localBearing])
   } : {
     id: "rc-footing-column-interface-crushing",
     description: "Local concrete bearing at column-footing interface",
@@ -97657,11 +98662,11 @@ function verifyLocalBearing(model) {
       model.actions.columnVerticalForce / bearing.resistance
     ),
     ok: model.actions.columnVerticalForce <= bearing.resistance,
-    metadata: {
+    metadata: withNormativeReferences({
       ...bearing,
       loadedArea,
       distributionArea
-    }
+    }, [EN1992_RC_EXTERNAL_REFERENCES.localBearing])
   };
   return {
     check: check4,
@@ -97712,7 +98717,13 @@ function verifyFootingAnchorages(model) {
       capacity: round3(anchor.availableLength),
       utilizationRatio: round3(required.designLength / anchor.availableLength),
       ok: required.designLength <= anchor.availableLength,
-      metadata: { ...required, fbd: round3(bond.fbd) }
+      metadata: withNormativeReferences(
+        { ...required, fbd: round3(bond.fbd) },
+        [
+          NTC2018_RC_CHAPTER_4_REFERENCES.anchorage,
+          EN1992_RC_EXTERNAL_REFERENCES.bondAndAnchorage
+        ]
+      )
     };
   });
 }
@@ -97738,10 +98749,10 @@ var ReinforcedConcreteIsolatedFootingVerification = class {
       capacity: 1,
       utilizationRatio: round3(contact.equilibriumUtilization),
       ok: contact.status !== "no-compressive-equilibrium",
-      metadata: {
+      metadata: withNormativeReferences({
         contactType: contact.contactType,
         reference: "rigid-rectangular-base-no-tension-contact"
-      }
+      }, [NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.foundationDesign])
     };
     if (contact.status === "no-compressive-equilibrium") {
       return new VerificationResult({
@@ -97756,7 +98767,7 @@ var ReinforcedConcreteIsolatedFootingVerification = class {
         assumptions: [
           "Soil contact has zero tensile strength and the footing base is treated as rigid for pressure distribution."
         ],
-        metadata: { code: this.code, ...this.metadata }
+        metadata: footingMetadata({ code: this.code, ...this.metadata })
       });
     }
     if (contact.status === "not-supported") {
@@ -97772,7 +98783,7 @@ var ReinforcedConcreteIsolatedFootingVerification = class {
         assumptions: [
           "No biaxial effective-area or rectangularized contact approximation is applied."
         ],
-        metadata: { code: this.code, ...this.metadata }
+        metadata: footingMetadata({ code: this.code, ...this.metadata })
       });
     }
     const bearingCheck = {
@@ -97784,10 +98795,10 @@ var ReinforcedConcreteIsolatedFootingVerification = class {
         contact.maximumPressure / model.soil.designBearingResistance
       ),
       ok: contact.maximumPressure <= model.soil.designBearingResistance,
-      metadata: {
+      metadata: withNormativeReferences({
         resistanceSource: model.soil.bearingResistanceSource,
         geotechnicalResistanceCalculatedByModule: false
-      }
+      }, [NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.foundationDesign])
     };
     const horizontalDemand = Math.hypot(
       model.actions.horizontalX,
@@ -97803,10 +98814,10 @@ var ReinforcedConcreteIsolatedFootingVerification = class {
         horizontalDemand === 0 ? 0 : horizontalDemand / model.soil.designSlidingResistance
       ),
       ok: horizontalDemand === 0 || horizontalDemand <= model.soil.designSlidingResistance,
-      metadata: {
+      metadata: withNormativeReferences({
         resistanceSource: model.soil.slidingResistanceSource,
         geotechnicalResistanceCalculatedByModule: false
-      }
+      }, [NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.foundationDesign])
     };
     if (slidingMissing) {
       return new VerificationResult({
@@ -97819,7 +98830,7 @@ var ReinforcedConcreteIsolatedFootingVerification = class {
           "Pass soil.designSlidingResistance from a justified geotechnical verification; the structural module does not derive it from an assumed friction coefficient."
         ],
         assumptions: [],
-        metadata: { code: this.code, ...this.metadata }
+        metadata: footingMetadata({ code: this.code, ...this.metadata })
       });
     }
     const directions = Object.fromEntries(
@@ -97905,13 +98916,13 @@ var ReinforcedConcreteIsolatedFootingVerification = class {
         "The column is centered and unrotated, and all actions are reduced to the center of the footing base.",
         "The assigned bearing and sliding resistances already include the geotechnical design approach and partial factors selected by the responsible geotechnical verification."
       ],
-      metadata: {
+      metadata: footingMetadata({
         code: this.code,
         method: "rigid-rectangular-footing-compression-only-contact-plus-rc-checks",
         governingCheckId: (_d = governing == null ? void 0 : governing.id) != null ? _d : null,
         geotechnicalCapacityCalculated: false,
         ...this.metadata
-      }
+      })
     });
   }
 };
@@ -98154,11 +99165,11 @@ function verifyTorsionActions({
         "Torsion was classified as compatibility torsion; no ULS torsion resistance check was performed."
       ],
       assumptions: [],
-      metadata: {
+      metadata: withNormativeReferences({
         code,
         method: "ntc2018-4.1.2.3.6",
         equilibriumRequired: false
-      }
+      }, [NTC2018_RC_CHAPTER_4_REFERENCES.torsion])
     };
   }
   const geometry = resolveGeometry2({ section, torsion, resolver, warnings, sources });
@@ -98207,11 +99218,11 @@ function verifyTorsionActions({
       assumptions: [
         "NTC 2018 4.1.2.3.6 torsion resistance was not evaluated because required parameters are incomplete."
       ],
-      metadata: {
+      metadata: withNormativeReferences({
         code,
         method: "ntc2018-4.1.2.3.6",
         missingParameters: missing2
-      }
+      }, [NTC2018_RC_CHAPTER_4_REFERENCES.torsion])
     };
   }
   const cot = cotTheta.value;
@@ -98224,21 +99235,30 @@ function verifyTorsionActions({
       description: "Torsion resistance of concrete compression struts",
       demand: convertedTEd,
       capacity: trcd,
-      metadata: { reference: "NTC2018-4.1.35" }
+      metadata: withNormativeReferences(
+        { reference: "NTC2018-4.1.35" },
+        [NTC2018_RC_CHAPTER_4_REFERENCES.torsion]
+      )
     }),
     utilizationCheck({
       id: "rc-torsion-transverse-reinforcement",
       description: "Torsion resistance of closed transverse reinforcement",
       demand: convertedTEd,
       capacity: trsd,
-      metadata: { reference: "NTC2018-4.1.36" }
+      metadata: withNormativeReferences(
+        { reference: "NTC2018-4.1.36" },
+        [NTC2018_RC_CHAPTER_4_REFERENCES.torsion]
+      )
     }),
     utilizationCheck({
       id: "rc-torsion-longitudinal-reinforcement",
       description: "Torsion resistance of longitudinal reinforcement assigned to torsion",
       demand: convertedTEd,
       capacity: trld,
-      metadata: { reference: "NTC2018-4.1.37" }
+      metadata: withNormativeReferences(
+        { reference: "NTC2018-4.1.37" },
+        [NTC2018_RC_CHAPTER_4_REFERENCES.torsion]
+      )
     })
   ];
   let shearAtCotTheta = null;
@@ -98278,14 +99298,14 @@ function verifyTorsionActions({
           capacity: 1,
           utilizationRatio: round3(interaction),
           ok: interaction <= 1,
-          metadata: {
+          metadata: withNormativeReferences({
             reference: "NTC2018-4.1.40",
             tEd: round3(convertedTEd),
             trcd: round3(trcd),
             vEd: round3(convertedVEd),
             vRcd: round3(shearAtCotTheta.vRcd),
             cotTheta: round3(cot)
-          }
+          }, [NTC2018_RC_CHAPTER_4_REFERENCES.torsion])
         });
       }
     }
@@ -98350,12 +99370,15 @@ function verifyTorsionActions({
       "The same cotTheta is used for torsion and the concrete shear-torsion interaction check.",
       "The default reduced concrete strength is f'cd = 0.5 fcd unless torsion.fcdPrime or torsion.fcdPrimeFactor is supplied."
     ],
-    metadata: {
+    metadata: withNormativeReferences({
       code,
       method: "ntc2018-4.1.2.3.6",
       governingCheckId: (_g = governing == null ? void 0 : governing.id) != null ? _g : null,
       missingParameters: combinedMissing ? ["combinedShearTorsionParameters"] : []
-    }
+    }, [
+      NTC2018_RC_CHAPTER_4_REFERENCES.torsion,
+      ...convertedVEd > 1e-9 ? [NTC2018_RC_CHAPTER_4_REFERENCES.shearWithTransverseReinforcement] : []
+    ])
   };
 }
 var ReinforcedConcreteTorsionVerification = class {
@@ -98470,7 +99493,7 @@ function minimumCheck(id, description, required, provided, metadata = {}) {
     description,
     demand: required,
     capacity: provided,
-    metadata
+    metadata: detailingMetadata2(metadata)
   });
 }
 function maximumCheck(id, description, provided, allowed, metadata = {}) {
@@ -98479,8 +99502,17 @@ function maximumCheck(id, description, provided, allowed, metadata = {}) {
     description,
     demand: provided,
     capacity: allowed,
-    metadata
+    metadata: detailingMetadata2(metadata)
   });
+}
+function detailingMetadata2(metadata = {}) {
+  var _a;
+  const legacyReference = (_a = metadata.reference) != null ? _a : "";
+  const normativeReference = legacyReference.startsWith("NTC2018-4.1") ? NTC2018_RC_CHAPTER_4_REFERENCES.beamDetailing : legacyReference === "NTC2018-7.4.6.1.1" ? NTC2018_RC_CHAPTER_7_4_REFERENCES.beamGeometry : legacyReference.startsWith("NTC2018-7.4") ? NTC2018_RC_CHAPTER_7_4_REFERENCES.beamDetailing : null;
+  return withNormativeReferences(
+    metadata,
+    normativeReference ? [normativeReference] : []
+  );
 }
 function normalizeDuctilityClass(value) {
   const normalized3 = String(value != null ? value : "").toUpperCase().replaceAll('"', "").replaceAll("-", "");
@@ -98524,7 +99556,7 @@ function anchorageChecks({ anchors, fctd, fyk, seismic }) {
       `Available anchorage length for beam bar ${id}`,
       required.designLength,
       availableLength,
-      {
+      withNormativeReferences({
         ...required,
         fbd: round3(bond.fbd),
         designSteelStress: round3(designSteelStress),
@@ -98534,7 +99566,12 @@ function anchorageChecks({ anchors, fctd, fyk, seismic }) {
           ...seismic ? ["NTC2018-7.4.6.2.1"] : [],
           required.reference
         ]
-      }
+      }, [
+        EN1992_RC_EXTERNAL_REFERENCES.bondAndAnchorage,
+        NTC2018_RC_CHAPTER_4_REFERENCES.anchorage,
+        NTC2018_RC_CHAPTER_4_REFERENCES.bondDesignStrength,
+        ...seismic ? [NTC2018_RC_CHAPTER_7_4_REFERENCES.beamDetailing] : []
+      ])
     );
   });
 }
@@ -98543,7 +99580,7 @@ var ReinforcedConcreteBeamDetailingVerification = class {
     this.code = code;
   }
   verify({ section, concreteMaterial, reinforcementMaterial, detailing } = {}) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v;
     if (!detailing) {
       return new VerificationResult({
         applicationId: "reinforced-concrete-beams",
@@ -98710,11 +99747,22 @@ var ReinforcedConcreteBeamDetailingVerification = class {
         "The supplied longitudinal layers describe the reinforcement effective at every checked beam section.",
         "Anchorage alpha factors and bond conditions are explicit design inputs and are not inferred from a drawing."
       ],
-      metadata: {
+      metadata: withNormativeReferences({
         code: this.code,
         method: "ntc2018-4.1.6.1.1-and-7.4.6.1.1-7.4.6.2.1",
         governingCheckId: (_u = governing == null ? void 0 : governing.id) != null ? _u : null
-      }
+      }, [
+        NTC2018_RC_CHAPTER_4_REFERENCES.beamDetailing,
+        ...((_v = detailing.anchors) == null ? void 0 : _v.length) ? [
+          NTC2018_RC_CHAPTER_4_REFERENCES.anchorage,
+          NTC2018_RC_CHAPTER_4_REFERENCES.bondDesignStrength,
+          EN1992_RC_EXTERNAL_REFERENCES.bondAndAnchorage
+        ] : [],
+        ...seismic ? [
+          NTC2018_RC_CHAPTER_7_4_REFERENCES.beamGeometry,
+          NTC2018_RC_CHAPTER_7_4_REFERENCES.beamDetailing
+        ] : []
+      ])
     });
   }
 };
@@ -99213,6 +100261,10 @@ var ReinforcedConcreteBeamVerification = class {
       }, {})
     );
     const governing = governingCheck4(groupedChecks);
+    const normativeReferences = groupedChecks.flatMap((check4) => {
+      var _a2, _b2;
+      return (_b2 = (_a2 = check4.metadata) == null ? void 0 : _a2.normativeReferences) != null ? _b2 : [];
+    });
     return new VerificationResult({
       applicationId: "reinforced-concrete-beams",
       status: actionVerification.status,
@@ -99242,13 +100294,13 @@ var ReinforcedConcreteBeamVerification = class {
         ...actionVerification.assumptions,
         "Each FEM station is checked as an independent RC section; ULS bending and SLE stress checks use biaxial actions when present, while crack control remains based on the primary bending plane."
       ],
-      metadata: {
+      metadata: withNormativeReferences({
         code: this.code,
         beamId,
         governingCheckId: (_v = governing == null ? void 0 : governing.id) != null ? _v : null,
         verificationStations,
         ...this.metadata
-      }
+      }, normativeReferences)
     });
   }
 };
@@ -99484,13 +100536,19 @@ var ReinforcedConcreteFoundationBeamApplication = class extends StructuralApplic
         ...analysis.assumptions,
         ...(_f = verificationJson.assumptions) != null ? _f : []
       ],
-      metadata: {
+      metadata: withNormativeReferences({
         code: settings.code,
         foundationModel: analysis.foundationModel,
         contactViolation,
         iterationFailure,
         crackedStiffnessIteration: Boolean(flexuralRigidityResolver)
-      }
+      }, [
+        NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.foundationDesign,
+        NTC2018_RC_CHAPTER_4_REFERENCES.flexureAndAxialForce,
+        NTC2018_RC_CHAPTER_4_REFERENCES.shearWithoutTransverseReinforcement,
+        NTC2018_RC_CHAPTER_4_REFERENCES.deflection,
+        EN1992_RC_EXTERNAL_REFERENCES.deflection
+      ])
     });
   }
 };
@@ -99768,6 +100826,40 @@ function resolveFctd(model) {
     gammaC
   };
 }
+function jointMetadata(metadata = {}) {
+  var _a, _b;
+  const reference = (_a = metadata.reference) != null ? _a : "";
+  const equation = (_b = metadata.equation) != null ? _b : "";
+  const normativeReferences = [];
+  if (reference === "NTC2018-7.4.4.3.1" || String(equation).startsWith("NTC2018-7.4.")) {
+    normativeReferences.push(
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.beamColumnJoint
+    );
+  } else if (reference === "NTC2018-7.4.6.2.3") {
+    normativeReferences.push(
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.jointDetailing
+    );
+  } else if (reference === "NTC2018-7.4.4") {
+    normativeReferences.push(
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.columnCapacityDesign
+    );
+  } else if (reference === "NTC2018-7.4.6.1.3") {
+    normativeReferences.push(
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.jointGeometry
+    );
+  } else if (reference === "NTC2018-7.4.6.2.1") {
+    normativeReferences.push(
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.beamDetailing
+    );
+  }
+  return withNormativeReferences(metadata, normativeReferences);
+}
+function normativeUtilizationCheck(options) {
+  return utilizationCheck({
+    ...options,
+    metadata: jointMetadata(options.metadata)
+  });
+}
 function safeUtilizationCheck(options) {
   if (!Number.isFinite(options.capacity) || options.capacity <= 0) {
     return {
@@ -99777,10 +100869,10 @@ function safeUtilizationCheck(options) {
       capacity: round3(options.capacity),
       utilizationRatio: null,
       ok: false,
-      metadata: { ...options.metadata }
+      metadata: jointMetadata(options.metadata)
     };
   }
-  return utilizationCheck(options);
+  return normativeUtilizationCheck(options);
 }
 var ReinforcedConcreteBeamColumnJointVerification = class {
   constructor({ code = "NTC2018", metadata = {} } = {}) {
@@ -99891,14 +100983,14 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
           shearStress: round3(selectedTension.shearStress)
         }
       }),
-      utilizationCheck({
+      normativeUtilizationCheck({
         id: "rc-joint-minimum-hoop-diameter",
         description: "Minimum joint hoop diameter",
         demand: 6,
         capacity: model.jointHoops.diameter,
         metadata: { reference: "NTC2018-7.4.4.3.1" }
       }),
-      utilizationCheck({
+      normativeUtilizationCheck({
         id: "rc-joint-adjacent-hoop-area",
         description: "Joint hoop set area compared with adjacent column requirement",
         demand: adjacent.controllingAreaPerSet,
@@ -99908,7 +101000,7 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
           reference: "NTC2018-7.4.6.2.3"
         }
       }),
-      utilizationCheck({
+      normativeUtilizationCheck({
         id: "rc-joint-hoop-spacing",
         description: "Joint hoop spacing",
         demand: model.jointHoops.spacing,
@@ -99921,7 +101013,7 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
       })
     ];
     if (!model.capacityHierarchy.exempt) {
-      checks.push(utilizationCheck({
+      checks.push(normativeUtilizationCheck({
         id: "rc-joint-strong-column-weak-beam",
         description: "Strong-column weak-beam capacity hierarchy",
         demand: columnBendingGammaRd * model.capacityHierarchy.beamMomentResistanceSum,
@@ -99937,7 +101029,7 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
     const eccentricityLimit = model.geometry.columnWidth / 4;
     const eccentricity = Math.abs(model.eccentricity.beamAxisOffset);
     if (eccentricity <= eccentricityLimit + 1e-9) {
-      checks.push(utilizationCheck({
+      checks.push(normativeUtilizationCheck({
         id: "rc-joint-beam-axis-eccentricity",
         description: "Beam-to-column joint axis eccentricity",
         demand: eccentricity,
@@ -99994,16 +101086,21 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
         nationalMinimumDiameterMultiple: 20,
         nationalMinimumLength: 150
       });
-      return utilizationCheck({
+      return normativeUtilizationCheck({
         id: `rc-joint-beam-bar-anchorage-${face}`,
         description: `Beam ${face} anchorage through or beyond the joint`,
         demand: required.designLength,
         capacity: anchor.availableLength,
-        metadata: {
+        metadata: withNormativeReferences({
           ...required,
           fbd: round3(bond.fbd),
           reference: "NTC2018-7.4.6.2.1"
-        }
+        }, [
+          EN1992_RC_EXTERNAL_REFERENCES.bondAndAnchorage,
+          NTC2018_RC_CHAPTER_4_REFERENCES.anchorage,
+          NTC2018_RC_CHAPTER_4_REFERENCES.bondDesignStrength,
+          NTC2018_RC_CHAPTER_7_4_REFERENCES.beamDetailing
+        ])
       });
     });
     checks.push(...anchorageChecks2);
@@ -100094,13 +101191,24 @@ var ReinforcedConcreteBeamColumnJointVerification = class {
         "Top and bottom beam reinforcement areas are already selected for the adverse seismic direction being checked.",
         ...!model.capacityHierarchy.exempt ? ["The effective column moment resistance supplied for hierarchy is already reduced according to the member moment signs and node equilibrium rule of NTC 2018 equation 7.4.4."] : []
       ],
-      metadata: {
+      metadata: withNormativeReferences({
         code: this.code,
         method: "NTC2018-7.4.4-and-7.4.4.3.1",
         jointId: model.id,
         governingCheckId: (_e = governing == null ? void 0 : governing.id) != null ? _e : null,
         ...this.metadata
-      }
+      }, [
+        NTC2018_RC_CHAPTER_7_4_REFERENCES.beamColumnJoint,
+        NTC2018_RC_CHAPTER_7_4_REFERENCES.jointGeometry,
+        NTC2018_RC_CHAPTER_7_4_REFERENCES.jointDetailing,
+        ...!model.capacityHierarchy.exempt ? [NTC2018_RC_CHAPTER_7_4_REFERENCES.columnCapacityDesign] : [],
+        ...anchorageChecks2.length > 0 ? [
+          NTC2018_RC_CHAPTER_4_REFERENCES.anchorage,
+          NTC2018_RC_CHAPTER_4_REFERENCES.bondDesignStrength,
+          EN1992_RC_EXTERNAL_REFERENCES.bondAndAnchorage,
+          NTC2018_RC_CHAPTER_7_4_REFERENCES.beamDetailing
+        ] : []
+      ])
     });
   }
 };
@@ -100200,12 +101308,16 @@ var ReinforcedConcreteBeamColumnJoint3DVerification = class {
         "No undocumented scalar interaction equation is introduced between orthogonal NTC directional checks.",
         ...directionalResults.flatMap(({ directionId, result: result9 }) => result9.assumptions.map((assumption) => `[${directionId}] ${assumption}`))
       ],
-      metadata: {
+      metadata: withNormativeReferences({
         code: this.code,
         method: "ntc2018-concurrent-directional-joint-checks",
         governingCheckId: (_d = governing == null ? void 0 : governing.id) != null ? _d : null,
         ...this.metadata
-      }
+      }, [
+        NTC2018_RC_CHAPTER_7_4_REFERENCES.beamColumnJoint,
+        NTC2018_RC_CHAPTER_7_4_REFERENCES.jointGeometry,
+        NTC2018_RC_CHAPTER_7_4_REFERENCES.jointDetailing
+      ])
     });
   }
 };
@@ -100489,7 +101601,11 @@ function calculateEn1992StrutDesignStrength({
     designStrength: coefficient * fcd,
     coefficient,
     nuPrime,
-    equation: strengthModel === "uncracked-uniaxial" ? "EN1992-1-1-2004-6.55" : "EN1992-1-1-2004-6.56"
+    equation: strengthModel === "uncracked-uniaxial" ? "EN1992-1-1-2004-6.55" : "EN1992-1-1-2004-6.56",
+    metadata: withNormativeReferences(
+      {},
+      [EN1992_RC_EXTERNAL_REFERENCES.strutAndTie]
+    )
   };
 }
 function calculateEn1992TieResistance({ reinforcementArea, fyd }) {
@@ -100499,7 +101615,11 @@ function calculateEn1992TieResistance({ reinforcementArea, fyd }) {
     capacity: reinforcementArea * fyd,
     reinforcementArea,
     fyd,
-    equation: "EN1992-1-1-2004-6.5.3"
+    equation: "EN1992-1-1-2004-6.5.3",
+    metadata: withNormativeReferences(
+      {},
+      [EN1992_RC_EXTERNAL_REFERENCES.strutAndTie]
+    )
   };
 }
 function calculateEn1992NodalDesignStrength({
@@ -100526,7 +101646,11 @@ function calculateEn1992NodalDesignStrength({
       ccc: "EN1992-1-1-2004-6.60",
       cct: "EN1992-1-1-2004-6.61",
       ctt: "EN1992-1-1-2004-6.62"
-    }[nodeType]
+    }[nodeType],
+    metadata: withNormativeReferences(
+      {},
+      [EN1992_RC_EXTERNAL_REFERENCES.strutAndTie]
+    )
   };
 }
 var EN1992_STRUT_STRENGTH_MODELS = Object.freeze([
@@ -100536,6 +101660,20 @@ var EN1992_STRUT_AND_TIE_NODE_TYPES = Object.freeze([...NODE_TYPES2]);
 
 // src/applications/reinforced-concrete-strut-and-tie/ReinforcedConcreteStrutAndTieVerification.js
 var SUPPORTED_CODE = "EN1992_1_1_2004_A1_2014";
+function resultMetadata2({ code, modelId, metadata = {}, ...details }) {
+  return withNormativeReferences(
+    {
+      code,
+      modelId,
+      ...details,
+      ...metadata
+    },
+    [
+      NTC2018_RC_CHAPTER_4_REFERENCES.strutAndTie,
+      EN1992_RC_EXTERNAL_REFERENCES.strutAndTie
+    ]
+  );
+}
 function incompatibleMechanismCheck(member) {
   return {
     id: `stm-member-sign-${member.id}`,
@@ -100585,7 +101723,11 @@ var ReinforcedConcreteStrutAndTieVerification = class {
         status: RESULT_STATUS.NOT_SUPPORTED,
         summary: `Unsupported strut-and-tie design code: ${this.code}.`,
         warnings: ["The first implementation supports EN 1992-1-1:2004+A1:2014 only."],
-        metadata: { code: this.code, modelId: model.id, ...this.metadata }
+        metadata: resultMetadata2({
+          code: this.code,
+          modelId: model.id,
+          metadata: this.metadata
+        })
       });
     }
     const concrete = model.materials.concreteMaterial;
@@ -100599,7 +101741,11 @@ var ReinforcedConcreteStrutAndTieVerification = class {
         status: RESULT_STATUS.NOT_SUPPORTED,
         summary: "Strut-and-tie verification requires fck, fcd and fyd.",
         warnings: ["Provide concrete and reinforcement design strengths."],
-        metadata: { code: this.code, modelId: model.id, ...this.metadata }
+        metadata: resultMetadata2({
+          code: this.code,
+          modelId: model.id,
+          metadata: this.metadata
+        })
       });
     }
     let analysis;
@@ -100614,7 +101760,11 @@ var ReinforcedConcreteStrutAndTieVerification = class {
         status: RESULT_STATUS.NOT_SUPPORTED,
         summary: "The assigned strut-and-tie topology is unstable or singular.",
         warnings: [error.message],
-        metadata: { code: this.code, modelId: model.id, ...this.metadata }
+        metadata: resultMetadata2({
+          code: this.code,
+          modelId: model.id,
+          metadata: this.metadata
+        })
       });
     }
     const sourceMemberById = new Map(
@@ -100646,7 +101796,8 @@ var ReinforcedConcreteStrutAndTieVerification = class {
           metadata: {
             strengthModel: source.strengthModel,
             designStrength: round3(strength.designStrength),
-            equation: strength.equation
+            equation: strength.equation,
+            ...strength.metadata
           }
         }));
       } else {
@@ -100663,7 +101814,10 @@ var ReinforcedConcreteStrutAndTieVerification = class {
           description: `Steel tie ${member.id} tension resistance`,
           demand: Math.abs(member.force),
           capacity: resistance.capacity,
-          metadata: { equation: resistance.equation }
+          metadata: {
+            equation: resistance.equation,
+            ...resistance.metadata
+          }
         }));
       }
     }
@@ -100695,7 +101849,8 @@ var ReinforcedConcreteStrutAndTieVerification = class {
             nodeType: zone.type,
             equation: strength.equation,
             factor: strength.factor,
-            factorSource: strength.factorSource
+            factorSource: strength.factorSource,
+            ...strength.metadata
           }
         })
       };
@@ -100740,13 +101895,13 @@ var ReinforcedConcreteStrutAndTieVerification = class {
         "Member areas represent the effective strut width times thickness or the effective anchored reinforcement area.",
         "Nodal-zone force references and bearing normals represent the compressive face being checked."
       ],
-      metadata: {
+      metadata: resultMetadata2({
         code: this.code,
-        method: "EN1992-1-1-2004-section-6.5",
         modelId: model.id,
+        method: "EN1992-1-1-2004-section-6.5",
         governingCheckId: (_d = governing == null ? void 0 : governing.id) != null ? _d : null,
-        ...this.metadata
-      }
+        metadata: this.metadata
+      })
     });
   }
 };
@@ -100893,7 +102048,11 @@ function verifyWallBiaxialBending({
       segmentParameter: rayCapacity.intersection.segmentParameter
     } : null,
     check: "wall-biaxial-bending",
-    reference: WALL_BIAXIAL_REFERENCE
+    reference: WALL_BIAXIAL_REFERENCE,
+    metadata: withNormativeReferences({}, [
+      NTC2018_RC_CHAPTER_4_REFERENCES.flexureAndAxialForce,
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.wall
+    ])
   };
 }
 
@@ -101682,12 +102841,224 @@ var NTC2018_RC_COVERAGE_STATUS = Object.freeze({
   NOT_IMPLEMENTED: "not-implemented",
   OUTSIDE_DECLARED_SCOPE: "outside-declared-scope"
 });
+var NTC2018_RC_TRACEABILITY_STATUS = Object.freeze({
+  COMPUTATIONAL_CONTRACT: "computational-contract",
+  OUTSIDE_CURRENT_CORPUS: "outside-current-corpus",
+  PARTIAL_CURRENT_CORPUS: "partial-current-corpus",
+  RESOLVED_CURRENT_CORPUS: "resolved-current-corpus"
+});
+var R4 = NTC2018_RC_CHAPTER_4_REFERENCES;
+var R7 = NTC2018_RC_CHAPTER_7_4_REFERENCES;
+var OUTSIDE = NTC2018_RC_OUTSIDE_CORPUS_REFERENCES;
+var CIRC = CIRC2019_RC_REFERENCES;
+var EN1992 = EN1992_RC_EXTERNAL_REFERENCES;
+var CAPABILITY_TRACEABILITY = Object.freeze({
+  "global-fem-contracts": {
+    status: NTC2018_RC_TRACEABILITY_STATUS.COMPUTATIONAL_CONTRACT,
+    references: [OUTSIDE.globalSeismicAnalysis]
+  },
+  "solver-neutral-demand-extraction": {
+    status: NTC2018_RC_TRACEABILITY_STATUS.COMPUTATIONAL_CONTRACT,
+    references: []
+  },
+  "structural-behavior-and-q": {
+    status: NTC2018_RC_TRACEABILITY_STATUS.PARTIAL_CURRENT_CORPUS,
+    references: [
+      R7.structuralBehavior,
+      R7.structuralTypesAndQ,
+      OUTSIDE.globalSeismicAnalysis
+    ]
+  },
+  regularity: {
+    status: NTC2018_RC_TRACEABILITY_STATUS.OUTSIDE_CURRENT_CORPUS,
+    references: [
+      OUTSIDE.structuralRegularity,
+      OUTSIDE.structuralRegularityGuidance
+    ]
+  },
+  "displacements-and-second-order": {
+    status: NTC2018_RC_TRACEABILITY_STATUS.OUTSIDE_CURRENT_CORPUS,
+    references: [OUTSIDE.globalSeismicAnalysis]
+  },
+  "beam-local-verification": {
+    status: NTC2018_RC_TRACEABILITY_STATUS.RESOLVED_CURRENT_CORPUS,
+    references: [
+      R4.flexureAndAxialForce,
+      R4.shearWithoutTransverseReinforcement,
+      R4.shearWithTransverseReinforcement,
+      R4.beamDetailing,
+      R7.beamCapacityShear,
+      R7.beamGeometry,
+      R7.beamDetailing
+    ]
+  },
+  "column-local-verification": {
+    status: NTC2018_RC_TRACEABILITY_STATUS.RESOLVED_CURRENT_CORPUS,
+    references: [
+      R4.flexureAndAxialForce,
+      R4.columnSlenderness,
+      R4.nominalStiffness,
+      R4.columnDetailing,
+      R7.columnCapacityDesign,
+      R7.columnGeometry,
+      R7.columnDetailing
+    ]
+  },
+  "beam-column-joint-local-verification": {
+    status: NTC2018_RC_TRACEABILITY_STATUS.RESOLVED_CURRENT_CORPUS,
+    references: [
+      R7.beamColumnJoint,
+      R7.jointGeometry,
+      R7.jointDetailing
+    ]
+  },
+  "slab-local-verification": {
+    status: NTC2018_RC_TRACEABILITY_STATUS.PARTIAL_CURRENT_CORPUS,
+    references: [
+      R4.flexureAndAxialForce,
+      R4.shearWithoutTransverseReinforcement,
+      R4.crackWidth,
+      R4.concreteStressCharacteristic,
+      R4.concreteStressQuasiPermanent,
+      R4.reinforcementStress,
+      R4.deflection,
+      CIRC.simplifiedDeflectionSlenderness,
+      EN1992.deflection
+    ]
+  },
+  "punching-supported-geometries": {
+    status: NTC2018_RC_TRACEABILITY_STATUS.PARTIAL_CURRENT_CORPUS,
+    references: [
+      R4.punching,
+      EN1992.punching2004,
+      EN1992.punching2023
+    ]
+  },
+  "isolated-footing-local-verification": {
+    status: NTC2018_RC_TRACEABILITY_STATUS.PARTIAL_CURRENT_CORPUS,
+    references: [
+      R4.flexureAndAxialForce,
+      R4.shearWithoutTransverseReinforcement,
+      R4.punching,
+      R4.anchorage,
+      OUTSIDE.foundationDesign,
+      EN1992.punching2004,
+      EN1992.localBearing,
+      EN1992.bondAndAnchorage
+    ]
+  },
+  "foundation-beam-local-verification": {
+    status: NTC2018_RC_TRACEABILITY_STATUS.PARTIAL_CURRENT_CORPUS,
+    references: [
+      R4.flexureAndAxialForce,
+      R4.shearWithoutTransverseReinforcement,
+      R4.deflection,
+      OUTSIDE.foundationDesign,
+      EN1992.deflection
+    ]
+  },
+  "wall-section-biaxial-verification": {
+    status: NTC2018_RC_TRACEABILITY_STATUS.RESOLVED_CURRENT_CORPUS,
+    references: [R4.flexureAndAxialForce, R7.wall]
+  },
+  "wall-chapter7-demand-and-detailing-kernels": {
+    status: NTC2018_RC_TRACEABILITY_STATUS.RESOLVED_CURRENT_CORPUS,
+    references: [R7.wall, R7.wallDuctility, R7.wallDetailing]
+  },
+  "capacity-design-kernels": {
+    status: NTC2018_RC_TRACEABILITY_STATUS.RESOLVED_CURRENT_CORPUS,
+    references: [
+      R7.beamCapacityShear,
+      R7.columnCapacityDesign,
+      R7.beamColumnJoint,
+      R7.wall
+    ]
+  },
+  "diaphragm-force-amplification": {
+    status: NTC2018_RC_TRACEABILITY_STATUS.RESOLVED_CURRENT_CORPUS,
+    references: [R7.diaphragm]
+  },
+  "global-member-axis-mapping": {
+    status: NTC2018_RC_TRACEABILITY_STATUS.COMPUTATIONAL_CONTRACT,
+    references: []
+  },
+  "global-wall-system-verification": {
+    status: NTC2018_RC_TRACEABILITY_STATUS.RESOLVED_CURRENT_CORPUS,
+    references: [
+      R7.wall,
+      R7.wallDuctility,
+      R7.wallGeometry,
+      R7.wallDetailing
+    ]
+  },
+  "global-slab-and-punching-orchestration": {
+    status: NTC2018_RC_TRACEABILITY_STATUS.PARTIAL_CURRENT_CORPUS,
+    references: [
+      R4.flexureAndAxialForce,
+      R4.punching,
+      EN1992.punching2004,
+      EN1992.punching2023,
+      OUTSIDE.globalSeismicAnalysis
+    ]
+  },
+  "diaphragm-chapter4-resistance": {
+    status: NTC2018_RC_TRACEABILITY_STATUS.RESOLVED_CURRENT_CORPUS,
+    references: [R4.flexureAndAxialForce, R7.diaphragm]
+  },
+  "global-foundation-orchestration": {
+    status: NTC2018_RC_TRACEABILITY_STATUS.OUTSIDE_CURRENT_CORPUS,
+    references: [
+      OUTSIDE.foundationDesign,
+      OUTSIDE.seismicFoundationDesign
+    ]
+  },
+  "modal-combination-and-accidental-torsion-verification": {
+    status: NTC2018_RC_TRACEABILITY_STATUS.OUTSIDE_CURRENT_CORPUS,
+    references: [OUTSIDE.globalSeismicAnalysis]
+  },
+  "coupling-beams-and-special-wall-systems": {
+    status: NTC2018_RC_TRACEABILITY_STATUS.RESOLVED_CURRENT_CORPUS,
+    references: [
+      R7.wall,
+      R7.wallDuctility,
+      R7.wallDetailing,
+      R7.couplingBeam
+    ]
+  },
+  "complete-building-orchestration": {
+    status: NTC2018_RC_TRACEABILITY_STATUS.PARTIAL_CURRENT_CORPUS,
+    references: [
+      R4.flexureAndAxialForce,
+      R7.structuralBehavior,
+      R7.structuralTypesAndQ,
+      OUTSIDE.globalSeismicAnalysis,
+      OUTSIDE.foundationDesign,
+      OUTSIDE.seismicFoundationDesign
+    ]
+  },
+  "prestressed-precast-and-bridge-rc": {
+    status: NTC2018_RC_TRACEABILITY_STATUS.OUTSIDE_CURRENT_CORPUS,
+    references: []
+  }
+});
+function normativeTraceability(capabilityId) {
+  const traceability = CAPABILITY_TRACEABILITY[capabilityId];
+  if (!traceability) {
+    throw new Error(`Missing normative traceability for ${capabilityId}.`);
+  }
+  return Object.freeze({
+    status: traceability.status,
+    corpusWorkflowStatus: "extracted",
+    normativeReferences: Object.freeze([...traceability.references])
+  });
+}
 function capability(id, status, references, evidence) {
   return Object.freeze({
     id,
     status,
     references: Object.freeze(references),
-    evidence: Object.freeze(evidence)
+    evidence: Object.freeze(evidence),
+    normativeTraceability: normativeTraceability(id)
   });
 }
 var NTC2018_RC_BUILDING_CAPABILITIES = Object.freeze([
@@ -101856,7 +103227,7 @@ var NTC2018_RC_BUILDING_CAPABILITIES = Object.freeze([
     "coupling-beams-and-special-wall-systems",
     "available",
     [
-      "NTC 2018 \xA7\xA7 7.4.4.5, 7.4.4.6, 7.4.6.2.4, 7.4.6.2.5"
+      "NTC 2018 \xA7\xA7 7.4.4.5, 7.4.4.6 e 7.4.6.2.4"
     ],
     [
       "Ordinary-versus-diagonal coupling-beam branch tests",
@@ -101887,6 +103258,10 @@ function getNTC2018RcBuildingCoverage() {
     version: 0,
     declaredScope: "ordinary-cast-in-place-reinforced-concrete-buildings",
     declaredScopeCoverageComplete: true,
+    declaredScopeImplementationCoverageComplete: true,
+    normativeTraceabilityComplete: false,
+    normativeConformityClaimed: false,
+    normativeAssurance: "Implementation availability is not a conformity declaration. The pinned corpus is extracted and some required chapters are outside it.",
     wholeChapter4And7CoverageClaimed: false,
     capabilities: NTC2018_RC_BUILDING_CAPABILITIES
   }));
@@ -101904,15 +103279,26 @@ function evaluateNTC2018RcBuildingCompleteness({
   }
   const required = requiredCapabilityIds.map((id) => index.get(id));
   const blocking = required.filter((item) => item.status !== NTC2018_RC_COVERAGE_STATUS.AVAILABLE);
+  const normativeBlocking = required.filter((item) => ![
+    NTC2018_RC_TRACEABILITY_STATUS.COMPUTATIONAL_CONTRACT,
+    NTC2018_RC_TRACEABILITY_STATUS.RESOLVED_CURRENT_CORPUS
+  ].includes(item.normativeTraceability.status));
   return {
     schema: "strutture-js/ntc2018-rc-building-completeness",
     version: 0,
     status: blocking.length === 0 ? "complete" : "not-implemented",
     complete: blocking.length === 0,
+    evaluationBasis: "implementation-availability",
+    normativeTraceabilityComplete: normativeBlocking.length === 0,
+    normativeConformityClaimed: false,
     requiredCapabilityIds: [...requiredCapabilityIds],
     blockingCapabilities: blocking.map((item) => ({
       id: item.id,
       status: item.status
+    })),
+    normativeBlockingCapabilities: normativeBlocking.map((item) => ({
+      id: item.id,
+      status: item.normativeTraceability.status
     }))
   };
 }
@@ -102361,7 +103747,8 @@ function runJointHierarchyVerifications({ joints, jointHierarchy, behavior }) {
         demand: outcome.demand,
         capacity: outcome.capacity,
         check: outcome.check,
-        reference: outcome.reference
+        reference: outcome.reference,
+        metadata: outcome.metadata
       });
     } catch (error) {
       results.push({
@@ -102784,14 +104171,20 @@ var RcBuildingVerificationApplication = class extends StructuralApplication {
         var _a2;
         return (_a2 = foundation.checks) != null ? _a2 : [];
       }),
-      ...jointHierarchyVerifications.filter((j) => j.check != null).map((j) => ({
-        id: `joint-hierarchy-${j.jointId}`,
-        demand: j.demand,
-        capacity: j.capacity,
-        utilizationRatio: j.utilizationRatio,
-        ok: j.status === "ok",
-        metadata: { reference: j.reference }
-      }))
+      ...jointHierarchyVerifications.filter((j) => j.check != null).map((j) => {
+        var _a2;
+        return {
+          id: `joint-hierarchy-${j.jointId}`,
+          demand: j.demand,
+          capacity: j.capacity,
+          utilizationRatio: j.utilizationRatio,
+          ok: j.status === "ok",
+          metadata: {
+            reference: j.reference,
+            ...(_a2 = j.metadata) != null ? _a2 : {}
+          }
+        };
+      })
     ];
     return new CalculationResult({
       applicationId: APP_ID,
@@ -102903,11 +104296,27 @@ var RcBuildingVerificationApplication = class extends StructuralApplication {
         "Beam-column hierarchy runs only for joints with jointHierarchy data.",
         ...assumptions
       ],
-      metadata: {
+      metadata: withNormativeReferences({
+        ...(_ca = input.metadata) != null ? _ca : {},
         appVersion: APP_VERSION,
         maturity: APP_MATURITY,
-        ...(_ca = input.metadata) != null ? _ca : {}
-      }
+        normativeConformityClaimed: false,
+        normativeTraceabilityComplete: evaluateNTC2018RcBuildingCompleteness().normativeTraceabilityComplete
+      }, [
+        NTC2018_RC_CHAPTER_4_REFERENCES.flexureAndAxialForce,
+        NTC2018_RC_CHAPTER_4_REFERENCES.shearWithoutTransverseReinforcement,
+        NTC2018_RC_CHAPTER_4_REFERENCES.shearWithTransverseReinforcement,
+        NTC2018_RC_CHAPTER_4_REFERENCES.punching,
+        NTC2018_RC_CHAPTER_7_4_REFERENCES.structuralBehavior,
+        NTC2018_RC_CHAPTER_7_4_REFERENCES.structuralTypesAndQ,
+        NTC2018_RC_CHAPTER_7_4_REFERENCES.columnCapacityDesign,
+        NTC2018_RC_CHAPTER_7_4_REFERENCES.beamColumnJoint,
+        NTC2018_RC_CHAPTER_7_4_REFERENCES.diaphragm,
+        NTC2018_RC_CHAPTER_7_4_REFERENCES.wall,
+        NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.globalSeismicAnalysis,
+        NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.foundationDesign,
+        NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.seismicFoundationDesign
+      ])
     });
   }
 };
@@ -102917,6 +104326,131 @@ __publicField(RcBuildingVerificationApplication, "domain", APP_DOMAIN);
 __publicField(RcBuildingVerificationApplication, "supportedCodes", APP_CODES);
 __publicField(RcBuildingVerificationApplication, "maturity", APP_MATURITY);
 __publicField(RcBuildingVerificationApplication, "tags", APP_TAGS);
+
+// src/applications/rc-building-verification/ntc2018RcDesignBasisAudit.js
+function relativeDifference(value, expected) {
+  if (!Number.isFinite(value) || !Number.isFinite(expected)) {
+    return null;
+  }
+  return Math.abs(value - expected) / Math.max(Math.abs(expected), 1e-12);
+}
+function auditNTC2018RcDesignBasis({
+  behavior,
+  structuralType,
+  regularity = {},
+  analysisMethod,
+  analysisParameters = {},
+  q = null,
+  alphaRatio,
+  frameStoreyCount,
+  frameBayCount,
+  uncoupledWallCount,
+  requiredCapabilityIds
+} = {}) {
+  const behaviorDescriptor = createNTC2018StructuralBehavior({
+    behavior,
+    structuralType,
+    regularity,
+    alphaRatio,
+    frameStoreyCount,
+    frameBayCount,
+    uncoupledWallCount
+  });
+  const methods = selectNTC2018AllowedAnalysisMethods({
+    behavior: behaviorDescriptor.behavior,
+    planRegularity: regularity.plan,
+    elevationRegularity: regularity.elevation,
+    t1: analysisParameters.t1,
+    tc: analysisParameters.tc,
+    td: analysisParameters.td
+  });
+  const implementation = evaluateNTC2018RcBuildingCompleteness({
+    ...requiredCapabilityIds == null ? {} : { requiredCapabilityIds }
+  });
+  const methodAllowed = methods.allowed.includes(analysisMethod);
+  const qDifference = q == null ? null : relativeDifference(Number(q), behaviorDescriptor.q);
+  const qConsistent = qDifference == null || qDifference <= 1e-9;
+  const checks = [
+    {
+      id: "rc-design-basis-analysis-method",
+      description: "Selected global analysis method is admitted by the supplied design basis",
+      demand: analysisMethod != null ? analysisMethod : null,
+      capacity: [...methods.allowed],
+      utilizationRatio: null,
+      ok: methodAllowed,
+      metadata: withNormativeReferences({
+        recommendedMethod: methods.recommended
+      }, [NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.globalSeismicAnalysis])
+    },
+    {
+      id: "rc-design-basis-behavior-factor",
+      description: "Declared behavior factor is consistent with structural type and regularity",
+      demand: q == null ? behaviorDescriptor.q : Number(q),
+      capacity: behaviorDescriptor.q,
+      utilizationRatio: qDifference,
+      ok: qConsistent,
+      metadata: withNormativeReferences({
+        computedQ0: behaviorDescriptor.q0,
+        regularityFactor: behaviorDescriptor.kr,
+        suppliedExplicitly: q != null
+      }, [
+        NTC2018_RC_CHAPTER_7_4_REFERENCES.structuralBehavior,
+        NTC2018_RC_CHAPTER_7_4_REFERENCES.structuralTypesAndQ
+      ])
+    },
+    {
+      id: "rc-design-basis-implementation-readiness",
+      description: "Required strutture-js capability families are implemented",
+      demand: implementation.requiredCapabilityIds.length,
+      capacity: implementation.requiredCapabilityIds.length - implementation.blockingCapabilities.length,
+      utilizationRatio: null,
+      ok: implementation.complete,
+      metadata: {
+        evaluationBasis: implementation.evaluationBasis,
+        blockingCapabilities: implementation.blockingCapabilities
+      }
+    }
+  ];
+  const ok = checks.every((check4) => check4.ok === true);
+  const normativeReferences = [
+    NTC2018_RC_CHAPTER_7_4_REFERENCES.structuralBehavior,
+    NTC2018_RC_CHAPTER_7_4_REFERENCES.structuralTypesAndQ,
+    NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.globalSeismicAnalysis
+  ];
+  return new VerificationResult({
+    applicationId: "ntc2018-rc-design-basis-audit",
+    status: ok ? RESULT_STATUS.OK : RESULT_STATUS.NOT_VERIFIED,
+    summary: "Solver-independent audit of NTC 2018 RC structural behavior, q factor, analysis method and implementation readiness.",
+    utilizationRatio: qDifference,
+    demand: q == null ? behaviorDescriptor.q : Number(q),
+    capacity: behaviorDescriptor.q,
+    checks,
+    outputs: {
+      behavior: behaviorDescriptor,
+      analysisMethods: methods,
+      implementation,
+      normativeAssurance: {
+        corpusWorkflowStatus: "extracted",
+        traceabilityComplete: implementation.normativeTraceabilityComplete,
+        conformityClaimed: false
+      }
+    },
+    warnings: [
+      ...!implementation.normativeTraceabilityComplete ? [
+        "Some required provisions are outside the currently pinned normative corpus."
+      ] : [],
+      "Canonical corpus records are extracted and still require the declared human review workflow before any conformity claim."
+    ],
+    assumptions: [
+      "The audit checks declared solver-independent choices only; it does not validate FEM modelling quality or member resistance.",
+      "Periods and spectrum corner values use one consistent time unit."
+    ],
+    metadata: withNormativeReferences({
+      normativeConformityClaimed: false,
+      normativeTraceabilityComplete: implementation.normativeTraceabilityComplete
+    }, normativeReferences)
+  });
+}
 
 // src/applications/reinforced-concrete-sections/ReinforcedConcreteSectionApplication.js
 var ReinforcedConcreteSectionApplication = class extends StructuralApplication {
@@ -107864,6 +109398,7 @@ export {
   BeamReportMarkdownRenderer,
   BeamSectionActionVerifier,
   BeamSystem,
+  CIRC2019_RC_REFERENCES,
   CIRCULAR_SLIP_SURFACE_2D_SCHEMA_VERSION,
   CIRCULAR_SLOPE_STABILITY_RESULT_SCHEMA_VERSION,
   INTERNAL_UNITS as CYCLIC_MASONRY_INTERNAL_UNITS,
@@ -107912,6 +109447,7 @@ export {
   EMBEDDED_RETAINING_WALL_SUPPORT_BEHAVIORS,
   EMBEDDED_RETAINING_WALL_SUPPORT_TYPES,
   EMBEDDED_RETAINING_WALL_TYPES,
+  EN1992_RC_EXTERNAL_REFERENCES,
   EN1992_STRUT_AND_TIE_NODE_TYPES,
   EN1992_STRUT_STRENGTH_MODELS,
   EXISTING_MATERIAL_CONFIDENCE_LEVELS,
@@ -108058,6 +109594,8 @@ export {
   MicropileBromsApplication,
   MicropileBromsModel,
   MohrCoulombModel,
+  NORMATIVE_REFERENCE_RELATIONS,
+  NORMATIVE_REFERENCE_RESOLUTION_STATUS,
   NTC2018ExistingMasonryMaterial,
   NTC2018MasonryPierAnalysis,
   NTC2018MasonryPierModel,
@@ -108092,12 +109630,17 @@ export {
   NTC2018_MASONRY_PIER_CAPACITY_REFERENCES,
   NTC2018_MASONRY_PIER_DEFORMATION_REFERENCES,
   NTC2018_MASONRY_PIER_STIFFNESS_REFERENCE,
+  NTC2018_NORMATIVE_CORPUS,
   NTC2018_OVERSTRENGTH_FACTORS,
   NTC2018_PDELTA_THRESHOLDS,
   NTC2018_PERMANENT_LOAD_REFERENCES,
   NTC2018_PLAN_REGULARITY,
   NTC2018_RC_BUILDING_CAPABILITIES,
+  NTC2018_RC_CHAPTER_4_REFERENCES,
+  NTC2018_RC_CHAPTER_7_4_REFERENCES,
   NTC2018_RC_COVERAGE_STATUS,
+  NTC2018_RC_OUTSIDE_CORPUS_REFERENCES,
+  NTC2018_RC_TRACEABILITY_STATUS,
   NTC2018_REGULARITY_REDUCTION,
   NTC2018_REGULARITY_REFERENCES,
   NTC2018_REINFORCEMENT_STEEL_GRADES,
@@ -108345,6 +109888,7 @@ export {
   applyNTC2018ExistingMasonryModifierToggle,
   assertExplicitUnitSystem,
   assertPositive21 as assertPositiveCheckValue,
+  auditNTC2018RcDesignBasis,
   bilinearizeCapacityCurve,
   calculateElasticCriticalMomentLT,
   calculateEn1992AnchorageLength,

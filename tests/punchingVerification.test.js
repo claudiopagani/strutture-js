@@ -169,6 +169,12 @@ test("EC2 2004 kernel reproduces the published interior-column worked example", 
   assert.ok(Math.abs(result.outputs.resistance.vRdc - 0.61) < 0.005);
   assert.equal(result.checks[0].ok, true);
   assert.equal(result.checks[1].ok, false);
+  assert.ok(result.metadata.normativeReferences.some((reference) =>
+    reference.unitId ===
+      "urn:structural-codes:it:unit:ntc2018:4.1.2.3.5.4"));
+  assert.ok(result.checks.every((check) =>
+    check.metadata.normativeReferences.some((reference) =>
+      reference.citation.includes("EN 1992-1-1:2004+A1:2014"))));
   assert.doesNotThrow(() => JSON.stringify(result.toJSON()));
 });
 
@@ -230,6 +236,12 @@ test("EC2 2023 kernel reproduces the published second-generation worked example"
   assert.ok(Math.abs(result.outputs.resistance.tauRdc - 1.51) < 0.01);
   assert.ok(Math.abs(result.outputs.resistance.resistanceLimit - 2.34) < 0.01);
   assert.equal(result.checks[0].ok, false);
+  assert.ok(result.metadata.normativeReferences.some((reference) =>
+    reference.documentId === "en1992-1-1-2023" &&
+    reference.resolutionStatus === "outside-corpus"));
+  assert.ok(result.checks.every((check) =>
+    check.metadata.normativeReferences.some((reference) =>
+      reference.documentId === "en1992-1-1-2023")));
 });
 
 test("generated interior perimeters retain support for general slab boundaries", () => {

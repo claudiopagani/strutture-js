@@ -29,6 +29,11 @@ import {
     SteelElasticPerfectlyPlasticLaw,
 } from "../../domain/constitutive-laws/SteelElasticPerfectlyPlasticLaw.js";
 import { rayPolygonCapacity } from "../../domain/math/rayPolygonCapacity.js";
+import { withNormativeReferences } from "../../norms/normativeReference.js";
+import {
+    NTC2018_RC_CHAPTER_4_REFERENCES,
+    NTC2018_RC_CHAPTER_7_4_REFERENCES,
+} from "../../norms/ntc2018/normativeReferences.js";
 
 /** @readonly */
 export const WALL_BIAXIAL_REFERENCE =
@@ -156,6 +161,8 @@ export function verifyWallBiaxialBending({
             .filter(Number.isFinite),
         0,
     );
+    // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A4.1.2.3.4.2
+    // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A7.4.4.5.1
     const rayCapacity = rayPolygonCapacity(
         domain.points.map((point) => ({
             x: point.MxRd,
@@ -194,5 +201,9 @@ export function verifyWallBiaxialBending({
             : null,
         check: "wall-biaxial-bending",
         reference: WALL_BIAXIAL_REFERENCE,
+        metadata: withNormativeReferences({}, [
+            NTC2018_RC_CHAPTER_4_REFERENCES.flexureAndAxialForce,
+            NTC2018_RC_CHAPTER_7_4_REFERENCES.wall,
+        ]),
     };
 }

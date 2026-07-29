@@ -11,8 +11,26 @@ import {
   calculateEn1992StrutDesignStrength,
   calculateEn1992TieResistance,
 } from "../../norms/en1992/strut-and-tie/en1992StrutAndTie2004.js";
+import { EN1992_RC_EXTERNAL_REFERENCES } from "../../norms/en1992/normativeReferences.js";
+import { withNormativeReferences } from "../../norms/normativeReference.js";
+import { NTC2018_RC_CHAPTER_4_REFERENCES } from "../../norms/ntc2018/normativeReferences.js";
 
 const SUPPORTED_CODE = "EN1992_1_1_2004_A1_2014";
+
+function resultMetadata({ code, modelId, metadata = {}, ...details }) {
+  return withNormativeReferences(
+    {
+      code,
+      modelId,
+      ...details,
+      ...metadata,
+    },
+    [
+      NTC2018_RC_CHAPTER_4_REFERENCES.strutAndTie,
+      EN1992_RC_EXTERNAL_REFERENCES.strutAndTie,
+    ],
+  );
+}
 
 function incompatibleMechanismCheck(member) {
   return {
@@ -69,7 +87,11 @@ export class ReinforcedConcreteStrutAndTieVerification {
         status: RESULT_STATUS.NOT_SUPPORTED,
         summary: `Unsupported strut-and-tie design code: ${this.code}.`,
         warnings: ["The first implementation supports EN 1992-1-1:2004+A1:2014 only."],
-        metadata: { code: this.code, modelId: model.id, ...this.metadata },
+        metadata: resultMetadata({
+          code: this.code,
+          modelId: model.id,
+          metadata: this.metadata,
+        }),
       });
     }
 
@@ -85,7 +107,11 @@ export class ReinforcedConcreteStrutAndTieVerification {
         status: RESULT_STATUS.NOT_SUPPORTED,
         summary: "Strut-and-tie verification requires fck, fcd and fyd.",
         warnings: ["Provide concrete and reinforcement design strengths."],
-        metadata: { code: this.code, modelId: model.id, ...this.metadata },
+        metadata: resultMetadata({
+          code: this.code,
+          modelId: model.id,
+          metadata: this.metadata,
+        }),
       });
     }
 
@@ -103,7 +129,11 @@ export class ReinforcedConcreteStrutAndTieVerification {
         status: RESULT_STATUS.NOT_SUPPORTED,
         summary: "The assigned strut-and-tie topology is unstable or singular.",
         warnings: [error.message],
-        metadata: { code: this.code, modelId: model.id, ...this.metadata },
+        metadata: resultMetadata({
+          code: this.code,
+          modelId: model.id,
+          metadata: this.metadata,
+        }),
       });
     }
 
@@ -142,6 +172,7 @@ export class ReinforcedConcreteStrutAndTieVerification {
             strengthModel: source.strengthModel,
             designStrength: round(strength.designStrength),
             equation: strength.equation,
+            ...strength.metadata,
           },
         }));
       } else {
@@ -158,7 +189,10 @@ export class ReinforcedConcreteStrutAndTieVerification {
           description: `Steel tie ${member.id} tension resistance`,
           demand: Math.abs(member.force),
           capacity: resistance.capacity,
-          metadata: { equation: resistance.equation },
+          metadata: {
+            equation: resistance.equation,
+            ...resistance.metadata,
+          },
         }));
       }
     }
@@ -193,6 +227,7 @@ export class ReinforcedConcreteStrutAndTieVerification {
             equation: strength.equation,
             factor: strength.factor,
             factorSource: strength.factorSource,
+            ...strength.metadata,
           },
         }),
       };
@@ -243,13 +278,13 @@ export class ReinforcedConcreteStrutAndTieVerification {
         "Member areas represent the effective strut width times thickness or the effective anchored reinforcement area.",
         "Nodal-zone force references and bearing normals represent the compressive face being checked.",
       ],
-      metadata: {
+      metadata: resultMetadata({
         code: this.code,
-        method: "EN1992-1-1-2004-section-6.5",
         modelId: model.id,
+        method: "EN1992-1-1-2004-section-6.5",
         governingCheckId: governing?.id ?? null,
-        ...this.metadata,
-      },
+        metadata: this.metadata,
+      }),
     });
   }
 }

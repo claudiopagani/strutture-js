@@ -390,6 +390,7 @@ export class SectionMomentCurvatureCurve {
       : null;
 
     // Tension stiffening.
+    // @see https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-2-design-concrete-structures
     const zeta = isFinitePositive(selectedMcr)
       ? Math.max(0, 1 - this._beta * (selectedMcr / absM) ** 2)
       : 1;

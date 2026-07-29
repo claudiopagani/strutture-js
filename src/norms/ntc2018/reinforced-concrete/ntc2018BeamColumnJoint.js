@@ -1,3 +1,6 @@
+import { withNormativeReferences } from "../../normativeReference.js";
+import { NTC2018_RC_CHAPTER_7_4_REFERENCES } from "../normativeReferences.js";
+
 const JOINT_TYPES = new Set(["internal", "external"]);
 const TENSION_METHODS = new Set([
   "diagonal-tension",
@@ -47,6 +50,7 @@ export function calculateNTC2018EffectiveJointWidth({
   positive(beamWidth, "beamWidth");
   positive(columnDepth, "columnDepth");
 
+  // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A7.4.4.3.1
   return Math.min(
     Math.max(columnWidth, beamWidth),
     Math.min(columnWidth, beamWidth) + columnDepth / 2,
@@ -89,6 +93,10 @@ export function classifyNTC2018JointConfinement({
     threshold: 0.75,
     faceCoverageRatios: { ...faceCoverageRatios },
     oppositeBeamOverlapRatios: { ...oppositeBeamOverlapRatios },
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.jointGeometry],
+    ),
   };
 }
 
@@ -113,6 +121,7 @@ export function calculateNTC2018JointShearDemand({
     throw new Error("columnShearAbove must be finite.");
   }
 
+  // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A7.4.4.3.1
   const reinforcementArea = jointType === "internal"
     ? topReinforcementArea + bottomReinforcementArea
     : topReinforcementArea;
@@ -124,6 +133,10 @@ export function calculateNTC2018JointShearDemand({
     columnShearAbove,
     reinforcementArea,
     equation: jointType === "internal" ? "NTC2018-7.4.7" : "NTC2018-7.4.6",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.beamColumnJoint],
+    ),
   };
 }
 
@@ -144,6 +157,7 @@ export function calculateNTC2018JointCompressionCapacity({
   nonNegative(normalizedAxialForce, "normalizedAxialForce");
   positive(effectiveJointWidth, "effectiveJointWidth");
   positive(columnLongitudinalLayerDistance, "columnLongitudinalLayerDistance");
+  // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A7.4.4.3.1
   const alphaJ = jointType === "internal" ? 0.6 : 0.48;
   const eta = alphaJ * (1 - fck / 250);
   const radicand = eta > 0 ? 1 - normalizedAxialForce / eta : -1;
@@ -158,6 +172,10 @@ export function calculateNTC2018JointCompressionCapacity({
     eta,
     radicand,
     equation: "NTC2018-7.4.8-7.4.9",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.beamColumnJoint],
+    ),
   };
 }
 
@@ -210,6 +228,10 @@ export function calculateNTC2018JointTensionReinforcement({
       shearStress: jointShearDemand /
         (effectiveJointWidth * columnLongitudinalLayerDistance),
       equation: jointType === "internal" ? "NTC2018-7.4.11" : "NTC2018-7.4.12",
+      metadata: withNormativeReferences(
+        {},
+        [NTC2018_RC_CHAPTER_7_4_REFERENCES.beamColumnJoint],
+      ),
     };
   }
 
@@ -228,6 +250,10 @@ export function calculateNTC2018JointTensionReinforcement({
     shearStress,
     denominator,
     equation: "NTC2018-7.4.10",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.beamColumnJoint],
+    ),
   };
 }
 

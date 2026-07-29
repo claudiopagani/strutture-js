@@ -408,6 +408,14 @@ test("simplified plate deflection checks both faces and takes the lower directio
   assert.equal(result.checks.filter((check) =>
     check.analysisType === RC_PLATE_ANALYSIS_TYPES.SLS_SIMPLIFIED_DEFLECTION).length, 4);
   assert.deepEqual(result.outputs.slendernessChecks.map((item) => item.demand), [16, 15]);
+  assert.ok(result.metadata.normativeReferences.some((reference) =>
+    reference.assetIds.includes(
+      "urn:structural-codes:it:asset:table:circ2019:c4.1.i",
+    )));
+  assert.ok(result.checks.every((check) =>
+    check.metadata.normativeReferences.some((reference) =>
+      reference.unitId ===
+        "urn:structural-codes:it:unit:ntc2018:4.1.2.2.2")));
 
   input.analysis.deflection.system = "simple_span";
   assert.throws(

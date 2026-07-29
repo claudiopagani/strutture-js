@@ -53,6 +53,7 @@ export function calculateEn1992Punching2023WithoutShearReinforcement({
   const resistanceLimit = 0.5 / resolvedGammaV * Math.sqrt(resolvedFck);
   const tauRdc = Math.min(uncappedResistance, resistanceLimit);
 
+  // @see https://eurocodes.jrc.ec.europa.eu/second-generation-eurocodes
   return {
     fck: resolvedFck,
     shearEffectiveDepth: dv,
@@ -79,6 +80,10 @@ export function calculateEn1992Punching2023WithoutShearReinforcement({
       clause: "8.4.3",
       backgroundEquations: ["10", "13", "14"],
     },
+    metadata: withNormativeReferences(
+      {},
+      [EN1992_RC_EXTERNAL_REFERENCES.punching2023],
+    ),
   };
 }
 
@@ -133,6 +138,7 @@ export function calculateEn1992Punching2023WithShearReinforcement({
     + 0.63 * (b0 / dv) ** 0.25;
   const etaSys = Math.max(1, rawEtaSys);
 
+  // @see https://eurocodes.jrc.ec.europa.eu/second-generation-eurocodes
   return {
     tauRdCs,
     tauRdMax: etaSys * tauRdc,
@@ -154,5 +160,11 @@ export function calculateEn1992Punching2023WithShearReinforcement({
       clause: "8.4.4",
       equations: ["8.104", "8.105", "8.106", "8.109", "8.110", "8.111"],
     },
+    metadata: withNormativeReferences(
+      {},
+      [EN1992_RC_EXTERNAL_REFERENCES.punching2023],
+    ),
   };
 }
+import { withNormativeReferences } from "../../normativeReference.js";
+import { EN1992_RC_EXTERNAL_REFERENCES } from "../normativeReferences.js";

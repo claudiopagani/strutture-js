@@ -1,5 +1,7 @@
 import { VerificationResult } from "../../../core/results/VerificationResult.js";
 import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
+import { withNormativeReferences } from "../../../norms/normativeReference.js";
+import { NTC2018_RC_CHAPTER_4_REFERENCES } from "../../../norms/ntc2018/normativeReferences.js";
 import {
   createRcSectionAnalysisContext,
   createUltimateSectionSolver,
@@ -21,6 +23,7 @@ export function runUlsUniaxialResistanceWorkflow(model, { code, metadata }) {
   }
 
   const compressedEdge = model.analysisSettings?.compressedEdge ?? "top";
+  // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A4.1.2.3.4.2
   const solved = createUltimateSectionSolver(model).solveUniaxialAtAxialLoad({
     section: context.section,
     concreteFibers: context.mesh.fibers,
@@ -57,6 +60,10 @@ export function runUlsUniaxialResistanceWorkflow(model, { code, metadata }) {
               capacity: round(capacity, 6),
               utilizationRatio: round(utilizationRatio, 6),
               ok: utilizationRatio <= 1,
+              metadata: withNormativeReferences(
+                { method: "fiber-section-strain-compatibility" },
+                [NTC2018_RC_CHAPTER_4_REFERENCES.flexureAndAxialForce],
+              ),
             },
           ],
     outputs: {
@@ -121,12 +128,12 @@ export function runUlsUniaxialResistanceWorkflow(model, { code, metadata }) {
       "Current workflow implements only ULS uniaxial resistance with concrete ultimate strain governing the compressed edge.",
       "Concrete in tension is neglected during the ULS resistance integration.",
     ],
-    metadata: {
+    metadata: withNormativeReferences({
       code,
       sectionId: model.id,
       analysisType: model.analysisType,
       solverMethod: "illinois",
       ...metadata,
-    },
+    }, [NTC2018_RC_CHAPTER_4_REFERENCES.flexureAndAxialForce]),
   });
 }

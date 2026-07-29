@@ -10,6 +10,9 @@ import {
   generateEn1992PunchingPerimeterAtOffset,
   generateEn1992PunchingPerimeters,
 } from "../../norms/en1992/punching/index.js";
+import { EN1992_RC_EXTERNAL_REFERENCES } from "../../norms/en1992/normativeReferences.js";
+import { withNormativeReferences } from "../../norms/normativeReference.js";
+import { NTC2018_RC_CHAPTER_4_REFERENCES } from "../../norms/ntc2018/normativeReferences.js";
 import { PunchingVerificationRequest } from "./PunchingVerificationRequest.js";
 import { RC_PUNCHING_DESIGN_CODE_IDS } from "./punchingDesignCodes.js";
 
@@ -107,7 +110,12 @@ function notSupported(request, warnings, assumptions = [], outputs = {}) {
 }
 
 function resultMetadata(request) {
-  return {
+  const externalReference = request.code.id ===
+      RC_PUNCHING_DESIGN_CODE_IDS.EN_1992_1_1_2004
+    ? EN1992_RC_EXTERNAL_REFERENCES.punching2004
+    : EN1992_RC_EXTERNAL_REFERENCES.punching2023;
+
+  return withNormativeReferences({
     applicationId: APPLICATION_ID,
     requestId: request.id,
     connectionId: request.connection.id,
@@ -135,7 +143,10 @@ function resultMetadata(request) {
       ],
     },
     references: { ...REFERENCE_URLS },
-  };
+  }, [
+    NTC2018_RC_CHAPTER_4_REFERENCES.punching,
+    externalReference,
+  ]);
 }
 
 function validateScope(request, parameters) {
@@ -493,6 +504,9 @@ function resolveOuterPerimeter(request, perimeterSet, effectiveDepth, offset) {
 
 function createCheck({ id, stateId, location, demand, capacity, reference }) {
   const utilizationRatio = demand / capacity;
+  const externalReference = String(reference).includes("2023")
+    ? EN1992_RC_EXTERNAL_REFERENCES.punching2023
+    : EN1992_RC_EXTERNAL_REFERENCES.punching2004;
 
   return {
     id,
@@ -505,10 +519,18 @@ function createCheck({ id, stateId, location, demand, capacity, reference }) {
     ok: utilizationRatio <= 1,
     units: "N/mm2",
     reference,
+    metadata: withNormativeReferences({}, [
+      NTC2018_RC_CHAPTER_4_REFERENCES.punching,
+      externalReference,
+    ]),
   };
 }
 
 function createLimitCheck({ id, stateId, location, value, limit, units, reference }) {
+  const externalReference = String(reference).includes("2023")
+    ? EN1992_RC_EXTERNAL_REFERENCES.punching2023
+    : EN1992_RC_EXTERNAL_REFERENCES.punching2004;
+
   return {
     id,
     stateId,
@@ -520,10 +542,18 @@ function createLimitCheck({ id, stateId, location, value, limit, units, referenc
     ok: value <= limit,
     units,
     reference,
+    metadata: withNormativeReferences({}, [
+      NTC2018_RC_CHAPTER_4_REFERENCES.punching,
+      externalReference,
+    ]),
   };
 }
 
 function createMinimumCheck({ id, stateId, location, value, minimum, units, reference }) {
+  const externalReference = String(reference).includes("2023")
+    ? EN1992_RC_EXTERNAL_REFERENCES.punching2023
+    : EN1992_RC_EXTERNAL_REFERENCES.punching2004;
+
   return {
     id,
     stateId,
@@ -535,6 +565,10 @@ function createMinimumCheck({ id, stateId, location, value, minimum, units, refe
     ok: value >= minimum,
     units,
     reference,
+    metadata: withNormativeReferences({}, [
+      NTC2018_RC_CHAPTER_4_REFERENCES.punching,
+      externalReference,
+    ]),
   };
 }
 

@@ -17,6 +17,11 @@ import {
   NTC2018_STRUCTURAL_STEEL_GRADES,
   NTC2018_TIMBER_STRENGTH_CLASSES,
 } from "./ntc2018MaterialCatalogs.js";
+import { withNormativeReferences } from "../../normativeReference.js";
+import {
+  NTC2018_RC_CHAPTER_4_REFERENCES,
+  NTC2018_RC_OUTSIDE_CORPUS_REFERENCES,
+} from "../normativeReferences.js";
 
 const NTC2018_REFERENCE = "DM 17/01/2018 - NTC 2018";
 const INTERNAL_UNITS = Object.freeze({ force: "N", length: "mm" });
@@ -67,6 +72,8 @@ export function createNTC2018ConcreteMaterial({
   const fck = existingState.existing
     ? characteristicValueFromExistingMean(fcm, existingState.confidenceFactor)
     : preset.fck;
+  // Mean strength/modulus/tension laws and class data are sourced from NTC
+  // chapter 11, explicitly marked outside the currently imported corpus.
   const ecm = 22000 * (fcm / 10) ** 0.3;
   const fctm = fck <= 50
     ? 0.3 * fck ** (2 / 3)
@@ -83,6 +90,7 @@ export function createNTC2018ConcreteMaterial({
     elasticModulus: round(ecm, 0),
     fcm: round(fcm, 2),
     fck: round(fck, 2),
+    // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A4.1.2.1.1.1
     fcd: round((alphaCc * fck) / gammaC, 2),
     fctm: round(fctm, 2),
     existing: existingState.existing,
@@ -95,7 +103,7 @@ export function createNTC2018ConcreteMaterial({
         }
       : {},
     units: INTERNAL_UNITS,
-    metadata: {
+    metadata: withNormativeReferences({
       ...metadata,
       normativePreset: "NTC2018",
       ntcReference: NTC2018_REFERENCE,
@@ -111,7 +119,10 @@ export function createNTC2018ConcreteMaterial({
       characteristicStrengthSource: existingState.existing
         ? "mean-divided-by-confidence-factor"
         : "catalog-characteristic",
-    },
+    }, [
+      NTC2018_RC_CHAPTER_4_REFERENCES.concreteDesignCompression,
+      NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.materialQualification,
+    ]),
   });
 }
 
@@ -164,6 +175,7 @@ export function createNTC2018ReinforcementSteelMaterial({
     fyMean: existingState.existing ? round(fyMean, 2) : null,
     ftMean: existingState.existing ? round(ftMean, 2) : null,
     fyk: round(fyk, 2),
+    // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A4.1.2.1.1.3
     fyd: round(fyk / gammaS, 2),
     ftk: round(ftk, 2),
     ductilityClass: preset.ductilityClass,
@@ -172,7 +184,7 @@ export function createNTC2018ReinforcementSteelMaterial({
     knowledgeLevel: existingState.knowledgeLevel ?? knowledgeLevel,
     confidenceFactor: existingState.confidenceFactor,
     units: INTERNAL_UNITS,
-    metadata: {
+    metadata: withNormativeReferences({
       ...metadata,
       normativePreset: "NTC2018",
       ntcReference: NTC2018_REFERENCE,
@@ -191,7 +203,10 @@ export function createNTC2018ReinforcementSteelMaterial({
       characteristicStrengthSource: existingState.existing
         ? "mean-divided-by-confidence-factor"
         : "catalog-characteristic",
-    },
+    }, [
+      NTC2018_RC_CHAPTER_4_REFERENCES.reinforcementDesignYield,
+      NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.materialQualification,
+    ]),
   });
 }
 

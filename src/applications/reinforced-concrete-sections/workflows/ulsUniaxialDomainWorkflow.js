@@ -1,5 +1,7 @@
 import { VerificationResult } from "../../../core/results/VerificationResult.js";
 import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
+import { withNormativeReferences } from "../../../norms/normativeReference.js";
+import { NTC2018_RC_CHAPTER_4_REFERENCES } from "../../../norms/ntc2018/normativeReferences.js";
 import { RCUniaxialDomainBuilder } from "../analysis/RCUniaxialDomainBuilder.js";
 import {
   createRcSectionAnalysisContext,
@@ -21,6 +23,7 @@ export function runUlsUniaxialDomainWorkflow(model, { code, metadata }) {
   const domainBuilder = new RCUniaxialDomainBuilder({
     ultimateSolver: createUltimateSectionSolver(model),
   });
+  // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A4.1.2.3.4.2
   const domain = domainBuilder.build({
     section: context.section,
     concreteFibers: context.mesh.fibers,
@@ -83,12 +86,12 @@ export function runUlsUniaxialDomainWorkflow(model, { code, metadata }) {
       "The automatically generated compression side is capped at Nc,Rd = 0.8 Ac fcd + As fyd, with compression reported as negative axial force; explicit nValues can be used to build an uncapped section-analysis domain.",
       "Concrete in tension is neglected during ULS resistance integration.",
     ],
-    metadata: {
+    metadata: withNormativeReferences({
       code,
       sectionId: model.id,
       analysisType: model.analysisType,
       solverMethod: "illinois",
       ...metadata,
-    },
+    }, [NTC2018_RC_CHAPTER_4_REFERENCES.flexureAndAxialForce]),
   });
 }

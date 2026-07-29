@@ -7,6 +7,8 @@ import {
   normalizeNTC2018StructuralBehavior,
   selectNTC2018OverstrengthFactors,
 } from "./structuralBehavior.js";
+import { withNormativeReferences } from "../../normativeReference.js";
+import { NTC2018_RC_CHAPTER_7_4_REFERENCES } from "../normativeReferences.js";
 
 export const NTC2018_CAPACITY_DESIGN_REFERENCES = Object.freeze([
   Object.freeze({
@@ -88,6 +90,10 @@ export function verifyBeamColumnHierarchy({
       discordantColumns: false,
       check: "capacity-design-beam-column-hierarchy",
       reference: "NTC 2018 § 7.4.4.2.1, Eq. [7.4.4]",
+      metadata: withNormativeReferences(
+        {},
+        [NTC2018_RC_CHAPTER_7_4_REFERENCES.columnCapacityDesign],
+      ),
     };
   }
 
@@ -114,6 +120,7 @@ export function verifyBeamColumnHierarchy({
     capacity = Math.max(...columnMagnitudes);
     transferredColumnMoment = Math.min(...columnMagnitudes);
   }
+  // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A7.4.4.2.1
   const demand = gammaRd * beamSum + transferredColumnMoment;
 
   return {
@@ -132,6 +139,10 @@ export function verifyBeamColumnHierarchy({
     discordantColumns,
     check: "capacity-design-beam-column-hierarchy",
     reference: "NTC 2018 § 7.4.4.2.1, Eq. [7.4.4]",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.columnCapacityDesign],
+    ),
   };
 }
 
@@ -159,6 +170,7 @@ export function computeBeamCapacityShear({
   const gammaRd = selectNTC2018OverstrengthFactors({
     behavior: normalizedBehavior,
   }).beamShear;
+  // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A7.4.4.1.1
   const shearFromEndMoments =
     gammaRd * (rightMoment - leftMoment) / length;
   const signedShearLeft = leftGravityShear + shearFromEndMoments;
@@ -177,6 +189,10 @@ export function computeBeamCapacityShear({
     gammaRd,
     check: "capacity-design-beam-shear",
     reference: "NTC 2018 § 7.4.4.1.1 (Taglio)",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.beamCapacityShear],
+    ),
   };
 }
 
@@ -224,6 +240,7 @@ export function computeColumnCapacityShear({
   const gammaRd = selectNTC2018OverstrengthFactors({
     behavior: normalizedBehavior,
   }).columnShear;
+  // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A7.4.4.2.1
   const shearDemand =
     gammaRd * (topEnd.designMoment + bottomEnd.designMoment) / length;
 
@@ -236,6 +253,10 @@ export function computeColumnCapacityShear({
     hierarchyFactorBottom: bottomEnd.hierarchyFactor,
     check: "capacity-design-column-shear",
     reference: "NTC 2018 § 7.4.4.2.1, Eq. [7.4.5]",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.columnCapacityDesign],
+    ),
   };
 }
 
@@ -274,6 +295,7 @@ export function computeJointCapacityShear({
     throw new Error(`jointType must be "internal" or "external"; got ${jointType}.`);
   }
 
+  // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A7.4.4.3.1
   const reinforcementForce = jointType === "internal"
     ? (topArea + bottomArea) * designStrength
     : topArea * designStrength;
@@ -289,6 +311,10 @@ export function computeJointCapacityShear({
       jointType === "internal"
         ? "NTC 2018 § 7.4.4.3.1, Eq. [7.4.7]"
         : "NTC 2018 § 7.4.4.3.1, Eq. [7.4.6]",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.beamColumnJoint],
+    ),
   };
 }
 
@@ -376,5 +402,16 @@ export function createCapacityDesignAssessment({
     allChecksOk: complete && checks.every((check) => check.ok === true),
     checks,
     references: NTC2018_CAPACITY_DESIGN_REFERENCES,
+    metadata: withNormativeReferences({}, [
+      ...(hierarchy != null || columnShear != null
+        ? [NTC2018_RC_CHAPTER_7_4_REFERENCES.columnCapacityDesign]
+        : []),
+      ...(beamShear != null
+        ? [NTC2018_RC_CHAPTER_7_4_REFERENCES.beamCapacityShear]
+        : []),
+      ...(jointShear != null
+        ? [NTC2018_RC_CHAPTER_7_4_REFERENCES.beamColumnJoint]
+        : []),
+    ]),
   };
 }

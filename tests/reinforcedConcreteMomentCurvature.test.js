@@ -113,6 +113,10 @@ test("reinforced concrete section application returns a moment-curvature curve",
   assert.equal(result.outputs.points[0].Mx, 0);
   assert.ok(result.outputs.points.at(-1).curvature > 0);
   assert.ok(result.outputs.points.at(-1).Mx > 0);
+  assert.ok(result.metadata.normativeReferences.some((reference) =>
+    reference.assetIds.includes(
+      "urn:structural-codes:it:asset:formula:ntc2018:4.1.2.3.4.2:phi-yd",
+    )));
   assert.equal(result.outputs.failureReached, true);
   assert.equal(result.outputs.firstYieldReached, true);
   assert.equal(result.outputs.firstYieldType, "steel-tension-yield");

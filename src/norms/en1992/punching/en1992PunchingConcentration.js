@@ -32,6 +32,10 @@ function interpolateK(ratio) {
   return y0 + (ratio - x0) / (x1 - x0) * (y1 - y0);
 }
 
+function concentrationMetadata(reference) {
+  return withNormativeReferences({}, [reference]);
+}
+
 /**
  * EN 1992-1-1:2004+A1:2014, 6.4.3, equations (6.42)-(6.46).
  * The external-column branches use the repository canonical local geometry:
@@ -56,11 +60,15 @@ export function calculateEn1992PunchingBeta2004({
     const beta = 1 + 0.6 * Math.PI * eccentricity
       / (positive(footprint.diameter, "footprint.diameter") + 4 * d);
 
+    // @see https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-2-design-concrete-structures
     return {
       beta,
       method: "equation-6.42-circular-interior",
       eccentricity: { x: ex, y: ey, resultant: eccentricity },
       reference: "EN 1992-1-1:2004+A1:2014 Eq. (6.42)",
+      metadata: concentrationMetadata(
+        EN1992_RC_EXTERNAL_REFERENCES.punching2004,
+      ),
     };
   }
 
@@ -76,12 +84,16 @@ export function calculateEn1992PunchingBeta2004({
     const widthY = c2 + 4 * d;
     const beta = 1 + 1.8 * Math.hypot(ex / widthX, ey / widthY);
 
+    // @see https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-2-design-concrete-structures
     return {
       beta,
       method: "equation-6.43-rectangular-interior-biaxial",
       eccentricity: { x: ex, y: ey },
       controlWidths: { x: widthX, y: widthY },
       reference: "EN 1992-1-1:2004+A1:2014 Eq. (6.43)",
+      metadata: concentrationMetadata(
+        EN1992_RC_EXTERNAL_REFERENCES.punching2004,
+      ),
     };
   }
 
@@ -97,6 +109,7 @@ export function calculateEn1992PunchingBeta2004({
       + 8 * d ** 2 + Math.PI * d * c2;
     const beta = u1 / u1Star + k * u1 / w1 * Math.abs(ey);
 
+    // @see https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-2-design-concrete-structures
     return {
       beta,
       method: "equation-6.44-edge-inward",
@@ -105,6 +118,9 @@ export function calculateEn1992PunchingBeta2004({
       k,
       w1,
       reference: "EN 1992-1-1:2004+A1:2014 Eqs. (6.44)-(6.45)",
+      metadata: concentrationMetadata(
+        EN1992_RC_EXTERNAL_REFERENCES.punching2004,
+      ),
     };
   }
 
@@ -116,12 +132,16 @@ export function calculateEn1992PunchingBeta2004({
     const u1Star = Math.min(1.5 * d, 0.5 * c1)
       + Math.min(1.5 * d, 0.5 * c2) + Math.PI * d;
 
+    // @see https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-2-design-concrete-structures
     return {
       beta: u1 / u1Star,
       method: "equation-6.46-corner-inward",
       eccentricity: { x: ex, y: ey },
       u1Star,
       reference: "EN 1992-1-1:2004+A1:2014 Eq. (6.46)",
+      metadata: concentrationMetadata(
+        EN1992_RC_EXTERNAL_REFERENCES.punching2004,
+      ),
     };
   }
 
@@ -160,6 +180,7 @@ export function calculateEn1992PunchingBetaE2023({
   const bb = Math.sqrt(widthX * widthY);
   const rawBetaE = 1 + 1.1 * eb / bb;
 
+  // @see https://eurocodes.jrc.ec.europa.eu/second-generation-eurocodes
   return {
     betaE: Math.max(1.05, rawBetaE),
     rawBetaE,
@@ -170,5 +191,10 @@ export function calculateEn1992PunchingBetaE2023({
     controlPerimeterWidths: { x: widthX, y: widthY },
     method: `table-8.3-${position}`,
     reference: "EN 1992-1-1:2023 8.4.3, Eq. (8.93) and Table 8.3",
+    metadata: concentrationMetadata(
+      EN1992_RC_EXTERNAL_REFERENCES.punching2023,
+    ),
   };
 }
+import { withNormativeReferences } from "../../normativeReference.js";
+import { EN1992_RC_EXTERNAL_REFERENCES } from "../normativeReferences.js";

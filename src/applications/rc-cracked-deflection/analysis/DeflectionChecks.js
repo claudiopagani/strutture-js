@@ -2,6 +2,12 @@ import {
   isFinitePositive,
   round,
 } from "../../reinforced-concrete-sections/shared/rcCommon.js";
+import { withNormativeReferences } from "../../../norms/normativeReference.js";
+import { EN1992_RC_EXTERNAL_REFERENCES } from "../../../norms/en1992/normativeReferences.js";
+import {
+  CIRC2019_RC_REFERENCES,
+  NTC2018_RC_CHAPTER_4_REFERENCES,
+} from "../../../norms/ntc2018/normativeReferences.js";
 
 const SLENDERNESS_LIMITS = Object.freeze({
   simple_span: { k: 1, high: 14, low: 20 },
@@ -49,7 +55,10 @@ export function utilizationCheck({ demand, capacity, metadata }) {
     capacity: round(capacity),
     utilizationRatio: round(utilizationRatio),
     ok: Number.isFinite(utilizationRatio) && utilizationRatio <= 1,
-    metadata,
+    metadata: withNormativeReferences(metadata, [
+      NTC2018_RC_CHAPTER_4_REFERENCES.deflection,
+      EN1992_RC_EXTERNAL_REFERENCES.deflection,
+    ]),
   };
 }
 
@@ -92,6 +101,7 @@ export function slendernessCheck({ span, section, serviceability }) {
   const demand = span / height;
   const utilizationRatio = demand / limit;
 
+  // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Acirc2019%3Ac4.1.2.2.2
   return {
     id: "rc-sle-deflection-slenderness",
     description: "Simplified RC span-depth deflection screening",
@@ -99,7 +109,7 @@ export function slendernessCheck({ span, section, serviceability }) {
     capacity: round(limit),
     utilizationRatio: round(utilizationRatio),
     ok: utilizationRatio <= 1,
-    metadata: {
+    metadata: withNormativeReferences({
       method: "circolare-ntc2018-c4.1.i-screening",
       system,
       stressLevel,
@@ -114,6 +124,9 @@ export function slendernessCheck({ span, section, serviceability }) {
       reinforcementRatioLow: FLAT_SLAB_REINFORCEMENT_RATIO_LIMITS.low,
       reinforcementRatioHigh: FLAT_SLAB_REINFORCEMENT_RATIO_LIMITS.high,
       interpolationFactor: round(interpolationFactor),
-    },
+    }, [
+      NTC2018_RC_CHAPTER_4_REFERENCES.deflection,
+      CIRC2019_RC_REFERENCES.simplifiedDeflectionSlenderness,
+    ]),
   };
 }

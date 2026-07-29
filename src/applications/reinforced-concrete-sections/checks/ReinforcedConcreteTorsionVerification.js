@@ -7,6 +7,8 @@ import {
 } from "../../../core/results/checkUtils.js";
 import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 import { createUnitResolver } from "../../../domain/units/UnitSystem.js";
+import { withNormativeReferences } from "../../../norms/normativeReference.js";
+import { NTC2018_RC_CHAPTER_4_REFERENCES } from "../../../norms/ntc2018/normativeReferences.js";
 import {
   computeWithTransverseResistanceAtCotTheta,
 } from "./shear/ntc2018ShearResistance.js";
@@ -285,11 +287,11 @@ function verifyTorsionActions({
         "Torsion was classified as compatibility torsion; no ULS torsion resistance check was performed.",
       ],
       assumptions: [],
-      metadata: {
+      metadata: withNormativeReferences({
         code,
         method: "ntc2018-4.1.2.3.6",
         equilibriumRequired: false,
-      },
+      }, [NTC2018_RC_CHAPTER_4_REFERENCES.torsion]),
     };
   }
 
@@ -342,14 +344,15 @@ function verifyTorsionActions({
       assumptions: [
         "NTC 2018 4.1.2.3.6 torsion resistance was not evaluated because required parameters are incomplete.",
       ],
-      metadata: {
+      metadata: withNormativeReferences({
         code,
         method: "ntc2018-4.1.2.3.6",
         missingParameters: missing,
-      },
+      }, [NTC2018_RC_CHAPTER_4_REFERENCES.torsion]),
     };
   }
 
+  // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A4.1.2.3.6
   const cot = cotTheta.value;
   const trcd =
     (2 * geometry.medianArea * geometry.effectiveWallThickness * fcdPrime * cot) /
@@ -365,21 +368,30 @@ function verifyTorsionActions({
       description: "Torsion resistance of concrete compression struts",
       demand: convertedTEd,
       capacity: trcd,
-      metadata: { reference: "NTC2018-4.1.35" },
+      metadata: withNormativeReferences(
+        { reference: "NTC2018-4.1.35" },
+        [NTC2018_RC_CHAPTER_4_REFERENCES.torsion],
+      ),
     }),
     utilizationCheck({
       id: "rc-torsion-transverse-reinforcement",
       description: "Torsion resistance of closed transverse reinforcement",
       demand: convertedTEd,
       capacity: trsd,
-      metadata: { reference: "NTC2018-4.1.36" },
+      metadata: withNormativeReferences(
+        { reference: "NTC2018-4.1.36" },
+        [NTC2018_RC_CHAPTER_4_REFERENCES.torsion],
+      ),
     }),
     utilizationCheck({
       id: "rc-torsion-longitudinal-reinforcement",
       description: "Torsion resistance of longitudinal reinforcement assigned to torsion",
       demand: convertedTEd,
       capacity: trld,
-      metadata: { reference: "NTC2018-4.1.37" },
+      metadata: withNormativeReferences(
+        { reference: "NTC2018-4.1.37" },
+        [NTC2018_RC_CHAPTER_4_REFERENCES.torsion],
+      ),
     }),
   ];
   let shearAtCotTheta = null;
@@ -422,14 +434,14 @@ function verifyTorsionActions({
           capacity: 1,
           utilizationRatio: round(interaction),
           ok: interaction <= 1,
-          metadata: {
+          metadata: withNormativeReferences({
             reference: "NTC2018-4.1.40",
             tEd: round(convertedTEd),
             trcd: round(trcd),
             vEd: round(convertedVEd),
             vRcd: round(shearAtCotTheta.vRcd),
             cotTheta: round(cot),
-          },
+          }, [NTC2018_RC_CHAPTER_4_REFERENCES.torsion]),
         });
       }
     }
@@ -502,12 +514,17 @@ function verifyTorsionActions({
       "The same cotTheta is used for torsion and the concrete shear-torsion interaction check.",
       "The default reduced concrete strength is f'cd = 0.5 fcd unless torsion.fcdPrime or torsion.fcdPrimeFactor is supplied.",
     ],
-    metadata: {
+    metadata: withNormativeReferences({
       code,
       method: "ntc2018-4.1.2.3.6",
       governingCheckId: governing?.id ?? null,
       missingParameters: combinedMissing ? ["combinedShearTorsionParameters"] : [],
-    },
+    }, [
+      NTC2018_RC_CHAPTER_4_REFERENCES.torsion,
+      ...(convertedVEd > 1e-9
+        ? [NTC2018_RC_CHAPTER_4_REFERENCES.shearWithTransverseReinforcement]
+        : []),
+    ]),
   };
 }
 

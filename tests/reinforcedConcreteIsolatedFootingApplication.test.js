@@ -67,6 +67,12 @@ test("isolated footing application verifies centered full-contact structural str
     result.checks.some((check) => check.id === "rc-footing-one-way-shear-y"),
   );
   assert.equal(result.outputs.punching.basicPerimeterInsideFooting, false);
+  assert.ok(result.metadata.normativeReferences.some((reference) =>
+    reference.citation === "NTC 2018 § 6.4" &&
+    reference.resolutionStatus === "outside-corpus"));
+  assert.ok(result.metadata.normativeReferences.some((reference) =>
+    reference.unitId ===
+      "urn:structural-codes:it:unit:ntc2018:4.1.2.3.5.4"));
 });
 
 test("isolated footing application carries uniaxial contact loss into structural checks", () => {

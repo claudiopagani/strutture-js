@@ -57,6 +57,8 @@ import "./reinforcedConcreteServiceabilityVerification.test.js";
 import "./reinforcedConcretePlateApplication.test.js";
 import "./rcCrackedDeflectionAnalysis.test.js";
 import "./reinforcedConcreteCompletion.test.js";
+import "./ntc2018NormativeReferences.test.js";
+import "./ntc2018RcDesignBasisAudit.test.js";
 import "./beamValidationCampaign.test.js";
 import "./packageExports.test.js";
 import "./singleBeamDesignApplication.test.js";

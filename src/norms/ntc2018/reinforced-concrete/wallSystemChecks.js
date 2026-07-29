@@ -3,11 +3,14 @@
  * isolated section. Local chapter-4 capacities remain explicit inputs.
  */
 
+import { withNormativeReferences } from "../../normativeReference.js";
+import { NTC2018_RC_CHAPTER_7_4_REFERENCES } from "../normativeReferences.js";
+
 export const NTC2018_WALL_SYSTEM_REFERENCES = Object.freeze([
   Object.freeze({
     source: "NTC 2018",
     citation:
-      "§§ 7.4.4.5, 7.4.4.6, 7.4.6.1.4, 7.4.6.2.4 e 7.4.6.2.5",
+      "§§ 7.4.4.5, 7.4.4.6, 7.4.6.1.4 e 7.4.6.2.4",
   }),
 ]);
 
@@ -43,6 +46,19 @@ function requiredBoolean(value, label) {
 }
 
 function check(id, demand, capacity, ok, extra = {}) {
+  const reference = extra.reference ?? "";
+  const normativeReference = reference.includes("7.4.6.1.4")
+    ? NTC2018_RC_CHAPTER_7_4_REFERENCES.wallGeometry
+    : reference.includes("7.4.6.2.4")
+      ? NTC2018_RC_CHAPTER_7_4_REFERENCES.wallDetailing
+      : reference.includes("7.4.4.6")
+        ? NTC2018_RC_CHAPTER_7_4_REFERENCES.couplingBeam
+        : reference.includes("7.4.4.5.2")
+          ? NTC2018_RC_CHAPTER_7_4_REFERENCES.wallDuctility
+          : reference.includes("7.4.4.5")
+            ? NTC2018_RC_CHAPTER_7_4_REFERENCES.wall
+            : null;
+
   return {
     id,
     demand,
@@ -53,6 +69,10 @@ function check(id, demand, capacity, ok, extra = {}) {
         : null,
     ok,
     ...extra,
+    metadata: withNormativeReferences(
+      extra.metadata,
+      normativeReference ? [normativeReference] : [],
+    ),
   };
 }
 
@@ -73,6 +93,10 @@ export function computeWallEffectiveFlangeWidth({
     effectiveFlangeWidth: Math.min(...Object.values(limits)),
     limits,
     reference: "NTC 2018 § 7.4.4.5.1",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.wall],
+    ),
   };
 }
 
@@ -95,6 +119,7 @@ export function computeMixedSystemWallShearEnvelope({
   if (!Array.isArray(elevations) || elevations.length === 0) {
     throw new Error("elevations must be a non-empty array.");
   }
+  // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A7.4.4.5.1
   const transitionElevation = height / 3;
   const vb = Math.max(analysisVb, va / 2);
   const points = elevations.map((value, index) => {
@@ -115,6 +140,10 @@ export function computeMixedSystemWallShearEnvelope({
     transitionElevation,
     points,
     reference: "NTC 2018 § 7.4.4.5.1, Fig. 7.4.5",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.wall],
+    ),
   };
 }
 
@@ -129,6 +158,10 @@ export function computeWeaklyReinforcedWallShearDemand({
     shearDemand: shear * amplificationFactor,
     amplificationFactor,
     reference: "NTC 2018 § 7.4.4.5.1",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.wall],
+    ),
   };
 }
 
@@ -147,6 +180,10 @@ export function computeWeaklyReinforcedWallAxialDemandRange({
     additionalDynamicDemand,
     applicable: behaviorFactor > 2,
     reference: "NTC 2018 § 7.4.4.5.1",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.wall],
+    ),
   };
 }
 
@@ -170,6 +207,10 @@ export function verifyWallCurvatureDuctility({
       demand <= capacity,
     ),
     reference: "NTC 2018 § 7.4.4.5.2",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.wallDuctility],
+    ),
   };
 }
 
@@ -297,6 +338,10 @@ export function verifyWallGeneralDetailing({
     satisfied: strain <= 0.002 || verticalRatio >= 0.005,
     mandatory: false,
     reference: "NTC 2018 § 7.4.6.2.4",
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.wallDetailing],
+    ),
   };
   return {
     status: checks.every((item) => item.ok) ? "ok" : "not-verified",
@@ -305,6 +350,10 @@ export function verifyWallGeneralDetailing({
     checks,
     recommendations: [recommendation],
     references: NTC2018_WALL_SYSTEM_REFERENCES,
+    metadata: withNormativeReferences({}, [
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.wallGeometry,
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.wallDetailing,
+    ]),
   };
 }
 
@@ -399,6 +448,7 @@ export function createCouplingBeamAssessment({
         "diagonalReinforcement.minimumAngle must be below pi/2 radians.",
       );
     }
+    // @see https://strutture-normative-viewer.claudiopagani19.chatgpt.site/?unit=urn%3Astructural-codes%3Ait%3Aunit%3Antc2018%3A7.4.4.6
     const diagonalCapacity = 2 * area * fyd * Math.sin(angle);
     const confinementSpacing = positive(
       diagonalReinforcement.confinementSpacing,
@@ -441,21 +491,21 @@ export function createCouplingBeamAssessment({
         confinementSpacing,
         0.10,
         confinementSpacing <= 0.10,
-        { reference: "NTC 2018 § 7.4.6.2.5" },
+        { reference: "NTC 2018 § 7.4.4.6" },
       ),
       check(
         "coupling-beam-distributed-bar-diameter",
         0.010,
         distributedBarDiameter,
         distributedBarDiameter >= 0.010,
-        { reference: "NTC 2018 § 7.4.6.2.5" },
+        { reference: "NTC 2018 § 7.4.4.6" },
       ),
       check(
         "coupling-beam-distributed-bar-spacing",
         distributedBarSpacing,
         0.10,
         distributedBarSpacing <= 0.10,
-        { reference: "NTC 2018 § 7.4.6.2.5" },
+        { reference: "NTC 2018 § 7.4.4.6" },
       ),
       check(
         "coupling-beam-edge-bars",
@@ -464,7 +514,7 @@ export function createCouplingBeamAssessment({
         edgeBarCount >= 2 && edgeBarDiameter >= 0.016,
         {
           edgeBarDiameter,
-          reference: "NTC 2018 § 7.4.6.2.5",
+          reference: "NTC 2018 § 7.4.4.6",
         },
       ),
       check(
@@ -472,7 +522,7 @@ export function createCouplingBeamAssessment({
         providedAnchorage,
         1.5 * ordinaryAnchorage,
         providedAnchorage >= 1.5 * ordinaryAnchorage,
-        { reference: "NTC 2018 § 7.4.6.2.5" },
+        { reference: "NTC 2018 § 7.4.4.6" },
       ),
     );
   }
@@ -491,6 +541,10 @@ export function createCouplingBeamAssessment({
     missing,
     checks,
     references: NTC2018_WALL_SYSTEM_REFERENCES,
+    metadata: withNormativeReferences(
+      {},
+      [NTC2018_RC_CHAPTER_7_4_REFERENCES.couplingBeam],
+    ),
   };
 }
 
@@ -541,5 +595,14 @@ export function createWallHeightSystemAssessment({
     couplingBeamAssessments,
     checks,
     references: NTC2018_WALL_SYSTEM_REFERENCES,
+    metadata: withNormativeReferences({}, [
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.wall,
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.wallDuctility,
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.wallGeometry,
+      NTC2018_RC_CHAPTER_7_4_REFERENCES.wallDetailing,
+      ...(couplingBeamAssessments.length > 0
+        ? [NTC2018_RC_CHAPTER_7_4_REFERENCES.couplingBeam]
+        : []),
+    ]),
   };
 }

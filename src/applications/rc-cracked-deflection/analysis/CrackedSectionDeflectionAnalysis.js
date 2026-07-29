@@ -21,6 +21,9 @@ import {
 } from "../../reinforced-concrete-sections/serviceabilityDefaults.js";
 import { RESULT_STATUS } from "../../../core/results/resultStatus.js";
 import { calculateEn1992ShrinkageCurvature } from "../../../norms/en1992/reinforced-concrete/index.js";
+import { EN1992_RC_EXTERNAL_REFERENCES } from "../../../norms/en1992/normativeReferences.js";
+import { withNormativeReferences } from "../../../norms/normativeReference.js";
+import { NTC2018_RC_CHAPTER_4_REFERENCES } from "../../../norms/ntc2018/normativeReferences.js";
 import {
   calculateCrackedTransformedProperties,
   SectionMomentCurvatureCurve,
@@ -63,6 +66,16 @@ export const RC_DEFLECTION_PERFORMANCE_PROFILES = Object.freeze({
     maxOutputPointsPerCombination: null,
   }),
 });
+
+function deflectionMetadata(metadata = {}, includeShrinkage = false) {
+  return withNormativeReferences(metadata, [
+    NTC2018_RC_CHAPTER_4_REFERENCES.deflection,
+    EN1992_RC_EXTERNAL_REFERENCES.deflection,
+    ...(includeShrinkage
+      ? [EN1992_RC_EXTERNAL_REFERENCES.shrinkageCurvature]
+      : []),
+  ]);
+}
 
 function isQuasiPermanent(type) {
   return normalizeCombinationType(type) === "SLE_QUASI_PERMANENT";
@@ -287,11 +300,11 @@ export class CrackedSectionDeflectionAnalysis {
         warnings: [
           "Cracked inertia, tension stiffening and time-dependent effects were not evaluated because required inputs are missing.",
         ],
-        metadata: {
+        metadata: deflectionMetadata({
           code: this.code,
           beamId,
           ...this.metadata,
-        },
+        }),
       });
     }
 
@@ -351,11 +364,11 @@ export class CrackedSectionDeflectionAnalysis {
           "Concrete and reinforcement elastic moduli are required for curvature integration.",
         ],
         assumptions,
-        metadata: {
+        metadata: deflectionMetadata({
           code: this.code,
           beamId,
           ...this.metadata,
-        },
+        }, includeShrinkage),
       });
     }
 
@@ -374,7 +387,10 @@ export class CrackedSectionDeflectionAnalysis {
           "Pass serviceability.deflection.freeShrinkageStrain explicitly; the module does not infer humidity, notional size or concrete age.",
         ],
         assumptions,
-        metadata: { code: this.code, beamId, ...this.metadata },
+        metadata: deflectionMetadata(
+          { code: this.code, beamId, ...this.metadata },
+          includeShrinkage,
+        ),
       });
     }
 
@@ -810,6 +826,7 @@ export class CrackedSectionDeflectionAnalysis {
           }
 
           const beta = creepCoefficient > 0 ? betaLongTerm : betaShortTerm;
+          // @see https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-2-design-concrete-structures
           zeta = isFinitePositive(selectedMcr)
             ? Math.max(0, 1 - beta * (selectedMcr / absM) ** 2)
             : 1;
@@ -1050,7 +1067,7 @@ export class CrackedSectionDeflectionAnalysis {
       },
       warnings,
       assumptions,
-      metadata: {
+      metadata: deflectionMetadata({
         code: this.code,
         beamId,
         method: "en1992-curvature-integration-tension-stiffening-creep-shrinkage",
@@ -1059,7 +1076,7 @@ export class CrackedSectionDeflectionAnalysis {
         includeShrinkage,
         freeShrinkageStrain: includeShrinkage ? freeShrinkageStrain : null,
         ...this.metadata,
-      },
+      }, includeShrinkage),
     });
   }
 }

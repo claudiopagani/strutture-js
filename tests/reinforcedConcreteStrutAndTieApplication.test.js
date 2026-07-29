@@ -115,6 +115,15 @@ test("RC strut-and-tie application reproduces the published corbel equilibrium",
   assert.deepEqual(result.outputs.analysis.equilibrium.residual, { fx: 0, fy: 0 });
   assert.equal(result.outputs.analysis.topology.staticIndeterminacy, 0);
   assert.equal(result.outputs.nodalZones[0].strength.factorSource, "explicit-national-parameter");
+  assert.ok(result.metadata.normativeReferences.some((reference) =>
+    reference.unitId ===
+      "urn:structural-codes:it:unit:ntc2018:4.1.2.3.7"));
+  assert.ok(result.metadata.normativeReferences.some((reference) =>
+    reference.documentId === "en1992-1-1-2004" &&
+    reference.resolutionStatus === "outside-corpus"));
+  assert.ok(result.checks.some((check) =>
+    check.metadata?.normativeReferences?.some((reference) =>
+      reference.citation.includes("EN 1992-1-1:2004 § 6.5"))));
   assert.doesNotThrow(() => JSON.stringify(result));
 });
 

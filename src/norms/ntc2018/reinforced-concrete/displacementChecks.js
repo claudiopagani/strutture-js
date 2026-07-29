@@ -2,6 +2,16 @@
  * Solver-neutral displacement checks from NTC 2018 chapter 7.
  */
 
+import { withNormativeReferences } from "../../normativeReference.js";
+import { NTC2018_RC_OUTSIDE_CORPUS_REFERENCES } from "../normativeReferences.js";
+
+function outsideCorpusMetadata(metadata = {}) {
+  return withNormativeReferences(
+    metadata,
+    [NTC2018_RC_OUTSIDE_CORPUS_REFERENCES.globalSeismicAnalysis],
+  );
+}
+
 export const NTC2018_DISPLACEMENT_REFERENCES = Object.freeze([
   Object.freeze({
     source: "NTC 2018",
@@ -147,6 +157,7 @@ export function verifyStoreyDrift({
         : category === "rigidly-connected-ductile"
           ? "NTC 2018 § 7.3.6.1, Eq. [7.3.11b]"
           : "NTC 2018 § 7.3.6.1, Eq. [7.3.12]",
+    metadata: outsideCorpusMetadata(),
   }];
 
   let nonStructuralCapacity = null;
@@ -161,6 +172,7 @@ export function verifyStoreyDrift({
       demand: designDriftRatio,
       capacity: nonStructuralCapacity,
       reference: "NTC 2018 § 7.3.6.1, Eq. [7.3.12]",
+      metadata: outsideCorpusMetadata(),
     });
   }
 
@@ -177,6 +189,7 @@ export function verifyStoreyDrift({
     checks,
     check: "storey-drift",
     reference: checks[0].reference,
+    metadata: outsideCorpusMetadata(),
   };
 }
 
@@ -205,7 +218,12 @@ export function computePDeltaCoefficient({
     status = "forbidden";
   }
 
-  return { theta, status, amplificationFactor };
+  return {
+    theta,
+    status,
+    amplificationFactor,
+    metadata: outsideCorpusMetadata(),
+  };
 }
 
 export function verifyPDelta(params) {
@@ -217,6 +235,7 @@ export function verifyPDelta(params) {
       result.status === "amplification-required",
     check: "pdelta",
     reference: "NTC 2018 § 7.3.1, Eq. [7.3.3]",
+    metadata: outsideCorpusMetadata(result.metadata),
   };
 }
 
@@ -272,6 +291,7 @@ export function computeSeismicJointWidth({
       usedEstimatedDisplacementA || usedEstimatedDisplacementB,
     check: "seismic-joint",
     reference: "NTC 2018 § 7.2.1, distanza tra costruzioni contigue",
+    metadata: outsideCorpusMetadata(),
   };
 }
 
@@ -356,6 +376,7 @@ export function verifyStoreyDisplacements({
     ...results,
     allChecksOk: checks.every((check) => check.ok === true),
     checks,
+    metadata: outsideCorpusMetadata(),
   };
 }
 
@@ -413,5 +434,6 @@ export function createDisplacementAssessment({
       allChecks.every((check) => check.ok === true),
     checks: allChecks,
     references: NTC2018_DISPLACEMENT_REFERENCES,
+    metadata: outsideCorpusMetadata(),
   };
 }

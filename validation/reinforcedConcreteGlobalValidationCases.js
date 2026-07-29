@@ -593,7 +593,7 @@ function diagonalCouplingBeamCase() {
         title: "Diagonal coupling-beam shear resistance (Eq. 7.4.24)",
         category: "reinforced-concrete-shear-wall",
         source:
-            "D.M. 17/01/2018, NTC 2018 §§ 7.4.4.6 e 7.4.6.2.5, Eq. [7.4.24]",
+            "D.M. 17/01/2018, NTC 2018 § 7.4.4.6, Eq. [7.4.24]",
         sourceKind: "independent-calculation",
         notes:
             "A short, highly stressed coupling beam requires two diagonal reinforcement bundles. Units are kN and m.",
