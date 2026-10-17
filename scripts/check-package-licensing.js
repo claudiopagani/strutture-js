@@ -3,15 +3,15 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
-const EXPECTED_LICENSE = "LGPL-2.1-or-later";
-const OFFICIAL_LGPL_2_1_SHA256 =
-  "20e50fe7aae3e56378ebf0417d9de904f55a0e61e4df315333e632a4d3555d95";
+const EXPECTED_LICENSE = "MIT";
+const EXPECTED_MIT_SHA256 =
+  "fe607d4fd4a685745080e640726c03bfa6413efbde09c18659b81f627b42bd94";
 
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
 const lock = JSON.parse(readFileSync("package-lock.json", "utf8"));
 const lockRoot = lock.packages?.[""];
 
-assert.equal(pkg.license, EXPECTED_LICENSE, "package.json license is not LGPL-2.1-or-later");
+assert.equal(pkg.license, EXPECTED_LICENSE, "package.json license is not MIT");
 assert.equal(lockRoot?.license, EXPECTED_LICENSE, "package-lock root license is inconsistent");
 assert.equal(lock.version, pkg.version, "package-lock top-level version is inconsistent");
 assert.equal(lockRoot?.version, pkg.version, "package-lock root version is inconsistent");
@@ -20,8 +20,8 @@ const licenseText = readFileSync("LICENSE", "utf8").replaceAll("\r\n", "\n");
 const licenseHash = createHash("sha256").update(licenseText).digest("hex");
 assert.equal(
   licenseHash,
-  OFFICIAL_LGPL_2_1_SHA256,
-  "LICENSE is not the unmodified official GNU LGPL 2.1 text",
+  EXPECTED_MIT_SHA256,
+  "LICENSE differs from the project's MIT license text",
 );
 
 const bundle = readFileSync("dist/index.mjs", "utf8");
@@ -32,7 +32,7 @@ assert.ok(
 );
 assert.ok(
   bundle.includes(`SPDX-License-Identifier: ${EXPECTED_LICENSE}`),
-  "bundle is missing the LGPL SPDX notice",
+  "bundle is missing the MIT SPDX notice",
 );
 
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";

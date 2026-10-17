@@ -1,6 +1,6 @@
-/*! strutture-js v0.8.1 — bundled ESM
+/*! strutture-js v0.8.2 — bundled ESM
  * Copyright (C) 2026 Claudio Pagani
- * SPDX-License-Identifier: LGPL-2.1-or-later
+ * SPDX-License-Identifier: MIT
  */
 var __defProp = Object.defineProperty;
 var __typeError = (msg) => {
