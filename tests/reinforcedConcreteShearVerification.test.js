@@ -114,6 +114,45 @@ test("RC shear verification checks sections without transverse reinforcement", (
   assert.equal(result.metadata.method, "ntc2018-4.1.2.3.5.1");
 });
 
+test("RC shear derives horizontal effective depth from the selected outer bar group", () => {
+  const { section, concreteMaterial, reinforcementMaterial } = createRcShearFixture();
+  const verifier = new ReinforcedConcreteShearVerification();
+  const base = {
+    section,
+    concreteMaterial,
+    reinforcementMaterial,
+    actions: { vEd: 60000, nEd: 0 },
+    units,
+  };
+  const leftGroup = { id: "left", face: "left", barIds: ["bottom-1", "top-1"] };
+  const without = verifier.verify({
+    ...base,
+    shear: {
+      mode: "without-transverse-reinforcement",
+      bw: 500,
+      longitudinalReinforcementGroup: leftGroup,
+    },
+  });
+  const withStirrups = verifier.verify({
+    ...base,
+    shear: {
+      mode: "with-transverse-reinforcement",
+      bw: 500,
+      longitudinalReinforcementGroup: leftGroup,
+      transverseReinforcement: { diameter: 8, legs: 2, spacing: 150 },
+    },
+  });
+
+  for (const result of [without, withStirrups]) {
+    assert.ok(result.outputs.vRd > 0);
+    approx(result.outputs.parameters.effectiveDepth, 210);
+    approx(result.outputs.parameters.longitudinalArea,
+      Math.PI * (20 ** 2 + 12 ** 2) / 4);
+    assert.equal(result.outputs.parameters.tensionFace, "left");
+    assert.equal(result.outputs.parameters.sources.d, "derived-from-reinforcement-group");
+  }
+});
+
 test("RC shear verification reports missing parameters without unsafe inference", () => {
   const { section, concreteMaterial, reinforcementMaterial } = createRcShearFixture();
   const result = new ReinforcedConcreteShearVerification().verify({

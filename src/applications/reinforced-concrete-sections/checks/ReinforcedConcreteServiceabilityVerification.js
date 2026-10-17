@@ -136,8 +136,8 @@ function solveServiceState({
   });
 }
 
-function maxAbsSteelStress(state) {
-  return state.steel.bars.reduce((max, bar) => Math.max(max, Math.abs(bar.stress)), 0);
+function maxSteelTensileStress(state) {
+  return Math.max(0, state.extremes.maxSteelTension?.value ?? 0);
 }
 
 export class ReinforcedConcreteServiceabilityVerification {
@@ -309,7 +309,7 @@ export class ReinforcedConcreteServiceabilityVerification {
     const concreteCompression = Math.abs(
       solvedState.state.extremes.maxConcreteCompression?.value ?? 0,
     );
-    const steelStress = maxAbsSteelStress(solvedState.state);
+    const steelStress = maxSteelTensileStress(solvedState.state);
     const concreteLimit = concreteStressLimit({
       combinationType,
       concreteMaterial,

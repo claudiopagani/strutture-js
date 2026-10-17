@@ -32,10 +32,13 @@ function sectionBounds(section) {
 
   const concreteSection = concreteSectionFrom(section);
   const height = concreteSection?.height ?? section?.height;
+  const width = concreteSection?.width ?? section?.width;
 
   return {
     minY: 0,
     maxY: height,
+    minZ: 0,
+    maxZ: width,
   };
 }
 
@@ -136,14 +139,14 @@ function barsFromGroup(section, group) {
   );
 }
 
-function weightedCentroidY(bars) {
+function weightedCentroid(bars, coordinate) {
   const area = bars.reduce((sum, bar) => sum + bar.area, 0);
 
   if (!isFinitePositive(area)) {
     return null;
   }
 
-  return bars.reduce((sum, bar) => sum + bar.area * bar.y, 0) / area;
+  return bars.reduce((sum, bar) => sum + bar.area * bar[coordinate], 0) / area;
 }
 
 function resolveTensionFace({ shear, group, mEd }) {
@@ -156,15 +159,23 @@ function resolveTensionFace({ shear, group, mEd }) {
   return requested;
 }
 
-function effectiveDepthFromCentroid({ section, centroidY, tensionFace }) {
+function effectiveDepthFromCentroid({ section, centroid, tensionFace }) {
   const bounds = sectionBounds(section);
 
   if (tensionFace === "bottom") {
-    return bounds.maxY - centroidY;
+    return bounds.maxY - centroid;
   }
 
   if (tensionFace === "top") {
-    return centroidY - bounds.minY;
+    return centroid - bounds.minY;
+  }
+
+  if (tensionFace === "left") {
+    return bounds.maxZ - centroid;
+  }
+
+  if (tensionFace === "right") {
+    return centroid - bounds.minZ;
   }
 
   return null;
@@ -209,17 +220,18 @@ function resolveDAndAsl({ section, shear, resolver, mEd, warnings, sources }) {
 
     if ((effectiveDepth == null || longitudinalArea == null) && bars.length > 0) {
       const barArea = bars.reduce((sum, bar) => sum + bar.area, 0);
-      const centroidY = weightedCentroidY(bars);
+      const coordinate = ["left", "right"].includes(tensionFace) ? "z" : "y";
+      const centroid = weightedCentroid(bars, coordinate);
 
       if (longitudinalArea == null && isFinitePositive(barArea)) {
         longitudinalArea = barArea;
         sources.asl = "derived-from-reinforcement-group";
       }
 
-      if (effectiveDepth == null && Number.isFinite(centroidY)) {
+      if (effectiveDepth == null && Number.isFinite(centroid)) {
         effectiveDepth = effectiveDepthFromCentroid({
           section,
-          centroidY,
+          centroid,
           tensionFace,
         });
         sources.d = "derived-from-reinforcement-group";

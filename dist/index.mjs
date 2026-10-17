@@ -1,4 +1,4 @@
-/*! strutture-js v0.8.0 — bundled ESM
+/*! strutture-js v0.8.1 — bundled ESM
  * Copyright (C) 2026 Claudio Pagani
  * SPDX-License-Identifier: LGPL-2.1-or-later
  */
@@ -85437,6 +85437,28 @@ function solveLinearSystem2x2(matrix, rightHandSide) {
   }
   return [(e * d - b * f) / determinant, (a * f - e * c) / determinant];
 }
+function includeConcreteBoundaryCompression({ section, concreteLaw, strainField, state }) {
+  var _a;
+  const outline = (_a = section.getConcreteOutlinePoints) == null ? void 0 : _a.call(section);
+  if (!Array.isArray(outline) || outline.length < 3) {
+    throw new Error("RCServiceStressSolver requires at least three concrete boundary points to report service stress extremes.");
+  }
+  const maximum = outline.reduce((current, point4) => {
+    const strain = strainField.strainAt(point4);
+    const stress = Math.min(concreteLaw.stress(strain), 0);
+    if (stress >= 0 || current && stress >= current.value) {
+      return current;
+    }
+    return { value: stress, y: point4.y, z: point4.z, strain, source: "concrete-boundary" };
+  }, null);
+  return {
+    ...state,
+    extremes: {
+      ...state.extremes,
+      maxConcreteCompression: maximum
+    }
+  };
+}
 var RCServiceStressSolver = class {
   constructor({
     sectionIntegrator = new RCSectionStateIntegrator(),
@@ -85500,10 +85522,11 @@ var RCServiceStressSolver = class {
         includeConcreteTension: false,
         includeResponseDetails
       });
+      const detailedState = includeResponseDetails ? includeConcreteBoundaryCompression({ section, concreteLaw, strainField, state }) : state;
       const residual = [state.N - nEd, state.Mx - mxEd, state.My - myEd];
       return {
         strainField,
-        state,
+        state: detailedState,
         residual,
         norm: residualNorm(residual)
       };
@@ -85644,10 +85667,11 @@ var RCServiceStressSolver = class {
         includeConcreteTension: false,
         includeResponseDetails
       });
+      const detailedState = includeResponseDetails ? includeConcreteBoundaryCompression({ section, concreteLaw, strainField, state }) : state;
       const residual = [state.N - nEd, state.Mx - mxEd];
       return {
         strainField,
-        state,
+        state: detailedState,
         residual,
         norm: residualNormUniaxial(residual)
       };
@@ -93149,15 +93173,18 @@ function sectionShape(section) {
   return (_c = (_b = (_a = concreteSectionFrom(section)) == null ? void 0 : _a.metadata) == null ? void 0 : _b.shape) != null ? _c : null;
 }
 function sectionBounds(section) {
-  var _a;
+  var _a, _b;
   if (typeof (section == null ? void 0 : section.getBoundingBox) === "function") {
     return section.getBoundingBox();
   }
   const concreteSection = concreteSectionFrom(section);
   const height = (_a = concreteSection == null ? void 0 : concreteSection.height) != null ? _a : section == null ? void 0 : section.height;
+  const width = (_b = concreteSection == null ? void 0 : concreteSection.width) != null ? _b : section == null ? void 0 : section.width;
   return {
     minY: 0,
-    maxY: height
+    maxY: height,
+    minZ: 0,
+    maxZ: width
   };
 }
 function resolveUnits4(section, options = {}) {
@@ -93233,12 +93260,12 @@ function barsFromGroup(section, group) {
     }
   );
 }
-function weightedCentroidY(bars) {
+function weightedCentroid(bars, coordinate) {
   const area = bars.reduce((sum, bar) => sum + bar.area, 0);
   if (!isFinitePositive3(area)) {
     return null;
   }
-  return bars.reduce((sum, bar) => sum + bar.area * bar.y, 0) / area;
+  return bars.reduce((sum, bar) => sum + bar.area * bar[coordinate], 0) / area;
 }
 function resolveTensionFace({ shear, group, mEd }) {
   var _a, _b;
@@ -93248,13 +93275,19 @@ function resolveTensionFace({ shear, group, mEd }) {
   }
   return requested;
 }
-function effectiveDepthFromCentroid({ section, centroidY, tensionFace }) {
+function effectiveDepthFromCentroid({ section, centroid, tensionFace }) {
   const bounds = sectionBounds(section);
   if (tensionFace === "bottom") {
-    return bounds.maxY - centroidY;
+    return bounds.maxY - centroid;
   }
   if (tensionFace === "top") {
-    return centroidY - bounds.minY;
+    return centroid - bounds.minY;
+  }
+  if (tensionFace === "left") {
+    return bounds.maxZ - centroid;
+  }
+  if (tensionFace === "right") {
+    return centroid - bounds.minZ;
   }
   return null;
 }
@@ -93284,15 +93317,16 @@ function resolveDAndAsl({ section, shear, resolver, mEd, warnings, sources }) {
     }
     if ((effectiveDepth == null || longitudinalArea == null) && bars.length > 0) {
       const barArea = bars.reduce((sum, bar) => sum + bar.area, 0);
-      const centroidY = weightedCentroidY(bars);
+      const coordinate = ["left", "right"].includes(tensionFace) ? "z" : "y";
+      const centroid = weightedCentroid(bars, coordinate);
       if (longitudinalArea == null && isFinitePositive3(barArea)) {
         longitudinalArea = barArea;
         sources.asl = "derived-from-reinforcement-group";
       }
-      if (effectiveDepth == null && Number.isFinite(centroidY)) {
+      if (effectiveDepth == null && Number.isFinite(centroid)) {
         effectiveDepth = effectiveDepthFromCentroid({
           section,
-          centroidY,
+          centroid,
           tensionFace
         });
         sources.d = "derived-from-reinforcement-group";
@@ -94314,8 +94348,9 @@ function solveServiceState({
     modularRatio
   });
 }
-function maxAbsSteelStress(state) {
-  return state.steel.bars.reduce((max, bar) => Math.max(max, Math.abs(bar.stress)), 0);
+function maxSteelTensileStress(state) {
+  var _a, _b;
+  return Math.max(0, (_b = (_a = state.extremes.maxSteelTension) == null ? void 0 : _a.value) != null ? _b : 0);
 }
 var ReinforcedConcreteServiceabilityVerification = class {
   constructor({
@@ -94474,7 +94509,7 @@ var ReinforcedConcreteServiceabilityVerification = class {
     const concreteCompression = Math.abs(
       (_h = (_g = solvedState.state.extremes.maxConcreteCompression) == null ? void 0 : _g.value) != null ? _h : 0
     );
-    const steelStress = maxAbsSteelStress(solvedState.state);
+    const steelStress = maxSteelTensileStress(solvedState.state);
     const concreteLimit = concreteStressLimit({
       combinationType,
       concreteMaterial

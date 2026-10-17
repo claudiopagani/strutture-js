@@ -30,6 +30,33 @@ function solveLinearSystem2x2(matrix, rightHandSide) {
   return [(e * d - b * f) / determinant, (a * f - e * c) / determinant];
 }
 
+function includeConcreteBoundaryCompression({ section, concreteLaw, strainField, state }) {
+  const outline = section.getConcreteOutlinePoints?.();
+
+  if (!Array.isArray(outline) || outline.length < 3) {
+    throw new Error("RCServiceStressSolver requires at least three concrete boundary points to report service stress extremes.");
+  }
+
+  const maximum = outline.reduce((current, point) => {
+    const strain = strainField.strainAt(point);
+    const stress = Math.min(concreteLaw.stress(strain), 0);
+
+    if (stress >= 0 || (current && stress >= current.value)) {
+      return current;
+    }
+
+    return { value: stress, y: point.y, z: point.z, strain, source: "concrete-boundary" };
+  }, null);
+
+  return {
+    ...state,
+    extremes: {
+      ...state.extremes,
+      maxConcreteCompression: maximum,
+    },
+  };
+}
+
 export class RCServiceStressSolver {
   constructor({
     sectionIntegrator = new RCSectionStateIntegrator(),
@@ -110,11 +137,14 @@ export class RCServiceStressSolver {
               includeConcreteTension: false,
               includeResponseDetails,
             });
+      const detailedState = includeResponseDetails
+        ? includeConcreteBoundaryCompression({ section, concreteLaw, strainField, state })
+        : state;
       const residual = [state.N - nEd, state.Mx - mxEd, state.My - myEd];
 
       return {
         strainField,
-        state,
+        state: detailedState,
         residual,
         norm: residualNorm(residual),
       };
@@ -289,11 +319,14 @@ export class RCServiceStressSolver {
               includeConcreteTension: false,
               includeResponseDetails,
             });
+      const detailedState = includeResponseDetails
+        ? includeConcreteBoundaryCompression({ section, concreteLaw, strainField, state })
+        : state;
       const residual = [state.N - nEd, state.Mx - mxEd];
 
       return {
         strainField,
-        state,
+        state: detailedState,
         residual,
         norm: residualNormUniaxial(residual),
       };

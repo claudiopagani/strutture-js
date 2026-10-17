@@ -220,6 +220,22 @@ test("RC serviceability validation uses NTC stress limit factors", () => {
   );
 });
 
+test("RC service stress checks use tensile steel stress and zero when all bars are compressed", () => {
+  const { section, concreteMaterial, reinforcementMaterial } =
+    createGroupedServiceabilityFixture();
+  const result = new ReinforcedConcreteServiceabilityVerification().verify({
+    section,
+    concreteMaterial,
+    reinforcementMaterial,
+    actions: { nEd: -500000, mEd: 0 },
+    combinationType: "SLE_RARE",
+  });
+
+  assert.equal(result.outputs.steelStress, 0);
+  assert.equal(findCheck(result, "rc-sle-steel-stress").demand, 0);
+  assert.ok(result.outputs.concreteCompression > 0);
+});
+
 test("RC serviceability validation maps environment and combination to crack classes", () => {
   const { section, concreteMaterial, reinforcementMaterial } =
     createGroupedServiceabilityFixture();

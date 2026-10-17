@@ -112,4 +112,32 @@ test("service stress solver equilibrates a combined N-Mx-My state with concrete 
   assert.ok(result.state.extremes.maxConcreteCompression.y > 250);
   assert.ok(result.state.extremes.maxConcreteCompression.z < 150);
   assert.equal(result.state.extremes.maxSteelTension.id, "bottom-right");
+  const boundary = fixture.section.getConcreteOutlinePoints();
+  const expected = boundary
+    .map((point) => ({ ...point, strain: result.strainField.strainAt(point) }))
+    .map((point) => ({ ...point, value: Math.min(fixture.concreteLaw.stress(point.strain), 0) }))
+    .reduce((minimum, point) => point.value < minimum.value ? point : minimum);
+  const extreme = result.state.extremes.maxConcreteCompression;
+
+  assert.equal(extreme.source, "concrete-boundary");
+  assert.equal(extreme.y, expected.y);
+  assert.equal(extreme.z, expected.z);
+  assert.ok(Math.abs(extreme.value - expected.value) < 1e-10);
+  assert.ok(extreme.value < Math.min(...result.state.concrete.fibers.map((fiber) => fiber.stress)));
+});
+
+test("uniaxial service stress reports compression at the concrete edge", () => {
+  const fixture = createServiceFixture();
+  const result = new RCServiceStressSolver({ tolerance: 1e-2 }).solveUniaxial({
+    section: fixture.section,
+    concreteFibers: fixture.fibers,
+    concreteLaw: fixture.concreteLaw,
+    steelLaw: fixture.steelLaw,
+    actions: { nEd: -400000, mxEd: 6e7 },
+  });
+
+  assert.equal(result.converged, true);
+  assert.equal(result.state.extremes.maxConcreteCompression.y, 500);
+  assert.ok(result.state.extremes.maxConcreteCompression.value <
+    Math.min(...result.state.concrete.fibers.map((fiber) => fiber.stress)));
 });
